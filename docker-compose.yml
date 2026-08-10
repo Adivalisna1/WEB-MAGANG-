@@ -1,0 +1,116 @@
+version: "3.9"
+
+services:
+  # ============================================================
+  # MySQL Database
+  # ============================================================
+  db:
+    image: mysql:8.0
+    container_name: web_laporan_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Jakarta
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - web_laporan_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================
+  # Backend API — Node.js/Express
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: web_laporan_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_PORT: ${APP_PORT:-5000}
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      TZ: Asia/Jakarta
+    ports:
+      - "${APP_PORT:-5000}:5000"
+    volumes:
+      - uploads_data:/app/uploads   # persistent storage untuk file upload
+    networks:
+      - web_laporan_net
+
+  # ============================================================
+  # Frontend — Next.js Dashboard Publik
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: web_laporan_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      # Browser mengakses backend lewat localhost (dari luar Docker)
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+      # Server Next.js mengakses backend lewat nama service Docker (antar container)
+      API_URL_INTERNAL: http://backend:5000/api
+    ports:
+      - "3000:3000"
+    networks:
+      - web_laporan_net
+
+  # ============================================================
+  # phpMyAdmin — GUI database (dev only)
+  # ============================================================
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: web_laporan_pma
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${MYSQL_USER}
+      PMA_PASSWORD: ${MYSQL_PASSWORD}
+      UPLOAD_LIMIT: 50M
+    ports:
+      - "${PMA_PORT:-8080}:80"
+    networks:
+      - web_laporan_net
+
+# ============================================================
+# Volumes & Networks
+# ============================================================
+volumes:
+  db_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  web_laporan_net:
+    driver: bridge
