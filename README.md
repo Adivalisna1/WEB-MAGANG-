@@ -16,6 +16,34 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 
 ---
 
+## Fitur
+
+### Dashboard Publik
+- Daftar dokumen terverifikasi dengan filter kategori, tahun, dan pencarian
+- Download dokumen langsung tanpa login
+- Halaman detail dokumen
+- Statistik total dokumen, kategori, dan unduhan
+
+### Dashboard Staff
+- Upload dokumen dengan drag & drop (maks 1GB)
+- Edit metadata dokumen (judul, kategori, tahun, deskripsi)
+- Submit dokumen untuk verifikasi
+- Lihat status dokumen dan catatan revisi dari admin
+- Ganti password dan kelola profil
+- Tombol kembali ke beranda publik
+
+### Dashboard Admin
+- Statistik realtime (total dokumen, menunggu verifikasi, user online)
+- Verifikasi dokumen dengan preview PDF langsung di modal
+- Setujui atau kembalikan dokumen untuk revisi dengan catatan
+- Monitoring user online realtime (auto refresh 30 detik)
+- Manajemen user — tambah, aktifkan/nonaktifkan, hapus
+- Log aktivitas sistem dengan pagination dan hapus riwayat
+- Hapus dokumen beserta file fisiknya
+- Tombol kembali ke beranda publik
+
+---
+
 ## Cara Menjalankan
 
 ### Syarat
@@ -24,14 +52,31 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 ### Langkah
 
 ```bash
-# 1. Masuk ke folder project
-cd "web magang munculin data"
+# 1. Clone repository
+git clone https://github.com/username/web-dashboard-laporan.git
+cd web-dashboard-laporan
 
-# 2. Jalankan semua container
+# 2. Salin file env
+cp .env.example .env
+# Edit .env — isi password sesuai kebutuhan
+
+# 3. Jalankan semua container
 docker-compose up -d
 
-# 3. Cek status container
+# 4. Cek status container
 docker-compose ps
+```
+
+### Rebuild setelah ada perubahan kode
+
+```bash
+docker-compose up -d --build
+```
+
+### Matikan web
+
+```bash
+docker-compose down
 ```
 
 ### URL Akses
@@ -51,6 +96,102 @@ docker-compose ps
 |---|---|---|
 | Admin | `admin` | `password` |
 | Staff | `staff01` | `password` |
+
+> Ganti password setelah pertama login melalui halaman Profil
+
+---
+
+## Struktur Folder
+
+```
+web-dashboard-laporan/
+├── docker-compose.yml
+├── .env.example
+├── .gitignore
+├── README.md
+├── database/
+│   └── init/
+│       ├── 01_schema.sql     ← struktur tabel
+│       └── 02_seed.sql       ← data awal
+├── backend/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+│       ├── index.js
+│       ├── config/           ← db.js, multer.js
+│       ├── controllers/      ← auth, dokumen, user, admin
+│       ├── middleware/       ← auth JWT, validate, logger, error
+│       └── routes/           ← auth, dokumen, user, admin
+└── frontend/
+    ├── Dockerfile
+    ├── package.json
+    ├── next.config.js
+    ├── tailwind.config.ts
+    └── src/
+        ├── app/
+        │   ├── page.tsx              ← dashboard publik
+        │   ├── login/
+        │   ├── dokumen/[id]/
+        │   ├── staff/                ← dokumen, upload, edit, profil
+        │   └── admin/                ← dashboard, dokumen, users, logs
+        ├── components/
+        │   ├── layout/               ← Navbar, Footer
+        │   ├── ui/                   ← DokumenCard, FilterBar, Pagination
+        │   ├── staff/                ← Sidebar
+        │   └── admin/                ← AdminSidebar
+        ├── context/                  ← AuthContext
+        ├── hooks/                    ← useRequireAuth
+        └── lib/                      ← api.ts, auth.ts, dateUtils.ts
+```
+
+---
+
+## Konfigurasi .env
+
+```env
+# MySQL
+MYSQL_ROOT_PASSWORD="password_root"
+MYSQL_DATABASE=web_laporan
+MYSQL_USER=laporan_user
+MYSQL_PASSWORD="password_user"
+MYSQL_PORT=3307
+
+# phpMyAdmin
+PMA_PORT=8080
+
+# Backend
+APP_PORT=5000
+JWT_SECRET=isi_dengan_string_random_panjang
+JWT_EXPIRES_IN=8h
+CORS_ORIGIN=http://localhost:3000
+
+# Frontend
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+---
+
+## Ketentuan Upload File
+
+| Item | Nilai |
+|---|---|
+| Format yang didukung | PDF, DOC, DOCX, XLS, XLSX |
+| Ukuran maksimal | 1 GB per file |
+| Penyimpanan | Docker Volume (uploads_data) |
+
+---
+
+## Alur Status Dokumen
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: Staff Upload
+    Draft --> Menunggu_Verifikasi: Staff Submit
+    Menunggu_Verifikasi --> Terverifikasi: Admin Setujui
+    Menunggu_Verifikasi --> Revisi: Admin Revisi + Catatan
+    Revisi --> Menunggu_Verifikasi: Staff Edit & Submit Ulang
+    Terverifikasi --> [*]: Tampil di Dashboard Publik
+```
 
 ---
 
@@ -364,11 +505,16 @@ stateDiagram-v2
 
 ## API Endpoints
 
+### Auth
 | Method | Endpoint | Akses |
 |---|---|---|
 | POST | `/api/auth/login` | Publik |
 | POST | `/api/auth/logout` | Publik |
 | GET | `/api/auth/me` | Login |
+
+### Dokumen
+| Method | Endpoint | Akses |
+|---|---|---|
 | GET | `/api/dokumen` | Publik |
 | GET | `/api/dokumen/kategori` | Publik |
 | GET | `/api/dokumen/:id` | Publik |
@@ -380,6 +526,10 @@ stateDiagram-v2
 | GET | `/api/dokumen/:id/preview` | Admin |
 | PATCH | `/api/dokumen/:id/verify` | Admin |
 | DELETE | `/api/dokumen/:id` | Admin |
+
+### Admin
+| Method | Endpoint | Akses |
+|---|---|---|
 | GET | `/api/admin/stats` | Admin |
 | GET | `/api/admin/users` | Admin |
 | GET | `/api/admin/users/online` | Admin |
@@ -387,6 +537,11 @@ stateDiagram-v2
 | PATCH | `/api/admin/users/:id/toggle` | Admin |
 | DELETE | `/api/admin/users/:id` | Admin |
 | GET | `/api/admin/logs` | Admin |
-| DELETE | `/api/admin/logs` | Admin |
+| DELETE | `/api/admin/logs?before_days=30` | Admin |
+
+### User
+| Method | Endpoint | Akses |
+|---|---|---|
 | GET | `/api/user/profile` | Login |
+| PATCH | `/api/user/profile` | Login |
 | PATCH | `/api/user/password` | Login |
