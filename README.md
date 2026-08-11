@@ -25,8 +25,9 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Statistik total dokumen, kategori, dan unduhan
 
 ### Dashboard Staff
-- Upload dokumen dengan drag & drop (maks 1GB)
+- Upload dokumen dengan drag & drop (maks 500MB)
 - Edit metadata dokumen (judul, kategori, tahun, deskripsi)
+- **Ganti file dokumen saat status draft atau revisi** (tanpa hapus dan upload ulang)
 - Submit dokumen untuk verifikasi
 - Lihat status dokumen dan catatan revisi dari admin
 - Ganti password dan kelola profil
@@ -38,6 +39,7 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Setujui atau kembalikan dokumen untuk revisi dengan catatan
 - Monitoring user online realtime (auto refresh 30 detik)
 - Manajemen user — tambah, aktifkan/nonaktifkan, hapus
+- **Kelola kategori dokumen** — tambah, edit, hapus, aktif/nonaktif dari dashboard
 - Log aktivitas sistem dengan pagination dan hapus riwayat
 - Hapus dokumen beserta file fisiknya
 - Tombol kembali ke beranda publik
@@ -92,12 +94,52 @@ docker-compose down
 
 ### Akun Default
 
-| Role | Username | Password |
-|---|---|---|
-| Admin | `admin` | `password` |
-| Staff | `staff01` | `password` |
+| Role | Username | Password | Keterangan |
+|---|---|---|---|
+| Admin | `admin` | `password` | Akses penuh semua fitur |
+| Staff | `staff01` | `password` | Staff Perencanaan (contoh) |
 
 > Ganti password setelah pertama login melalui halaman Profil
+
+---
+
+## Struktur Database
+
+### Tabel
+
+| Tabel | Fungsi |
+|---|---|
+| `roles` | Daftar role: admin, staff |
+| `users` | Data semua user (admin & staff) |
+| `user_sessions` | Tracking session login — untuk monitoring online |
+| `kategori_dokumen` | Kategori laporan: LKjIP, Renstra, Renja, RKT, PK, LAKIP, IKU, Lainnya |
+| `dokumen` | Data utama laporan + status alur verifikasi |
+| `aktivitas_log` | Log semua aksi user di sistem |
+
+### Status Dokumen
+
+| Status | Keterangan |
+|---|---|
+| `draft` | Baru diupload, belum diajukan |
+| `menunggu_verifikasi` | Sudah disubmit staff, menunggu admin |
+| `terverifikasi` | Disetujui admin, tampil di publik |
+| `revisi` | Dikembalikan admin, staff perlu perbaiki |
+| `diarsipkan` | Diarsipkan, tidak tampil di publik |
+
+### Kategori Dokumen Default
+
+| Nama | Slug | Urutan |
+|---|---|---|
+| LKjIP | `lkjip` | 1 |
+| Renstra | `renstra` | 2 |
+| Renja | `renja` | 3 |
+| RKT | `rkt` | 4 |
+| PK | `pk` | 5 |
+| LAKIP | `lakip` | 6 |
+| IKU | `iku` | 7 |
+| Lainnya | `lainnya` | 99 |
+
+> Kategori bisa ditambah/diedit/dihapus langsung dari dashboard admin di menu **Kelola Kategori**
 
 ---
 
@@ -133,7 +175,7 @@ web-dashboard-laporan/
         │   ├── login/
         │   ├── dokumen/[id]/
         │   ├── staff/                ← dokumen, upload, edit, profil
-        │   └── admin/                ← dashboard, dokumen, users, logs
+        │   └── admin/                ← dashboard, dokumen, kategori, users, logs
         ├── components/
         │   ├── layout/               ← Navbar, Footer
         │   ├── ui/                   ← DokumenCard, FilterBar, Pagination
@@ -176,7 +218,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api
 | Item | Nilai |
 |---|---|
 | Format yang didukung | PDF, DOC, DOCX, XLS, XLSX |
-| Ukuran maksimal | 1 GB per file |
+| Ukuran maksimal | 500 MB per file |
 | Penyimpanan | Docker Volume (uploads_data) |
 
 ---
@@ -523,6 +565,7 @@ stateDiagram-v2
 | POST | `/api/dokumen/upload` | Staff/Admin |
 | PATCH | `/api/dokumen/:id` | Staff/Admin |
 | PATCH | `/api/dokumen/:id/submit` | Staff |
+| PATCH | `/api/dokumen/:id/file` | Staff/Admin |
 | GET | `/api/dokumen/:id/preview` | Admin |
 | PATCH | `/api/dokumen/:id/verify` | Admin |
 | DELETE | `/api/dokumen/:id` | Admin |
@@ -538,6 +581,10 @@ stateDiagram-v2
 | DELETE | `/api/admin/users/:id` | Admin |
 | GET | `/api/admin/logs` | Admin |
 | DELETE | `/api/admin/logs?before_days=30` | Admin |
+| GET | `/api/admin/kategori` | Admin |
+| POST | `/api/admin/kategori` | Admin |
+| PATCH | `/api/admin/kategori/:id` | Admin |
+| DELETE | `/api/admin/kategori/:id` | Admin |
 
 ### User
 | Method | Endpoint | Akses |
