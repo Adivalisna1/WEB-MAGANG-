@@ -35,7 +35,8 @@ async function testConnection() {
     conn.release();
   } catch (err) {
     console.error('❌ Gagal konek MySQL:', err.message);
-    process.exit(1);
+    console.error('⚠️  Server tetap jalan, tapi DB tidak tersedia');
+    // Tidak process.exit(1) agar healthcheck Railway tetap bisa respond
   }
 }
 
