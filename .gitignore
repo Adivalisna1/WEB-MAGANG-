@@ -5,6 +5,14 @@
 .env.local
 .env.production
 .env.staging
+backend/.env.railway
+
+# ============================================================
+# Dokumen internal — tidak perlu di-push
+# ============================================================
+DOCS.md
+TASKS.md
+NGROK_TUTORIAL.md
 
 # ============================================================
 # Dependencies

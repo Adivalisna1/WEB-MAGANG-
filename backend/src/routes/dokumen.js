@@ -42,6 +42,14 @@ router.patch('/:id/submit',
   ctrl.submitVerifikasi
 );
 
+// Ganti file saat revisi/draft
+router.patch('/:id/file',
+  authenticate, authorize('admin', 'staff'),
+  upload.single('file'),
+  activityLogger('ganti_file', 'dokumen'),
+  ctrl.gantiFileDokumen
+);
+
 // ── Admin only ────────────────────────────────────────────────
 router.get('/:id/preview',
   authenticate, authorize('admin'),

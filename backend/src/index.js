@@ -31,8 +31,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '1gb' }));
-app.use(express.urlencoded({ extended: true, limit: '1gb' }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // ── Rate Limiter — cegah brute force ─────────────────────────
 const limiter = rateLimit({

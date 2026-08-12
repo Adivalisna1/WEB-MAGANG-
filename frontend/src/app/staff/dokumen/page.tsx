@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth';
 import {
   FileText, Upload, Clock, CheckCircle,
   XCircle, Archive, Send, Pencil, Loader2,
-  RefreshCw, AlertCircle
+  RefreshCw, AlertCircle, MessageSquareWarning, Bell
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -27,12 +27,12 @@ interface Dokumen {
 }
 
 const statusConfig = {
-  draft:                { label: 'Draft',             color: 'bg-gray-100 text-gray-700',    icon: FileText },
-  menunggu_verifikasi:  { label: 'Menunggu',          color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-  terverifikasi:        { label: 'Terverifikasi',     color: 'bg-green-100 text-green-700',  icon: CheckCircle },
-  ditolak:              { label: 'Ditolak',           color: 'bg-red-100 text-red-700',      icon: XCircle },
-  revisi:               { label: 'Perlu Revisi',      color: 'bg-orange-100 text-orange-700', icon: XCircle },
-  diarsipkan:           { label: 'Diarsipkan',        color: 'bg-purple-100 text-purple-700', icon: Archive },
+  draft:                { label: 'Draft',           color: 'bg-gray-100 text-gray-700',     icon: FileText },
+  menunggu_verifikasi:  { label: 'Menunggu',        color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  terverifikasi:        { label: 'Terverifikasi',   color: 'bg-green-100 text-green-700',   icon: CheckCircle },
+  ditolak:              { label: 'Ditolak',         color: 'bg-red-100 text-red-700',       icon: XCircle },
+  revisi:               { label: 'Perlu Revisi',    color: 'bg-orange-100 text-orange-700', icon: MessageSquareWarning },
+  diarsipkan:           { label: 'Diarsipkan',      color: 'bg-purple-100 text-purple-700', icon: Archive },
 };
 
 export default function StaffDokumenPage() {
@@ -79,13 +79,15 @@ export default function StaffDokumenPage() {
     }
   };
 
-  // Ringkasan stats
+  // Dokumen yang perlu direvisi
+  const dokumenRevisi = dokumenList.filter(d => d.status === 'revisi' && d.catatan);
+
   const stats = {
-    total:      dokumenList.length,
-    draft:      dokumenList.filter(d => d.status === 'draft').length,
-    menunggu:   dokumenList.filter(d => d.status === 'menunggu_verifikasi').length,
-    verified:   dokumenList.filter(d => d.status === 'terverifikasi').length,
-    ditolak:    dokumenList.filter(d => d.status === 'ditolak').length,
+    total:    dokumenList.length,
+    draft:    dokumenList.filter(d => d.status === 'draft').length,
+    menunggu: dokumenList.filter(d => d.status === 'menunggu_verifikasi').length,
+    verified: dokumenList.filter(d => d.status === 'terverifikasi').length,
+    revisi:   dokumenRevisi.length,
   };
 
   return (
@@ -107,13 +109,52 @@ export default function StaffDokumenPage() {
         </div>
       </div>
 
+      {/* ── NOTIFIKASI REVISI ── tampil kalau ada dokumen perlu direvisi */}
+      {dokumenRevisi.length > 0 && (
+        <div className="bg-orange-50 border border-orange-300 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-orange-600 shrink-0" />
+            <p className="font-semibold text-orange-800 text-sm">
+              {dokumenRevisi.length === 1
+                ? 'Ada 1 dokumen yang perlu direvisi'
+                : `Ada ${dokumenRevisi.length} dokumen yang perlu direvisi`}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {dokumenRevisi.map(dok => (
+              <div key={dok.id} className="bg-white border border-orange-200 rounded-lg px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 text-sm truncate">{dok.judul}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{dok.kategori} · {dok.tahun}</p>
+                    <div className="flex items-start gap-1.5 mt-2">
+                      <MessageSquareWarning className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-orange-700 font-medium">
+                        Catatan admin: <span className="font-normal text-gray-700">{dok.catatan}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/staff/dokumen/${dok.id}/edit`}
+                    className="shrink-0 text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1"
+                  >
+                    <Pencil className="w-3 h-3" /> Revisi
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: 'Total',       value: stats.total,    color: 'text-gray-700' },
-          { label: 'Draft',       value: stats.draft,    color: 'text-gray-500' },
-          { label: 'Menunggu',    value: stats.menunggu, color: 'text-yellow-600' },
+          { label: 'Total',         value: stats.total,    color: 'text-gray-700' },
+          { label: 'Draft',         value: stats.draft,    color: 'text-gray-500' },
+          { label: 'Menunggu',      value: stats.menunggu, color: 'text-yellow-600' },
           { label: 'Terverifikasi', value: stats.verified, color: 'text-green-600' },
+          { label: 'Perlu Revisi',  value: stats.revisi,   color: 'text-orange-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -163,21 +204,33 @@ export default function StaffDokumenPage() {
                   const Icon = cfg.icon;
                   const canEdit   = dok.status === 'draft' || dok.status === 'ditolak' || dok.status === 'revisi';
                   const canSubmit = dok.status === 'draft' || dok.status === 'revisi';
+                  const isRevisi  = dok.status === 'revisi';
 
                   return (
-                    <tr key={dok.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={dok.id}
+                      className={clsx(
+                        'transition-colors',
+                        isRevisi ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-gray-50'
+                      )}
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                          <FileText className={clsx('w-4 h-4 shrink-0', isRevisi ? 'text-orange-400' : 'text-gray-400')} />
                           <div>
                             <p className="font-medium text-gray-900 line-clamp-1">{dok.judul}</p>
                             <p className="text-xs text-gray-400">{dok.file_nama}</p>
                           </div>
                         </div>
-                        {dok.catatan && (dok.status === 'ditolak' || dok.status === 'revisi') && (
-                          <p className="mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                            📝 Catatan admin: {dok.catatan}
-                          </p>
+                        {/* Catatan revisi inline di baris */}
+                        {dok.catatan && isRevisi && (
+                          <div className="mt-2 flex items-start gap-1.5 bg-orange-100 border border-orange-200 rounded-lg px-3 py-2">
+                            <MessageSquareWarning className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-semibold text-orange-700">Catatan Admin:</p>
+                              <p className="text-xs text-gray-700 mt-0.5">{dok.catatan}</p>
+                            </div>
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">{dok.kategori}</td>
@@ -193,9 +246,15 @@ export default function StaffDokumenPage() {
                           {canEdit && (
                             <Link
                               href={`/staff/dokumen/${dok.id}/edit`}
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                              className={clsx(
+                                'inline-flex items-center gap-1 text-xs font-medium',
+                                isRevisi
+                                  ? 'text-orange-600 hover:text-orange-800'
+                                  : 'text-blue-600 hover:text-blue-800'
+                              )}
                             >
-                              <Pencil className="w-3.5 h-3.5" /> Edit
+                              <Pencil className="w-3.5 h-3.5" />
+                              {isRevisi ? 'Revisi' : 'Edit'}
                             </Link>
                           )}
                           {canSubmit && (

@@ -165,6 +165,27 @@ async function uploadDokumen(req, res, next) {
     const filePath = req.file.path;
     const fileName = req.file.originalname;
 
+    // ── Validasi duplikat: cek judul + kategori + tahun ──────
+    const [duplikat] = await pool.query(
+      `SELECT id, status FROM dokumen
+       WHERE LOWER(judul) = LOWER(?)
+         AND kategori_id = ?
+         AND tahun = ?
+         AND status NOT IN ('diarsipkan')`,
+      [judul.trim(), kategori_id, tahun]
+    );
+
+    if (duplikat.length > 0) {
+      // Hapus file yang sudah terlanjur diupload
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+      const statusAda = duplikat[0].status.replace(/_/g, ' ');
+      return res.status(409).json({
+        success: false,
+        message: `Dokumen dengan judul, kategori, dan tahun yang sama sudah ada (status: ${statusAda}). Gunakan judul berbeda atau hapus dokumen lama terlebih dahulu.`,
+      });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO dokumen
          (kategori_id, uploaded_by, judul, deskripsi, tahun,
@@ -203,6 +224,29 @@ async function editDokumen(req, res, next) {
     }
 
     const { judul, tahun, kategori_id, deskripsi } = req.body;
+
+    // ── Validasi duplikat saat edit (kalau judul/tahun/kategori berubah) ──
+    const judulFinal    = judul       || dok.judul;
+    const tahunFinal    = tahun       || dok.tahun;
+    const kategoriFinal = kategori_id || dok.kategori_id;
+
+    const [duplikat] = await pool.query(
+      `SELECT id FROM dokumen
+       WHERE LOWER(judul) = LOWER(?)
+         AND kategori_id  = ?
+         AND tahun        = ?
+         AND id           != ?
+         AND status NOT IN ('diarsipkan')`,
+      [judulFinal.toString().trim(), kategoriFinal, tahunFinal, id]
+    );
+
+    if (duplikat.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Dokumen dengan judul, kategori, dan tahun yang sama sudah ada. Gunakan judul atau tahun yang berbeda.',
+      });
+    }
+
     await pool.query(
       `UPDATE dokumen SET
          judul       = COALESCE(?, judul),
@@ -301,6 +345,57 @@ async function getKategori(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ── PATCH /api/dokumen/:id/file (staff — ganti file saat revisi) ──
+async function gantiFileDokumen(req, res, next) {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT * FROM dokumen WHERE id = ?', [id]);
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan' });
+    }
+
+    const dok = rows[0];
+
+    // Hanya bisa ganti file saat status revisi atau draft
+    if (dok.status !== 'revisi' && dok.status !== 'draft') {
+      return res.status(400).json({ success: false, message: 'File hanya bisa diganti saat status draft atau revisi' });
+    }
+
+    // Staff hanya bisa ganti file miliknya sendiri
+    if (req.user.role_id === 2 && dok.uploaded_by !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Bukan dokumen Anda' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'File baru wajib diupload' });
+    }
+
+    // Hapus file lama kalau ada
+    if (dok.file_path && fs.existsSync(dok.file_path)) {
+      fs.unlinkSync(dok.file_path);
+    }
+
+    // Update record dengan file baru
+    await pool.query(
+      `UPDATE dokumen SET
+        file_nama = ?,
+        file_path = ?,
+        file_size = ?,
+        file_mime = ?,
+        updated_at = NOW()
+       WHERE id = ?`,
+      [req.file.originalname, req.file.path, req.file.size, req.file.mimetype, id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'File berhasil diganti',
+      data: { id: Number(id), file_nama: req.file.originalname },
+    });
+  } catch (err) { next(err); }
+}
+
 // ── GET /api/dokumen/:id/preview (admin only) ─────────────────
 // Serve file langsung tanpa increment download_count
 // Admin bisa preview semua status dokumen
@@ -337,7 +432,7 @@ async function previewDokumen(req, res, next) {
 
 module.exports = {
   getDokumenPublik, getDokumenDetail, downloadDokumen, getAllDokumen,
-  uploadDokumen, editDokumen, submitVerifikasi,
+  uploadDokumen, editDokumen, submitVerifikasi, gantiFileDokumen,
   verifikasiDokumen, deleteDokumen, getKategori,
   previewDokumen,
   uploadRules, editRules,

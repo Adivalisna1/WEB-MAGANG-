@@ -41,4 +41,10 @@ router.get('/logs', ctrl.getLogs);
 // DELETE /api/admin/logs — hapus riwayat log
 router.delete('/logs', ctrl.clearLogs);
 
+// ── Kategori Dokumen ──────────────────────────────────────────
+router.get('/kategori',     ctrl.getKategoriAdmin);
+router.post('/kategori',    ctrl.createKategoriRules, validate, activityLogger('buat_kategori', 'kategori'), ctrl.createKategori);
+router.patch('/kategori/:id', ctrl.updateKategoriRules, validate, activityLogger('edit_kategori', 'kategori'), ctrl.updateKategori);
+router.delete('/kategori/:id', activityLogger('hapus_kategori', 'kategori'), ctrl.deleteKategori);
+
 module.exports = router;

@@ -4,7 +4,7 @@ function errorHandler(err, req, res, next) {
 
   // Error dari multer (upload file)
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ success: false, message: 'Ukuran file melebihi batas 1GB' });
+    return res.status(400).json({ success: false, message: 'Ukuran file melebihi batas 500MB' });
   }
 
   if (err.message && err.message.includes('Format file')) {

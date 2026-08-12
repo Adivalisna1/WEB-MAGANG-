@@ -53,8 +53,8 @@ export default function UploadPage() {
       setError('Format tidak didukung. Gunakan PDF, DOC, DOCX, XLS, atau XLSX.');
       return;
     }
-    if (picked.size > 1024 * 1024 * 1024) {
-      setError('Ukuran file melebihi 1GB.');
+    if (picked.size > 500 * 1024 * 1024) {
+      setError('Ukuran file melebihi 500MB.');
       return;
     }
     setError('');
@@ -222,7 +222,7 @@ export default function UploadPage() {
               <CloudUpload className={`w-10 h-10 mx-auto mb-2 ${dragging ? 'text-primary-500' : 'text-gray-300'}`} />
               <p className="text-sm font-medium text-gray-700">Drag & drop file di sini</p>
               <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
-              <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX, XLS, XLSX • Maks 1GB</p>
+              <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX, XLS, XLSX • Maks 500MB</p>
             </div>
           )}
           <input

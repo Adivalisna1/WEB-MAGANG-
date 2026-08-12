@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileCheck, Users,
-  Activity, LogOut, ChevronRight, ShieldCheck, Home
+  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const adminMenu = [
-  { href: '/admin',          icon: LayoutDashboard, label: 'Dashboard',  exact: true },
+  { href: '/admin',          icon: LayoutDashboard, label: 'Dashboard',        exact: true },
   { href: '/admin/dokumen',  icon: FileCheck,       label: 'Verifikasi Dokumen' },
+  { href: '/admin/kategori', icon: Tag,             label: 'Kelola Kategori' },
   { href: '/admin/users',    icon: Users,           label: 'Manajemen User' },
   { href: '/admin/logs',     icon: Activity,        label: 'Log Aktivitas' },
 ];

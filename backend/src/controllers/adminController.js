@@ -2,6 +2,143 @@ const bcrypt    = require('bcrypt');
 const { body }  = require('express-validator');
 const { pool }  = require('../config/db');
 
+// ── GET /api/admin/kategori ───────────────────────────────────
+async function getKategoriAdmin(req, res, next) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT k.id, k.nama, k.slug, k.deskripsi, k.urutan, k.is_active,
+              COUNT(d.id) AS jumlah_dokumen
+       FROM kategori_dokumen k
+       LEFT JOIN dokumen d ON d.kategori_id = k.id
+       GROUP BY k.id
+       ORDER BY k.urutan ASC, k.nama ASC`
+    );
+    return res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+}
+
+// ── POST /api/admin/kategori ──────────────────────────────────
+const createKategoriRules = [
+  body('nama').trim().notEmpty().withMessage('Nama kategori wajib diisi'),
+  body('deskripsi').optional().trim(),
+  body('urutan').optional().isInt({ min: 0 }).withMessage('Urutan harus angka'),
+];
+
+async function createKategori(req, res, next) {
+  try {
+    const { nama, deskripsi, urutan = 0 } = req.body;
+
+    // Buat slug dari nama
+    const slug = nama
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\-]/g, '')
+      .replace(/-+/g, '-');
+
+    // Cek duplikat
+    const [existing] = await pool.query(
+      'SELECT id FROM kategori_dokumen WHERE nama = ? OR slug = ?', [nama, slug]
+    );
+    if (existing.length) {
+      return res.status(409).json({ success: false, message: 'Nama kategori sudah ada' });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES (?, ?, ?, ?)',
+      [nama, slug, deskripsi || null, Number(urutan)]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Kategori berhasil dibuat',
+      data: { id: result.insertId, nama, slug },
+    });
+  } catch (err) { next(err); }
+}
+
+// ── PATCH /api/admin/kategori/:id ────────────────────────────
+const updateKategoriRules = [
+  body('nama').optional().trim().notEmpty().withMessage('Nama tidak boleh kosong'),
+  body('deskripsi').optional().trim(),
+  body('urutan').optional().isInt({ min: 0 }),
+];
+
+async function updateKategori(req, res, next) {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT * FROM kategori_dokumen WHERE id = ?', [id]);
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Kategori tidak ditemukan' });
+    }
+
+    const { nama, deskripsi, urutan, is_active } = req.body;
+
+    // Kalau nama diubah, generate slug baru
+    let slug = rows[0].slug;
+    if (nama && nama !== rows[0].nama) {
+      slug = nama
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9\-]/g, '')
+        .replace(/-+/g, '-');
+
+      // Cek duplikat nama/slug (kecuali diri sendiri)
+      const [dup] = await pool.query(
+        'SELECT id FROM kategori_dokumen WHERE (nama = ? OR slug = ?) AND id != ?',
+        [nama, slug, id]
+      );
+      if (dup.length) {
+        return res.status(409).json({ success: false, message: 'Nama kategori sudah digunakan' });
+      }
+    }
+
+    await pool.query(
+      `UPDATE kategori_dokumen SET
+        nama      = COALESCE(?, nama),
+        slug      = ?,
+        deskripsi = COALESCE(?, deskripsi),
+        urutan    = COALESCE(?, urutan),
+        is_active = COALESCE(?, is_active)
+       WHERE id = ?`,
+      [
+        nama || null,
+        slug,
+        deskripsi !== undefined ? deskripsi : null,
+        urutan !== undefined ? Number(urutan) : null,
+        is_active !== undefined ? Number(is_active) : null,
+        id,
+      ]
+    );
+
+    return res.json({ success: true, message: 'Kategori berhasil diupdate' });
+  } catch (err) { next(err); }
+}
+
+// ── DELETE /api/admin/kategori/:id ───────────────────────────
+async function deleteKategori(req, res, next) {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT * FROM kategori_dokumen WHERE id = ?', [id]);
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Kategori tidak ditemukan' });
+    }
+
+    // Cek apakah ada dokumen yang pakai kategori ini
+    const [[{ total }]] = await pool.query(
+      'SELECT COUNT(*) AS total FROM dokumen WHERE kategori_id = ?', [id]
+    );
+    if (total > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Kategori tidak bisa dihapus karena masih digunakan oleh ${total} dokumen`,
+      });
+    }
+
+    await pool.query('DELETE FROM kategori_dokumen WHERE id = ?', [id]);
+    return res.json({ success: true, message: 'Kategori berhasil dihapus' });
+  } catch (err) { next(err); }
+}
+
 // ── GET /api/admin/users ──────────────────────────────────────
 async function getUsers(req, res, next) {
   try {
@@ -200,4 +337,7 @@ async function getStats(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getUsers, getOnlineUsers, createUser, createUserRules, toggleUserActive, deleteUser, clearLogs, getLogs, getStats };
+module.exports = {
+  getUsers, getOnlineUsers, createUser, createUserRules, toggleUserActive, deleteUser, clearLogs, getLogs, getStats,
+  getKategoriAdmin, createKategori, createKategoriRules, updateKategori, updateKategoriRules, deleteKategori,
+};
