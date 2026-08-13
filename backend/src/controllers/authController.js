@@ -1,7 +1,18 @@
-const bcrypt = require('bcrypt');
-const jwt    = require('jsonwebtoken');
+const bcrypt   = require('bcrypt');
+const jwt      = require('jsonwebtoken');
 const { body } = require('express-validator');
 const { pool } = require('../config/db');
+
+// ── Helper: catat log aktivitas ───────────────────────────────
+async function catatLog({ user_id, aksi, entitas = null, entitas_id = null, detail = null, ip = null }) {
+  try {
+    await pool.query(
+      `INSERT INTO aktivitas_log (user_id, aksi, entitas, entitas_id, detail, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [user_id || null, aksi, entitas, entitas_id || null, detail ? JSON.stringify(detail) : null, ip || null]
+    );
+  } catch (_) { /* log gagal tidak boleh ganggu response utama */ }
+}
 
 // ── Validation rules ──────────────────────────────────────────
 const loginRules = [
@@ -65,6 +76,16 @@ async function login(req, res, next) {
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
     );
 
+    // Catat log login
+    await catatLog({
+      user_id: user.id,
+      aksi: 'login',
+      entitas: 'user',
+      entitas_id: user.id,
+      detail: { username: user.username, role: user.role },
+      ip: req.ip,
+    });
+
     return res.json({
       success: true,
       message: 'Login berhasil',
@@ -96,6 +117,14 @@ async function logout(req, res, next) {
           'UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE id = ?',
           [decoded.sessionId]
         );
+        // Catat log logout
+        await catatLog({
+          user_id: decoded.id,
+          aksi: 'logout',
+          entitas: 'user',
+          entitas_id: decoded.id,
+          ip: req.ip,
+        });
       } catch (_) { /* token expired — tetap lanjut logout */ }
     }
     return res.json({ success: true, message: 'Logout berhasil' });
@@ -106,8 +135,8 @@ async function logout(req, res, next) {
 
 // ── GET /api/auth/me ──────────────────────────────────────────
 async function me(req, res) {
-  const { password_hash, ...user } = req.user;
-  return res.json({ success: true, data: req.user });
+  const { password_hash, ...user } = req.user; // strip password_hash sebelum kirim
+  return res.json({ success: true, data: user });
 }
 
-module.exports = { login, logout, me, loginRules };
+module.exports = { login, logout, me, loginRules, catatLog };

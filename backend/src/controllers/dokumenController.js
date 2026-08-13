@@ -2,6 +2,7 @@ const path   = require('path');
 const fs     = require('fs');
 const { body, param, query } = require('express-validator');
 const { pool } = require('../config/db');
+const { catatLog } = require('./authController');
 
 // ── Validation rules ──────────────────────────────────────────
 const uploadRules = [
@@ -195,6 +196,16 @@ async function uploadDokumen(req, res, next) {
        tahun, fileName, filePath, req.file.size, req.file.mimetype]
     );
 
+    // Catat log upload
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'upload',
+      entitas: 'dokumen',
+      entitas_id: result.insertId,
+      detail: { judul, tahun, kategori_id, file_nama: fileName },
+      ip: req.ip,
+    });
+
     return res.status(201).json({
       success: true,
       message: 'Dokumen berhasil diupload, status: draft',
@@ -308,6 +319,16 @@ async function verifikasiDokumen(req, res, next) {
       [newStatus, isPublic, catatan || null, req.user.id, req.params.id]
     );
 
+    // Catat log verifikasi
+    await catatLog({
+      user_id: req.user.id,
+      aksi: aksi === 'approve' ? 'verifikasi_setuju' : 'verifikasi_revisi',
+      entitas: 'dokumen',
+      entitas_id: Number(req.params.id),
+      detail: { aksi, catatan: catatan || null, status_baru: newStatus },
+      ip: req.ip,
+    });
+
     return res.json({
       success: true,
       message: aksi === 'approve' ? 'Dokumen disetujui dan dipublikasikan' : 'Dokumen dikembalikan untuk revisi',
@@ -326,12 +347,45 @@ async function deleteDokumen(req, res, next) {
 
     // Hapus file fisik
     const filePath = rows[0].file_path;
+    const judulDok = rows[0].judul;
     if (filePath && fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
 
     await pool.query('DELETE FROM dokumen WHERE id = ?', [req.params.id]);
+
+    // Catat log hapus
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'hapus_dokumen',
+      entitas: 'dokumen',
+      entitas_id: Number(req.params.id),
+      detail: { judul: judulDok },
+      ip: req.ip,
+    });
+
     return res.json({ success: true, message: 'Dokumen berhasil dihapus' });
+  } catch (err) { next(err); }
+}
+
+// ── GET /api/dokumen/stats (publik) ───────────────────────────
+// Statistik akurat dari seluruh database, bukan dari paginasi
+async function getStatsPublik(req, res, next) {
+  try {
+    const [[{ totalDokumen }]]   = await pool.query(
+      'SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE status = "terverifikasi" AND is_public = 1'
+    );
+    const [[{ totalKategori }]]  = await pool.query(
+      'SELECT COUNT(*) AS totalKategori FROM kategori_dokumen WHERE is_active = 1'
+    );
+    const [[{ totalDownload }]]  = await pool.query(
+      'SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen WHERE status = "terverifikasi" AND is_public = 1'
+    );
+
+    return res.json({
+      success: true,
+      data: { totalDokumen, totalKategori, totalDownload },
+    });
   } catch (err) { next(err); }
 }
 
@@ -434,6 +488,6 @@ module.exports = {
   getDokumenPublik, getDokumenDetail, downloadDokumen, getAllDokumen,
   uploadDokumen, editDokumen, submitVerifikasi, gantiFileDokumen,
   verifikasiDokumen, deleteDokumen, getKategori,
-  previewDokumen,
+  previewDokumen, getStatsPublik,
   uploadRules, editRules,
 };

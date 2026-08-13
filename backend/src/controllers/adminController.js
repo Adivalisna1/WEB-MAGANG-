@@ -1,6 +1,7 @@
 const bcrypt    = require('bcrypt');
 const { body }  = require('express-validator');
 const { pool }  = require('../config/db');
+const { catatLog } = require('./authController');
 
 // ── GET /api/admin/kategori ───────────────────────────────────
 async function getKategoriAdmin(req, res, next) {
@@ -207,6 +208,16 @@ async function createUser(req, res, next) {
       [role_id, nama, username, email, hash]
     );
 
+    // Catat log tambah user
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'tambah_user',
+      entitas: 'user',
+      entitas_id: result.insertId,
+      detail: { nama, username, email, role_id },
+      ip: req.ip,
+    });
+
     return res.status(201).json({
       success: true,
       message: 'User berhasil dibuat',
@@ -230,6 +241,16 @@ async function toggleUserActive(req, res, next) {
 
     const newStatus = rows[0].is_active ? 0 : 1;
     await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, req.params.id]);
+
+    // Catat log toggle user
+    await catatLog({
+      user_id: req.user.id,
+      aksi: newStatus ? 'aktifkan_user' : 'nonaktifkan_user',
+      entitas: 'user',
+      entitas_id: Number(req.params.id),
+      detail: { is_active: newStatus },
+      ip: req.ip,
+    });
 
     return res.json({
       success: true,
@@ -289,10 +310,21 @@ async function deleteUser(req, res, next) {
     }
 
     // Hapus session, log, lalu user (urutan penting karena FK)
+    const [[userToDelete]] = await pool.query('SELECT nama, username FROM users WHERE id = ?', [id]);
     await pool.query('DELETE FROM user_sessions WHERE user_id = ?', [id]);
     await pool.query('UPDATE aktivitas_log SET user_id = NULL WHERE user_id = ?', [id]);
     await pool.query('UPDATE dokumen SET uploaded_by = 1 WHERE uploaded_by = ?', [id]); // pindah ke admin
     await pool.query('DELETE FROM users WHERE id = ?', [id]);
+
+    // Catat log hapus user
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'hapus_user',
+      entitas: 'user',
+      entitas_id: id,
+      detail: { nama: userToDelete?.nama, username: userToDelete?.username },
+      ip: req.ip,
+    });
 
     return res.json({ success: true, message: 'User berhasil dihapus' });
   } catch (err) { next(err); }
@@ -320,6 +352,14 @@ async function clearLogs(req, res, next) {
 }
 async function getStats(req, res, next) {
   try {
+    // Cleanup session tidak aktif > 15 menit sebelum hitung onlineNow
+    await pool.query(
+      `UPDATE user_sessions
+       SET is_online = 0, logout_at = NOW()
+       WHERE is_online = 1
+         AND last_active_at < NOW() - INTERVAL 15 MINUTE`
+    );
+
     const [[{ totalDokumen }]]    = await pool.query('SELECT COUNT(*) AS totalDokumen FROM dokumen');
     const [[{ terverifikasi }]]   = await pool.query('SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi"');
     const [[{ menunggu }]]        = await pool.query('SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi"');

@@ -9,6 +9,7 @@ const activityLogger = require('../middleware/activityLogger');
 
 // ── Publik (tanpa login) ──────────────────────────────────────
 router.get('/kategori', ctrl.getKategori);
+router.get('/stats',    ctrl.getStatsPublik);
 router.get('/',         ctrl.getDokumenPublik);
 
 // ── Staff & Admin (perlu login) — harus sebelum /:id ─────────

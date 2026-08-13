@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getDokumen, getKategori } from '@/lib/api';
+import { getDokumen, getKategori, getStatsPublik } from '@/lib/api';
 import DokumenCard from '@/components/ui/DokumenCard';
 import FilterBar from '@/components/ui/FilterBar';
 import Pagination from '@/components/ui/Pagination';
@@ -40,8 +40,8 @@ export default async function HomePage({
 }) {
   const page = Number(searchParams.page) || 1;
 
-  // Fetch paralel
-  const [dokumenRes, kategoriRes] = await Promise.all([
+  // Fetch paralel — termasuk stats akurat dari seluruh database
+  const [dokumenRes, kategoriRes, statsRes] = await Promise.all([
     getDokumen({
       q:        searchParams.q,
       kategori: searchParams.kategori,
@@ -50,14 +50,15 @@ export default async function HomePage({
       limit: 12,
     }),
     getKategori(),
+    getStatsPublik(),
   ]);
 
   const dokumenList  = dokumenRes.data   ?? [];
   const kategoriList = kategoriRes.data  ?? [];
   const meta         = dokumenRes.meta;
 
-  // Hitung total download dari data yang ada
-  const totalDownload = dokumenList.reduce((sum, d) => sum + (d.download_count ?? 0), 0);
+  // Ambil statistik akurat dari API (bukan dari 12 dokumen paginasi)
+  const stats = statsRes.data ?? { totalDokumen: meta?.total ?? 0, totalKategori: kategoriList.length, totalDownload: 0 };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -75,19 +76,19 @@ export default async function HomePage({
         <StatCard
           icon={FileText}
           label="Total Dokumen"
-          value={meta?.total ?? dokumenList.length}
+          value={stats.totalDokumen}
           color="bg-blue-500"
         />
         <StatCard
           icon={FolderOpen}
           label="Kategori Tersedia"
-          value={kategoriList.length}
+          value={stats.totalKategori}
           color="bg-purple-500"
         />
         <StatCard
           icon={Download}
           label="Total Unduhan"
-          value={totalDownload.toLocaleString('id-ID')}
+          value={stats.totalDownload.toLocaleString('id-ID')}
           color="bg-green-500"
         />
       </section>

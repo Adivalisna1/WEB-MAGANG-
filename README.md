@@ -89,17 +89,11 @@ docker-compose down
 | Login | http://localhost:3000/login |
 | Dashboard Staff | http://localhost:3000/staff/dokumen |
 | Dashboard Admin | http://localhost:3000/admin |
-| phpMyAdmin | http://localhost:8080 |
 | API Health Check | http://localhost:5000/api/health |
 
 ### Akun Default
 
-| Role | Username | Password | Keterangan |
-|---|---|---|---|
-| Admin | `admin` | `password` | Akses penuh semua fitur |
-| Staff | `staff01` | `password` | Staff Perencanaan (contoh) |
-
-> Ganti password setelah pertama login melalui halaman Profil
+> Lihat file `DOCS.md` untuk informasi akun — tidak dipublikasikan di sini.
 
 ---
 
@@ -190,26 +184,13 @@ web-dashboard-laporan/
 
 ## Konfigurasi .env
 
-```env
-# MySQL
-MYSQL_ROOT_PASSWORD="password_root"
-MYSQL_DATABASE=web_laporan
-MYSQL_USER=laporan_user
-MYSQL_PASSWORD="password_user"
-MYSQL_PORT=3307
+Salin `.env.example` menjadi `.env` lalu sesuaikan nilainya.
 
-# phpMyAdmin
-PMA_PORT=8080
-
-# Backend
-APP_PORT=5000
-JWT_SECRET=isi_dengan_string_random_panjang
-JWT_EXPIRES_IN=8h
-CORS_ORIGIN=http://localhost:3000
-
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```bash
+cp .env.example .env
 ```
+
+> Detail konfigurasi ada di file `.env.example` — jangan commit file `.env` ke GitHub.
 
 ---
 
@@ -531,20 +512,6 @@ erDiagram
 
 ---
 
-## Status Alur Dokumen
-
-```mermaid
-stateDiagram-v2
-    [*] --> Draft: Staff Upload
-    Draft --> Menunggu_Verifikasi: Staff Submit
-    Menunggu_Verifikasi --> Terverifikasi: Admin Setujui
-    Menunggu_Verifikasi --> Revisi: Admin Revisi
-    Revisi --> Menunggu_Verifikasi: Staff Submit Ulang
-    Terverifikasi --> [*]: Tampil di Dashboard Publik
-```
-
----
-
 ## API Endpoints
 
 ### Auth
@@ -592,3 +559,10 @@ stateDiagram-v2
 | GET | `/api/user/profile` | Login |
 | PATCH | `/api/user/profile` | Login |
 | PATCH | `/api/user/password` | Login |
+
+---
+
+## Kontributor
+
+- **Naufal Adiva Putra Lisna** — Developer (Magang)
+

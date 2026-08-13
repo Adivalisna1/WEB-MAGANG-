@@ -89,3 +89,19 @@ export function formatFileSize(bytes: number | null): string {
 export function getDownloadUrl(id: number): string {
   return `${API_URL}/dokumen/${id}/download`;
 }
+
+export interface StatsPublik {
+  totalDokumen: number;
+  totalKategori: number;
+  totalDownload: number;
+}
+
+// Ambil statistik publik yang akurat dari seluruh database (bukan dari paginasi)
+export async function getStatsPublik(): Promise<ApiResponse<StatsPublik>> {
+  const res = await fetch(`${SERVER_API_URL}/dokumen/stats`, {
+    next: { revalidate: 60 }, // cache 1 menit
+  });
+  if (!res.ok) throw new Error('Gagal mengambil statistik');
+  return res.json();
+}
+
