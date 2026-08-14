@@ -45,7 +45,7 @@ async function createKategori(req, res, next) {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES (?, ?, ?, ?)',
+      'INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, is_active) VALUES (?, ?, ?, ?, 1)',
       [nama, slug, deskripsi || null, Number(urutan)]
     );
 

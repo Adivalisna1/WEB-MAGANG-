@@ -47,7 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const logoutFn = useCallback(async () => {
-    if (token) await apiLogout(token);
+    // Coba logout ke backend, tapi JANGAN blokir logout lokal kalau API gagal
+    try {
+      if (token) await apiLogout(token);
+    } catch (_) {
+      // API error (network, token expired, dll) — tetap lanjut logout lokal
+    }
     clearSession();
     setUser(null);
     setToken(null);

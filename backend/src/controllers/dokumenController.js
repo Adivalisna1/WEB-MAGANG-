@@ -8,6 +8,7 @@ const { catatLog } = require('./authController');
 const uploadRules = [
   body('judul').trim().notEmpty().withMessage('Judul wajib diisi'),
   body('tahun').isInt({ min: 2000, max: 2100 }).withMessage('Tahun tidak valid'),
+  body('bulan').optional({ nullable: true }).isInt({ min: 1, max: 12 }).withMessage('Bulan tidak valid (1-12)'),
   body('kategori_id').isInt({ min: 1 }).withMessage('Kategori wajib dipilih'),
   body('deskripsi').optional().trim(),
 ];
@@ -16,6 +17,7 @@ const editRules = [
   param('id').isInt({ min: 1 }),
   body('judul').optional().trim().notEmpty().withMessage('Judul tidak boleh kosong'),
   body('tahun').optional().isInt({ min: 2000, max: 2100 }),
+  body('bulan').optional({ nullable: true }).isInt({ min: 1, max: 12 }).withMessage('Bulan tidak valid (1-12)'),
   body('kategori_id').optional().isInt({ min: 1 }),
   body('deskripsi').optional().trim(),
 ];
@@ -34,13 +36,13 @@ async function getDokumenPublik(req, res, next) {
     if (q)        { where += ' AND d.judul LIKE ?'; params.push(`%${q}%`); }
 
     const [rows] = await pool.query(
-      `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.file_nama,
+      `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.file_nama,
               d.file_size, d.file_mime, d.download_count,
               d.created_at, k.nama AS kategori, k.slug AS kategori_slug
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
        WHERE ${where}
-       ORDER BY d.tahun DESC, d.created_at DESC
+       ORDER BY d.tahun DESC, d.bulan DESC, d.created_at DESC
        LIMIT ? OFFSET ?`,
       [...params, Number(limit), offset]
     );
@@ -64,7 +66,7 @@ async function getDokumenPublik(req, res, next) {
 async function getDokumenDetail(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.file_nama,
+      `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.file_nama,
               d.file_size, d.file_mime, d.download_count, d.created_at,
               k.nama AS kategori, k.slug AS kategori_slug
        FROM dokumen d
@@ -128,7 +130,7 @@ async function getAllDokumen(req, res, next) {
     if (tahun)    { where += ' AND d.tahun = ?';     params.push(tahun); }
 
     const [rows] = await pool.query(
-      `SELECT d.id, d.judul, d.tahun, d.status, d.file_nama, d.file_size,
+      `SELECT d.id, d.judul, d.tahun, d.bulan, d.status, d.file_nama, d.file_size,
               d.download_count, d.is_public, d.created_at, d.updated_at,
               k.nama AS kategori, u.nama AS uploaded_by
        FROM dokumen d
@@ -187,13 +189,16 @@ async function uploadDokumen(req, res, next) {
       });
     }
 
+    const { bulan } = req.body;
+
     const [result] = await pool.query(
       `INSERT INTO dokumen
-         (kategori_id, uploaded_by, judul, deskripsi, tahun,
+         (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan,
           file_nama, file_path, file_size, file_mime, status, is_public)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0)`,
       [kategori_id, req.user.id, judul, deskripsi || null,
-       tahun, fileName, filePath, req.file.size, req.file.mimetype]
+       tahun, bulan ? Number(bulan) : null,
+       fileName, filePath, req.file.size, req.file.mimetype]
     );
 
     // Catat log upload
@@ -234,7 +239,7 @@ async function editDokumen(req, res, next) {
       return res.status(400).json({ success: false, message: 'Hanya dokumen draft atau revisi yang bisa diedit' });
     }
 
-    const { judul, tahun, kategori_id, deskripsi } = req.body;
+    const { judul, tahun, bulan, kategori_id, deskripsi } = req.body;
 
     // ── Validasi duplikat saat edit (kalau judul/tahun/kategori berubah) ──
     const judulFinal    = judul       || dok.judul;
@@ -262,10 +267,13 @@ async function editDokumen(req, res, next) {
       `UPDATE dokumen SET
          judul       = COALESCE(?, judul),
          tahun       = COALESCE(?, tahun),
+         bulan       = CASE WHEN ? IS NOT NULL THEN ? ELSE bulan END,
          kategori_id = COALESCE(?, kategori_id),
          deskripsi   = COALESCE(?, deskripsi)
        WHERE id = ?`,
-      [judul || null, tahun || null, kategori_id || null, deskripsi || null, id]
+      [judul || null, tahun || null,
+       bulan !== undefined ? Number(bulan) : null, bulan !== undefined ? Number(bulan) : null,
+       kategori_id || null, deskripsi || null, id]
     );
 
     return res.json({ success: true, message: 'Dokumen berhasil diupdate', data: { id: Number(id) } });

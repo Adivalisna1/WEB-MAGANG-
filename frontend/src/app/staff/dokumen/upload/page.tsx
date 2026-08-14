@@ -21,9 +21,12 @@ const TAHUN_LIST = Array.from(
 export default function UploadPage() {
   const router = useRouter();
 
-  const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
+  const [kategoriList,      setKategoriList]      = useState<Kategori[]>([]);
+  const [kategoriLoading,   setKategoriLoading]   = useState(true);
+  const [kategoriError,     setKategoriError]     = useState('');
   const [judul,       setJudul]       = useState('');
   const [tahun,       setTahun]       = useState(String(new Date().getFullYear()));
+  const [bulan,       setBulan]       = useState('');
   const [kategoriId,  setKategoriId]  = useState('');
   const [deskripsi,   setDeskripsi]   = useState('');
   const [file,        setFile]        = useState<File | null>(null);
@@ -34,12 +37,29 @@ export default function UploadPage() {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetch(`${API}/dokumen/kategori`)
-      .then(r => r.json())
-      .then(d => setKategoriList(d.data ?? []))
-      .catch(() => {});
-  }, []);
+  const fetchKategori = async () => {
+    setKategoriLoading(true);
+    setKategoriError('');
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/kategori`, {
+        headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const d = await res.json();
+      const list: Kategori[] = d.data ?? [];
+      if (list.length === 0) {
+        setKategoriError('Belum ada kategori. Minta admin untuk menambahkan kategori terlebih dahulu.');
+      }
+      setKategoriList(list);
+    } catch (err: any) {
+      setKategoriError(err.message || 'Gagal memuat kategori. Pastikan backend berjalan di localhost:5000.');
+    } finally {
+      setKategoriLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchKategori(); }, []);
 
   const handleFilePick = (picked: File | null) => {
     if (!picked) return;
@@ -78,6 +98,7 @@ export default function UploadPage() {
       fd.append('file',        file);
       fd.append('judul',       judul);
       fd.append('tahun',       tahun);
+      if (bulan) fd.append('bulan', bulan);
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
 
@@ -144,38 +165,72 @@ export default function UploadPage() {
           />
         </div>
 
-        {/* Kategori & Tahun */}
+        {/* Kategori, Bulan & Tahun */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Kategori <span className="text-red-500">*</span>
             </label>
-            <select
-              value={kategoriId}
-              onChange={e => setKategoriId(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-            >
-              <option value="">Pilih kategori</option>
-              {kategoriList.map(k => (
-                <option key={k.id} value={k.id}>{k.nama}</option>
-              ))}
-            </select>
+            {kategoriError ? (
+              <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+                <span>{kategoriError}</span>
+                <button type="button" onClick={fetchKategori} className="shrink-0 underline font-medium hover:text-red-900">Coba Lagi</button>
+              </div>
+            ) : (
+              <select
+                value={kategoriId}
+                onChange={e => setKategoriId(e.target.value)}
+                required
+                disabled={kategoriLoading}
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+              >
+                <option value="">{kategoriLoading ? 'Memuat kategori...' : 'Pilih kategori'}</option>
+                {kategoriList.map(k => (
+                  <option key={k.id} value={k.id}>{k.nama}</option>
+                ))}
+              </select>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Tahun <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={tahun}
-              onChange={e => setTahun(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-            >
-              {TAHUN_LIST.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Bulan <span className="text-gray-400 font-normal">(opsional)</span>
+              </label>
+              <select
+                value={bulan}
+                onChange={e => setBulan(e.target.value)}
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">Semua</option>
+                <option value="1">Januari</option>
+                <option value="2">Februari</option>
+                <option value="3">Maret</option>
+                <option value="4">April</option>
+                <option value="5">Mei</option>
+                <option value="6">Juni</option>
+                <option value="7">Juli</option>
+                <option value="8">Agustus</option>
+                <option value="9">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Tahun <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={tahun}
+                onChange={e => setTahun(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                {TAHUN_LIST.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -238,7 +293,7 @@ export default function UploadPage() {
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={submitting || !file || !judul || !kategoriId}
+            disabled={submitting || !file || !judul || !kategoriId || !!kategoriError}
             className="btn-primary flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}

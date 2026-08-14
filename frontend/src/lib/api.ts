@@ -62,7 +62,7 @@ export async function getDokumen(params: DokumenParams = {}): Promise<ApiRespons
 // Ambil daftar kategori (server-side)
 export async function getKategori(): Promise<ApiResponse<Kategori[]>> {
   const res = await fetch(`${SERVER_API_URL}/dokumen/kategori`, {
-    next: { revalidate: 3600 },
+    cache: 'no-store', // selalu fresh — supaya kategori baru langsung muncul
   });
   if (!res.ok) throw new Error('Gagal mengambil kategori');
   return res.json();
@@ -99,7 +99,7 @@ export interface StatsPublik {
 // Ambil statistik publik yang akurat dari seluruh database (bukan dari paginasi)
 export async function getStatsPublik(): Promise<ApiResponse<StatsPublik>> {
   const res = await fetch(`${SERVER_API_URL}/dokumen/stats`, {
-    next: { revalidate: 60 }, // cache 1 menit
+    cache: 'no-store', // selalu fresh — supaya stats dokumen baru langsung update
   });
   if (!res.ok) throw new Error('Gagal mengambil statistik');
   return res.json();

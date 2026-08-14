@@ -36,19 +36,19 @@ app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // ── Rate Limiter — cegah brute force ─────────────────────────
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 menit
-  max: 100,
+  windowMs: 1 * 60 * 1000, // 1 menit
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Terlalu banyak request, coba lagi nanti' },
+  message: { success: false, message: 'Terlalu banyak request, coba lagi dalam 1 menit' },
 });
 app.use('/api', limiter);
 
 // Rate limit ketat khusus login
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 1 * 60 * 1000, // 1 menit
   max: 10,
-  message: { success: false, message: 'Terlalu banyak percobaan login, tunggu 15 menit' },
+  message: { success: false, message: 'Terlalu banyak percobaan login, tunggu 1 menit' },
 });
 app.use('/api/auth/login', loginLimiter);
 
