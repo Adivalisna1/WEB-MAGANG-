@@ -1,6 +1,6 @@
 # Web Dashboard Laporan
 
-Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan instansi. Publik dapat mengunduh dokumen tanpa login, staff dapat upload dan mengajukan verifikasi, admin dapat menyetujui dan memantau aktivitas.
+Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan instansi. Publik dapat mengunduh dokumen tanpa login, staff dapat upload dan mengajukan verifikasi, admin dapat menyetujui dan memantau aktivitas, ketua tim dapat memantau sistem serta mengelola pengguna di atas admin.
 
 ---
 
@@ -43,6 +43,17 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Log aktivitas sistem dengan pagination dan hapus riwayat
 - Hapus dokumen beserta file fisiknya
 - Tombol kembali ke beranda publik
+
+### Dashboard Ketua Tim
+- Hierarki di atas admin — khusus monitoring & manajemen, tidak bisa upload/verifikasi/hapus dokumen
+- Dashboard grafik realtime (auto refresh 30 detik): jumlah dokumen per staff, trend upload 14 hari, distribusi status dokumen, dan daftar user online
+- Monitor semua dokumen secara read-only (siapa upload, status, kategori, tanggal)
+- Lihat semua user admin & staff beserta status online dan riwayat reset password
+- Aktifkan/nonaktifkan akun admin & staff yang sudah tidak bekerja
+- Reset password user — password baru di-generate otomatis dan **hanya ditampilkan sekali**, riwayat waktu reset tercatat
+- Kirim notifikasi manual: pengumuman ke semua user (broadcast) atau pesan ke satu user tertentu
+- Lihat log aktivitas seluruh sistem dengan pagination
+- Guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
 
 ---
 
@@ -89,6 +100,7 @@ docker-compose down
 | Login | http://localhost:3000/login |
 | Dashboard Staff | http://localhost:3000/staff/dokumen |
 | Dashboard Admin | http://localhost:3000/admin |
+| Dashboard Ketua Tim | http://localhost:3000/ketua |
 | API Health Check | http://localhost:5000/api/health |
 
 ### Akun Default
@@ -104,7 +116,7 @@ docker-compose down
 | Tabel | Fungsi |
 |---|---|
 | `roles` | Daftar role: admin, staff, ketua_tim |
-| `users` | Data semua user (admin & staff) |
+| `users` | Data semua user (admin, staff, & ketua tim) |
 | `user_sessions` | Tracking session login — untuk monitoring online |
 | `kategori_dokumen` | Kategori laporan: LKjIP, Renstra, Renja, RKT, PK, LAKIP, IKU, Lainnya |
 | `dokumen` | Data utama laporan + status alur verifikasi |
