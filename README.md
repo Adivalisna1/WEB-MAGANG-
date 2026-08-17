@@ -1,6 +1,6 @@
 # Web Dashboard Laporan
 
-Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan instansi. Publik dapat mengunduh dokumen tanpa login, staff dapat upload dan mengajukan verifikasi, admin dapat menyetujui dan memantau aktivitas, ketua tim dapat memantau sistem serta mengelola pengguna di atas admin.
+Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan instansi pemerintah. Publik dapat mengunduh dokumen tanpa login, staff dapat upload dan mengajukan verifikasi, admin dapat menyetujui dan memantau aktivitas, ketua tim dapat memantau sistem serta mengelola pengguna di atas admin.
 
 ---
 
@@ -45,15 +45,15 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Tombol kembali ke beranda publik
 
 ### Dashboard Ketua Tim
-- Hierarki di atas admin — khusus monitoring & manajemen, tidak bisa upload/verifikasi/hapus dokumen
-- Dashboard grafik realtime (auto refresh 30 detik): jumlah dokumen per staff, trend upload 14 hari, distribusi status dokumen, dan daftar user online
+- hierarki di atas admin — khusus monitoring & manajemen, tidak bisa upload/verifikasi/hapus dokumen
+- dashboard grafik realtime (auto refresh 30 detik): jumlah dokumen per staff, trend upload 14 hari, distribusi status dokumen, dan daftar user online
 - Monitor semua dokumen secara read-only (siapa upload, status, kategori, tanggal)
 - Lihat semua user admin & staff beserta status online dan riwayat reset password
 - Aktifkan/nonaktifkan akun admin & staff yang sudah tidak bekerja
 - Reset password user — password baru di-generate otomatis dan **hanya ditampilkan sekali**, riwayat waktu reset tercatat
 - Kirim notifikasi manual: pengumuman ke semua user (broadcast) atau pesan ke satu user tertentu
 - Lihat log aktivitas seluruh sistem dengan pagination
-- Guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
+- guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
 
 ---
 
