@@ -121,6 +121,7 @@ docker-compose down
 | `kategori_dokumen` | Kategori laporan: LKjIP, Renstra, Renja, RKT, PK, LAKIP, IKU, Lainnya |
 | `dokumen` | Data utama laporan + status alur verifikasi |
 | `aktivitas_log` | Log semua aksi user di sistem |
+| `notifikasi` | Notifikasi in-app (submit, approve, reject, pesan ketua tim, reset password) |
 
 ### Status Dokumen
 
@@ -237,6 +238,7 @@ flowchart LR
     PU([Pengguna Publik])
     ST([Staff])
     AD([Admin])
+    KT([Ketua Tim])
     SYS[["Sistem Web\nDashboard Laporan"]]
     DB[(MySQL Database)]
     FS([File Storage\nDocker Volume])
@@ -247,6 +249,8 @@ flowchart LR
     SYS -->|Status Dokumen, Notif Revisi| ST
     AD -->|Login, Verifikasi, Kelola User| SYS
     SYS -->|Data Statistik, Log, User Online| AD
+    KT -->|Login, Monitoring, Kelola User,\nKirim Notifikasi| SYS
+    SYS -->|Grafik Realtime, User Online,\nLog, Notifikasi| KT
     SYS -->|CRUD Data| DB
     DB -->|Data| SYS
     SYS -->|Simpan File| FS
@@ -292,18 +296,28 @@ flowchart TD
         P5C --> P5D[Log Semua Aktivitas]
     end
 
+    subgraph P6["6. Manajemen Ketua Tim"]
+        P6A[Fetch Statistik & Grafik\nRealtime 30 Detik] --> P6B[Monitor Dokumen\nRead-Only]
+        P6B --> P6C[Kelola User Admin & Staff\nNonaktifkan / Reset Password]
+        P6C --> P6D[Kirim Notifikasi\nBroadcast / Satu User]
+        P6D --> P6E[Lihat Log Aktivitas\nSeluruh Sistem]
+    end
+
     DB[(Database)]
     FS([File Storage])
 
     P1C --> P2
     P1C --> P3
     P1C --> P5
+    P1C --> P6
     P2B --> FS
     P2C --> DB
     P3D --> DB
     P3D --> P4
     DB --> P4
     DB --> P5
+    DB --> P6
+    P6C --> DB
 ```
 
 ---
@@ -349,6 +363,16 @@ flowchart TD
     X -->|Kelola User| AD2[Tambah / Nonaktifkan / Hapus]
     X -->|Monitor| AE[Lihat User Online Realtime]
     X -->|Log| AF[Lihat / Hapus Log Aktivitas]
+
+    A -->|Ketua Tim| AG[Login]
+    AG --> AH{Autentikasi?}
+    AH -->|Tidak| AI[Tampilkan Error] --> AG
+    AH -->|Ya| AJ[Dashboard Ketua Tim\nGrafik Realtime 30 Detik]
+    AJ --> AK{Pilih Menu}
+    AK -->|Monitor| AL[Lihat Semua Dokumen\nRead-Only]
+    AK -->|Kelola User| AM[Nonaktifkan Admin/Staff\n+ Reset Password]
+    AK -->|Notifikasi| AN[Broadcast / Pesan\nke Satu User]
+    AK -->|Log| AO[Lihat Log Aktivitas]
 ```
 
 ---
@@ -425,13 +449,35 @@ flowchart TD
 
 ---
 
+## Activity Diagram — Monitoring Ketua Tim
+
+```mermaid
+flowchart TD
+    START([Ketua Tim Login]) --> A[Dashboard Grafik Realtime]
+    A --> B[Auto Refresh 30 Detik]
+    B --> C[Grafik: Dokumen per Staff,\nTrend 14 Hari, Distribusi Status]
+    C --> D{Pilih Menu}
+
+    D -->|Monitor Dokumen| E[Lihat Semua Dokumen\nSiapa Upload, Status, Kategori]
+    D -->|Kelola User| F[Lihat User Admin & Staff\n+ Status Online]
+    D -->|Kirim Notifikasi| G[Broadcast Semua User\n/ Satu User Tertentu]
+    D -->|Log| H[Lihat Log Aktivitas\nSeluruh Sistem]
+
+    F --> I{Aksi?}
+    I -->|Nonaktifkan| J[Toggle is_active\nGuard: tidak bisa ubah sesama ketim]
+    I -->|Reset Password| K[Generate Password Acak\nTampil Sekali + Riwayat Reset]
+    K --> L[Notifikasi ke User Target]
+```
+
+---
+
 ## Workflow — Docker & Arsitektur Sistem
 
 ```mermaid
 flowchart TB
     subgraph DOCKER["Docker Compose Environment"]
         subgraph FE["Container: Frontend :3000"]
-            F1[Next.js\nDashboard Publik\nDashboard Staff\nDashboard Admin]
+            F1[Next.js\nDashboard Publik\nDashboard Staff\nDashboard Admin\nDashboard Ketua Tim]
         end
         subgraph BE["Container: Backend :5000"]
             B1[Node.js + Express\nREST API]
@@ -451,6 +497,7 @@ flowchart TB
     USER_PUB([Pengguna Publik]) -->|:3000| F1
     USER_STAFF([Staff]) -->|:3000/login| F1
     USER_ADMIN([Admin]) -->|:3000/login| F1
+    USER_KETUA([Ketua Tim]) -->|:3000/login| F1
 
     F1 -->|API Request :5000| B1
     B1 -->|Query| D1
@@ -479,6 +526,7 @@ erDiagram
         varchar password_hash
         tinyint is_active
         timestamp last_login
+        timestamp password_reset_at
     }
     user_sessions {
         varchar id PK
@@ -514,11 +562,23 @@ erDiagram
         json detail
         timestamp created_at
     }
+    notifikasi {
+        bigint id PK
+        int user_id FK
+        varchar aksi
+        int dokumen_id FK
+        varchar judul
+        text pesan
+        tinyint is_read
+        timestamp created_at
+    }
 
     roles ||--o{ users : "memiliki"
     users ||--o{ user_sessions : "punya"
     users ||--o{ dokumen : "upload"
     users ||--o{ aktivitas_log : "catat"
+    users ||--o{ notifikasi : "menerima"
+    dokumen ||--o{ notifikasi : "terkait"
     kategori_dokumen ||--o{ dokumen : "kategori"
 ```
 
