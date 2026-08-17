@@ -12,6 +12,7 @@ interface AuthContextType {
   logoutFn:  () => Promise<void>;
   isAdmin:   boolean;
   isStaff:   boolean;
+  isKetuaTim: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -41,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Redirect sesuai role
     if (res.data.user.role === 'admin') {
       router.push('/admin');
+    } else if (res.data.user.role === 'ketua_tim') {
+      router.push('/ketua');
     } else {
       router.push('/staff/dokumen');
     }
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginFn, logoutFn,
       isAdmin: user?.role === 'admin',
       isStaff: user?.role === 'staff',
+      isKetuaTim: user?.role === 'ketua_tim',
     }}>
       {children}
     </AuthContext.Provider>

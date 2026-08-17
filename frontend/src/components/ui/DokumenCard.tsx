@@ -18,8 +18,16 @@ const kategoriColor: Record<string, string> = {
   lainnya: 'bg-gray-100 text-gray-700',
 };
 
+const NAMA_BULAN = [
+  '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+
 export default function DokumenCard({ dokumen }: Props) {
   const badgeClass = kategoriColor[dokumen.kategori_slug] ?? 'bg-gray-100 text-gray-700';
+  const periodeLabel = dokumen.bulan
+    ? `${NAMA_BULAN[dokumen.bulan]} ${dokumen.tahun}`
+    : String(dokumen.tahun);
 
   return (
     <div className="card p-5 flex flex-col gap-3">
@@ -45,7 +53,7 @@ export default function DokumenCard({ dokumen }: Props) {
       <div className="flex flex-wrap gap-2 text-xs text-gray-500">
         <span className="flex items-center gap-1">
           <Calendar className="w-3.5 h-3.5" />
-          {dokumen.tahun}
+          {periodeLabel}
         </span>
         <span className="flex items-center gap-1">
           <Tag className="w-3.5 h-3.5" />

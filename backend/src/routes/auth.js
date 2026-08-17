@@ -5,7 +5,7 @@ const validate         = require('../middleware/validate');
 const activityLogger   = require('../middleware/activityLogger');
 
 // POST /api/auth/login
-router.post('/login', loginRules, validate, activityLogger('login', 'user'), login);
+router.post('/login', loginRules, validate, login);
 
 // POST /api/auth/logout
 router.post('/logout', logout);

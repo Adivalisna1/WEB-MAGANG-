@@ -16,6 +16,8 @@ const authRoutes    = require('./routes/auth');
 const dokumenRoutes = require('./routes/dokumen');
 const userRoutes    = require('./routes/user');
 const adminRoutes   = require('./routes/admin');
+const ketuaRoutes   = require('./routes/ketua');
+const notifRoutes   = require('./routes/notifikasi');
 
 const app  = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
@@ -31,8 +33,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // ── Rate Limiter — cegah brute force ─────────────────────────
 const limiter = rateLimit({
@@ -64,6 +66,8 @@ app.use('/api/auth',    authRoutes);
 app.use('/api/dokumen', dokumenRoutes);
 app.use('/api/user',    userRoutes);
 app.use('/api/admin',   adminRoutes);
+app.use('/api/ketua',   ketuaRoutes);
+app.use('/api/notifikasi', notifRoutes);
 
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

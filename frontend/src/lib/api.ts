@@ -8,6 +8,7 @@ export interface Dokumen {
   judul: string;
   deskripsi: string | null;
   tahun: number;
+  bulan: number | null;
   file_nama: string;
   file_size: number | null;
   file_mime: string | null;

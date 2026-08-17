@@ -10,7 +10,8 @@ USE web_laporan;
 -- ============================================================
 INSERT INTO roles (id, nama, deskripsi) VALUES
 (1, 'admin', 'Administrator — akses penuh, monitoring user realtime'),
-(2, 'staff', 'Staff/User — upload, edit, dan verifikasi dokumen');
+(2, 'staff', 'Staff/User — upload, edit, dan verifikasi dokumen'),
+(3, 'ketua_tim', 'Ketua Tim — monitoring sistem, manajemen user, dan reset password');
 
 -- ============================================================
 -- USERS
@@ -34,6 +35,15 @@ INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VAL
     'staff01@weblaporan.local',
     -- hash dari: Staff@123
     '$2b$12$LJY0L4o1zWRG6w3X2X6IAf.YpWkVZBrP4cLiNyDlI4a.RZk1O5k3L',
+    1
+),
+(
+    3,
+    'Ketua Tim',
+    'ketua1',
+    'ketua1@weblaporan.local',
+    -- hash dari: ketua@123
+    '$2b$12$rtQwql4GN6RLqh1DT2xAA.IbGnD0mXxMVtz0xYFWcZQl.298qfpmm',
     1
 );
 

@@ -25,7 +25,7 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Statistik total dokumen, kategori, dan unduhan
 
 ### Dashboard Staff
-- Upload dokumen dengan drag & drop (maks 500MB)
+- Upload dokumen dengan drag & drop (maks 100MB)
 - Edit metadata dokumen (judul, kategori, tahun, deskripsi)
 - **Ganti file dokumen saat status draft atau revisi** (tanpa hapus dan upload ulang)
 - Submit dokumen untuk verifikasi
@@ -103,7 +103,7 @@ docker-compose down
 
 | Tabel | Fungsi |
 |---|---|
-| `roles` | Daftar role: admin, staff |
+| `roles` | Daftar role: admin, staff, ketua_tim |
 | `users` | Data semua user (admin & staff) |
 | `user_sessions` | Tracking session login — untuk monitoring online |
 | `kategori_dokumen` | Kategori laporan: LKjIP, Renstra, Renja, RKT, PK, LAKIP, IKU, Lainnya |
@@ -199,7 +199,7 @@ cp .env.example .env
 | Item | Nilai |
 |---|---|
 | Format yang didukung | PDF, DOC, DOCX, XLS, XLSX |
-| Ukuran maksimal | 500 MB per file |
+| Ukuran maksimal | 100 MB per file |
 | Penyimpanan | Docker Volume (uploads_data) |
 
 ---
@@ -559,6 +559,61 @@ erDiagram
 | GET | `/api/user/profile` | Login |
 | PATCH | `/api/user/profile` | Login |
 | PATCH | `/api/user/password` | Login |
+
+### Ketua Tim
+| Method | Endpoint | Akses |
+|---|---|---|
+| GET | `/api/ketua/stats` | Ketua Tim |
+| GET | `/api/ketua/users` | Ketua Tim |
+| GET | `/api/ketua/users/online` | Ketua Tim |
+| PATCH | `/api/ketua/users/:id/toggle` | Ketua Tim |
+| POST | `/api/ketua/users/:id/reset-password` | Ketua Tim |
+| GET | `/api/ketua/dokumen` | Ketua Tim |
+| GET | `/api/ketua/logs` | Ketua Tim |
+| POST | `/api/ketua/notifikasi/kirim` | Ketua Tim |
+
+---
+
+## Changelog
+
+### v1.1.0 — 17 Agustus 2026
+
+| Perubahan | File yang Diubah |
+|---|---|
+| Batas upload diperkecil dari 500MB → **100MB** per file | `backend/src/config/multer.js`, `backend/src/index.js`, `backend/src/middleware/errorHandler.js` |
+| Label dan validasi upload disesuaikan ke 100MB | `frontend/src/app/staff/dokumen/upload/page.tsx`, `frontend/src/app/staff/dokumen/[id]/edit/page.tsx` |
+| Dokumentasi diperbarui (README, DOCS, TASKS) | `README.md`, `DOCS.md`, `TASKS.md` |
+
+### v1.2.0 — 17 Agustus 2026
+
+| Perubahan | File yang Diubah |
+|---|---|
+| **Fitur baru: Sistem Notifikasi In-App** — bell icon + badge + dropdown | `frontend/src/components/ui/NotificationBell.tsx` |
+| Tabel `notifikasi` baru di database | `database/init/01_schema.sql`, `database/init/03_notifikasi.sql` |
+| API endpoint notifikasi (list, unread-count, mark read, mark all) | `backend/src/controllers/notifikasiController.js`, `backend/src/routes/notifikasi.js` |
+| Notifikasi otomatis saat submit → admin, approve/reject → staff | `backend/src/controllers/dokumenController.js`, `backend/src/index.js` |
+| Bell icon ditambahkan ke layout staff & admin | `frontend/src/app/staff/layout.tsx`, `frontend/src/app/admin/layout.tsx` |
+
+### v1.3.0 — 17 Agustus 2026
+
+| Perubahan | File yang Diubah |
+|---|---|
+| **Fitur baru: Idle Auto Logout** — logout otomatis setelah 30 menit idle | `frontend/src/hooks/useIdleTimeout.ts` |
+| Warning modal dengan countdown 2 menit sebelum logout paksa | `frontend/src/components/ui/SessionTimeoutModal.tsx` |
+| Hook idle timeout diintegrasikan ke layout staff & admin | `frontend/src/app/staff/layout.tsx`, `frontend/src/app/admin/layout.tsx` |
+
+### v1.4.0 — 17 Agustus 2026
+
+| Perubahan | File yang Diubah |
+|---|---|
+| **Fitur baru: Role Ketua Tim** (`ketua_tim`) dengan dashboard terpisah `/ketua` | `database/init/02_seed.sql`, `backend/src/middleware/auth.js` |
+| Dashboard ketim dengan grafik realtime (recharts): upload per staff, trend 14 hari, distribusi status, user online | `frontend/src/app/ketua/page.tsx`, `frontend/package.json` |
+| Manajemen user: aktif/nonaktif admin & staff + reset password (password tampil sekali, riwayat reset tersimpan) | `frontend/src/app/ketua/users/page.tsx`, `backend/src/controllers/ketuaController.js` |
+| Monitor dokumen read-only + log aktivitas | `frontend/src/app/ketua/dokumen/page.tsx`, `frontend/src/app/ketua/logs/page.tsx` |
+| Kirim notifikasi manual (broadcast semua user / satu user) | `frontend/src/app/ketua/kirim-notifikasi/page.tsx` |
+| Guard: admin tidak bisa nonaktifkan/hapus ketua tim; ketim tidak bisa ubah sesama ketim | `backend/src/controllers/adminController.js`, `backend/src/controllers/ketuaController.js` |
+| API endpoint baru `/api/ketua/*` + kolom `password_reset_at` | `backend/src/routes/ketua.js`, `backend/src/index.js`, `database/init/04_ketua_tim.sql` |
+| Sidebar ketua tim + update role-aware di navbar, auth context, dan hook | `frontend/src/components/ketua/KetuaSidebar.tsx`, `frontend/src/components/layout/Navbar.tsx`, `frontend/src/context/AuthContext.tsx`, `frontend/src/hooks/useRequireAuth.ts` |
 
 ---
 

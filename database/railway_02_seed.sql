@@ -5,7 +5,8 @@
 
 INSERT INTO roles (id, nama, deskripsi) VALUES
 (1, 'admin', 'Administrator — akses penuh, monitoring user realtime'),
-(2, 'staff', 'Staff/User — upload, edit, dan verifikasi dokumen');
+(2, 'staff', 'Staff/User — upload, edit, dan verifikasi dokumen'),
+(3, 'ketua_tim', 'Ketua Tim — monitoring sistem, manajemen user, dan reset password');
 
 -- Password untuk admin dan staff01 adalah: password
 INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VALUES
@@ -22,6 +23,14 @@ INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VAL
     'Staff Perencanaan',
     'staff01',
     'staff01@weblaporan.local',
+    '$2b$12$3dvt8uRmDhx8zLtSdv8V7.r3nKmg75cbK25acb0fQs4xhUtEcuFoG',
+    1
+),
+(
+    3,
+    'Ketua Tim',
+    'ketua1',
+    'ketua1@weblaporan.local',
     '$2b$12$3dvt8uRmDhx8zLtSdv8V7.r3nKmg75cbK25acb0fQs4xhUtEcuFoG',
     1
 );

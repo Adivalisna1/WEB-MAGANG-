@@ -18,7 +18,9 @@ export default function LoginPage() {
   // Kalau sudah login, redirect
   useEffect(() => {
     if (!loading && user) {
-      router.replace(user.role === 'admin' ? '/admin' : '/staff/dokumen');
+      if (user.role === 'admin')          router.replace('/admin');
+      else if (user.role === 'ketua_tim') router.replace('/ketua');
+      else                                router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);
 
@@ -110,7 +112,7 @@ export default function LoginPage() {
             </button>
 
             <p className="text-center text-xs text-gray-400 pt-2">
-              Hanya admin dan staff yang dapat login.
+              Hanya admin, staff, dan ketua tim yang dapat login.
             </p>
           </form>
         </div>

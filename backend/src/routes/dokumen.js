@@ -22,7 +22,6 @@ router.post('/upload',
   authenticate, authorize('admin', 'staff'),
   upload.single('file'),
   ctrl.uploadRules, validate,
-  activityLogger('upload', 'dokumen'),
   ctrl.uploadDokumen
 );
 
@@ -59,13 +58,11 @@ router.get('/:id/preview',
 
 router.patch('/:id/verify',
   authenticate, authorize('admin'),
-  activityLogger('verifikasi', 'dokumen'),
   ctrl.verifikasiDokumen
 );
 
 router.delete('/:id',
   authenticate, authorize('admin'),
-  activityLogger('hapus', 'dokumen'),
   ctrl.deleteDokumen
 );
 

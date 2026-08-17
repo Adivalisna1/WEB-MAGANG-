@@ -3,6 +3,7 @@ const fs     = require('fs');
 const { body, param, query } = require('express-validator');
 const { pool } = require('../config/db');
 const { catatLog } = require('./authController');
+const { buatNotifikasi } = require('./notifikasiController');
 
 // ── Validation rules ──────────────────────────────────────────
 const uploadRules = [
@@ -33,7 +34,12 @@ async function getDokumenPublik(req, res, next) {
 
     if (kategori) { where += ' AND k.slug = ?';  params.push(kategori); }
     if (tahun)    { where += ' AND d.tahun = ?';  params.push(tahun); }
-    if (q)        { where += ' AND d.judul LIKE ?'; params.push(`%${q}%`); }
+    if (q)        {
+      // Escape wildcard SQL LIKE agar %, _, dan \ dari user jadi literal
+      const escaped = q.replace(/[%_\\]/g, '\\$&');
+      where += ' AND d.judul LIKE ?';
+      params.push(`%${escaped}%`);
+    }
 
     const [rows] = await pool.query(
       `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.file_nama,
@@ -298,6 +304,30 @@ async function submitVerifikasi(req, res, next) {
       [req.params.id]
     );
 
+    // Notifikasi ke semua admin: ada dokumen baru yang diajukan
+    try {
+      const [admins] = await pool.query(
+        'SELECT id FROM users WHERE role_id = 1 AND is_active = 1'
+      );
+      const [staffInfo] = await pool.query(
+        'SELECT nama FROM users WHERE id = ?', [req.user.id]
+      );
+      const staffNama = staffInfo[0]?.nama || 'Staff';
+      const judulDok = rows[0].judul;
+
+      for (const admin of admins) {
+        await buatNotifikasi({
+          user_id: admin.id,
+          aksi: 'submit',
+          dokumen_id: Number(req.params.id),
+          judul: judulDok,
+          pesan: `${staffNama} mengajukan dokumen "${judulDok}" untuk diverifikasi`,
+        });
+      }
+    } catch (notifErr) {
+      console.error('[NOTIFIKASI] Gagal kirim notifikasi submit:', notifErr.message);
+    }
+
     return res.json({ success: true, message: 'Dokumen diajukan untuk verifikasi', data: { id: Number(req.params.id) } });
   } catch (err) { next(err); }
 }
@@ -336,6 +366,26 @@ async function verifikasiDokumen(req, res, next) {
       detail: { aksi, catatan: catatan || null, status_baru: newStatus },
       ip: req.ip,
     });
+
+    // Notifikasi ke staff yang upload
+    try {
+      const judulDok = rows[0].judul;
+      const uploaderId = rows[0].uploaded_by;
+      const notifAksi = aksi === 'approve' ? 'approve' : 'reject';
+      const pesan = aksi === 'approve'
+        ? `Dokumen "${judulDok}" telah disetujui`
+        : `Dokumen "${judulDok}" perlu revisi${catatan ? `: ${catatan}` : ''}`;
+
+      await buatNotifikasi({
+        user_id: uploaderId,
+        aksi: notifAksi,
+        dokumen_id: Number(req.params.id),
+        judul: judulDok,
+        pesan,
+      });
+    } catch (notifErr) {
+      console.error('[NOTIFIKASI] Gagal kirim notifikasi verifikasi:', notifErr.message);
+    }
 
     return res.json({
       success: true,

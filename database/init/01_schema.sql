@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
     foto_profil     VARCHAR(255)        NULL,               -- path foto
     is_active       TINYINT(1)          NOT NULL DEFAULT 1, -- 1=aktif, 0=nonaktif
     last_login      TIMESTAMP           NULL,
+    password_reset_at TIMESTAMP         NULL,               -- kapan password terakhir direset oleh ketua tim
     created_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS dokumen (
     judul           VARCHAR(255)        NOT NULL,
     deskripsi       TEXT                NULL,
     tahun           YEAR                NOT NULL,
+    bulan           TINYINT UNSIGNED    NULL CHECK (bulan BETWEEN 1 AND 12),  -- 1=Jan..12=Des, NULL=dokumen tahunan
     file_nama       VARCHAR(255)        NOT NULL,           -- nama file asli
     file_path       VARCHAR(500)        NOT NULL,           -- path di storage
     file_size       INT UNSIGNED        NULL,               -- ukuran dalam bytes
@@ -119,6 +121,7 @@ CREATE TABLE IF NOT EXISTS dokumen (
         REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_dokumen_status (status),
     INDEX idx_dokumen_tahun (tahun),
+    INDEX idx_dokumen_bulan (bulan),
     INDEX idx_dokumen_publik (is_public, status),
     INDEX idx_dokumen_kategori (kategori_id)
 ) ENGINE=InnoDB;
@@ -142,4 +145,26 @@ CREATE TABLE IF NOT EXISTS aktivitas_log (
     INDEX idx_log_user (user_id),
     INDEX idx_log_aksi (aksi),
     INDEX idx_log_created (created_at)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABLE: notifikasi
+-- Notifikasi in-app (submit, approve, reject dokumen)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notifikasi (
+    id          BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
+    user_id     INT UNSIGNED        NOT NULL,               -- penerima notifikasi
+    aksi        VARCHAR(50)         NOT NULL,               -- 'submit', 'approve', 'reject'
+    dokumen_id  INT UNSIGNED        NULL,                   -- dokumen terkait
+    judul       VARCHAR(255)        NULL,                   -- snapshot judul dokumen
+    pesan       TEXT                NOT NULL,               -- isi notifikasi
+    is_read     TINYINT(1)          NOT NULL DEFAULT 0,     -- 0=belum dibaca, 1=sudah
+    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_notif_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_notif_dokumen FOREIGN KEY (dokumen_id)
+        REFERENCES dokumen(id) ON DELETE SET NULL,
+    INDEX idx_notif_user_read (user_id, is_read),
+    INDEX idx_notif_created (created_at)
 ) ENGINE=InnoDB;

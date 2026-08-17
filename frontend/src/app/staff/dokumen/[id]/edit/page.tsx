@@ -13,7 +13,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 interface Kategori { id: number; nama: string; }
 interface Dokumen {
-  id: number; judul: string; tahun: number;
+  id: number; judul: string; tahun: number; bulan: number | null;
   kategori_id?: number; deskripsi: string | null;
   status: string; file_nama: string; file_size: number;
   catatan: string | null;
@@ -38,6 +38,7 @@ export default function EditDokumenPage() {
   // State metadata
   const [judul,      setJudul]      = useState('');
   const [tahun,      setTahun]      = useState('');
+  const [bulan,      setBulan]      = useState('');
   const [kategoriId, setKategoriId] = useState('');
   const [deskripsi,  setDeskripsi]  = useState('');
 
@@ -69,6 +70,7 @@ export default function EditDokumenPage() {
         setDokumen(found);
         setJudul(found.judul);
         setTahun(String(found.tahun));
+        setBulan(found.bulan != null ? String(found.bulan) : '');
         setDeskripsi(found.deskripsi ?? '');
         setKategoriList(katRes.data ?? []);
       })
@@ -90,8 +92,8 @@ export default function EditDokumenPage() {
       setGantiError('Format tidak didukung. Gunakan PDF, DOC, DOCX, XLS, XLSX.');
       return;
     }
-    if (picked.size > 500 * 1024 * 1024) {
-      setGantiError('Ukuran file melebihi 500MB.');
+    if (picked.size > 100 * 1024 * 1024) {
+      setGantiError('Ukuran file melebihi 100MB.');
       return;
     }
     setGantiError('');
@@ -140,6 +142,7 @@ export default function EditDokumenPage() {
         body: JSON.stringify({
           judul,
           tahun: Number(tahun),
+          bulan: bulan ? Number(bulan) : null,
           kategori_id: kategoriId ? Number(kategoriId) : undefined,
           deskripsi: deskripsi || undefined,
         }),
@@ -267,7 +270,7 @@ export default function EditDokumenPage() {
               <CloudUpload className={`w-8 h-8 mx-auto mb-2 ${dragging ? 'text-primary-500' : 'text-gray-300'}`} />
               <p className="text-sm font-medium text-gray-700">Drag & drop file pengganti</p>
               <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
-              <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, XLS, XLSX • Maks 500MB</p>
+              <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, XLS, XLSX • Maks 100MB</p>
             </div>
           )}
 
@@ -320,19 +323,45 @@ export default function EditDokumenPage() {
           />
         </div>
 
-        {/* Kategori & Tahun */}
+        {/* Kategori */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Kategori</label>
+          <select
+            value={kategoriId}
+            onChange={e => setKategoriId(e.target.value)}
+            className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          >
+            <option value="">Tidak diubah</option>
+            {kategoriList.map(k => (
+              <option key={k.id} value={k.id}>{k.nama}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Bulan & Tahun */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Kategori</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Bulan <span className="text-gray-400 font-normal">(opsional)</span>
+            </label>
             <select
-              value={kategoriId}
-              onChange={e => setKategoriId(e.target.value)}
+              value={bulan}
+              onChange={e => setBulan(e.target.value)}
               className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             >
-              <option value="">Tidak diubah</option>
-              {kategoriList.map(k => (
-                <option key={k.id} value={k.id}>{k.nama}</option>
-              ))}
+              <option value="">Tanpa bulan</option>
+              <option value="1">Januari</option>
+              <option value="2">Februari</option>
+              <option value="3">Maret</option>
+              <option value="4">April</option>
+              <option value="5">Mei</option>
+              <option value="6">Juni</option>
+              <option value="7">Juli</option>
+              <option value="8">Agustus</option>
+              <option value="9">September</option>
+              <option value="10">Oktober</option>
+              <option value="11">November</option>
+              <option value="12">Desember</option>
             </select>
           </div>
           <div>
@@ -348,6 +377,7 @@ export default function EditDokumenPage() {
             </select>
           </div>
         </div>
+
 
         {/* Deskripsi */}
         <div>

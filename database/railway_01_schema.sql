@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     foto_profil     VARCHAR(255)        NULL,
     is_active       TINYINT(1)          NOT NULL DEFAULT 1,
     last_login      TIMESTAMP           NULL,
+    password_reset_at TIMESTAMP         NULL,
     created_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -114,4 +115,26 @@ CREATE TABLE IF NOT EXISTS aktivitas_log (
     INDEX idx_log_user (user_id),
     INDEX idx_log_aksi (aksi),
     INDEX idx_log_created (created_at)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABLE: notifikasi
+-- Notifikasi in-app (submit, approve, reject dokumen)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notifikasi (
+    id          BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
+    user_id     INT UNSIGNED        NOT NULL,
+    aksi        VARCHAR(50)         NOT NULL,
+    dokumen_id  INT UNSIGNED        NULL,
+    judul       VARCHAR(255)        NULL,
+    pesan       TEXT                NOT NULL,
+    is_read     TINYINT(1)          NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_notif_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_notif_dokumen FOREIGN KEY (dokumen_id)
+        REFERENCES dokumen(id) ON DELETE SET NULL,
+    INDEX idx_notif_user_read (user_id, is_read),
+    INDEX idx_notif_created (created_at)
 ) ENGINE=InnoDB;

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 // Hook untuk protect halaman — redirect ke /login kalau belum login
-// role: 'admin' | 'staff' | undefined (semua role boleh)
-export function useRequireAuth(role?: 'admin' | 'staff') {
+// role: 'admin' | 'staff' | 'ketua_tim' | undefined (semua role boleh)
+export function useRequireAuth(role?: 'admin' | 'staff' | 'ketua_tim') {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -18,7 +18,9 @@ export function useRequireAuth(role?: 'admin' | 'staff') {
     }
     if (role && user.role !== role) {
       // Redirect ke dashboard masing-masing kalau role tidak sesuai
-      router.replace(user.role === 'admin' ? '/admin' : '/staff/dokumen');
+      if (user.role === 'admin')          router.replace('/admin');
+      else if (user.role === 'ketua_tim') router.replace('/ketua');
+      else                                router.replace('/staff/dokumen');
     }
   }, [user, loading, role, router]);
 

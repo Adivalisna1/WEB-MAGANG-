@@ -1,0 +1,302 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { getSession } from '@/lib/auth';
+import {
+  Users, Loader2, RefreshCw, AlertCircle, KeyRound,
+  Power, Copy, CheckCircle, X
+} from 'lucide-react';
+import clsx from 'clsx';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+interface UserRow {
+  id: number;
+  nama: string;
+  username: string;
+  email: string;
+  role: string;
+  is_active: number;
+  is_online: number | null;
+  last_login: string | null;
+  password_reset_at: string | null;
+}
+
+interface ResetResult {
+  nama: string;
+  username: string;
+  password_baru: string;
+}
+
+const ROLE_BADGE: Record<string, string> = {
+  admin:     'bg-yellow-100 text-yellow-700',
+  staff:     'bg-blue-100 text-blue-700',
+  ketua_tim: 'bg-indigo-100 text-indigo-700',
+};
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin', staff: 'Staff', ketua_tim: 'Ketua Tim',
+};
+
+function formatTanggal(dt: string | null): string {
+  if (!dt) return '-';
+  return new Date(dt).toLocaleString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+export default function KetuaUsersPage() {
+  const [users,      setUsers]      = useState<UserRow[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState('');
+  const [processing, setProcessing] = useState<number | null>(null);
+  const [resetting,  setResetting]  = useState<number | null>(null);
+  const [resetResult, setResetResult] = useState<ResetResult | null>(null);
+  const [copied,     setCopied]     = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/ketua/users`, {
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setUsers(json.data);
+      setError('');
+    } catch (e: any) {
+      setError(e.message || 'Gagal memuat daftar user');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleToggle = async (user: UserRow) => {
+    const aksi = user.is_active ? 'menonaktifkan' : 'mengaktifkan';
+    if (!confirm(`Yakin ingin ${aksi} user "${user.nama}"?`)) return;
+
+    setProcessing(user.id);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/ketua/users/${user.id}/toggle`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      await fetchUsers();
+    } catch (e: any) {
+      alert(e.message || 'Gagal mengubah status user');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleReset = async (user: UserRow) => {
+    if (!confirm(`Reset password untuk "${user.nama}"? Password lama langsung tidak berlaku.`)) return;
+
+    setResetting(user.id);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/ketua/users/${user.id}/reset-password`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setResetResult(json.data);
+      setCopied(false);
+      await fetchUsers();
+    } catch (e: any) {
+      alert(e.message || 'Gagal reset password');
+    } finally {
+      setResetting(null);
+    }
+  };
+
+  const copyPassword = async () => {
+    if (!resetResult) return;
+    try {
+      await navigator.clipboard.writeText(resetResult.password_baru);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard tidak tersedia */ }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Manajemen User</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Kelola status akun dan reset password admin & staff
+          </p>
+        </div>
+        <button
+          onClick={() => { setLoading(true); fetchUsers(); }}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" /> Refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 p-4 rounded-lg">
+          <AlertCircle className="w-5 h-5" /> {error}
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                  <th className="px-5 py-3">User</th>
+                  <th className="px-5 py-3">Role</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Login Terakhir</th>
+                  <th className="px-5 py-3">Reset Password Terakhir</th>
+                  <th className="px-5 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-semibold">
+                            {user.nama.charAt(0).toUpperCase()}
+                          </div>
+                          {user.is_online === 1 && (
+                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{user.nama}</p>
+                          <p className="text-xs text-gray-400">@{user.username}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={clsx('px-2.5 py-1 rounded-full text-xs font-medium', ROLE_BADGE[user.role] || 'bg-gray-100')}>
+                        {ROLE_LABEL[user.role] ?? user.role}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={clsx(
+                        'px-2.5 py-1 rounded-full text-xs font-medium',
+                        user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                      )}>
+                        {user.is_active ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-600">{formatTanggal(user.last_login)}</td>
+                    <td className="px-5 py-3 text-gray-600">{formatTanggal(user.password_reset_at)}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleReset(user)}
+                          disabled={resetting === user.id}
+                          title="Reset password"
+                          className="p-2 rounded-lg text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-50"
+                        >
+                          {resetting === user.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <KeyRound className="w-4 h-4" />}
+                        </button>
+                        {/* Ketua tim tidak bisa mengubah sesama ketua tim */}
+                        {user.role !== 'ketua_tim' && (
+                          <button
+                            onClick={() => handleToggle(user)}
+                            disabled={processing === user.id}
+                            title={user.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                            className={clsx(
+                              'p-2 rounded-lg transition-colors disabled:opacity-50',
+                              user.is_active ? 'text-red-500 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
+                            )}
+                          >
+                            {processing === user.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Power className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!users.length && (
+              <div className="py-16 text-center text-gray-400">
+                <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                Belum ada user
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modal hasil reset password — tampil SEKALI */}
+      {resetResult && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900">Password Berhasil Direset</h3>
+              <button
+                onClick={() => setResetResult(null)}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-start gap-3 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                <p>
+                  Password baru untuk <strong>{resetResult.nama}</strong> (@{resetResult.username}).
+                  Notifikasi juga sudah dikirim ke user tersebut.
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Password baru:</p>
+                <div className="flex items-center justify-between gap-2">
+                  <code className="text-lg font-bold text-gray-900 tracking-wide">
+                    {resetResult.password_baru}
+                  </code>
+                  <button
+                    onClick={copyPassword}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                  >
+                    {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? 'Tersalin' : 'Salin'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-orange-700 bg-orange-50 p-3 rounded-lg">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Catat sekarang!</strong> Password ini hanya ditampilkan sekali dan tidak
+                  bisa dilihat lagi. Sampaikan ke user melalui jalur yang aman.
+                </p>
+              </div>
+              <button
+                onClick={() => setResetResult(null)}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

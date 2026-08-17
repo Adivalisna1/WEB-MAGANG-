@@ -4,17 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
 import {
   FileText, CheckCircle, XCircle, Clock,
-  Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Trash2
+  Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Trash2, Download
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-// Generate URL preview dengan token di query param
-function getPreviewUrl(id: number): string {
-  const session = getSession();
-  return `${API}/dokumen/${id}/preview?token=${session?.token ?? ''}`;
-}
 
 interface Dokumen {
   id: number;
@@ -38,6 +32,58 @@ export default function AdminDokumenPage() {
   const [deleting,    setDeleting]    = useState<number | null>(null);
   const [modalDok,    setModalDok]    = useState<Dokumen | null>(null);
   const [catatan,     setCatatan]     = useState('');
+  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
+
+  // Cek apakah file PDF (hanya PDF yang bisa di-preview di browser)
+  const isPdf = modalDok ? /\.pdf$/i.test(modalDok.file_nama) : false;
+
+  // Fetch file preview sebagai blob (token tidak pernah masuk URL)
+  useEffect(() => {
+    if (!modalDok) {
+      // Cleanup blob URL saat modal ditutup
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    const session = getSession();
+
+    async function loadPreview() {
+      try {
+        const res = await fetch(`${API}/dokumen/${modalDok.id}/preview`, {
+          headers: { Authorization: `Bearer ${session?.token}` },
+        });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        // PDF: paksa type application/pdf agar browser render, bukan download
+        // Non-PDF: pertahankan type asli agar hasil download valid
+        const finalBlob = isPdf ? new Blob([blob], { type: 'application/pdf' }) : blob;
+        if (!cancelled) {
+          setPreviewUrl(URL.createObjectURL(finalBlob));
+        }
+      } catch { /* silent */ }
+    }
+
+    loadPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modalDok]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Download file via blob URL — atribut `download` memaksa browser save file
+  const handleDownload = () => {
+    if (!previewUrl || !modalDok) return;
+    const a = document.createElement('a');
+    a.href = previewUrl;
+    a.download = modalDok.file_nama;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const fetchDokumen = useCallback(async () => {
     setLoading(true); setError('');
@@ -238,25 +284,58 @@ export default function AdminDokumenPage() {
                 <h3 className="font-bold text-gray-900 text-lg">Tinjau Dokumen</h3>
                 <p className="text-sm text-gray-500 mt-0.5">{modalDok.judul}</p>
               </div>
-              <a
-                href={getPreviewUrl(modalDok.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Tab Baru
-              </a>
+              {previewUrl && (
+                <button
+                  onClick={() => window.open(previewUrl, '_blank')}
+                  className="shrink-0 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Tab Baru
+                </button>
+              )}
             </div>
 
-            {/* Iframe preview */}
+            {/* Preview PDF */}
             <div className="bg-gray-100 border-b border-gray-200" style={{ height: '420px' }}>
-              <iframe
-                src={getPreviewUrl(modalDok.id)}
-                className="w-full h-full"
-                style={{ height: '420px', minHeight: '420px' }}
-                title={modalDok.judul}
-              />
+              {!isPdf ? (
+                // File non-PDF (Word/Excel) tidak bisa di-preview di browser
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <FileText className="w-14 h-14 mb-3 text-gray-300" />
+                  <p className="font-medium text-gray-700">Preview hanya tersedia untuk file PDF</p>
+                  <p className="text-sm text-gray-400 mt-1">File ini berformat Word/Excel</p>
+                  {previewUrl && (
+                    <button
+                      onClick={handleDownload}
+                      className="mt-4 flex items-center gap-1.5 text-sm text-white bg-primary-600 hover:bg-primary-700 font-medium px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download File
+                    </button>
+                  )}
+                </div>
+              ) : previewUrl ? (
+                <object
+                  data={previewUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                  style={{ height: '420px', minHeight: '420px' }}
+                >
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    <FileText className="w-12 h-12 mb-2 text-gray-300" />
+                    <p className="text-sm">Preview tidak tersedia untuk file ini</p>
+                    <button
+                      onClick={() => window.open(previewUrl, '_blank')}
+                      className="mt-2 text-sm text-primary-600 hover:underline"
+                    >
+                      Buka di Tab Baru
+                    </button>
+                  </div>
+                </object>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                </div>
+              )}
             </div>
 
             {/* Info grid */}

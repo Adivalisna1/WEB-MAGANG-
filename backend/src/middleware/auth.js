@@ -1,16 +1,14 @@
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 
-// Verifikasi JWT token dari header Authorization ATAU query param ?token=
+// Verifikasi JWT token dari header Authorization
 async function authenticate(req, res, next) {
   try {
-    // Coba ambil dari header dulu, fallback ke query param (untuk preview file)
+    // Ambil token hanya dari Authorization header
     let token = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
-    } else if (req.query.token) {
-      token = req.query.token;
     }
 
     if (!token) {
@@ -52,8 +50,8 @@ function authorize(...roles) {
       return res.status(401).json({ success: false, message: 'Tidak terautentikasi' });
     }
 
-    // role_id 1 = admin, 2 = staff
-    const roleMap = { 1: 'admin', 2: 'staff' };
+    // role_id 1 = admin, 2 = staff, 3 = ketua_tim
+    const roleMap = { 1: 'admin', 2: 'staff', 3: 'ketua_tim' };
     const userRole = roleMap[req.user.role_id];
 
     if (!roles.includes(userRole)) {

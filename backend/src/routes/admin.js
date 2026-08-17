@@ -19,19 +19,16 @@ router.get('/users/online', ctrl.getOnlineUsers);
 // POST /api/admin/users — buat user baru
 router.post('/users',
   ctrl.createUserRules, validate,
-  activityLogger('buat_user', 'user'),
   ctrl.createUser
 );
 
 // PATCH /api/admin/users/:id/toggle — aktif/nonaktif user
 router.patch('/users/:id/toggle',
-  activityLogger('toggle_user', 'user'),
   ctrl.toggleUserActive
 );
 
 // DELETE /api/admin/users/:id — hapus user
 router.delete('/users/:id',
-  activityLogger('hapus_user', 'user'),
   ctrl.deleteUser
 );
 

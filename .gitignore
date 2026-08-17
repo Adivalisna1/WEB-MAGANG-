@@ -12,7 +12,9 @@ backend/.env.railway
 # ============================================================
 DOCS.md
 TASKS.md
+SECURITY.md
 NGROK_TUTORIAL.md
+database/init/fix_ketua_password.sql
 
 # ============================================================
 # Dependencies

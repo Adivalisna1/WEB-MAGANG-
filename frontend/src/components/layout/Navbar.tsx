@@ -24,11 +24,18 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Sembunyikan navbar publik di halaman dashboard (staff/admin)
-  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/admin');
+  // Sembunyikan navbar publik di halaman dashboard (staff/admin/ketua)
+  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/admin') || pathname.startsWith('/ketua');
   if (isDashboard) return null;
 
-  const dashboardHref = user?.role === 'admin' ? '/admin' : '/staff/dokumen';
+  const dashboardHref = user?.role === 'admin'
+    ? '/admin'
+    : user?.role === 'ketua_tim'
+      ? '/ketua'
+      : '/staff/dokumen';
+
+  // Format role untuk tampilan: ketua_tim → Ketua Tim
+  const roleLabel = user?.role ? user.role.replace('_', ' ') : '';
 
   return (
     <header className="bg-primary-800 text-white shadow-lg sticky top-0 z-50">
@@ -65,7 +72,7 @@ export default function Navbar() {
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 text-gray-700">
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-xs font-semibold text-gray-900 truncate">{user.nama}</p>
-                      <p className="text-xs text-gray-400 capitalize">{user.role}</p>
+                      <p className="text-xs text-gray-400 capitalize">{roleLabel}</p>
                     </div>
                     <Link
                       href={dashboardHref}
@@ -120,7 +127,7 @@ export default function Navbar() {
                   <div className="w-6 h-6 rounded-full bg-blue-400 flex items-center justify-center text-xs font-bold">
                     {user.nama.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-blue-200 text-xs">{user.nama} · {user.role}</span>
+                  <span className="text-blue-200 text-xs">{user.nama} · {roleLabel}</span>
                 </div>
                 <Link
                   href={dashboardHref}
