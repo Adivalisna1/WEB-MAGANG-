@@ -5,7 +5,7 @@
 -- dan cek kolom sebelum ALTER.
 --
 -- Cara jalankan (dari folder project):
---   docker-compose exec -T db mysql -u root -p"#admin123" web_laporan < database/init/04_ketua_tim.sql
+--   docker-compose exec -T db mysql -u root -p"<password root dari .env>" web_laporan < database/init/04_ketua_tim.sql
 -- ============================================================
 
 USE web_laporan;
