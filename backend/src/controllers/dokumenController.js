@@ -11,6 +11,7 @@ const uploadRules = [
   body('tahun').isInt({ min: 2000, max: 2100 }).withMessage('Tahun tidak valid'),
   body('bulan').optional({ nullable: true }).isInt({ min: 1, max: 12 }).withMessage('Bulan tidak valid (1-12)'),
   body('kategori_id').isInt({ min: 1 }).withMessage('Kategori wajib dipilih'),
+  body('divisi_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('Divisi tidak valid'),
   body('deskripsi').optional().trim(),
 ];
 
@@ -20,13 +21,14 @@ const editRules = [
   body('tahun').optional().isInt({ min: 2000, max: 2100 }),
   body('bulan').optional({ nullable: true }).isInt({ min: 1, max: 12 }).withMessage('Bulan tidak valid (1-12)'),
   body('kategori_id').optional().isInt({ min: 1 }),
+  body('divisi_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('Divisi tidak valid'),
   body('deskripsi').optional().trim(),
 ];
 
 // ── GET /api/dokumen (publik) ─────────────────────────────────
 async function getDokumenPublik(req, res, next) {
   try {
-    const { kategori, tahun, q, page = 1, limit = 12 } = req.query;
+    const { kategori, tahun, divisi, q, page = 1, limit = 12 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
     let where = 'd.status = "terverifikasi" AND d.is_public = 1';
@@ -34,6 +36,7 @@ async function getDokumenPublik(req, res, next) {
 
     if (kategori) { where += ' AND k.slug = ?';  params.push(kategori); }
     if (tahun)    { where += ' AND d.tahun = ?';  params.push(tahun); }
+    if (divisi)   { where += ' AND dv.slug = ?';  params.push(divisi); }
     if (q)        {
       // Escape wildcard SQL LIKE agar %, _, dan \ dari user jadi literal
       const escaped = q.replace(/[%_\\]/g, '\\$&');
@@ -44,9 +47,11 @@ async function getDokumenPublik(req, res, next) {
     const [rows] = await pool.query(
       `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.file_nama,
               d.file_size, d.file_mime, d.download_count,
-              d.created_at, k.nama AS kategori, k.slug AS kategori_slug
+              d.created_at, k.nama AS kategori, k.slug AS kategori_slug,
+              dv.nama AS divisi, dv.slug AS divisi_slug
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
+       LEFT JOIN divisi dv ON dv.id = d.divisi_id
        WHERE ${where}
        ORDER BY d.tahun DESC, d.bulan DESC, d.created_at DESC
        LIMIT ? OFFSET ?`,
@@ -56,6 +61,7 @@ async function getDokumenPublik(req, res, next) {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
+       LEFT JOIN divisi dv ON dv.id = d.divisi_id
        WHERE ${where}`,
       params
     );
@@ -74,9 +80,11 @@ async function getDokumenDetail(req, res, next) {
     const [rows] = await pool.query(
       `SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.file_nama,
               d.file_size, d.file_mime, d.download_count, d.created_at,
-              k.nama AS kategori, k.slug AS kategori_slug
+              k.nama AS kategori, k.slug AS kategori_slug,
+              dv.nama AS divisi, dv.slug AS divisi_slug
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
+       LEFT JOIN divisi dv ON dv.id = d.divisi_id
        WHERE d.id = ? AND d.status = 'terverifikasi' AND d.is_public = 1`,
       [req.params.id]
     );
@@ -119,7 +127,7 @@ async function downloadDokumen(req, res, next) {
 // ── GET /api/dokumen/all (staff + admin) ──────────────────────
 async function getAllDokumen(req, res, next) {
   try {
-    const { status, kategori, tahun, page = 1, limit = 20 } = req.query;
+    const { status, kategori, tahun, divisi, page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
     let where = '1=1';
@@ -131,17 +139,26 @@ async function getAllDokumen(req, res, next) {
       params.push(req.user.id);
     }
 
+    // Admin dept hanya lihat dokumen divisinya sendiri
+    if (req.user.role_id === 4) {
+      where += ' AND d.divisi_id = ?';
+      params.push(req.user.divisi_id);
+    }
+
     if (status)   { where += ' AND d.status = ?';    params.push(status); }
     if (kategori) { where += ' AND k.slug = ?';      params.push(kategori); }
     if (tahun)    { where += ' AND d.tahun = ?';     params.push(tahun); }
+    if (divisi)   { where += ' AND dv.slug = ?';     params.push(divisi); }
 
     const [rows] = await pool.query(
       `SELECT d.id, d.judul, d.tahun, d.bulan, d.status, d.file_nama, d.file_size,
               d.download_count, d.is_public, d.created_at, d.updated_at,
-              k.nama AS kategori, u.nama AS uploaded_by
+              k.nama AS kategori, u.nama AS uploaded_by,
+              dv.nama AS divisi, dv.slug AS divisi_slug
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
        JOIN users u ON u.id = d.uploaded_by
+       LEFT JOIN divisi dv ON dv.id = d.divisi_id
        WHERE ${where}
        ORDER BY d.created_at DESC
        LIMIT ? OFFSET ?`,
@@ -151,6 +168,7 @@ async function getAllDokumen(req, res, next) {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
+       LEFT JOIN divisi dv ON dv.id = d.divisi_id
        WHERE ${where}`,
       params
     );
@@ -173,6 +191,16 @@ async function uploadDokumen(req, res, next) {
     const { judul, tahun, kategori_id, deskripsi } = req.body;
     const filePath = req.file.path;
     const fileName = req.file.originalname;
+
+    // Divisi otomatis dari divisi uploader; admin global wajib pilih manual
+    const divisiId = req.user.divisi_id
+      ? Number(req.user.divisi_id)
+      : (req.body.divisi_id ? Number(req.body.divisi_id) : null);
+
+    if (!divisiId) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(400).json({ success: false, message: 'Divisi wajib dipilih' });
+    }
 
     // ── Validasi duplikat: cek judul + kategori + tahun ──────
     const [duplikat] = await pool.query(
@@ -199,10 +227,10 @@ async function uploadDokumen(req, res, next) {
 
     const [result] = await pool.query(
       `INSERT INTO dokumen
-         (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan,
+         (kategori_id, divisi_id, uploaded_by, judul, deskripsi, tahun, bulan,
           file_nama, file_path, file_size, file_mime, status, is_public)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0)`,
-      [kategori_id, req.user.id, judul, deskripsi || null,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0)`,
+      [kategori_id, divisiId, req.user.id, judul, deskripsi || null,
        tahun, bulan ? Number(bulan) : null,
        fileName, filePath, req.file.size, req.file.mimetype]
     );
@@ -236,6 +264,11 @@ async function editDokumen(req, res, next) {
     }
 
     const dok = rows[0];
+
+    // Guard admin_dept: hanya dokumen divisinya sendiri
+    if (req.user.role_id === 4 && dok.divisi_id !== req.user.divisi_id) {
+      return res.status(403).json({ success: false, message: 'Dokumen ini milik divisi lain' });
+    }
 
     // Staff hanya bisa edit miliknya sendiri dan hanya saat draft
     if (req.user.role_id === 2 && dok.uploaded_by !== req.user.id) {
@@ -281,6 +314,14 @@ async function editDokumen(req, res, next) {
        bulan !== undefined ? Number(bulan) : null, bulan !== undefined ? Number(bulan) : null,
        kategori_id || null, deskripsi || null, id]
     );
+
+    // Hanya admin global yang boleh memindahkan dokumen ke divisi lain
+    if (req.user.role_id === 1 && req.body.divisi_id !== undefined) {
+      await pool.query(
+        'UPDATE dokumen SET divisi_id = ? WHERE id = ?',
+        [req.body.divisi_id ? Number(req.body.divisi_id) : null, id]
+      );
+    }
 
     return res.json({ success: true, message: 'Dokumen berhasil diupdate', data: { id: Number(id) } });
   } catch (err) { next(err); }
@@ -344,6 +385,12 @@ async function verifikasiDokumen(req, res, next) {
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan' });
     }
+
+    // Guard admin_dept: hanya dokumen divisinya sendiri
+    if (req.user.role_id === 4 && rows[0].divisi_id !== req.user.divisi_id) {
+      return res.status(403).json({ success: false, message: 'Dokumen ini milik divisi lain' });
+    }
+
     if (rows[0].status !== 'menunggu_verifikasi') {
       return res.status(400).json({ success: false, message: 'Dokumen tidak dalam antrian verifikasi' });
     }
@@ -401,6 +448,11 @@ async function deleteDokumen(req, res, next) {
     const [rows] = await pool.query('SELECT * FROM dokumen WHERE id = ?', [req.params.id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan' });
+    }
+
+    // Guard admin dept: hanya dokumen divisinya sendiri
+    if (req.user.role_id === 4 && rows[0].divisi_id !== req.user.divisi_id) {
+      return res.status(403).json({ success: false, message: 'Dokumen ini milik divisi lain' });
     }
 
     // Hapus file fisik
@@ -469,6 +521,11 @@ async function gantiFileDokumen(req, res, next) {
 
     const dok = rows[0];
 
+    // Guard admin_dept: hanya dokumen divisinya sendiri
+    if (req.user.role_id === 4 && dok.divisi_id !== req.user.divisi_id) {
+      return res.status(403).json({ success: false, message: 'Dokumen ini milik divisi lain' });
+    }
+
     // Hanya bisa ganti file saat status revisi atau draft
     if (dok.status !== 'revisi' && dok.status !== 'draft') {
       return res.status(400).json({ success: false, message: 'File hanya bisa diganti saat status draft atau revisi' });
@@ -514,7 +571,7 @@ async function gantiFileDokumen(req, res, next) {
 async function previewDokumen(req, res, next) {
   try {
     const [rows] = await pool.query(
-      'SELECT id, judul, file_nama, file_path, file_mime FROM dokumen WHERE id = ?',
+      'SELECT id, judul, divisi_id, file_nama, file_path, file_mime FROM dokumen WHERE id = ?',
       [req.params.id]
     );
 
@@ -523,6 +580,11 @@ async function previewDokumen(req, res, next) {
     }
 
     const dok = rows[0];
+
+    // Guard admin_dept: hanya dokumen divisinya sendiri
+    if (req.user.role_id === 4 && dok.divisi_id !== req.user.divisi_id) {
+      return res.status(403).json({ success: false, message: 'Dokumen ini milik divisi lain' });
+    }
 
     if (!fs.existsSync(dok.file_path)) {
       return res.status(404).json({ success: false, message: 'File tidak ditemukan di server' });

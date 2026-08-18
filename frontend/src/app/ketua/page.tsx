@@ -18,6 +18,7 @@ interface StaffStat { nama: string; total: number; terverifikasi: number; revisi
 interface HariStat  { tanggal: string; total: number; }
 interface StatusStat { status: string; total: number; }
 interface OnlineUser { id: number; nama: string; username: string; role: string; last_active_at: string; }
+interface Divisi     { id: number; nama: string; slug: string; }
 
 interface StatsData {
   totalDokumen: number; terverifikasi: number; menunggu: number; revisi: number; onlineNow: number;
@@ -56,10 +57,23 @@ export default function KetuaDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
+  // Drill-down per divisi (default: semua)
+  const [divisiList,   setDivisiList]   = useState<Divisi[]>([]);
+  const [filterDivisi, setFilterDivisi] = useState('');
+
+  // Muat daftar divisi dari endpoint publik
+  useEffect(() => {
+    fetch(`${API}/dokumen/divisi`)
+      .then(r => r.json())
+      .then(d => setDivisiList(d.data ?? []))
+      .catch(() => {});
+  }, []);
+
   const fetchStats = useCallback(async () => {
     try {
       const session = getSession();
-      const res = await fetch(`${API}/ketua/stats`, {
+      const divisiParam = filterDivisi ? `?divisi=${filterDivisi}` : '';
+      const res = await fetch(`${API}/ketua/stats${divisiParam}`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
@@ -71,7 +85,7 @@ export default function KetuaDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterDivisi]);
 
   useEffect(() => {
     fetchStats();
@@ -86,7 +100,6 @@ export default function KetuaDashboardPage() {
       </div>
     );
   }
-
   if (!data) {
     return (
       <div className="flex items-center gap-2 text-red-600 bg-red-50 p-4 rounded-lg">
@@ -117,12 +130,24 @@ export default function KetuaDashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard Ketua Tim</h1>
           <p className="text-sm text-gray-500 mt-1">Monitoring sistem secara realtime (refresh otomatis 30 detik)</p>
         </div>
-        <button
-          onClick={() => { setLoading(true); fetchStats(); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            value={filterDivisi}
+            onChange={(e) => { setLoading(true); setFilterDivisi(e.target.value); }}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          >
+            <option value="">Semua Divisi</option>
+            {divisiList.map(d => (
+              <option key={d.id} value={d.slug}>{d.nama}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => { setLoading(true); fetchStats(); }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       {error && (

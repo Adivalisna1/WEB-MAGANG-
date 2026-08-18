@@ -16,6 +16,7 @@ interface Dokumen {
   tahun: number;
   status: string;
   kategori: string;
+  divisi: string | null;
   file_nama: string;
   file_size: number;
   uploaded_by: string;
@@ -23,16 +24,36 @@ interface Dokumen {
   catatan: string | null;
 }
 
+interface Divisi { id: number; nama: string; slug: string; }
+
 export default function AdminDokumenPage() {
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
   const [filter,      setFilter]      = useState('menunggu_verifikasi');
+  const [divisiList,  setDivisiList]  = useState<Divisi[]>([]);
+  const [filterDivisi, setFilterDivisi] = useState('');
   const [processing,  setProcessing]  = useState<number | null>(null);
   const [deleting,    setDeleting]    = useState<number | null>(null);
   const [modalDok,    setModalDok]    = useState<Dokumen | null>(null);
   const [catatan,     setCatatan]     = useState('');
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
+
+  // Info sesi: hanya admin global yang boleh ganti divisi dokumen
+  const session = getSession();
+  const isAdminGlobal = session?.user?.role === 'admin';
+
+  // Dropdown divisi di modal edit (admin global saja)
+  const [editDivisiId,  setEditDivisiId]  = useState('');
+  const [savingDivisi,  setSavingDivisi]  = useState(false);
+
+  // Daftar divisi aktif untuk filter & dropdown edit
+  useEffect(() => {
+    fetch(`${API}/dokumen/divisi`)
+      .then(r => r.json())
+      .then(d => setDivisiList(d.data ?? []))
+      .catch(() => {});
+  }, []);
 
   // Cek apakah file PDF (hanya PDF yang bisa di-preview di browser)
   const isPdf = modalDok ? /\.pdf$/i.test(modalDok.file_nama) : false;
@@ -89,7 +110,8 @@ export default function AdminDokumenPage() {
     setLoading(true); setError('');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/dokumen/all?status=${filter}&limit=50`, {
+      const divisiParam = filterDivisi ? `&divisi=${filterDivisi}` : '';
+      const res = await fetch(`${API}/dokumen/all?status=${filter}&limit=50${divisiParam}`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
@@ -100,7 +122,7 @@ export default function AdminDokumenPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, filterDivisi]);
 
   useEffect(() => { fetchDokumen(); }, [fetchDokumen]);
 
@@ -125,6 +147,33 @@ export default function AdminDokumenPage() {
       alert(e.message || 'Gagal memproses verifikasi');
     } finally {
       setProcessing(null);
+    }
+  };
+
+  // Simpan perubahan divisi dokumen (admin global saja)
+  const handleSimpanDivisi = async () => {
+    if (!modalDok || !editDivisiId) return;
+    setSavingDivisi(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/${modalDok.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({ divisi_id: Number(editDivisiId) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setModalDok(prev => prev
+        ? { ...prev, divisi: divisiList.find(d => d.id === Number(editDivisiId))?.nama ?? prev.divisi }
+        : prev);
+      await fetchDokumen();
+    } catch (e: any) {
+      alert(e.message || 'Gagal mengubah divisi');
+    } finally {
+      setSavingDivisi(false);
     }
   };
 
@@ -172,21 +221,33 @@ export default function AdminDokumenPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit">
-        {filterTabs.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => setFilter(tab.value)}
-            className={clsx(
-              'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
-              filter === tab.value
-                ? 'bg-gray-900 text-white'
-                : `${tab.color} hover:bg-gray-50`
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit">
+          {filterTabs.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setFilter(tab.value)}
+              className={clsx(
+                'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                filter === tab.value
+                  ? 'bg-gray-900 text-white'
+                  : `${tab.color} hover:bg-gray-50`
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={filterDivisi}
+          onChange={e => setFilterDivisi(e.target.value)}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
+        >
+          <option value="">Semua Divisi</option>
+          {divisiList.map(d => (
+            <option key={d.id} value={d.slug}>{d.nama}</option>
+          ))}
+        </select>
       </div>
 
       {/* Error */}
@@ -214,6 +275,7 @@ export default function AdminDokumenPage() {
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Dokumen</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Divisi</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tahun</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Diupload oleh</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ukuran</th>
@@ -233,6 +295,12 @@ export default function AdminDokumenPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{dok.kategori}</td>
+                    <td className="px-4 py-3">
+                      {dok.divisi
+                        ? <span className="badge bg-cyan-100 text-cyan-800">{dok.divisi}</span>
+                        : <span className="text-gray-300">—</span>
+                      }
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{dok.tahun}</td>
                     <td className="px-4 py-3 text-gray-600">{dok.uploaded_by}</td>
                     <td className="px-4 py-3 text-gray-500">{formatSize(dok.file_size)}</td>
@@ -240,7 +308,11 @@ export default function AdminDokumenPage() {
                       <div className="flex items-center gap-3">
                         {dok.status === 'menunggu_verifikasi' ? (
                           <button
-                            onClick={() => { setModalDok(dok); setCatatan(''); }}
+                            onClick={() => {
+                              setModalDok(dok);
+                              setCatatan('');
+                              setEditDivisiId(divisiList.find(d => d.nama === dok.divisi)?.id ? String(divisiList.find(d => d.nama === dok.divisi)!.id) : '');
+                            }}
                             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
                             <Eye className="w-3.5 h-3.5" /> Tinjau
@@ -350,6 +422,10 @@ export default function AdminDokumenPage() {
                   <p className="font-medium mt-0.5">{modalDok.tahun}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Divisi</p>
+                  <p className="font-medium mt-0.5">{modalDok.divisi ?? '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-400">Diupload oleh</p>
                   <p className="font-medium mt-0.5">{modalDok.uploaded_by}</p>
                 </div>
@@ -358,6 +434,35 @@ export default function AdminDokumenPage() {
                   <p className="font-medium mt-0.5 truncate">{modalDok.file_nama}</p>
                 </div>
               </div>
+
+              {/* Ganti divisi — hanya admin global */}
+              {isAdminGlobal && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Divisi Dokumen <span className="text-gray-400 font-normal">(ubah divisi)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={editDivisiId}
+                      onChange={e => setEditDivisiId(e.target.value)}
+                      className="flex-1 px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
+                    >
+                      <option value="">Pilih divisi...</option>
+                      {divisiList.map(d => (
+                        <option key={d.id} value={d.id}>{d.nama}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleSimpanDivisi}
+                      disabled={savingDivisi || !editDivisiId}
+                      className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {savingDivisi && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Simpan
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">

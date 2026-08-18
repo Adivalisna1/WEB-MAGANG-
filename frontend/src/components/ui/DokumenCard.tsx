@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FileText, Download, Calendar, Tag } from 'lucide-react';
+import { FileText, Download, Calendar, Tag, Building2 } from 'lucide-react';
 import { Dokumen, formatFileSize, getDownloadUrl } from '@/lib/api';
 
 interface Props {
@@ -59,6 +59,12 @@ export default function DokumenCard({ dokumen }: Props) {
           <Tag className="w-3.5 h-3.5" />
           <span className={`badge ${badgeClass}`}>{dokumen.kategori}</span>
         </span>
+        {dokumen.divisi && (
+          <span className="flex items-center gap-1">
+            <Building2 className="w-3.5 h-3.5" />
+            <span className="badge bg-cyan-100 text-cyan-800">{dokumen.divisi}</span>
+          </span>
+        )}
         {dokumen.file_size && (
           <span className="text-gray-400">{formatFileSize(dokumen.file_size)}</span>
         )}

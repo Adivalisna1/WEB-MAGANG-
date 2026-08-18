@@ -18,7 +18,7 @@ async function authenticate(req, res, next) {
 
     // Cek user masih aktif di DB
     const [rows] = await pool.query(
-      'SELECT id, role_id, nama, username, email, is_active FROM users WHERE id = ?',
+      'SELECT id, role_id, divisi_id, nama, username, email, is_active FROM users WHERE id = ?',
       [decoded.id]
     );
 
@@ -50,8 +50,8 @@ function authorize(...roles) {
       return res.status(401).json({ success: false, message: 'Tidak terautentikasi' });
     }
 
-    // role_id 1 = admin, 2 = staff, 3 = ketua_tim
-    const roleMap = { 1: 'admin', 2: 'staff', 3: 'ketua_tim' };
+    // role_id 1 = admin, 2 = staff, 3 = ketua_tim, 4 = admin_dept
+    const roleMap = { 1: 'admin', 2: 'staff', 3: 'ketua_tim', 4: 'admin_dept' };
     const userRole = roleMap[req.user.role_id];
 
     if (!roles.includes(userRole)) {

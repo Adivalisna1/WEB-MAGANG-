@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Upload, FileText, X, CheckCircle,
-  Loader2, AlertCircle, ArrowLeft, CloudUpload
+  Loader2, AlertCircle, ArrowLeft, CloudUpload, Building2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -20,6 +20,9 @@ const TAHUN_LIST = Array.from(
 
 export default function UploadPage() {
   const router = useRouter();
+
+  // Divisi staff — otomatis ikut ke dokumen (read-only)
+  const staffDivisi = getSession()?.user?.divisi ?? null;
 
   const [kategoriList,      setKategoriList]      = useState<Kategori[]>([]);
   const [kategoriLoading,   setKategoriLoading]   = useState(true);
@@ -141,6 +144,12 @@ export default function UploadPage() {
         </Link>
         <h1 className="text-xl font-bold text-gray-900">Upload Dokumen</h1>
         <p className="text-sm text-gray-500 mt-0.5">Dokumen akan tersimpan sebagai draft, lalu kamu bisa submit untuk diverifikasi.</p>
+        {staffDivisi && (
+          <span className="inline-flex items-center gap-1.5 mt-2 badge bg-cyan-100 text-cyan-800">
+            <Building2 className="w-3.5 h-3.5" />
+            Divisi: {staffDivisi} (otomatis)
+          </span>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">

@@ -28,14 +28,18 @@ export default function Navbar() {
   const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/admin') || pathname.startsWith('/ketua');
   if (isDashboard) return null;
 
-  const dashboardHref = user?.role === 'admin'
+  const dashboardHref = (user?.role === 'admin' || user?.role === 'admin_dept')
     ? '/admin'
     : user?.role === 'ketua_tim'
       ? '/ketua'
       : '/staff/dokumen';
 
-  // Format role untuk tampilan: ketua_tim → Ketua Tim
-  const roleLabel = user?.role ? user.role.replace('_', ' ') : '';
+  // Format role untuk tampilan: ketua_tim → Ketua Tim, admin_dept → Admin Divisi
+  const roleLabels: Record<string, string> = {
+    ketua_tim: 'Ketua Tim',
+    admin_dept: 'Admin Divisi',
+  };
+  const roleLabel = user?.role ? (roleLabels[user.role] ?? user.role.replace('_', ' ')) : '';
 
   return (
     <header className="bg-primary-800 text-white shadow-lg sticky top-0 z-50">

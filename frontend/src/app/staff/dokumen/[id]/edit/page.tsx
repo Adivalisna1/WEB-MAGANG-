@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Save, ArrowLeft, Loader2, AlertCircle,
-  CheckCircle, CloudUpload, FileText, X, RefreshCw
+  CheckCircle, CloudUpload, FileText, X, RefreshCw, Building2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,6 +31,9 @@ const formatSize = (b: number) => b < 1024 * 1024
 export default function EditDokumenPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
+
+  // Divisi staff — read-only, dokumen otomatis ikut divisi uploader
+  const staffDivisi = getSession()?.user?.divisi ?? null;
 
   const [dokumen,      setDokumen]      = useState<Dokumen | null>(null);
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -198,6 +201,12 @@ export default function EditDokumenPage() {
             }`}>
               {dokumen.status.replace(/_/g, ' ')}
             </span>
+            {staffDivisi && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-cyan-100 text-cyan-800">
+                <Building2 className="w-3 h-3" />
+                Divisi: {staffDivisi}
+              </span>
+            )}
           </div>
         )}
       </div>

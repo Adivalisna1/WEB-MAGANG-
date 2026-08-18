@@ -19,13 +19,14 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 ## Fitur
 
 ### Dashboard Publik
-- Daftar dokumen terverifikasi dengan filter kategori, tahun, dan pencarian
+- Daftar dokumen terverifikasi dengan filter kategori, **divisi**, tahun, dan pencarian
 - Download dokumen langsung tanpa login
 - Halaman detail dokumen
 - Statistik total dokumen, kategori, dan unduhan
 
 ### Dashboard Staff
 - Upload dokumen dengan drag & drop (maks 100MB)
+- **Dokumen otomatis mewarisi divisi staff yang upload** (read-only badge di halaman upload & edit)
 - Edit metadata dokumen (judul, kategori, tahun, deskripsi)
 - **Ganti file dokumen saat status draft atau revisi** (tanpa hapus dan upload ulang)
 - Submit dokumen untuk verifikasi
@@ -40,6 +41,8 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Monitoring user online realtime (auto refresh 30 detik)
 - Manajemen user — tambah, aktifkan/nonaktifkan, hapus
 - **Kelola kategori dokumen** — tambah, edit, hapus, aktif/nonaktif dari dashboard
+- **Kelola divisi/departemen** — tambah, edit, hapus, aktif/nonaktif dari dashboard
+- **Ubah divisi dokumen** lewat modal tinjau dokumen
 - Log aktivitas sistem dengan pagination dan hapus riwayat
 - Hapus dokumen beserta file fisiknya
 - Tombol kembali ke beranda publik
@@ -51,9 +54,19 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Lihat semua user admin & staff beserta status online dan riwayat reset password
 - Aktifkan/nonaktifkan akun admin & staff yang sudah tidak bekerja
 - Reset password user — password baru di-generate otomatis dan **hanya ditampilkan sekali**, riwayat waktu reset tercatat
-- Kirim notifikasi manual: pengumuman ke semua user (broadcast) atau pesan ke satu user tertentu
+- Kirim notifikasi manual: pengumuman ke semua user (broadcast), ke semua user aktif di **divisi tertentu**, atau pesan ke satu user tertentu
 - Lihat log aktivitas seluruh sistem dengan pagination
 - guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
+- **Filter divisi** untuk drill-down grafik & monitor dokumen (akses tetap global)
+
+### Sistem Divisi & Role Admin Divisi (admin_dept)
+- Divisi = master data (Perencanaan, Keuangan, Kepegawaian, Hukum, Sekretariat) yang di-CRUD oleh admin global
+- Staff punya divisi; dokumen **otomatis mewarisi divisi uploader** saat upload
+- Role baru `admin_dept` (id 4) — memakai dashboard & API yang sama dengan admin (`/admin`, `/api/admin/*`), tapi semua data ter-scope ke divisinya sendiri
+- Guard: admin_dept menyentuh data divisi lain → **403**; tidak bisa kelola admin/ketua tim/admin_dept divisi lain; hanya bisa menambah staff sedivisi
+- Hierarki: ketua_tim (global) > admin (global) > admin_dept (scoped per divisi) > staff (dokumen sendiri)
+- Publik melihat semua dokumen campuran + dropdown filter divisi
+- Master data kategori & divisi tetap milik admin global (tidak di-scope)
 
 ---
 
@@ -115,11 +128,12 @@ docker-compose down
 
 | Tabel | Fungsi |
 |---|---|
-| `roles` | Daftar role: admin, staff, ketua_tim |
-| `users` | Data semua user (admin, staff, & ketua tim) |
+| `roles` | Daftar role: admin, staff, ketua_tim, admin_dept |
+| `users` | Data semua user (admin, staff, ketua tim, admin divisi) + `divisi_id` |
 | `user_sessions` | Tracking session login — untuk monitoring online |
+| `divisi` | Master data divisi/departemen (Perencanaan, Keuangan, dll.) |
 | `kategori_dokumen` | Kategori laporan: LKjIP, Renstra, Renja, RKT, PK, LAKIP, IKU, Lainnya |
-| `dokumen` | Data utama laporan + status alur verifikasi |
+| `dokumen` | Data utama laporan + status alur verifikasi + `divisi_id` |
 | `aktivitas_log` | Log semua aksi user di sistem |
 | `notifikasi` | Notifikasi in-app (submit, approve, reject, pesan ketua tim, reset password) |
 
@@ -147,6 +161,18 @@ docker-compose down
 | Lainnya | `lainnya` | 99 |
 
 > Kategori bisa ditambah/diedit/dihapus langsung dari dashboard admin di menu **Kelola Kategori**
+
+### Divisi Default
+
+| Nama | Slug | Urutan |
+|---|---|---|
+| Perencanaan | `perencanaan` | 1 |
+| Keuangan | `keuangan` | 2 |
+| Kepegawaian | `kepegawaian` | 3 |
+| Hukum | `hukum` | 4 |
+| Sekretariat | `sekretariat` | 5 |
+
+> Divisi bisa ditambah/diedit/dihapus langsung dari dashboard admin di menu **Kelola Divisi**
 
 ---
 
@@ -299,7 +325,7 @@ flowchart TD
     subgraph P6["6. Manajemen Ketua Tim"]
         P6A[Fetch Statistik & Grafik\nRealtime 30 Detik] --> P6B[Monitor Dokumen\nRead-Only]
         P6B --> P6C[Kelola User Admin & Staff\nNonaktifkan / Reset Password]
-        P6C --> P6D[Kirim Notifikasi\nBroadcast / Satu User]
+        P6C --> P6D[Kirim Notifikasi\nSemua / Divisi / Satu User]
         P6D --> P6E[Lihat Log Aktivitas\nSeluruh Sistem]
     end
 
@@ -460,7 +486,7 @@ flowchart TD
 
     D -->|Monitor Dokumen| E[Lihat Semua Dokumen\nSiapa Upload, Status, Kategori]
     D -->|Kelola User| F[Lihat User Admin & Staff\n+ Status Online]
-    D -->|Kirim Notifikasi| G[Broadcast Semua User\n/ Satu User Tertentu]
+    D -->|Kirim Notifikasi| G[Broadcast Semua User\n/ Divisi Tertentu / Satu User]
     D -->|Log| H[Lihat Log Aktivitas\nSeluruh Sistem]
 
     F --> I{Aksi?}
@@ -477,7 +503,7 @@ flowchart TD
 flowchart TB
     subgraph DOCKER["Docker Compose Environment"]
         subgraph FE["Container: Frontend :3000"]
-            F1[Next.js\nDashboard Publik\nDashboard Staff\nDashboard Admin\nDashboard Ketua Tim]
+            F1[Next.js: Dashboard Publik, Staff, Admin, Ketua Tim]
         end
         subgraph BE["Container: Backend :5000"]
             B1[Node.js + Express\nREST API]
@@ -520,6 +546,7 @@ erDiagram
     users {
         int id PK
         tinyint role_id FK
+        smallint divisi_id FK
         varchar nama
         varchar username
         varchar email
@@ -542,9 +569,17 @@ erDiagram
         varchar slug
         tinyint is_active
     }
+    divisi {
+        smallint id PK
+        varchar nama
+        varchar slug
+        tinyint urutan
+        tinyint is_active
+    }
     dokumen {
         int id PK
         smallint kategori_id FK
+        smallint divisi_id FK
         int uploaded_by FK
         varchar judul
         year tahun
@@ -580,6 +615,8 @@ erDiagram
     users ||--o{ notifikasi : "menerima"
     dokumen ||--o{ notifikasi : "terkait"
     kategori_dokumen ||--o{ dokumen : "kategori"
+    divisi ||--o{ dokumen : "milik"
+    divisi ||--o{ users : "anggota"
 ```
 
 ---
@@ -598,6 +635,7 @@ erDiagram
 |---|---|---|
 | GET | `/api/dokumen` | Publik |
 | GET | `/api/dokumen/kategori` | Publik |
+| GET | `/api/dokumen/divisi` | Publik |
 | GET | `/api/dokumen/:id` | Publik |
 | GET | `/api/dokumen/:id/download` | Publik |
 | GET | `/api/dokumen/all` | Staff/Admin |
@@ -624,6 +662,12 @@ erDiagram
 | POST | `/api/admin/kategori` | Admin |
 | PATCH | `/api/admin/kategori/:id` | Admin |
 | DELETE | `/api/admin/kategori/:id` | Admin |
+| GET | `/api/admin/divisi` | Admin |
+| POST | `/api/admin/divisi` | Admin |
+| PATCH | `/api/admin/divisi/:id` | Admin |
+| DELETE | `/api/admin/divisi/:id` | Admin |
+
+> Endpoint `/api/admin/*` juga bisa diakses role `admin_dept` — tapi datanya otomatis ter-scope ke divisi milik admin_dept tersebut.
 
 ### User
 | Method | Endpoint | Akses |
@@ -682,10 +726,29 @@ erDiagram
 | Dashboard ketim dengan grafik realtime (recharts): upload per staff, trend 14 hari, distribusi status, user online | `frontend/src/app/ketua/page.tsx`, `frontend/package.json` |
 | Manajemen user: aktif/nonaktif admin & staff + reset password (password tampil sekali, riwayat reset tersimpan) | `frontend/src/app/ketua/users/page.tsx`, `backend/src/controllers/ketuaController.js` |
 | Monitor dokumen read-only + log aktivitas | `frontend/src/app/ketua/dokumen/page.tsx`, `frontend/src/app/ketua/logs/page.tsx` |
-| Kirim notifikasi manual (broadcast semua user / satu user) | `frontend/src/app/ketua/kirim-notifikasi/page.tsx` |
+| Kirim notifikasi manual (broadcast semua user / per divisi / satu user) | `frontend/src/app/ketua/kirim-notifikasi/page.tsx` |
 | Guard: admin tidak bisa nonaktifkan/hapus ketua tim; ketim tidak bisa ubah sesama ketim | `backend/src/controllers/adminController.js`, `backend/src/controllers/ketuaController.js` |
 | API endpoint baru `/api/ketua/*` + kolom `password_reset_at` | `backend/src/routes/ketua.js`, `backend/src/index.js`, `database/init/04_ketua_tim.sql` |
 | Sidebar ketua tim + update role-aware di navbar, auth context, dan hook | `frontend/src/components/ketua/KetuaSidebar.tsx`, `frontend/src/components/layout/Navbar.tsx`, `frontend/src/context/AuthContext.tsx`, `frontend/src/hooks/useRequireAuth.ts` |
+
+### v1.5.1 — Notifikasi Ketim per Divisi
+
+| Perubahan | File yang Diubah |
+|---|---|
+| Mode target baru `'divisi'` + `divisi_id` di kirim notifikasi: kirim ke semua user aktif satu divisi (staff + admin divisi), error jelas bila divisi tanpa user aktif, log & response mencantumkan nama divisi | `backend/src/controllers/ketuaController.js` |
+| Tombol tujuan jadi 3 (Semua User / Divisi Tertentu / Satu User) + dropdown divisi dari endpoint publik + label konfirmasi menyebut nama divisi | `frontend/src/app/ketua/kirim-notifikasi/page.tsx` |
+
+### v1.5.0 — Sistem Divisi & Admin Divisi
+
+| Perubahan | File yang Diubah |
+|---|---|
+| **Fitur baru: Sistem Divisi** — master data divisi + kolom `divisi_id` di users & dokumen, dokumen otomatis mewarisi divisi uploader | `database/init/05_divisi.sql`, `database/init/01_schema.sql`, `database/init/02_seed.sql` |
+| **Fitur baru: Role `admin_dept`** (id 4) — pakai dashboard `/admin` & API `/api/admin/*` yang sama, semua data ter-scope ke divisinya + guard 403 lintas divisi | `backend/src/middleware/auth.js`, `backend/src/controllers/adminController.js`, `backend/src/controllers/dokumenController.js`, `backend/src/routes/admin.js` |
+| CRUD divisi (admin global) + endpoint publik daftar divisi aktif | `backend/src/controllers/divisiController.js`, `backend/src/routes/dokumen.js` |
+| Ketua tim tetap global + dropdown filter divisi untuk drill-down grafik & dokumen | `backend/src/controllers/ketuaController.js`, `frontend/src/app/ketua/page.tsx`, `frontend/src/app/ketua/dokumen/page.tsx` |
+| Halaman baru Kelola Divisi + kolom/filter divisi di admin dokumen & users | `frontend/src/app/admin/divisi/page.tsx`, `frontend/src/app/admin/dokumen/page.tsx`, `frontend/src/app/admin/users/page.tsx` |
+| Filter divisi di halaman publik + badge divisi di card dokumen | `frontend/src/components/ui/FilterBar.tsx`, `frontend/src/components/ui/DokumenCard.tsx`, `frontend/src/app/page.tsx` |
+| Akun contoh: `dept_keuangan` / `Dept@123` (Admin Divisi Keuangan) | `database/init/05_divisi.sql`, `DOCS.md` |
 
 ---
 

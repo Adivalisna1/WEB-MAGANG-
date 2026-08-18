@@ -143,15 +143,27 @@ async function deleteKategori(req, res, next) {
 // ── GET /api/admin/users ──────────────────────────────────────
 async function getUsers(req, res, next) {
   try {
+    // Admin dept hanya lihat user divisinya sendiri (staff & admin_dept sedivisi)
+    let where = '1=1';
+    const params = [];
+    if (req.user.role_id === 4) {
+      where += ' AND u.divisi_id = ?';
+      params.push(req.user.divisi_id);
+    }
+
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, u.email, u.is_active,
               u.last_login, u.created_at, r.nama AS role,
+              dv.nama AS divisi,
               (SELECT is_online FROM user_sessions s
                WHERE s.user_id = u.id AND s.is_online = 1
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
        FROM users u
        JOIN roles r ON r.id = u.role_id
-       ORDER BY u.created_at DESC`
+       LEFT JOIN divisi dv ON dv.id = u.divisi_id
+       WHERE ${where}
+       ORDER BY u.created_at DESC`,
+      params
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -168,14 +180,25 @@ async function getOnlineUsers(req, res, next) {
          AND last_active_at < NOW() - INTERVAL 15 MINUTE`
     );
 
+    let where = '1=1';
+    const params = [];
+    // Admin dept hanya lihat user online divisinya sendiri
+    if (req.user.role_id === 4) {
+      where += ' AND u.divisi_id = ?';
+      params.push(req.user.divisi_id);
+    }
+
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, r.nama AS role,
+              dv.nama AS divisi,
               s.ip_address, s.last_active_at, s.login_at
        FROM user_sessions s
        JOIN users u ON u.id = s.user_id
        JOIN roles r ON r.id = u.role_id
-       WHERE s.is_online = 1
-       ORDER BY s.last_active_at DESC`
+       LEFT JOIN divisi dv ON dv.id = u.divisi_id
+       WHERE s.is_online = 1 AND ${where}
+       ORDER BY s.last_active_at DESC`,
+      params
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -187,12 +210,32 @@ const createUserRules = [
   body('username').trim().notEmpty().isLength({ min: 3 }).withMessage('Username minimal 3 karakter'),
   body('email').isEmail().withMessage('Email tidak valid'),
   body('password').isLength({ min: 6 }).withMessage('Password minimal 6 karakter'),
-  body('role_id').isIn(['1', '2', 1, 2]).withMessage('Role tidak valid'),
+  body('role_id').isIn(['1', '2', '4', 1, 2, 4]).withMessage('Role tidak valid'),
+  body('divisi_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('Divisi tidak valid'),
 ];
 
 async function createUser(req, res, next) {
   try {
-    const { nama, username, email, password, role_id } = req.body;
+    const { nama, username, email, password } = req.body;
+    let { role_id, divisi_id } = req.body;
+    role_id = Number(role_id);
+
+    if (req.user.role_id === 4) {
+      // Admin dept: cuma bisa buat staff di divisinya sendiri (dipaksa server-side)
+      if (role_id !== 2) {
+        return res.status(403).json({ success: false, message: 'Admin divisi hanya bisa menambah staff' });
+      }
+      divisi_id = req.user.divisi_id;
+    } else if (role_id === 2 || role_id === 4) {
+      // Admin global: staff & admin_dept wajib punya divisi
+      if (!divisi_id) {
+        return res.status(400).json({ success: false, message: 'Divisi wajib dipilih untuk staff/admin divisi' });
+      }
+      divisi_id = Number(divisi_id);
+    } else {
+      // Admin global tidak punya divisi
+      divisi_id = null;
+    }
 
     // Cek duplikat
     const [existing] = await pool.query(
@@ -204,8 +247,8 @@ async function createUser(req, res, next) {
 
     const hash = await bcrypt.hash(password, 12);
     const [result] = await pool.query(
-      'INSERT INTO users (role_id, nama, username, email, password_hash) VALUES (?, ?, ?, ?, ?)',
-      [role_id, nama, username, email, hash]
+      'INSERT INTO users (role_id, divisi_id, nama, username, email, password_hash) VALUES (?, ?, ?, ?, ?, ?)',
+      [role_id, divisi_id, nama, username, email, hash]
     );
 
     // Catat log tambah user
@@ -229,7 +272,7 @@ async function createUser(req, res, next) {
 // ── PATCH /api/admin/users/:id/toggle — aktif/nonaktif ────────
 async function toggleUserActive(req, res, next) {
   try {
-    const [rows] = await pool.query('SELECT id, role_id, is_active FROM users WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.query('SELECT id, role_id, divisi_id, is_active FROM users WHERE id = ?', [req.params.id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
@@ -242,6 +285,11 @@ async function toggleUserActive(req, res, next) {
     // Admin tidak bisa nonaktifkan ketua tim (hierarki di atas admin)
     if (rows[0].role_id === 3) {
       return res.status(403).json({ success: false, message: 'Tidak bisa mengubah status Ketua Tim' });
+    }
+
+    // Admin dept hanya bisa nonaktifkan staff sedivisi
+    if (req.user.role_id === 4 && (rows[0].role_id !== 2 || rows[0].divisi_id !== req.user.divisi_id)) {
+      return res.status(403).json({ success: false, message: 'Hanya bisa mengubah status staff di divisi Anda' });
     }
 
     const newStatus = rows[0].is_active ? 0 : 1;
@@ -276,6 +324,12 @@ async function getLogs(req, res, next) {
     if (user_id) { where += ' AND l.user_id = ?'; params.push(user_id); }
     if (aksi)    { where += ' AND l.aksi = ?';    params.push(aksi); }
 
+    // Admin dept hanya lihat log dari user divisinya sendiri
+    if (req.user.role_id === 4) {
+      where += ' AND u.divisi_id = ?';
+      params.push(req.user.divisi_id);
+    }
+
     const [rows] = await pool.query(
       `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail,
               l.ip_address, l.created_at, u.nama AS user_nama, u.username
@@ -309,7 +363,7 @@ async function deleteUser(req, res, next) {
       return res.status(400).json({ success: false, message: 'Tidak bisa menghapus akun sendiri' });
     }
 
-    const [rows] = await pool.query('SELECT id, role_id FROM users WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT id, role_id, divisi_id FROM users WHERE id = ?', [id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
@@ -317,6 +371,11 @@ async function deleteUser(req, res, next) {
     // Admin tidak bisa hapus ketua tim (hierarki di atas admin)
     if (rows[0].role_id === 3) {
       return res.status(403).json({ success: false, message: 'Tidak bisa menghapus Ketua Tim' });
+    }
+
+    // Admin dept hanya bisa hapus staff sedivisi
+    if (req.user.role_id === 4 && (rows[0].role_id !== 2 || rows[0].divisi_id !== req.user.divisi_id)) {
+      return res.status(403).json({ success: false, message: 'Hanya bisa menghapus staff di divisi Anda' });
     }
 
     // Hapus session, log, lalu user (urutan penting karena FK)
@@ -343,6 +402,11 @@ async function deleteUser(req, res, next) {
 // ── DELETE /api/admin/logs ────────────────────────────────────
 async function clearLogs(req, res, next) {
   try {
+    // Hapus riwayat log hanya untuk admin global
+    if (req.user.role_id === 4) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak, hanya admin global' });
+    }
+
     const { before_days } = req.query;
     // Default hapus log lebih dari 30 hari, atau semua kalau before_days=0
     const days = before_days !== undefined ? Number(before_days) : 30;
@@ -370,14 +434,24 @@ async function getStats(req, res, next) {
          AND last_active_at < NOW() - INTERVAL 15 MINUTE`
     );
 
-    const [[{ totalDokumen }]]    = await pool.query('SELECT COUNT(*) AS totalDokumen FROM dokumen');
-    const [[{ terverifikasi }]]   = await pool.query('SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi"');
-    const [[{ menunggu }]]        = await pool.query('SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi"');
-    const [[{ totalUser }]]       = await pool.query('SELECT COUNT(*) AS totalUser FROM users WHERE role_id = 2');
-    const [[{ totalDownload }]]   = await pool.query('SELECT SUM(download_count) AS totalDownload FROM dokumen');
+    // Admin dept: semua statistik dibatasi ke divisinya sendiri
+    const isDept = req.user.role_id === 4;
+    const dokWhere = isDept ? ' AND divisi_id = ?' : '';
+    const dokParam = isDept ? [req.user.divisi_id] : [];
+
+    const [[{ totalDokumen }]]    = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE 1=1 ${dokWhere}`, dokParam);
+    const [[{ terverifikasi }]]   = await pool.query(`SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi" ${dokWhere}`, dokParam);
+    const [[{ menunggu }]]        = await pool.query(`SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi" ${dokWhere}`, dokParam);
+    const [[{ totalUser }]]       = await pool.query(
+      'SELECT COUNT(*) AS totalUser FROM users WHERE role_id = 2 AND (COALESCE(divisi_id, 0) = ? OR ? = 0)',
+      [isDept ? req.user.divisi_id : 0, isDept ? 1 : 0]
+    );
+    const [[{ totalDownload }]]   = await pool.query(`SELECT SUM(download_count) AS totalDownload FROM dokumen WHERE 1=1 ${dokWhere}`, dokParam);
     const [[{ onlineNow }]]       = await pool.query(
-      `SELECT COUNT(*) AS onlineNow FROM user_sessions
-       WHERE is_online = 1`
+      `SELECT COUNT(*) AS onlineNow FROM user_sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.is_online = 1 ${isDept ? 'AND u.divisi_id = ?' : ''}`,
+      isDept ? [req.user.divisi_id] : []
     );
 
     return res.json({

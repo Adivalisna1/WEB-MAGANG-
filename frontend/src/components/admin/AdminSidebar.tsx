@@ -5,14 +5,15 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileCheck, Users,
-  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag
+  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, Building2
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const adminMenu = [
   { href: '/admin',          icon: LayoutDashboard, label: 'Dashboard',        exact: true },
   { href: '/admin/dokumen',  icon: FileCheck,       label: 'Verifikasi Dokumen' },
-  { href: '/admin/kategori', icon: Tag,             label: 'Kelola Kategori' },
+  { href: '/admin/kategori', icon: Tag,             label: 'Kelola Kategori',  adminGlobal: true },
+  { href: '/admin/divisi',   icon: Building2,       label: 'Kelola Divisi',    adminGlobal: true },
   { href: '/admin/users',    icon: Users,           label: 'Manajemen User' },
   { href: '/admin/logs',     icon: Activity,        label: 'Log Aktivitas' },
 ];
@@ -20,6 +21,10 @@ const adminMenu = [
 export default function AdminSidebar() {
   const pathname = usePathname();
   const { user, logoutFn } = useAuth();
+  const isAdminDept = user?.role === 'admin_dept';
+
+  // Admin dept tidak lihat menu master data (kategori & divisi)
+  const menu = adminMenu.filter(m => !m.adminGlobal || !isAdminDept);
 
   return (
     <aside className="w-60 min-h-screen bg-gray-900 text-white flex flex-col shrink-0">
@@ -39,14 +44,16 @@ export default function AdminSidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{user?.nama ?? '-'}</p>
-            <p className="text-xs text-yellow-400 capitalize">{user?.role ?? 'admin'}</p>
+            <p className="text-xs text-yellow-400 capitalize">
+              {isAdminDept ? `Admin Divisi${user?.divisi ? ` · ${user.divisi}` : ''}` : (user?.role ?? 'admin')}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Menu */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {adminMenu.map(({ href, icon: Icon, label, exact }) => {
+        {menu.map(({ href, icon: Icon, label, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (
             <Link

@@ -13,9 +13,12 @@ interface Dokumen {
   tahun: number;
   status: string;
   kategori: string;
+  divisi: string | null;
   uploaded_by: string;
   created_at: string;
 }
+
+interface Divisi { id: number; nama: string; slug: string; }
 
 const STATUS_BADGE: Record<string, string> = {
   terverifikasi:       'bg-green-100 text-green-700',
@@ -36,10 +39,23 @@ export default function KetuaDokumenPage() {
   const [error,    setError]    = useState('');
   const [filter,   setFilter]   = useState('');
 
+  // Drill-down per divisi (default: semua)
+  const [divisiList,   setDivisiList]   = useState<Divisi[]>([]);
+  const [filterDivisi, setFilterDivisi] = useState('');
+
+  // Muat daftar divisi dari endpoint publik
+  useEffect(() => {
+    fetch(`${API}/dokumen/divisi`)
+      .then(r => r.json())
+      .then(d => setDivisiList(d.data ?? []))
+      .catch(() => {});
+  }, []);
+
   const fetchDokumen = useCallback(async () => {
     try {
       const session = getSession();
-      const res = await fetch(`${API}/ketua/dokumen?status=${filter}&limit=200`, {
+      const divisiParam = filterDivisi ? `&divisi=${filterDivisi}` : '';
+      const res = await fetch(`${API}/ketua/dokumen?status=${filter}&limit=200${divisiParam}`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
@@ -51,7 +67,7 @@ export default function KetuaDokumenPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, filterDivisi]);
 
   useEffect(() => { fetchDokumen(); }, [fetchDokumen]);
 
@@ -65,6 +81,16 @@ export default function KetuaDokumenPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <select
+            value={filterDivisi}
+            onChange={(e) => { setLoading(true); setFilterDivisi(e.target.value); }}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          >
+            <option value="">Semua Divisi</option>
+            {divisiList.map(d => (
+              <option key={d.id} value={d.slug}>{d.nama}</option>
+            ))}
+          </select>
           <select
             value={filter}
             onChange={(e) => { setLoading(true); setFilter(e.target.value); }}
@@ -103,6 +129,7 @@ export default function KetuaDokumenPage() {
                 <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
                   <th className="px-5 py-3">Judul</th>
                   <th className="px-5 py-3">Kategori</th>
+                  <th className="px-5 py-3">Divisi</th>
                   <th className="px-5 py-3">Tahun</th>
                   <th className="px-5 py-3">Diupload Oleh</th>
                   <th className="px-5 py-3">Status</th>
@@ -114,6 +141,12 @@ export default function KetuaDokumenPage() {
                   <tr key={dok.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-900 max-w-xs truncate">{dok.judul}</td>
                     <td className="px-5 py-3 text-gray-600">{dok.kategori}</td>
+                    <td className="px-5 py-3">
+                      {dok.divisi
+                        ? <span className="badge bg-cyan-100 text-cyan-800">{dok.divisi}</span>
+                        : <span className="text-gray-300">—</span>
+                      }
+                    </td>
                     <td className="px-5 py-3 text-gray-600">{dok.tahun}</td>
                     <td className="px-5 py-3 text-gray-600">{dok.uploaded_by}</td>
                     <td className="px-5 py-3">

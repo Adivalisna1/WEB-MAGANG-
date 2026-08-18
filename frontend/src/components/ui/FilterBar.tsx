@@ -3,18 +3,20 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Kategori } from '@/lib/api';
+import { Kategori, Divisi } from '@/lib/api';
 
 interface Props {
   kategoriList: Kategori[];
+  divisiList?: Divisi[];
 }
 
-export default function FilterBar({ kategoriList }: Props) {
+export default function FilterBar({ kategoriList, divisiList = [] }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
   const [q,        setQ]        = useState(searchParams.get('q')        ?? '');
   const [kategori, setKategori] = useState(searchParams.get('kategori') ?? '');
+  const [divisi,   setDivisi]   = useState(searchParams.get('divisi')   ?? '');
   const [tahun,    setTahun]    = useState(searchParams.get('tahun')    ?? '');
 
   // Buat tahun pilihan dari 2015 s/d sekarang
@@ -27,9 +29,10 @@ export default function FilterBar({ kategoriList }: Props) {
     const params = new URLSearchParams();
     if (q)        params.set('q', q);
     if (kategori) params.set('kategori', kategori);
+    if (divisi)   params.set('divisi', divisi);
     if (tahun)    params.set('tahun', tahun);
     router.push(`/?${params.toString()}`);
-  }, [q, kategori, tahun, router]);
+  }, [q, kategori, divisi, tahun, router]);
 
   // Submit saat tekan Enter di search box
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -37,11 +40,11 @@ export default function FilterBar({ kategoriList }: Props) {
   };
 
   const resetFilter = () => {
-    setQ(''); setKategori(''); setTahun('');
+    setQ(''); setKategori(''); setDivisi(''); setTahun('');
     router.push('/');
   };
 
-  const hasFilter = q || kategori || tahun;
+  const hasFilter = q || kategori || divisi || tahun;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -70,6 +73,20 @@ export default function FilterBar({ kategoriList }: Props) {
             <option key={k.id} value={k.slug}>{k.nama}</option>
           ))}
         </select>
+
+        {/* Divisi */}
+        {divisiList.length > 0 && (
+          <select
+            value={divisi}
+            onChange={e => setDivisi(e.target.value)}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          >
+            <option value="">Semua Divisi</option>
+            {divisiList.map(d => (
+              <option key={d.id} value={d.slug}>{d.nama}</option>
+            ))}
+          </select>
+        )}
 
         {/* Tahun */}
         <select
