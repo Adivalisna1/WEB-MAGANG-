@@ -3,8 +3,16 @@ const mysql = require('mysql2/promise');
 // Railway MySQL kasih DATABASE_URL, lokal pakai env terpisah
 function getPoolConfig() {
   if (process.env.DATABASE_URL) {
+    // Parse manual biar bisa nambah opsi ssl (TiDB Cloud wajib TLS,
+    // mysql2 tidak bisa baca ssl dari query string URL)
+    const u = new URL(process.env.DATABASE_URL);
     return {
-      uri: process.env.DATABASE_URL,
+      host:     u.hostname,
+      port:     Number(u.port) || 3306,
+      user:     decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      database: u.pathname.replace(/^\//, '') || undefined,
+      ...(u.hostname.endsWith('.tidbcloud.com') ? { ssl: { rejectUnauthorized: true } } : {}),
       waitForConnections: true,
       connectionLimit:    10,
       queueLimit:         0,
