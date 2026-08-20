@@ -17,14 +17,11 @@ interface User {
   username: string;
   email: string;
   role: string;
-  divisi: string | null;
   is_active: number;
   is_online: number | null;
   last_login: string | null;
   created_at: string;
 }
-
-interface Divisi { id: number; nama: string; slug: string; }
 
 export default function AdminUsersPage() {
   const [users,      setUsers]      = useState<User[]>([]);
@@ -34,30 +31,14 @@ export default function AdminUsersPage() {
   const [deleting,   setDeleting]   = useState<number | null>(null);
   const [showModal,  setShowModal]  = useState(false);
 
-  // Info sesi: admin_dept role & divisi terkunci saat buat user
-  const session     = getSession();
-  const isAdminDept = session?.user?.role === 'admin_dept';
-
-  // Daftar divisi aktif untuk dropdown form
-  const [divisiList, setDivisiList] = useState<Divisi[]>([]);
-
   // Form tambah user
   const [nama,     setNama]     = useState('');
   const [username, setUsername] = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [roleId,   setRoleId]   = useState('2');
-  const [divisiId, setDivisiId] = useState('');
   const [creating, setCreating] = useState(false);
   const [formErr,  setFormErr]  = useState('');
-
-  // Muat daftar divisi dari endpoint publik
-  useEffect(() => {
-    fetch(`${API}/dokumen/divisi`)
-      .then(r => r.json())
-      .then(d => setDivisiList(d.data ?? []))
-      .catch(() => {});
-  }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true); setError('');
@@ -129,17 +110,13 @@ export default function AdminUsersPage() {
         body: JSON.stringify({
           nama, username, email, password,
           role_id: Number(roleId),
-          // admin_dept: divisi dipaksa server-side juga, tapi dikirim tetap divisi sendiri
-          ...(Number(roleId) === 2 || Number(roleId) === 4
-            ? { divisi_id: isAdminDept ? undefined : Number(divisiId) || undefined }
-            : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       setShowModal(false);
       setNama(''); setUsername(''); setEmail(''); setPassword('');
-      setRoleId('2'); setDivisiId('');
+      setRoleId('2');
       await fetchUsers();
     } catch (e: any) {
       setFormErr(e.message || 'Gagal membuat user');
@@ -188,7 +165,6 @@ export default function AdminUsersPage() {
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">User</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Divisi</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Online</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Last Login</th>
@@ -213,18 +189,12 @@ export default function AdminUsersPage() {
                       <span className={clsx('badge',
                         u.role === 'admin'
                           ? 'bg-yellow-100 text-yellow-800'
-                          : u.role === 'admin_dept'
+                          : u.role === 'ketua_tim'
                             ? 'bg-cyan-100 text-cyan-800'
                             : 'bg-blue-100 text-blue-800'
                       )}>
-                        {u.role === 'admin_dept' ? 'Admin Divisi' : u.role}
+                        {u.role}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {u.divisi
-                        ? <span className="badge bg-cyan-50 text-cyan-700">{u.divisi}</span>
-                        : <span className="text-gray-300">—</span>
-                      }
                     </td>
                     <td className="px-4 py-3">
                       <span className={clsx('badge', u.is_active
@@ -317,55 +287,15 @@ export default function AdminUsersPage() {
               ))}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                {isAdminDept ? (
-                  // admin_dept hanya bisa menambah staff, role terkunci
-                  <select
-                    value="2"
-                    disabled
-                    className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-400"
-                  >
-                    <option value="2">Staff</option>
-                  </select>
-                ) : (
-                  <select
-                    value={roleId}
-                    onChange={e => setRoleId(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
-                  >
-                    <option value="2">Staff</option>
-                    <option value="1">Admin</option>
-                    <option value="4">Admin Divisi</option>
-                  </select>
-                )}
+                <select
+                  value={roleId}
+                  onChange={e => setRoleId(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
+                >
+                  <option value="2">Staff</option>
+                  <option value="1">Admin</option>
+                </select>
               </div>
-              {(isAdminDept || roleId === '2' || roleId === '4') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Divisi <span className="text-red-500">*</span>
-                  </label>
-                  {isAdminDept ? (
-                    // divisi admin_dept terkunci ke divisi sendiri
-                    <input
-                      type="text"
-                      value={session?.user?.divisi ?? ''}
-                      disabled
-                      className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-400"
-                    />
-                  ) : (
-                    <select
-                      value={divisiId}
-                      onChange={e => setDivisiId(e.target.value)}
-                      required
-                      className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
-                    >
-                      <option value="">Pilih divisi...</option>
-                      {divisiList.map(d => (
-                        <option key={d.id} value={d.id}>{d.nama}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"

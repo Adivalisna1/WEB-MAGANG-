@@ -27,14 +27,14 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('dev'));
 
-// CORS — izinkan frontend
+// CORS — izinkan frontend (CORS_ORIGIN boleh comma-separated untuk beberapa origin)
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map((s) => s.trim()),
   credentials: true,
 }));
 
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ── Rate Limiter — cegah brute force ─────────────────────────
 const limiter = rateLimit({

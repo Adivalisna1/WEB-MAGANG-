@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const ctrl        = require('../controllers/ketuaController');
+const dokCtrl     = require('../controllers/dokumenController');
 const adminCtrl   = require('../controllers/adminController');
 const { authenticate, authorize } = require('../middleware/auth');
 const validate    = require('../middleware/validate');
@@ -22,8 +23,11 @@ router.patch('/users/:id/toggle', ctrl.toggleUserActive);
 // POST /api/ketua/users/:id/reset-password — reset password user
 router.post('/users/:id/reset-password', ctrl.resetPassword);
 
-// GET /api/ketua/dokumen — monitor semua dokumen (read-only)
+// GET /api/ketua/dokumen — monitor semua dokumen (read-only, semua status)
 router.get('/dokumen', ctrl.getDokumen);
+
+// GET /api/ketua/dokumen/menunggu — dokumen yang sudah lolos admin, menunggu persetujuan ketua
+router.get('/dokumen/menunggu', ctrl.getDokumenMenungguKetua);
 
 // GET /api/ketua/logs — log aktivitas (reuse admin)
 router.get('/logs', adminCtrl.getLogs);

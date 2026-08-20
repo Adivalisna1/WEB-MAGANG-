@@ -3,6 +3,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { FileText, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -113,6 +114,11 @@ export default function LoginPage() {
 
             <p className="text-center text-xs text-gray-400 pt-2">
               Hanya admin, staff, dan ketua tim yang dapat login.
+            </p>
+            <p className="text-center text-xs pt-1">
+              <Link href="/forgot-password" className="text-primary-600 hover:text-primary-700 hover:underline font-medium">
+                Lupa Password?
+              </Link>
             </p>
           </form>
         </div>

@@ -1,13 +1,11 @@
 const router = require('express').Router();
 const ctrl       = require('../controllers/adminController');
-const divisiCtrl = require('../controllers/divisiController');
 const { authenticate, authorize } = require('../middleware/auth');
 const validate       = require('../middleware/validate');
 const activityLogger = require('../middleware/activityLogger');
 
-// Semua route admin butuh login + role admin atau admin_dept
-// (admin_dept dibatasi per divisi di level controller)
-router.use(authenticate, authorize('admin', 'admin_dept'));
+// Semua route admin butuh login + role admin
+router.use(authenticate, authorize('admin'));
 
 // GET /api/admin/stats — ringkasan dashboard admin
 router.get('/stats', ctrl.getStats);
@@ -40,16 +38,10 @@ router.get('/logs', ctrl.getLogs);
 // DELETE /api/admin/logs — hapus riwayat log
 router.delete('/logs', ctrl.clearLogs);
 
-// ── Kategori Dokumen (master data — admin global saja) ───────
-router.get('/kategori',     authorize('admin'), ctrl.getKategoriAdmin);
-router.post('/kategori',    authorize('admin'), ctrl.createKategoriRules, validate, activityLogger('buat_kategori', 'kategori'), ctrl.createKategori);
-router.patch('/kategori/:id', authorize('admin'), ctrl.updateKategoriRules, validate, activityLogger('edit_kategori', 'kategori'), ctrl.updateKategori);
-router.delete('/kategori/:id', authorize('admin'), activityLogger('hapus_kategori', 'kategori'), ctrl.deleteKategori);
-
-// ── Divisi (master data — admin global saja) ─────────────────
-router.get('/divisi',     authorize('admin'), divisiCtrl.getDivisiAdmin);
-router.post('/divisi',    authorize('admin'), divisiCtrl.createDivisiRules, validate, activityLogger('buat_divisi', 'divisi'), divisiCtrl.createDivisi);
-router.patch('/divisi/:id', authorize('admin'), divisiCtrl.updateDivisiRules, validate, activityLogger('edit_divisi', 'divisi'), divisiCtrl.updateDivisi);
-router.delete('/divisi/:id', authorize('admin'), activityLogger('hapus_divisi', 'divisi'), divisiCtrl.deleteDivisi);
+// ── Kategori Dokumen (master data) ───────────────────────────
+router.get('/kategori',       ctrl.getKategoriAdmin);
+router.post('/kategori',      ctrl.createKategoriRules, validate, activityLogger('buat_kategori', 'kategori'), ctrl.createKategori);
+router.patch('/kategori/:id', ctrl.updateKategoriRules, validate, activityLogger('edit_kategori', 'kategori'), ctrl.updateKategori);
+router.delete('/kategori/:id', activityLogger('hapus_kategori', 'kategori'), ctrl.deleteKategori);
 
 module.exports = router;

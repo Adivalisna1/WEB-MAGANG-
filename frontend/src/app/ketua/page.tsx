@@ -18,10 +18,9 @@ interface StaffStat { nama: string; total: number; terverifikasi: number; revisi
 interface HariStat  { tanggal: string; total: number; }
 interface StatusStat { status: string; total: number; }
 interface OnlineUser { id: number; nama: string; username: string; role: string; last_active_at: string; }
-interface Divisi     { id: number; nama: string; slug: string; }
 
 interface StatsData {
-  totalDokumen: number; terverifikasi: number; menunggu: number; revisi: number; onlineNow: number;
+  totalDokumen: number; terverifikasi: number; menunggu: number; lolosAdmin: number; revisi: number; onlineNow: number;
   perStaff: StaffStat[]; perHari: HariStat[]; statusDist: StatusStat[]; onlineUsers: OnlineUser[];
 }
 
@@ -29,12 +28,14 @@ interface StatsData {
 const STATUS_COLORS: Record<string, string> = {
   terverifikasi:        '#22c55e',
   menunggu_verifikasi:  '#f59e0b',
+  lolos_admin:          '#3b82f6',
   revisi:               '#f97316',
   draft:                '#94a3b8',
 };
 const STATUS_LABELS: Record<string, string> = {
   terverifikasi:       'Terverifikasi',
   menunggu_verifikasi: 'Menunggu',
+  lolos_admin:         'Menunggu Ketua',
   revisi:              'Revisi',
   draft:               'Draft',
 };
@@ -57,23 +58,10 @@ export default function KetuaDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
-  // Drill-down per divisi (default: semua)
-  const [divisiList,   setDivisiList]   = useState<Divisi[]>([]);
-  const [filterDivisi, setFilterDivisi] = useState('');
-
-  // Muat daftar divisi dari endpoint publik
-  useEffect(() => {
-    fetch(`${API}/dokumen/divisi`)
-      .then(r => r.json())
-      .then(d => setDivisiList(d.data ?? []))
-      .catch(() => {});
-  }, []);
-
   const fetchStats = useCallback(async () => {
     try {
       const session = getSession();
-      const divisiParam = filterDivisi ? `?divisi=${filterDivisi}` : '';
-      const res = await fetch(`${API}/ketua/stats${divisiParam}`, {
+      const res = await fetch(`${API}/ketua/stats`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
@@ -85,7 +73,7 @@ export default function KetuaDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterDivisi]);
+  }, []);
 
   useEffect(() => {
     fetchStats();
@@ -109,11 +97,12 @@ export default function KetuaDashboardPage() {
   }
 
   const kartu = [
-    { label: 'Total Dokumen',        value: data.totalDokumen,    icon: FileText,     color: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Menunggu Verifikasi',  value: data.menunggu,        icon: Clock,        color: 'text-amber-600 bg-amber-50' },
-    { label: 'Terverifikasi',        value: data.terverifikasi,   icon: CheckCircle,  color: 'text-green-600 bg-green-50' },
-    { label: 'Perlu Revisi',         value: data.revisi,          icon: RefreshCw,    color: 'text-orange-600 bg-orange-50' },
-    { label: 'User Online',          value: data.onlineNow,       icon: Users,        color: 'text-blue-600 bg-blue-50' },
+    { label: 'Total Dokumen',          value: data.totalDokumen,    icon: FileText,     color: 'text-indigo-600 bg-indigo-50' },
+    { label: 'Menunggu Verifikasi',    value: data.menunggu,        icon: Clock,        color: 'text-amber-600 bg-amber-50' },
+    { label: 'Menunggu Persetujuan',   value: data.lolosAdmin ?? 0, icon: Clock,        color: 'text-blue-600 bg-blue-50' },
+    { label: 'Terverifikasi',          value: data.terverifikasi,   icon: CheckCircle,  color: 'text-green-600 bg-green-50' },
+    { label: 'Perlu Revisi',           value: data.revisi,          icon: RefreshCw,    color: 'text-orange-600 bg-orange-50' },
+    { label: 'User Online',            value: data.onlineNow,       icon: Users,        color: 'text-blue-600 bg-blue-50' },
   ];
 
   const pieData = data.statusDist.map((s: StatusStat) => ({
@@ -131,16 +120,6 @@ export default function KetuaDashboardPage() {
           <p className="text-sm text-gray-500 mt-1">Monitoring sistem secara realtime (refresh otomatis 30 detik)</p>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={filterDivisi}
-            onChange={(e) => { setLoading(true); setFilterDivisi(e.target.value); }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          >
-            <option value="">Semua Divisi</option>
-            {divisiList.map(d => (
-              <option key={d.id} value={d.slug}>{d.nama}</option>
-            ))}
-          </select>
           <button
             onClick={() => { setLoading(true); fetchStats(); }}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
@@ -157,7 +136,7 @@ export default function KetuaDashboardPage() {
       )}
 
       {/* Kartu statistik */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {kartu.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${color}`}>

@@ -7,10 +7,8 @@ async function getProfile(req, res, next) {
   try {
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, u.email, u.foto_profil,
-              u.last_login, u.created_at, r.nama AS role,
-              dv.nama AS divisi
+              u.last_login, u.created_at, r.nama AS role
        FROM users u JOIN roles r ON r.id = u.role_id
-       LEFT JOIN divisi dv ON dv.id = u.divisi_id
        WHERE u.id = ?`,
       [req.user.id]
     );

@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
 import {
   FileText, CheckCircle, XCircle, Clock,
-  Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Trash2, Download
+  Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Trash2, Download,
+  Send
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -14,9 +15,11 @@ interface Dokumen {
   id: number;
   judul: string;
   tahun: number;
+  bulan?: number | null;
+  semester?: number | null;
+  nomor_laporan?: string | null;
   status: string;
   kategori: string;
-  divisi: string | null;
   file_nama: string;
   file_size: number;
   uploaded_by: string;
@@ -24,78 +27,88 @@ interface Dokumen {
   catatan: string | null;
 }
 
-interface Divisi { id: number; nama: string; slug: string; }
+const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+function periodLabel(dok: Dokumen) {
+  if (dok.semester) return `Sem ${dok.semester} ${dok.tahun}`;
+  if (dok.bulan) return `${NAMA_BULAN[dok.bulan]} ${dok.tahun}`;
+  return String(dok.tahun);
+}
 
 export default function AdminDokumenPage() {
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
   const [filter,      setFilter]      = useState('menunggu_verifikasi');
-  const [divisiList,  setDivisiList]  = useState<Divisi[]>([]);
-  const [filterDivisi, setFilterDivisi] = useState('');
   const [processing,  setProcessing]  = useState<number | null>(null);
   const [deleting,    setDeleting]    = useState<number | null>(null);
   const [modalDok,    setModalDok]    = useState<Dokumen | null>(null);
   const [catatan,     setCatatan]     = useState('');
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
+  const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [previewError,    setPreviewError]    = useState('');
 
-  // Info sesi: hanya admin global yang boleh ganti divisi dokumen
-  const session = getSession();
-  const isAdminGlobal = session?.user?.role === 'admin';
-
-  // Dropdown divisi di modal edit (admin global saja)
-  const [editDivisiId,  setEditDivisiId]  = useState('');
-  const [savingDivisi,  setSavingDivisi]  = useState(false);
-
-  // Daftar divisi aktif untuk filter & dropdown edit
-  useEffect(() => {
-    fetch(`${API}/dokumen/divisi`)
-      .then(r => r.json())
-      .then(d => setDivisiList(d.data ?? []))
-      .catch(() => {});
-  }, []);
-
-  // Cek apakah file PDF (hanya PDF yang bisa di-preview di browser)
   const isPdf = modalDok ? /\.pdf$/i.test(modalDok.file_nama) : false;
 
-  // Fetch file preview sebagai blob (token tidak pernah masuk URL)
+  // Fetch preview file as blob (streaming + progress bar)
   useEffect(() => {
     if (!modalDok) {
-      // Cleanup blob URL saat modal ditutup
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
+      setPreviewProgress(null);
+      setPreviewError('');
       return;
     }
-
     let cancelled = false;
+    const controller = new AbortController();
     const session = getSession();
-
     async function loadPreview() {
+      setPreviewProgress({ loaded: 0, total: 0 });
+      setPreviewError('');
       try {
-        const res = await fetch(`${API}/dokumen/${modalDok.id}/preview`, {
+        const res = await fetch(`${API}/dokumen/${modalDok!.id}/preview`, {
           headers: { Authorization: `Bearer ${session?.token}` },
+          signal: controller.signal,
         });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        // PDF: paksa type application/pdf agar browser render, bukan download
-        // Non-PDF: pertahankan type asli agar hasil download valid
-        const finalBlob = isPdf ? new Blob([blob], { type: 'application/pdf' }) : blob;
+        if (!res.ok) {
+          if (!cancelled) setPreviewError('Gagal memuat file preview');
+          return;
+        }
+        const total = Number(res.headers.get('Content-Length')) || 0;
+        const chunks: BlobPart[] = [];
+        let loaded = 0;
+        if (res.body && res.body.getReader) {
+          const reader = res.body.getReader();
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              chunks.push(value);
+              loaded += value.length;
+              if (!cancelled) setPreviewProgress({ loaded, total });
+            }
+          }
+        } else {
+          const blob = await res.blob();
+          chunks.push(blob);
+          loaded = blob.size;
+          if (!cancelled) setPreviewProgress({ loaded, total: total || loaded });
+        }
+        const finalBlob = isPdf
+          ? new Blob(chunks, { type: 'application/pdf' })
+          : new Blob(chunks);
         if (!cancelled) {
           setPreviewUrl(URL.createObjectURL(finalBlob));
+          setPreviewProgress(null);
         }
-      } catch { /* silent */ }
+      } catch {
+        if (!cancelled && !controller.signal.aborted) setPreviewError('Gagal memuat file preview');
+      }
     }
-
     loadPreview();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; controller.abort(); };
   }, [modalDok]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Download file via blob URL — atribut `download` memaksa browser save file
   const handleDownload = () => {
     if (!previewUrl || !modalDok) return;
     const a = document.createElement('a');
@@ -110,8 +123,8 @@ export default function AdminDokumenPage() {
     setLoading(true); setError('');
     try {
       const session = getSession();
-      const divisiParam = filterDivisi ? `&divisi=${filterDivisi}` : '';
-      const res = await fetch(`${API}/dokumen/all?status=${filter}&limit=50${divisiParam}`, {
+      const statusParam = filter ? `status=${filter}&` : '';
+      const res = await fetch(`${API}/dokumen/all?${statusParam}limit=50`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
@@ -122,11 +135,16 @@ export default function AdminDokumenPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, filterDivisi]);
+  }, [filter]);
 
   useEffect(() => { fetchDokumen(); }, [fetchDokumen]);
 
-  const handleVerifikasi = async (id: number, aksi: 'approve' | 'reject') => {
+  // Admin: loloskan ke Ketua Tim ATAU kembalikan untuk revisi
+  const handleVerifikasi = async (id: number, aksi: 'lolos' | 'reject') => {
+    if (aksi === 'reject' && !catatan.trim()) {
+      alert('Catatan wajib diisi jika mengembalikan untuk revisi');
+      return;
+    }
     setProcessing(id);
     try {
       const session = getSession();
@@ -147,33 +165,6 @@ export default function AdminDokumenPage() {
       alert(e.message || 'Gagal memproses verifikasi');
     } finally {
       setProcessing(null);
-    }
-  };
-
-  // Simpan perubahan divisi dokumen (admin global saja)
-  const handleSimpanDivisi = async () => {
-    if (!modalDok || !editDivisiId) return;
-    setSavingDivisi(true);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/dokumen/${modalDok.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.token}`,
-        },
-        body: JSON.stringify({ divisi_id: Number(editDivisiId) }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setModalDok(prev => prev
-        ? { ...prev, divisi: divisiList.find(d => d.id === Number(editDivisiId))?.nama ?? prev.divisi }
-        : prev);
-      await fetchDokumen();
-    } catch (e: any) {
-      alert(e.message || 'Gagal mengubah divisi');
-    } finally {
-      setSavingDivisi(false);
     }
   };
 
@@ -200,11 +191,24 @@ export default function AdminDokumenPage() {
     ? `${(b / 1024).toFixed(1)} KB`
     : `${(b / (1024 * 1024)).toFixed(1)} MB`;
 
+  const statusBadge = (status: string) => {
+    const map: Record<string, { label: string; cls: string }> = {
+      menunggu_verifikasi: { label: 'Menunggu', cls: 'bg-yellow-100 text-yellow-800' },
+      lolos_admin:         { label: 'Menunggu Ketua', cls: 'bg-blue-100 text-blue-800' },
+      terverifikasi:       { label: 'Disetujui', cls: 'bg-green-100 text-green-800' },
+      revisi:              { label: 'Revisi', cls: 'bg-orange-100 text-orange-800' },
+      draft:               { label: 'Draft', cls: 'bg-gray-100 text-gray-600' },
+    };
+    const s = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600' };
+    return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${s.cls}`}>{s.label}</span>;
+  };
+
   const filterTabs = [
-    { value: 'menunggu_verifikasi', label: 'Menunggu',      color: 'text-yellow-600' },
-    { value: 'terverifikasi',       label: 'Terverifikasi', color: 'text-green-600' },
-    { value: 'revisi',              label: 'Revisi',        color: 'text-orange-600' },
-    { value: '',                    label: 'Semua',         color: 'text-gray-600' },
+    { value: 'menunggu_verifikasi', label: 'Menunggu Tinjauan', icon: Clock },
+    { value: 'lolos_admin',         label: 'Menunggu Ketua',    icon: Send },
+    { value: 'terverifikasi',       label: 'Disetujui',         icon: CheckCircle },
+    { value: 'revisi',              label: 'Revisi',            icon: XCircle },
+    { value: '',                    label: 'Semua',             icon: FileText },
   ];
 
   return (
@@ -212,8 +216,10 @@ export default function AdminDokumenPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Verifikasi Dokumen</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Tinjau dan setujui dokumen yang diajukan staff</p>
+          <h1 className="text-xl font-bold text-gray-900">Tinjauan Dokumen</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Sebagai penyaring pertama — loloskan dokumen layak ke Ketua Tim untuk persetujuan akhir
+          </p>
         </div>
         <button onClick={fetchDokumen} className="btn-secondary p-2" title="Refresh">
           <RefreshCw className="w-4 h-4" />
@@ -221,33 +227,25 @@ export default function AdminDokumenPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit">
-          {filterTabs.map(tab => (
+      <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit flex-wrap">
+        {filterTabs.map(tab => {
+          const Icon = tab.icon;
+          return (
             <button
               key={tab.value}
               onClick={() => setFilter(tab.value)}
               className={clsx(
-                'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 filter === tab.value
                   ? 'bg-gray-900 text-white'
-                  : `${tab.color} hover:bg-gray-50`
+                  : 'text-gray-600 hover:bg-gray-50'
               )}
             >
+              <Icon className="w-3.5 h-3.5" />
               {tab.label}
             </button>
-          ))}
-        </div>
-        <select
-          value={filterDivisi}
-          onChange={e => setFilterDivisi(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
-        >
-          <option value="">Semua Divisi</option>
-          {divisiList.map(d => (
-            <option key={d.id} value={d.slug}>{d.nama}</option>
-          ))}
-        </select>
+          );
+        })}
       </div>
 
       {/* Error */}
@@ -273,57 +271,45 @@ export default function AdminDokumenPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">No. Laporan</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Dokumen</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Divisi</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tahun</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Diupload oleh</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ukuran</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Periode</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Uploader</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {dokumenList.map(dok => (
                   <tr key={dok.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                      {dok.nomor_laporan ?? '—'}
+                    </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                        <div>
-                          <p className="font-medium text-gray-900 line-clamp-1">{dok.judul}</p>
-                          <p className="text-xs text-gray-400">{dok.file_nama}</p>
-                        </div>
+                      <div>
+                        <p className="font-medium text-gray-900 line-clamp-1">{dok.judul}</p>
+                        <p className="text-xs text-gray-400">{dok.file_nama}</p>
+                        {dok.catatan && (
+                          <p className="text-xs text-orange-600 mt-0.5 italic line-clamp-1">📝 {dok.catatan}</p>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{dok.kategori}</td>
-                    <td className="px-4 py-3">
-                      {dok.divisi
-                        ? <span className="badge bg-cyan-100 text-cyan-800">{dok.divisi}</span>
-                        : <span className="text-gray-300">—</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{dok.tahun}</td>
+                    <td className="px-4 py-3 text-gray-600">{periodLabel(dok)}</td>
                     <td className="px-4 py-3 text-gray-600">{dok.uploaded_by}</td>
-                    <td className="px-4 py-3 text-gray-500">{formatSize(dok.file_size)}</td>
+                    <td className="px-4 py-3">{statusBadge(dok.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {dok.status === 'menunggu_verifikasi' ? (
                           <button
-                            onClick={() => {
-                              setModalDok(dok);
-                              setCatatan('');
-                              setEditDivisiId(divisiList.find(d => d.nama === dok.divisi)?.id ? String(divisiList.find(d => d.nama === dok.divisi)!.id) : '');
-                            }}
+                            onClick={() => { setModalDok(dok); setCatatan(''); }}
                             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
                             <Eye className="w-3.5 h-3.5" /> Tinjau
                           </button>
                         ) : (
-                          <span className={clsx(
-                            'text-xs font-medium',
-                            dok.status === 'terverifikasi' ? 'text-green-600' : 'text-orange-600'
-                          )}>
-                            {dok.status === 'terverifikasi' ? '✓ Disetujui' : '↩ Revisi'}
-                          </span>
+                          <span className="text-xs text-gray-400">—</span>
                         )}
                         <button
                           onClick={() => handleDelete(dok.id, dok.judul)}
@@ -346,7 +332,7 @@ export default function AdminDokumenPage() {
         )}
       </div>
 
-      {/* Modal verifikasi */}
+      {/* Modal tinjauan admin */}
       {modalDok && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -355,62 +341,75 @@ export default function AdminDokumenPage() {
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">Tinjau Dokumen</h3>
                 <p className="text-sm text-gray-500 mt-0.5">{modalDok.judul}</p>
+                {modalDok.nomor_laporan && (
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">#{modalDok.nomor_laporan}</p>
+                )}
               </div>
               {previewUrl && (
                 <button
                   onClick={() => window.open(previewUrl, '_blank')}
                   className="shrink-0 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  Tab Baru
+                  <ExternalLink className="w-4 h-4" /> Tab Baru
                 </button>
               )}
             </div>
 
-            {/* Preview PDF */}
-            <div className="bg-gray-100 border-b border-gray-200" style={{ height: '420px' }}>
+            {/* Preview */}
+            <div className="bg-gray-100 border-b border-gray-200" style={{ height: '380px' }}>
               {!isPdf ? (
-                // File non-PDF (Word/Excel) tidak bisa di-preview di browser
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
                   <FileText className="w-14 h-14 mb-3 text-gray-300" />
-                  <p className="font-medium text-gray-700">Preview hanya tersedia untuk file PDF</p>
+                  <p className="font-medium text-gray-700">Preview hanya tersedia untuk PDF</p>
                   <p className="text-sm text-gray-400 mt-1">File ini berformat Word/Excel</p>
                   {previewUrl && (
                     <button
                       onClick={handleDownload}
                       className="mt-4 flex items-center gap-1.5 text-sm text-white bg-primary-600 hover:bg-primary-700 font-medium px-5 py-2.5 rounded-lg transition-colors"
                     >
-                      <Download className="w-4 h-4" />
-                      Download File
+                      <Download className="w-4 h-4" /> Download File
                     </button>
                   )}
                 </div>
               ) : previewUrl ? (
-                <object
-                  data={previewUrl}
-                  type="application/pdf"
-                  className="w-full h-full"
-                  style={{ height: '420px', minHeight: '420px' }}
-                >
+                <object data={previewUrl} type="application/pdf" className="w-full h-full" style={{ height: '380px' }}>
                   <div className="flex flex-col items-center justify-center h-full text-gray-500">
                     <FileText className="w-12 h-12 mb-2 text-gray-300" />
-                    <p className="text-sm">Preview tidak tersedia untuk file ini</p>
-                    <button
-                      onClick={() => window.open(previewUrl, '_blank')}
-                      className="mt-2 text-sm text-primary-600 hover:underline"
-                    >
+                    <button onClick={() => window.open(previewUrl, '_blank')} className="mt-2 text-sm text-primary-600 hover:underline">
                       Buka di Tab Baru
                     </button>
                   </div>
                 </object>
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-500">
+                  {previewError ? (
+                    <>
+                      <AlertCircle className="w-8 h-8 text-red-400" />
+                      <p className="text-sm">{previewError}</p>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                      <p className="text-sm">
+                        {previewProgress?.total
+                          ? `Mengunduh preview... ${(previewProgress.loaded / 1048576).toFixed(1)} / ${(previewProgress.total / 1048576).toFixed(1)} MB`
+                          : 'Mengunduh preview...'}
+                      </p>
+                      {previewProgress?.total ? (
+                        <div className="w-56 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full transition-all"
+                            style={{ width: `${Math.min(100, (previewProgress.loaded / previewProgress.total) * 100)}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Info grid */}
+            {/* Info + action */}
             <div className="p-5 space-y-4 overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div className="bg-gray-50 rounded-lg p-3">
@@ -418,12 +417,8 @@ export default function AdminDokumenPage() {
                   <p className="font-medium mt-0.5">{modalDok.kategori}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400">Tahun</p>
-                  <p className="font-medium mt-0.5">{modalDok.tahun}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400">Divisi</p>
-                  <p className="font-medium mt-0.5">{modalDok.divisi ?? '—'}</p>
+                  <p className="text-xs text-gray-400">Periode</p>
+                  <p className="font-medium mt-0.5">{periodLabel(modalDok)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-400">Diupload oleh</p>
@@ -435,59 +430,40 @@ export default function AdminDokumenPage() {
                 </div>
               </div>
 
-              {/* Ganti divisi — hanya admin global */}
-              {isAdminGlobal && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Divisi Dokumen <span className="text-gray-400 font-normal">(ubah divisi)</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={editDivisiId}
-                      onChange={e => setEditDivisiId(e.target.value)}
-                      className="flex-1 px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
-                    >
-                      <option value="">Pilih divisi...</option>
-                      {divisiList.map(d => (
-                        <option key={d.id} value={d.id}>{d.nama}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={handleSimpanDivisi}
-                      disabled={savingDivisi || !editDivisiId}
-                      className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {savingDivisi && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Simpan
-                    </button>
-                  </div>
+              {/* Catatan sebelumnya */}
+              {modalDok.catatan && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-800">
+                  <p className="font-medium text-xs mb-1">Catatan sebelumnya:</p>
+                  {modalDok.catatan}
                 </div>
               )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Catatan <span className="text-gray-400 font-normal">(wajib diisi jika menolak)</span>
+                  Catatan <span className="text-red-500 font-normal text-xs">(wajib diisi jika mengembalikan revisi)</span>
                 </label>
                 <textarea
                   value={catatan}
                   onChange={e => setCatatan(e.target.value)}
                   rows={2}
-                  placeholder="Catatan untuk staff..."
+                  placeholder="Catatan untuk staff (apa yang perlu diperbaiki)..."
                   className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
                 />
               </div>
 
               <div className="flex gap-3">
+                {/* Tombol utama admin: Loloskan ke Ketua Tim */}
                 <button
-                  onClick={() => handleVerifikasi(modalDok.id, 'approve')}
+                  onClick={() => handleVerifikasi(modalDok.id, 'lolos')}
                   disabled={processing === modalDok.id}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
                 >
                   {processing === modalDok.id
                     ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <CheckCircle className="w-4 h-4" />}
-                  Setujui
+                    : <Send className="w-4 h-4" />}
+                  Loloskan ke Ketua Tim
                 </button>
+                {/* Kembalikan revisi */}
                 <button
                   onClick={() => handleVerifikasi(modalDok.id, 'reject')}
                   disabled={processing === modalDok.id || !catatan.trim()}
@@ -496,7 +472,7 @@ export default function AdminDokumenPage() {
                   {processing === modalDok.id
                     ? <Loader2 className="w-4 h-4 animate-spin" />
                     : <XCircle className="w-4 h-4" />}
-                  Revisi
+                  Kembalikan Revisi
                 </button>
                 <button
                   onClick={() => setModalDok(null)}

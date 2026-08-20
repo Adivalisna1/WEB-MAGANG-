@@ -9,6 +9,8 @@ export interface Dokumen {
   deskripsi: string | null;
   tahun: number;
   bulan: number | null;
+  semester: number | null;
+  nomor_laporan: string | null;
   file_nama: string;
   file_size: number | null;
   file_mime: string | null;
@@ -16,8 +18,6 @@ export interface Dokumen {
   created_at: string;
   kategori: string;
   kategori_slug: string;
-  divisi?: string | null;
-  divisi_slug?: string | null;
 }
 
 export interface Kategori {
@@ -25,12 +25,6 @@ export interface Kategori {
   nama: string;
   slug: string;
   deskripsi: string | null;
-}
-
-export interface Divisi {
-  id: number;
-  nama: string;
-  slug: string;
 }
 
 export interface ApiResponse<T> {
@@ -46,7 +40,6 @@ export interface ApiResponse<T> {
 
 export interface DokumenParams {
   kategori?: string;
-  divisi?: string;
   tahun?: string;
   q?: string;
   page?: number;
@@ -57,7 +50,6 @@ export interface DokumenParams {
 export async function getDokumen(params: DokumenParams = {}): Promise<ApiResponse<Dokumen[]>> {
   const query = new URLSearchParams();
   if (params.kategori) query.set('kategori', params.kategori);
-  if (params.divisi)   query.set('divisi', params.divisi);
   if (params.tahun)    query.set('tahun', params.tahun);
   if (params.q)        query.set('q', params.q);
   if (params.page)     query.set('page', String(params.page));
@@ -76,15 +68,6 @@ export async function getKategori(): Promise<ApiResponse<Kategori[]>> {
     cache: 'no-store', // selalu fresh — supaya kategori baru langsung muncul
   });
   if (!res.ok) throw new Error('Gagal mengambil kategori');
-  return res.json();
-}
-
-// Ambil daftar divisi (server-side — untuk dropdown filter publik)
-export async function getDivisi(): Promise<ApiResponse<Divisi[]>> {
-  const res = await fetch(`${SERVER_API_URL}/dokumen/divisi`, {
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error('Gagal mengambil divisi');
   return res.json();
 }
 

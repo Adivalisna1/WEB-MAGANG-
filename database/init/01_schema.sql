@@ -11,7 +11,7 @@ USE web_laporan;
 
 -- ============================================================
 -- TABLE: roles
--- Role: admin, staff, ketua_tim, admin_dept (lihat 02_seed.sql)
+-- Role: admin, staff, ketua_tim (lihat 02_seed.sql)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS roles (
     id          TINYINT UNSIGNED    NOT NULL AUTO_INCREMENT,
@@ -22,28 +22,12 @@ CREATE TABLE IF NOT EXISTS roles (
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- TABLE: divisi
--- Master data divisi/departemen instansi
--- ============================================================
-CREATE TABLE IF NOT EXISTS divisi (
-    id          SMALLINT UNSIGNED   NOT NULL AUTO_INCREMENT,
-    nama        VARCHAR(100)        NOT NULL UNIQUE,
-    slug        VARCHAR(100)        NOT NULL UNIQUE,
-    urutan      TINYINT UNSIGNED    NOT NULL DEFAULT 0,
-    is_active   TINYINT(1)          NOT NULL DEFAULT 1,
-    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    INDEX idx_divisi_slug (slug)
-) ENGINE=InnoDB;
-
--- ============================================================
 -- TABLE: users
 -- Menyimpan data admin dan staff/user
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
     id              INT UNSIGNED        NOT NULL AUTO_INCREMENT,
     role_id         TINYINT UNSIGNED    NOT NULL,
-    divisi_id       SMALLINT UNSIGNED   NULL COMMENT 'NULL = global (admin & ketua tim)',
     nama            VARCHAR(100)        NOT NULL,
     username        VARCHAR(50)         NOT NULL UNIQUE,
     email           VARCHAR(150)        NOT NULL UNIQUE,
@@ -57,8 +41,6 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (id),
     CONSTRAINT fk_users_role FOREIGN KEY (role_id)
         REFERENCES roles(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_users_divisi FOREIGN KEY (divisi_id)
-        REFERENCES divisi(id) ON DELETE SET NULL,
     INDEX idx_users_role (role_id),
     INDEX idx_users_username (username)
 ) ENGINE=InnoDB;
@@ -106,12 +88,13 @@ CREATE TABLE IF NOT EXISTS kategori_dokumen (
 CREATE TABLE IF NOT EXISTS dokumen (
     id              INT UNSIGNED        NOT NULL AUTO_INCREMENT,
     kategori_id     SMALLINT UNSIGNED   NOT NULL,
-    divisi_id       SMALLINT UNSIGNED   NULL COMMENT 'Diisi otomatis dari divisi uploader',
     uploaded_by     INT UNSIGNED        NOT NULL,           -- FK ke users
     judul           VARCHAR(255)        NOT NULL,
     deskripsi       TEXT                NULL,
     tahun           YEAR                NOT NULL,
     bulan           TINYINT UNSIGNED    NULL CHECK (bulan BETWEEN 1 AND 12),  -- 1=Jan..12=Des, NULL=dokumen tahunan
+    semester        TINYINT UNSIGNED    NULL COMMENT '1=Semester 1 (Jan-Jun), 2=Semester 2 (Jul-Des)',
+    nomor_laporan   VARCHAR(50)         NULL UNIQUE COMMENT 'Kode tracking, contoh: LKJIP/2024/001',
     file_nama       VARCHAR(255)        NOT NULL,           -- nama file asli
     file_path       VARCHAR(500)        NOT NULL,           -- path di storage
     file_size       INT UNSIGNED        NULL,               -- ukuran dalam bytes
@@ -119,12 +102,13 @@ CREATE TABLE IF NOT EXISTS dokumen (
     status          ENUM(
                         'draft',
                         'menunggu_verifikasi',
+                        'lolos_admin',
                         'terverifikasi',
-                        'ditolak',
                         'revisi',
                         'diarsipkan'
                     )                   NOT NULL DEFAULT 'draft',
-    catatan         TEXT                NULL,               -- catatan verifikasi/penolakan
+    catatan         TEXT                NULL,               -- catatan reviewer terakhir (admin/ketua tim)
+    catatan_oleh    VARCHAR(20)         NULL COMMENT 'admin atau ketua_tim',
     verified_by     INT UNSIGNED        NULL,               -- FK ke users (admin/verifikator)
     verified_at     TIMESTAMP           NULL,
     download_count  INT UNSIGNED        NOT NULL DEFAULT 0,
@@ -134,8 +118,6 @@ CREATE TABLE IF NOT EXISTS dokumen (
     PRIMARY KEY (id),
     CONSTRAINT fk_dokumen_kategori FOREIGN KEY (kategori_id)
         REFERENCES kategori_dokumen(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_dokumen_divisi FOREIGN KEY (divisi_id)
-        REFERENCES divisi(id) ON DELETE SET NULL,
     CONSTRAINT fk_dokumen_uploader FOREIGN KEY (uploaded_by)
         REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_dokumen_verifier FOREIGN KEY (verified_by)
@@ -144,8 +126,7 @@ CREATE TABLE IF NOT EXISTS dokumen (
     INDEX idx_dokumen_tahun (tahun),
     INDEX idx_dokumen_bulan (bulan),
     INDEX idx_dokumen_publik (is_public, status),
-    INDEX idx_dokumen_kategori (kategori_id),
-    INDEX idx_dokumen_divisi (divisi_id)
+    INDEX idx_dokumen_kategori (kategori_id)
 ) ENGINE=InnoDB;
 
 -- ============================================================

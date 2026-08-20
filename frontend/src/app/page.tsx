@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getDokumen, getKategori, getDivisi, getStatsPublik } from '@/lib/api';
+import { getDokumen, getKategori, getStatsPublik } from '@/lib/api';
 import DokumenCard from '@/components/ui/DokumenCard';
 import FilterBar from '@/components/ui/FilterBar';
 import Pagination from '@/components/ui/Pagination';
@@ -9,7 +9,6 @@ import { FileText, Download, FolderOpen } from 'lucide-react';
 interface SearchParams {
   q?:       string;
   kategori?: string;
-  divisi?:  string;
   tahun?:   string;
   page?:    string;
 }
@@ -42,23 +41,20 @@ export default async function HomePage({
   const page = Number(searchParams.page) || 1;
 
   // Fetch paralel — termasuk stats akurat dari seluruh database
-  const [dokumenRes, kategoriRes, divisiRes, statsRes] = await Promise.all([
+  const [dokumenRes, kategoriRes, statsRes] = await Promise.all([
     getDokumen({
       q:        searchParams.q,
       kategori: searchParams.kategori,
-      divisi:   searchParams.divisi,
       tahun:    searchParams.tahun,
       page,
       limit: 12,
     }),
     getKategori(),
-    getDivisi(),
     getStatsPublik(),
   ]);
 
   const dokumenList  = dokumenRes.data   ?? [];
   const kategoriList = kategoriRes.data  ?? [];
-  const divisiList   = divisiRes.data    ?? [];
   const meta         = dokumenRes.meta;
 
   // Ambil statistik akurat dari API (bukan dari 12 dokumen paginasi)
@@ -99,11 +95,11 @@ export default async function HomePage({
 
       {/* Filter */}
       <Suspense fallback={<div className="h-16 bg-white rounded-xl animate-pulse" />}>
-        <FilterBar kategoriList={kategoriList} divisiList={divisiList} />
+        <FilterBar kategoriList={kategoriList} />
       </Suspense>
 
       {/* Label hasil filter */}
-      {(searchParams.q || searchParams.kategori || searchParams.divisi || searchParams.tahun) && (
+      {(searchParams.q || searchParams.kategori || searchParams.tahun) && (
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <span>Hasil pencarian</span>
           {searchParams.q && (
@@ -111,9 +107,6 @@ export default async function HomePage({
           )}
           {searchParams.kategori && (
             <span className="badge bg-purple-100 text-purple-800">{searchParams.kategori}</span>
-          )}
-          {searchParams.divisi && (
-            <span className="badge bg-cyan-100 text-cyan-800">{searchParams.divisi}</span>
           )}
           {searchParams.tahun && (
             <span className="badge bg-green-100 text-green-800">Tahun {searchParams.tahun}</span>

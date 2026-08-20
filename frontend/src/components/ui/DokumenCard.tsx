@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FileText, Download, Calendar, Tag, Building2 } from 'lucide-react';
+import { FileText, Download, Calendar, Tag, Hash } from 'lucide-react';
 import { Dokumen, formatFileSize, getDownloadUrl } from '@/lib/api';
 
 interface Props {
@@ -25,9 +25,11 @@ const NAMA_BULAN = [
 
 export default function DokumenCard({ dokumen }: Props) {
   const badgeClass = kategoriColor[dokumen.kategori_slug] ?? 'bg-gray-100 text-gray-700';
-  const periodeLabel = dokumen.bulan
-    ? `${NAMA_BULAN[dokumen.bulan]} ${dokumen.tahun}`
-    : String(dokumen.tahun);
+  const periodeLabel = dokumen.semester
+    ? `Semester ${dokumen.semester} ${dokumen.tahun}`
+    : dokumen.bulan
+      ? `${NAMA_BULAN[dokumen.bulan]} ${dokumen.tahun}`
+      : String(dokumen.tahun);
 
   return (
     <div className="card p-5 flex flex-col gap-3">
@@ -59,10 +61,10 @@ export default function DokumenCard({ dokumen }: Props) {
           <Tag className="w-3.5 h-3.5" />
           <span className={`badge ${badgeClass}`}>{dokumen.kategori}</span>
         </span>
-        {dokumen.divisi && (
+        {dokumen.nomor_laporan && (
           <span className="flex items-center gap-1">
-            <Building2 className="w-3.5 h-3.5" />
-            <span className="badge bg-cyan-100 text-cyan-800">{dokumen.divisi}</span>
+            <Hash className="w-3.5 h-3.5" />
+            <span className="badge bg-cyan-100 text-cyan-800">{dokumen.nomor_laporan}</span>
           </span>
         )}
         {dokumen.file_size && (

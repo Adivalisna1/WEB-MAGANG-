@@ -11,7 +11,7 @@ import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
 import { Loader2 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { loading } = useRequireAuth(['admin', 'admin_dept']);
+  const { loading } = useRequireAuth(['admin']);
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
 

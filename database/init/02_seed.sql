@@ -9,67 +9,41 @@ USE web_laporan;
 -- ROLES
 -- ============================================================
 INSERT INTO roles (id, nama, deskripsi) VALUES
-(1, 'admin', 'Administrator — akses penuh, monitoring user realtime'),
+(1, 'admin', 'Administrator — penyaring pertama verifikasi, monitoring user realtime'),
 (2, 'staff', 'Staff/User — upload, edit, dan verifikasi dokumen'),
-(3, 'ketua_tim', 'Ketua Tim — monitoring sistem, manajemen user, dan reset password'),
-(4, 'admin_dept', 'Admin divisi — sama seperti admin tapi data terbatas pada divisinya sendiri');
-
--- ============================================================
--- DIVISI
--- Divisi awal instansi — bisa diubah lewat menu Kelola Divisi admin
--- ============================================================
-INSERT INTO divisi (id, nama, slug, urutan) VALUES
-(1, 'Perencanaan', 'perencanaan', 1),
-(2, 'Keuangan', 'keuangan', 2),
-(3, 'Kepegawaian', 'kepegawaian', 3),
-(4, 'Hukum', 'hukum', 4),
-(5, 'Sekretariat', 'sekretariat', 5);
+(3, 'ketua_tim', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password');
 
 -- ============================================================
 -- USERS
 -- Password default: Admin@123  (bcrypt hash, cost=12)
--- divisi_id: NULL = global (admin & ketua tim)
 -- GANTI PASSWORD INI setelah pertama login!
 -- ============================================================
-INSERT INTO users (role_id, divisi_id, nama, username, email, password_hash, is_active) VALUES
+INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VALUES
 (
     1,
-    NULL,
     'Administrator',
     'admin',
     'admin@weblaporan.local',
     -- hash dari: Admin@123
-    '$2b$12$KIX9K3n0yVQF5v2W1W5HZeXoVjUYZAqO3bKhMxCkH3z.QYj0N4j2K',
+    '$2b$12$9pbLgBcKwwu7tmKZmrGTTOJuY1d61mmDi5Z06fiJDSP/hGA7Y2sha',
     1
 ),
 (
     2,
-    1,
     'Staff Perencanaan',
     'staff01',
     'staff01@weblaporan.local',
     -- hash dari: Staff@123
-    '$2b$12$LJY0L4o1zWRG6w3X2X6IAf.YpWkVZBrP4cLiNyDlI4a.RZk1O5k3L',
+    '$2b$12$6lIKcpOpE9cjlkBW5WvtnOF/skWUjPz1H9tzK7GBDYa6I/uso9rG6',
     1
 ),
 (
     3,
-    NULL,
     'Ketua Tim',
     'ketua1',
     'ketua1@weblaporan.local',
     -- hash dari: ketua@123
     '$2b$12$rtQwql4GN6RLqh1DT2xAA.IbGnD0mXxMVtz0xYFWcZQl.298qfpmm',
-    1
-),
-(
-    4,
-    2,
-    'Admin Keuangan',
-    'dept_keuangan',
-    'dept_keuangan@weblaporan.local',
-    -- hash dari: Dept@123
-    '$2b$12$lSGyiLaqzS/.9c8TSns2yOGaIrBDWQQJt16fQ1CdOosbWzoY9gREK',
     1
 );
 
@@ -91,10 +65,10 @@ INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES
 -- CONTOH DOKUMEN (opsional, bisa dihapus di production)
 -- ============================================================
 INSERT INTO dokumen
-    (kategori_id, divisi_id, uploaded_by, judul, tahun, file_nama, file_path, file_size, file_mime, status, is_public)
+    (kategori_id, uploaded_by, judul, tahun, file_nama, file_path, file_size, file_mime, status, is_public)
 VALUES
 (
-    1, 1, 2,
+    1, 2,
     'LKjIP Tahun 2024',
     2024,
     'lkjip-2024.pdf',
@@ -105,7 +79,7 @@ VALUES
     1
 ),
 (
-    2, 1, 2,
+    2, 2,
     'Renstra 2020-2024',
     2024,
     'renstra-2020-2024.pdf',

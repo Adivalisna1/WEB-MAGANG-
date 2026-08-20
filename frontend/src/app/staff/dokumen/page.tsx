@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getSession } from '@/lib/auth';
 import {
   FileText, Upload, Clock, CheckCircle,
-  XCircle, Archive, Send, Pencil, Loader2,
+  Archive, Send, Pencil, Loader2,
   RefreshCw, AlertCircle, MessageSquareWarning, Bell
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -17,22 +17,29 @@ interface Dokumen {
   id: number;
   judul: string;
   tahun: number;
-  status: 'draft' | 'menunggu_verifikasi' | 'terverifikasi' | 'ditolak' | 'revisi' | 'diarsipkan';
+  status: 'draft' | 'menunggu_verifikasi' | 'lolos_admin' | 'terverifikasi' | 'revisi' | 'diarsipkan';
   kategori: string;
   file_nama: string;
   file_size: number;
   download_count: number;
   created_at: string;
   catatan: string | null;
+  catatan_oleh: string | null;
 }
 
+// Label role pemberi catatan revisi
+const CATATAN_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  ketua_tim: 'Ketua Tim',
+};
+
 const statusConfig = {
-  draft:                { label: 'Draft',           color: 'bg-gray-100 text-gray-700',     icon: FileText },
-  menunggu_verifikasi:  { label: 'Menunggu',        color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-  terverifikasi:        { label: 'Terverifikasi',   color: 'bg-green-100 text-green-700',   icon: CheckCircle },
-  ditolak:              { label: 'Ditolak',         color: 'bg-red-100 text-red-700',       icon: XCircle },
-  revisi:               { label: 'Perlu Revisi',    color: 'bg-orange-100 text-orange-700', icon: MessageSquareWarning },
-  diarsipkan:           { label: 'Diarsipkan',      color: 'bg-purple-100 text-purple-700', icon: Archive },
+  draft:                { label: 'Draft',               color: 'bg-gray-100 text-gray-700',     icon: FileText },
+  menunggu_verifikasi:  { label: 'Menunggu Admin',      color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  lolos_admin:          { label: 'Menunggu Ketua Tim',  color: 'bg-blue-100 text-blue-700',     icon: Clock },
+  terverifikasi:        { label: 'Terverifikasi',       color: 'bg-green-100 text-green-700',   icon: CheckCircle },
+  revisi:               { label: 'Perlu Revisi',        color: 'bg-orange-100 text-orange-700', icon: MessageSquareWarning },
+  diarsipkan:           { label: 'Diarsipkan',          color: 'bg-purple-100 text-purple-700', icon: Archive },
 };
 
 export default function StaffDokumenPage() {
@@ -130,7 +137,7 @@ export default function StaffDokumenPage() {
                     <div className="flex items-start gap-1.5 mt-2">
                       <MessageSquareWarning className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
                       <p className="text-xs text-orange-700 font-medium">
-                        Catatan admin: <span className="font-normal text-gray-700">{dok.catatan}</span>
+                        Catatan {CATATAN_LABEL[dok.catatan_oleh ?? ''] ?? 'reviewer'}: <span className="font-normal text-gray-700">{dok.catatan}</span>
                       </p>
                     </div>
                   </div>
@@ -202,7 +209,7 @@ export default function StaffDokumenPage() {
                 {dokumenList.map(dok => {
                   const cfg = statusConfig[dok.status];
                   const Icon = cfg.icon;
-                  const canEdit   = dok.status === 'draft' || dok.status === 'ditolak' || dok.status === 'revisi';
+                  const canEdit   = dok.status === 'draft' || dok.status === 'revisi';
                   const canSubmit = dok.status === 'draft' || dok.status === 'revisi';
                   const isRevisi  = dok.status === 'revisi';
 
@@ -227,7 +234,7 @@ export default function StaffDokumenPage() {
                           <div className="mt-2 flex items-start gap-1.5 bg-orange-100 border border-orange-200 rounded-lg px-3 py-2">
                             <MessageSquareWarning className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-xs font-semibold text-orange-700">Catatan Admin:</p>
+                              <p className="text-xs font-semibold text-orange-700">Catatan {CATATAN_LABEL[dok.catatan_oleh ?? ''] ?? 'reviewer'}:</p>
                               <p className="text-xs text-gray-700 mt-0.5">{dok.catatan}</p>
                             </div>
                           </div>

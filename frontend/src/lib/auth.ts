@@ -5,8 +5,7 @@ export interface User {
   nama: string;
   username: string;
   email: string;
-  role: 'admin' | 'staff' | 'ketua_tim' | 'admin_dept';
-  divisi?: string | null;
+  role: 'admin' | 'staff' | 'ketua_tim';
 }
 
 export interface LoginResponse {

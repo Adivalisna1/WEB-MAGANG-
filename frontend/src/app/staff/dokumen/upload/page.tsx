@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Upload, FileText, X, CheckCircle,
-  Loader2, AlertCircle, ArrowLeft, CloudUpload, Building2
+  Loader2, AlertCircle, ArrowLeft, CloudUpload
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,15 +21,14 @@ const TAHUN_LIST = Array.from(
 export default function UploadPage() {
   const router = useRouter();
 
-  // Divisi staff — otomatis ikut ke dokumen (read-only)
-  const staffDivisi = getSession()?.user?.divisi ?? null;
-
   const [kategoriList,      setKategoriList]      = useState<Kategori[]>([]);
   const [kategoriLoading,   setKategoriLoading]   = useState(true);
   const [kategoriError,     setKategoriError]     = useState('');
   const [judul,       setJudul]       = useState('');
   const [tahun,       setTahun]       = useState(String(new Date().getFullYear()));
+  const [jenisPeriode, setJenisPeriode] = useState<'bulan' | 'semester'>('bulan');
   const [bulan,       setBulan]       = useState('');
+  const [semester,    setSemester]    = useState('');
   const [kategoriId,  setKategoriId]  = useState('');
   const [deskripsi,   setDeskripsi]   = useState('');
   const [file,        setFile]        = useState<File | null>(null);
@@ -76,8 +75,8 @@ export default function UploadPage() {
       setError('Format tidak didukung. Gunakan PDF, DOC, DOCX, XLS, atau XLSX.');
       return;
     }
-    if (picked.size > 100 * 1024 * 1024) {
-      setError('Ukuran file melebihi 100MB.');
+    if (picked.size > 50 * 1024 * 1024) {
+      setError('Ukuran file melebihi 50MB.');
       return;
     }
     setError('');
@@ -101,7 +100,9 @@ export default function UploadPage() {
       fd.append('file',        file);
       fd.append('judul',       judul);
       fd.append('tahun',       tahun);
-      if (bulan) fd.append('bulan', bulan);
+      // Periode: pilih salah satu — bulan ATAU semester
+      if (jenisPeriode === 'bulan' && bulan) fd.append('bulan', bulan);
+      if (jenisPeriode === 'semester' && semester) fd.append('semester', semester);
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
 
@@ -144,12 +145,6 @@ export default function UploadPage() {
         </Link>
         <h1 className="text-xl font-bold text-gray-900">Upload Dokumen</h1>
         <p className="text-sm text-gray-500 mt-0.5">Dokumen akan tersimpan sebagai draft, lalu kamu bisa submit untuk diverifikasi.</p>
-        {staffDivisi && (
-          <span className="inline-flex items-center gap-1.5 mt-2 badge bg-cyan-100 text-cyan-800">
-            <Building2 className="w-3.5 h-3.5" />
-            Divisi: {staffDivisi} (otomatis)
-          </span>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
@@ -203,27 +198,49 @@ export default function UploadPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Bulan <span className="text-gray-400 font-normal">(opsional)</span>
+                Periode <span className="text-gray-400 font-normal">(opsional)</span>
               </label>
-              <select
-                value={bulan}
-                onChange={e => setBulan(e.target.value)}
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-              >
-                <option value="">Semua</option>
-                <option value="1">Januari</option>
-                <option value="2">Februari</option>
-                <option value="3">Maret</option>
-                <option value="4">April</option>
-                <option value="5">Mei</option>
-                <option value="6">Juni</option>
-                <option value="7">Juli</option>
-                <option value="8">Agustus</option>
-                <option value="9">September</option>
-                <option value="10">Oktober</option>
-                <option value="11">November</option>
-                <option value="12">Desember</option>
-              </select>
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                <button type="button" onClick={() => setJenisPeriode('bulan')}
+                  className={`flex-1 py-2 font-medium transition-colors ${jenisPeriode === 'bulan' ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                  Bulan
+                </button>
+                <button type="button" onClick={() => setJenisPeriode('semester')}
+                  className={`flex-1 py-2 font-medium transition-colors ${jenisPeriode === 'semester' ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                  Semester
+                </button>
+              </div>
+              {jenisPeriode === 'bulan' ? (
+                <select
+                  value={bulan}
+                  onChange={e => setBulan(e.target.value)}
+                  className="w-full mt-2 px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                >
+                  <option value="">Semua</option>
+                  <option value="1">Januari</option>
+                  <option value="2">Februari</option>
+                  <option value="3">Maret</option>
+                  <option value="4">April</option>
+                  <option value="5">Mei</option>
+                  <option value="6">Juni</option>
+                  <option value="7">Juli</option>
+                  <option value="8">Agustus</option>
+                  <option value="9">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11">November</option>
+                  <option value="12">Desember</option>
+                </select>
+              ) : (
+                <select
+                  value={semester}
+                  onChange={e => setSemester(e.target.value)}
+                  className="w-full mt-2 px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                >
+                  <option value="">Semua</option>
+                  <option value="1">Semester 1 (Jan–Jun)</option>
+                  <option value="2">Semester 2 (Jul–Des)</option>
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -286,7 +303,7 @@ export default function UploadPage() {
               <CloudUpload className={`w-10 h-10 mx-auto mb-2 ${dragging ? 'text-primary-500' : 'text-gray-300'}`} />
               <p className="text-sm font-medium text-gray-700">Drag & drop file di sini</p>
               <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
-              <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX, XLS, XLSX • Maks 100MB</p>
+              <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX, XLS, XLSX • Maks 50MB</p>
             </div>
           )}
           <input

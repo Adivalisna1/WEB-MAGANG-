@@ -66,6 +66,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Ke-bake saat build — isi IP komputer biar device lain di WiFi yang sama bisa fetch API
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     container_name: web_laporan_frontend
     restart: unless-stopped
     depends_on:

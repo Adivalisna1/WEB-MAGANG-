@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
 import {
-  Send, Loader2, AlertCircle, CheckCircle, Users, UserRound, Building2
+  Send, Loader2, AlertCircle, CheckCircle, Users, UserRound
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -15,13 +15,9 @@ interface UserOption {
   role: string;
 }
 
-interface Divisi { id: number; nama: string; slug: string; }
-
 export default function KirimNotifikasiPage() {
   const [users,    setUsers]    = useState<UserOption[]>([]);
   const [target,   setTarget]   = useState<string>('all');
-  const [divisiList, setDivisiList] = useState<Divisi[]>([]);
-  const [divisiId,   setDivisiId]   = useState('');
   const [judul,    setJudul]    = useState('');
   const [pesan,    setPesan]    = useState('');
   const [sending,  setSending]  = useState(false);
@@ -43,14 +39,6 @@ export default function KirimNotifikasiPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  // Muat daftar divisi dari endpoint publik
-  useEffect(() => {
-    fetch(`${API}/dokumen/divisi`)
-      .then(r => r.json())
-      .then(d => setDivisiList(d.data ?? []))
-      .catch(() => {});
-  }, []);
-
   const handleKirim = async () => {
     if (!pesan.trim()) {
       setError('Pesan wajib diisi');
@@ -60,8 +48,6 @@ export default function KirimNotifikasiPage() {
     let labelTarget: string;
     if (target === 'all') {
       labelTarget = 'semua user';
-    } else if (target === 'divisi') {
-      labelTarget = `divisi ${divisiList.find(d => String(d.id) === divisiId)?.nama ?? 'terpilih'}`;
     } else {
       labelTarget = users.find((u: UserOption) => String(u.id) === target)?.nama ?? 'user terpilih';
     }
@@ -82,8 +68,6 @@ export default function KirimNotifikasiPage() {
           target,
           pesan: pesan.trim(),
           judul: judul.trim() || undefined,
-          // Mode divisi: kirim id divisi, backend yang resolve penerimanya
-          ...(target === 'divisi' ? { divisi_id: Number(divisiId) } : {}),
         }),
       });
       const json = await res.json();
@@ -103,7 +87,7 @@ export default function KirimNotifikasiPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Kirim Notifikasi</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Kirim pengumuman ke semua user, divisi tertentu, atau pesan ke satu user tertentu
+          Kirim pengumuman ke semua user atau pesan ke satu user tertentu
         </p>
       </div>
 
@@ -124,7 +108,7 @@ export default function KirimNotifikasiPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Tujuan Notifikasi
           </label>
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               type="button"
               onClick={() => setTarget('all')}
@@ -138,20 +122,9 @@ export default function KirimNotifikasiPage() {
             </button>
             <button
               type="button"
-              onClick={() => setTarget('divisi')}
-              className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                target === 'divisi'
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Building2 className="w-4 h-4" /> Divisi Tertentu
-            </button>
-            <button
-              type="button"
               onClick={() => setTarget('')}
               className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                target !== 'all' && target !== 'divisi'
+                target !== 'all'
                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
@@ -159,19 +132,7 @@ export default function KirimNotifikasiPage() {
               <UserRound className="w-4 h-4" /> Satu User
             </button>
           </div>
-          {target === 'divisi' && (
-            <select
-              value={divisiId}
-              onChange={(e) => setDivisiId(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-            >
-              <option value="">— Pilih divisi —</option>
-              {divisiList.map(d => (
-                <option key={d.id} value={d.id}>{d.nama}</option>
-              ))}
-            </select>
-          )}
-          {target !== 'all' && target !== 'divisi' && (
+          {target !== 'all' && (
             <select
               value={target}
               onChange={(e) => setTarget(e.target.value)}
@@ -218,7 +179,7 @@ export default function KirimNotifikasiPage() {
 
         <button
           onClick={handleKirim}
-          disabled={sending || !pesan.trim() || (target === 'divisi' && !divisiId) || (target !== 'all' && target !== 'divisi' && !target)}
+          disabled={sending || !pesan.trim() || (target !== 'all' && !target)}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
         >
           {sending

@@ -16,55 +16,38 @@ async function getStats(req, res, next) {
          AND last_active_at < NOW() - INTERVAL 15 MINUTE`
     );
 
-    // Drill-down opsional: filter statistik per divisi (akses tetap global)
-    const { divisi } = req.query;
-    let divId = null;
-    if (divisi) {
-      const [[dv]] = await pool.query('SELECT id FROM divisi WHERE slug = ?', [divisi]);
-      if (!dv) {
-        return res.status(404).json({ success: false, message: 'Divisi tidak ditemukan' });
-      }
-      divId = dv.id;
-    }
-    const dw = divId !== null ? ' AND divisi_id = ?' : '';
-    const dp = divId !== null ? [divId] : [];
-
-    const [[{ totalDokumen }]]  = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE 1=1 ${dw}`, dp);
-    const [[{ terverifikasi }]] = await pool.query(`SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi" ${dw}`, dp);
-    const [[{ menunggu }]]      = await pool.query(`SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi" ${dw}`, dp);
-    const [[{ revisi }]]        = await pool.query(`SELECT COUNT(*) AS revisi FROM dokumen WHERE status = "revisi" ${dw}`, dp);
+    const [[{ totalDokumen }]]  = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen`);
+    const [[{ terverifikasi }]] = await pool.query(`SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi"`);
+    const [[{ menunggu }]]      = await pool.query(`SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi"`);
+    const [[{ lolosAdmin }]]    = await pool.query(`SELECT COUNT(*) AS lolosAdmin FROM dokumen WHERE status = "lolos_admin"`);
+    const [[{ revisi }]]        = await pool.query(`SELECT COUNT(*) AS revisi FROM dokumen WHERE status = "revisi"`);
     const [[{ onlineNow }]]     = await pool.query('SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1');
 
     // Grafik 1: jumlah upload per staff
-    const staffWhere = divId !== null ? ' AND u.divisi_id = ?' : '';
-    const joinCond   = divId !== null ? ' AND d.divisi_id = ?' : '';
     const [perStaff] = await pool.query(
       `SELECT u.nama,
               COUNT(d.id) AS total,
               SUM(d.status = 'terverifikasi') AS terverifikasi,
               SUM(d.status = 'revisi') AS revisi
        FROM users u
-       LEFT JOIN dokumen d ON d.uploaded_by = u.id ${joinCond}
-       WHERE u.role_id = 2 AND u.is_active = 1 ${staffWhere}
+       LEFT JOIN dokumen d ON d.uploaded_by = u.id
+       WHERE u.role_id = 2 AND u.is_active = 1
        GROUP BY u.id, u.nama
-       ORDER BY total DESC`,
-      divId !== null ? [divId, divId] : []
+       ORDER BY total DESC`
     );
 
     // Grafik 2: upload harian 14 hari terakhir
     const [perHari] = await pool.query(
       `SELECT DATE(created_at) AS tanggal, COUNT(*) AS total
        FROM dokumen
-       WHERE created_at >= CURDATE() - INTERVAL 13 DAY ${dw}
+       WHERE created_at >= CURDATE() - INTERVAL 13 DAY
        GROUP BY DATE(created_at)
-       ORDER BY tanggal ASC`,
-      dp
+       ORDER BY tanggal ASC`
     );
 
     // Grafik 3: distribusi status dokumen
     const [statusDist] = await pool.query(
-      `SELECT status, COUNT(*) AS total FROM dokumen WHERE 1=1 ${dw} GROUP BY status`,
-      dp
+      `SELECT status, COUNT(*) AS total FROM dokumen GROUP BY status`
     );
 
     // User online untuk panel samping
@@ -80,7 +63,7 @@ async function getStats(req, res, next) {
     return res.json({
       success: true,
       data: {
-        totalDokumen, terverifikasi, menunggu, revisi, onlineNow,
+        totalDokumen, terverifikasi, menunggu, lolosAdmin: lolosAdmin ?? 0, revisi, onlineNow,
         perStaff, perHari, statusDist, onlineUsers,
       },
     });
@@ -93,13 +76,11 @@ async function getUsers(req, res, next) {
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, u.email, u.is_active,
               u.last_login, u.password_reset_at, u.created_at, r.nama AS role,
-              dv.nama AS divisi,
               (SELECT is_online FROM user_sessions s
                WHERE s.user_id = u.id AND s.is_online = 1
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
        FROM users u
        JOIN roles r ON r.id = u.role_id
-       LEFT JOIN divisi dv ON dv.id = u.divisi_id
        ORDER BY u.created_at DESC`
     );
     return res.json({ success: true, data: rows });
@@ -109,25 +90,43 @@ async function getUsers(req, res, next) {
 // ── GET /api/ketua/dokumen — monitor semua dokumen (read-only) ──
 async function getDokumen(req, res, next) {
   try {
-    const { status, divisi } = req.query;
+    const { status } = req.query;
     const limit  = Math.min(Number(req.query.limit) || 100, 200);
 
     let where = '1=1';
     const params = [];
     if (status) { where += ' AND d.status = ?'; params.push(status); }
-    if (divisi) { where += ' AND dv.slug = ?';  params.push(divisi); }
 
     const [rows] = await pool.query(
-      `SELECT d.id, d.judul, d.tahun, d.status, d.created_at, d.updated_at,
-              k.nama AS kategori, u.nama AS uploaded_by, dv.nama AS divisi
+      `SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan,
+              d.created_at, d.updated_at,
+              k.nama AS kategori, u.nama AS uploaded_by
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
        JOIN users u ON u.id = d.uploaded_by
-       LEFT JOIN divisi dv ON dv.id = d.divisi_id
        WHERE ${where}
        ORDER BY d.created_at DESC
        LIMIT ?`,
       [...params, limit]
+    );
+    return res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+}
+
+// ── GET /api/ketua/dokumen/menunggu — dokumen lolos admin ─────
+async function getDokumenMenungguKetua(req, res, next) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
+              d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
+              d.created_at, d.updated_at,
+              k.nama AS kategori, k.slug AS kategori_slug,
+              u.nama AS uploaded_by
+       FROM dokumen d
+       JOIN kategori_dokumen k ON k.id = d.kategori_id
+       JOIN users u ON u.id = d.uploaded_by
+       WHERE d.status = 'lolos_admin'
+       ORDER BY d.updated_at ASC`
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -238,29 +237,14 @@ const kirimNotifikasiRules = [
 
 async function kirimNotifikasi(req, res, next) {
   try {
-    const { target, pesan, judul, divisi_id } = req.body;
+    const { target, pesan, judul } = req.body;
 
-    // Tentukan daftar penerima: 'all', 'divisi' + divisi_id, atau satu user_id
+    // Tentukan daftar penerima: 'all' (broadcast) atau satu user_id
     let targets = [];
-    let namaDivisi = null;
     if (target === 'all') {
       const [users] = await pool.query(
         'SELECT id FROM users WHERE is_active = 1 AND id != ?', [req.user.id]
       );
-      targets = users.map((u) => u.id);
-    } else if (target === 'divisi') {
-      // Semua user aktif di divisi tersebut (staff + admin divisi)
-      const [[dv]] = await pool.query('SELECT id, nama FROM divisi WHERE id = ?', [Number(divisi_id)]);
-      if (!dv) {
-        return res.status(404).json({ success: false, message: 'Divisi tidak ditemukan' });
-      }
-      namaDivisi = dv.nama;
-      const [users] = await pool.query(
-        'SELECT id FROM users WHERE divisi_id = ? AND is_active = 1', [dv.id]
-      );
-      if (!users.length) {
-        return res.status(400).json({ success: false, message: `Tidak ada user aktif di divisi ${dv.nama}` });
-      }
       targets = users.map((u) => u.id);
     } else {
       const [users] = await pool.query(
@@ -289,22 +273,20 @@ async function kirimNotifikasi(req, res, next) {
       user_id: req.user.id,
       aksi: 'kirim_notifikasi',
       entitas: 'notifikasi',
-      detail: { target, divisi: namaDivisi || undefined, jumlah_penerima: targets.length, judul: judul || 'Pesan dari Ketua Tim' },
+      detail: { target, jumlah_penerima: targets.length, judul: judul || 'Pesan dari Ketua Tim' },
       ip: req.ip,
     });
 
     return res.json({
       success: true,
-      message: namaDivisi
-        ? `Notifikasi terkirim ke ${targets.length} user di divisi ${namaDivisi}`
-        : `Notifikasi terkirim ke ${targets.length} user`,
+      message: `Notifikasi terkirim ke ${targets.length} user`,
       data: { jumlah_penerima: targets.length },
     });
   } catch (err) { next(err); }
 }
 
 module.exports = {
-  getStats, getUsers, getDokumen,
+  getStats, getUsers, getDokumen, getDokumenMenungguKetua,
   toggleUserActive, resetPassword,
   kirimNotifikasi, kirimNotifikasiRules,
 };

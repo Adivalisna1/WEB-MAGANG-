@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Save, ArrowLeft, Loader2, AlertCircle,
-  CheckCircle, CloudUpload, FileText, X, RefreshCw, Building2
+  CheckCircle, CloudUpload, FileText, X, RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -14,9 +14,11 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 interface Kategori { id: number; nama: string; }
 interface Dokumen {
   id: number; judul: string; tahun: number; bulan: number | null;
+  semester: number | null; nomor_laporan: string | null;
   kategori_id?: number; deskripsi: string | null;
   status: string; file_nama: string; file_size: number;
   catatan: string | null;
+  catatan_oleh: string | null;
 }
 
 const TAHUN_LIST = Array.from(
@@ -32,16 +34,15 @@ export default function EditDokumenPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
 
-  // Divisi staff — read-only, dokumen otomatis ikut divisi uploader
-  const staffDivisi = getSession()?.user?.divisi ?? null;
-
   const [dokumen,      setDokumen]      = useState<Dokumen | null>(null);
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
 
   // State metadata
   const [judul,      setJudul]      = useState('');
   const [tahun,      setTahun]      = useState('');
+  const [jenisPeriode, setJenisPeriode] = useState<'bulan' | 'semester'>('bulan');
   const [bulan,      setBulan]      = useState('');
+  const [semester,   setSemester]   = useState('');
   const [kategoriId, setKategoriId] = useState('');
   const [deskripsi,  setDeskripsi]  = useState('');
 
@@ -73,7 +74,9 @@ export default function EditDokumenPage() {
         setDokumen(found);
         setJudul(found.judul);
         setTahun(String(found.tahun));
+        setJenisPeriode(found.semester ? 'semester' : 'bulan');
         setBulan(found.bulan != null ? String(found.bulan) : '');
+        setSemester(found.semester != null ? String(found.semester) : '');
         setDeskripsi(found.deskripsi ?? '');
         setKategoriList(katRes.data ?? []);
       })
@@ -95,8 +98,8 @@ export default function EditDokumenPage() {
       setGantiError('Format tidak didukung. Gunakan PDF, DOC, DOCX, XLS, XLSX.');
       return;
     }
-    if (picked.size > 100 * 1024 * 1024) {
-      setGantiError('Ukuran file melebihi 100MB.');
+    if (picked.size > 50 * 1024 * 1024) {
+      setGantiError('Ukuran file melebihi 50MB.');
       return;
     }
     setGantiError('');
@@ -145,7 +148,9 @@ export default function EditDokumenPage() {
         body: JSON.stringify({
           judul,
           tahun: Number(tahun),
+          // Periode: pilih salah satu — bulan ATAU semester
           bulan: bulan ? Number(bulan) : null,
+          semester: semester ? Number(semester) : null,
           kategori_id: kategoriId ? Number(kategoriId) : undefined,
           deskripsi: deskripsi || undefined,
         }),
@@ -201,20 +206,16 @@ export default function EditDokumenPage() {
             }`}>
               {dokumen.status.replace(/_/g, ' ')}
             </span>
-            {staffDivisi && (
-              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-cyan-100 text-cyan-800">
-                <Building2 className="w-3 h-3" />
-                Divisi: {staffDivisi}
-              </span>
-            )}
           </div>
         )}
       </div>
 
-      {/* Catatan revisi dari admin */}
+      {/* Catatan revisi dari reviewer (Admin / Ketua Tim) */}
       {dokumen?.catatan && dokumen.status === 'revisi' && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-orange-700 mb-1">📝 Catatan Revisi dari Admin:</p>
+          <p className="text-xs font-semibold text-orange-700 mb-1">
+            Catatan Revisi dari {dokumen.catatan_oleh === 'ketua_tim' ? 'Ketua Tim' : 'Admin'}:
+          </p>
           <p className="text-sm text-orange-800">{dokumen.catatan}</p>
         </div>
       )}
@@ -279,7 +280,7 @@ export default function EditDokumenPage() {
               <CloudUpload className={`w-8 h-8 mx-auto mb-2 ${dragging ? 'text-primary-500' : 'text-gray-300'}`} />
               <p className="text-sm font-medium text-gray-700">Drag & drop file pengganti</p>
               <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
-              <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, XLS, XLSX • Maks 100MB</p>
+              <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, XLS, XLSX • Maks 50MB</p>
             </div>
           )}
 
@@ -351,27 +352,49 @@ export default function EditDokumenPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Bulan <span className="text-gray-400 font-normal">(opsional)</span>
+              Periode <span className="text-gray-400 font-normal">(opsional)</span>
             </label>
-            <select
-              value={bulan}
-              onChange={e => setBulan(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-            >
-              <option value="">Tanpa bulan</option>
-              <option value="1">Januari</option>
-              <option value="2">Februari</option>
-              <option value="3">Maret</option>
-              <option value="4">April</option>
-              <option value="5">Mei</option>
-              <option value="6">Juni</option>
-              <option value="7">Juli</option>
-              <option value="8">Agustus</option>
-              <option value="9">September</option>
-              <option value="10">Oktober</option>
-              <option value="11">November</option>
-              <option value="12">Desember</option>
-            </select>
+            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+              <button type="button" onClick={() => setJenisPeriode('bulan')}
+                className={`flex-1 py-2 font-medium transition-colors ${jenisPeriode === 'bulan' ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                Bulan
+              </button>
+              <button type="button" onClick={() => setJenisPeriode('semester')}
+                className={`flex-1 py-2 font-medium transition-colors ${jenisPeriode === 'semester' ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                Semester
+              </button>
+            </div>
+            {jenisPeriode === 'bulan' ? (
+              <select
+                value={bulan}
+                onChange={e => setBulan(e.target.value)}
+                className="w-full mt-2 px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">Tanpa bulan</option>
+                <option value="1">Januari</option>
+                <option value="2">Februari</option>
+                <option value="3">Maret</option>
+                <option value="4">April</option>
+                <option value="5">Mei</option>
+                <option value="6">Juni</option>
+                <option value="7">Juli</option>
+                <option value="8">Agustus</option>
+                <option value="9">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+              </select>
+            ) : (
+              <select
+                value={semester}
+                onChange={e => setSemester(e.target.value)}
+                className="w-full mt-2 px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">Tanpa semester</option>
+                <option value="1">Semester 1 (Jan–Jun)</option>
+                <option value="2">Semester 2 (Jul–Des)</option>
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Tahun</label>

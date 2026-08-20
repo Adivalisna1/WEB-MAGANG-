@@ -1,6 +1,6 @@
 # Web Dashboard Laporan
 
-Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan instansi pemerintah. Publik dapat mengunduh dokumen tanpa login, staff dapat upload dan mengajukan verifikasi, admin dapat menyetujui dan memantau aktivitas, ketua tim dapat memantau sistem serta mengelola pengguna di atas admin.
+Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan instansi pemerintah. Publik dapat mengunduh dokumen tanpa login, staff dapat upload dan mengajukan verifikasi, admin menyaring dokumen di tahap pertama, dan ketua tim memberikan persetujuan final untuk publikasi.
 
 ---
 
@@ -19,54 +19,122 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 ## Fitur
 
 ### Dashboard Publik
-- Daftar dokumen terverifikasi dengan filter kategori, **divisi**, tahun, dan pencarian
+- Daftar dokumen terverifikasi dengan filter kategori, tahun, dan pencarian (juga mencocokkan nomor laporan)
 - Download dokumen langsung tanpa login
 - Halaman detail dokumen
 - Statistik total dokumen, kategori, dan unduhan
 
 ### Dashboard Staff
-- Upload dokumen dengan drag & drop (maks 100MB)
-- **Dokumen otomatis mewarisi divisi staff yang upload** (read-only badge di halaman upload & edit)
-- Edit metadata dokumen (judul, kategori, tahun, deskripsi)
+- Upload dokumen dengan drag & drop (maks **50MB**)
+- Pilih periode laporan: **Bulan** ATAU **Semester** (tidak bisa keduanya)
+- Nomor laporan otomatis ter-generate (format `{KATEGORI}/{TAHUN}/{ID}`, contoh `LKJIP/2024/001`)
+- Edit metadata dokumen (judul, kategori, tahun, periode, deskripsi)
 - **Ganti file dokumen saat status draft atau revisi** (tanpa hapus dan upload ulang)
 - Submit dokumen untuk verifikasi
-- Lihat status dokumen dan catatan revisi dari admin
+- Lihat status dokumen (termasuk "Menunggu Admin" dan "Menunggu Ketua Tim") dan catatan revisi beserta siapa yang memberi catatan
 - Ganti password dan kelola profil
 - Tombol kembali ke beranda publik
 
 ### Dashboard Admin
 - Statistik realtime (total dokumen, menunggu verifikasi, user online)
-- Verifikasi dokumen dengan preview PDF langsung di modal
-- Setujui atau kembalikan dokumen untuk revisi dengan catatan
+- **Penyaring pertama verifikasi**: tinjau dokumen dengan preview PDF langsung di modal
+- **"Loloskan ke Ketua Tim"** (status `lolos_admin`) atau **"Kembalikan Revisi"** dengan catatan
 - Monitoring user online realtime (auto refresh 30 detik)
 - Manajemen user — tambah, aktifkan/nonaktifkan, hapus
 - **Kelola kategori dokumen** — tambah, edit, hapus, aktif/nonaktif dari dashboard
-- **Kelola divisi/departemen** — tambah, edit, hapus, aktif/nonaktif dari dashboard
-- **Ubah divisi dokumen** lewat modal tinjau dokumen
 - Log aktivitas sistem dengan pagination dan hapus riwayat
 - Hapus dokumen beserta file fisiknya
 - Tombol kembali ke beranda publik
 
 ### Dashboard Ketua Tim
-- hierarki di atas admin — khusus monitoring & manajemen, tidak bisa upload/verifikasi/hapus dokumen
-- dashboard grafik realtime (auto refresh 30 detik): jumlah dokumen per staff, trend upload 14 hari, distribusi status dokumen, dan daftar user online
-- Monitor semua dokumen secara read-only (siapa upload, status, kategori, tanggal)
+- **Persetujuan final dokumen** — panel "Menunggu Persetujuan Saya" berisi dokumen `lolos_admin`
+- **"Setujui & Publish"** (tampil di publik) atau **"Kembalikan Revisi"** dengan catatan wajib
+- Dashboard grafik realtime (auto refresh 30 detik): jumlah dokumen per staff, trend upload 14 hari, distribusi status dokumen, dan daftar user online
+- Monitor semua dokumen (siapa upload, status, kategori, tanggal)
 - Lihat semua user admin & staff beserta status online dan riwayat reset password
 - Aktifkan/nonaktifkan akun admin & staff yang sudah tidak bekerja
 - Reset password user — password baru di-generate otomatis dan **hanya ditampilkan sekali**, riwayat waktu reset tercatat
-- Kirim notifikasi manual: pengumuman ke semua user (broadcast), ke semua user aktif di **divisi tertentu**, atau pesan ke satu user tertentu
+- Kirim notifikasi manual: pengumuman ke semua user (broadcast) atau pesan ke satu user tertentu
 - Lihat log aktivitas seluruh sistem dengan pagination
-- guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
-- **Filter divisi** untuk drill-down grafik & monitor dokumen (akses tetap global)
+- Guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
 
-### Sistem Divisi & Role Admin Divisi (admin_dept)
-- Divisi = master data (Perencanaan, Keuangan, Kepegawaian, Hukum, Sekretariat) yang di-CRUD oleh admin global
-- Staff punya divisi; dokumen **otomatis mewarisi divisi uploader** saat upload
-- Role baru `admin_dept` (id 4) — memakai dashboard & API yang sama dengan admin (`/admin`, `/api/admin/*`), tapi semua data ter-scope ke divisinya sendiri
-- Guard: admin_dept menyentuh data divisi lain → **403**; tidak bisa kelola admin/ketua tim/admin_dept divisi lain; hanya bisa menambah staff sedivisi
-- Hierarki: ketua_tim (global) > admin (global) > admin_dept (scoped per divisi) > staff (dokumen sendiri)
-- Publik melihat semua dokumen campuran + dropdown filter divisi
-- Master data kategori & divisi tetap milik admin global (tidak di-scope)
+---
+
+## Proses Bisnis
+
+Sistem ini mengelola siklus hidup dokumen laporan instansi — mulai dari pembuatan laporan oleh staff sampai dipublikasikan ke masyarakat — dengan **verifikasi berjenjang dua tahap** untuk menjamin tidak ada dokumen yang terbit tanpa melalui penyaringan Admin dan persetujuan final Ketua Tim.
+
+### Pelaku & Tanggung Jawab
+
+| Pelaku | Tanggung Jawab dalam Proses Bisnis |
+|---|---|
+| **Staff** | Menyusun laporan, mengupload dokumen, melengkapi metadata (kategori, tahun, bulan/semester), mengajukan verifikasi, dan memperbaiki dokumen berdasarkan catatan revisi |
+| **Admin** | Penyaring pertama — meninjau isi dokumen (preview PDF), meloloskan dokumen layak ke Ketua Tim atau mengembalikannya ke staff dengan catatan revisi; mengelola user, kategori, dan operasional sistem |
+| **Ketua Tim** | Pemegang otoritas final — meninjau dokumen yang lolos Admin lalu menyetujui untuk dipublikasikan atau mengembalikan untuk revisi; mengawasi kinerja lewat grafik realtime dan mengelola akun |
+| **Publik** | Mencari, melihat detail, dan mengunduh dokumen yang sudah terverifikasi — tanpa perlu login |
+
+### Alur Utama (End-to-End)
+
+| Tahap | Pelaku | Aksi | Hasil / Status Dokumen |
+|---|---|---|---|
+| 1 | Staff | Upload file laporan (PDF/Word/Excel, maks 50MB) + isi metadata | `draft` — nomor laporan otomatis ter-generate (`{KATEGORI}/{TAHUN}/{ID}`) |
+| 2 | Staff | Submit dokumen untuk verifikasi | `menunggu_verifikasi` — Admin menerima notifikasi |
+| 3 | Admin | Tinjau isi dokumen lewat preview PDF di modal | — |
+| 4a | Admin | **Loloskan** | `lolos_admin` — masuk antrian Ketua Tim + notifikasi |
+| 4b | Admin | **Kembalikan Revisi** + catatan | `revisi` — staff menerima notifikasi berisi catatan (tercantum dari Admin) |
+| 5 | Ketua Tim | Tinjau dokumen di panel "Menunggu Persetujuan Saya" (preview PDF) | — |
+| 6a | Ketua Tim | **Setujui & Publish** | `terverifikasi` — langsung tampil di dashboard publik |
+| 6b | Ketua Tim | **Kembalikan Revisi** + catatan wajib | `revisi` — staff menerima notifikasi berisi catatan (tercantum dari Ketua Tim) |
+| 7 | Publik | Cari dokumen (filter kategori/tahun atau nomor laporan) lalu download | `download_count` bertambah |
+
+### Loop Revisi
+
+Dokumen yang dikembalikan (tahap 4b atau 6b) kembali ke staff. Staff membaca catatan revisi — lengkap dengan informasi **siapa yang memberi catatan** (Admin atau Ketua Tim) — lalu memperbaiki metadata dan/atau mengganti file, kemudian submit ulang. Dokumen masuk lagi ke tahap penyaringan Admin dari awal. Loop ini berulang sampai dokumen lolos kedua tahap.
+
+```mermaid
+flowchart LR
+    subgraph STAFF["Staff"]
+        A[Upload Laporan] --> B[Submit]
+        F[Perbaiki sesuai catatan\ndan submit ulang]
+    end
+    subgraph ADMIN["Admin — Penyaring 1"]
+        C{Layak?}
+    end
+    subgraph KETUA["Ketua Tim — Final"]
+        D{Setuju?}
+    end
+    subgraph PUBLIK["Publik"]
+        E[Cari & Download]
+    end
+
+    B -->|menunggu_verifikasi| C
+    C -->|Loloskan| D
+    C -->|Revisi + catatan| F
+    D -->|Setujui & Publish| E
+    D -->|Revisi + catatan| F
+    F -->|menunggu_verifikasi| C
+```
+
+### Proses Pendukung
+
+| Proses | Pelaku | Keterangan |
+|---|---|---|
+| Manajemen akun | Admin & Ketua Tim | Tambah/nonaktifkan/hapus user; Ketua Tim bisa reset password (password baru tampil sekali + riwayat reset tercatat) |
+| Lupa password | Staff/Admin | Hubungi Ketua Tim/Admin untuk reset password (halaman `/forgot-password` berisi instruksi) |
+| Pengelolaan kategori | Admin | Tambah/edit/hapus/aktif-nonaktif kategori laporan dari dashboard |
+| Monitoring & evaluasi | Ketua Tim | Grafik realtime 30 detik: produktivitas per staff, trend upload 14 hari, distribusi status dokumen |
+| Komunikasi internal | Ketua Tim | Kirim pengumuman broadcast ke semua user atau pesan ke user tertentu |
+| Audit trail | Sistem | Semua aksi tercatat di log aktivitas (dilihat Admin & Ketua Tim) + notifikasi in-app di setiap tahap verifikasi |
+
+### Aturan Bisnis
+
+1. Dokumen **hanya bisa diupload oleh staff** dan baru tampil di publik setelah lolos **dua tahap** verifikasi.
+2. Admin **tidak bisa mempublikasikan** dokumen — kewenangannya hanya meloloskan ke Ketua Tim atau mengembalikan revisi.
+3. Catatan revisi **wajib diisi** saat mengembalikan dokumen; staff selalu tahu siapa pemberi catatnya (`catatan_oleh`).
+4. Nomor laporan bersifat **unik dan otomatis** — tidak bisa diatur manual, menjamin konsistensi kode tracking.
+5. Periode laporan diisi **Bulan ATAU Semester** (Sem 1 = Jan–Jun, Sem 2 = Jul–Des), tidak bisa keduanya.
+6. File maksimal **50MB** dengan format PDF/DOC/DOCX/XLS/XLSX.
+7. Akun yang dinonaktifkan tidak bisa login; ketua tim dilindungi guard — tidak bisa dinonaktifkan/diubah oleh admin maupun sesama ketua tim.
 
 ---
 
@@ -128,23 +196,23 @@ docker-compose down
 
 | Tabel | Fungsi |
 |---|---|
-| `roles` | Daftar role: admin, staff, ketua_tim, admin_dept |
-| `users` | Data semua user (admin, staff, ketua tim, admin divisi) + `divisi_id` |
+| `roles` | Daftar role: admin, staff, ketua_tim |
+| `users` | Data semua user (admin, staff, ketua tim) |
 | `user_sessions` | Tracking session login — untuk monitoring online |
-| `divisi` | Master data divisi/departemen (Perencanaan, Keuangan, dll.) |
 | `kategori_dokumen` | Kategori laporan: LKjIP, Renstra, Renja, RKT, PK, LAKIP, IKU, Lainnya |
-| `dokumen` | Data utama laporan + status alur verifikasi + `divisi_id` |
+| `dokumen` | Data utama laporan + status alur verifikasi 2 tahap + `nomor_laporan`, `bulan`/`semester`, `catatan_oleh` |
 | `aktivitas_log` | Log semua aksi user di sistem |
-| `notifikasi` | Notifikasi in-app (submit, approve, reject, pesan ketua tim, reset password) |
+| `notifikasi` | Notifikasi in-app (submit, lolos, approve, reject, pesan ketua tim, reset password) |
 
 ### Status Dokumen
 
 | Status | Keterangan |
 |---|---|
 | `draft` | Baru diupload, belum diajukan |
-| `menunggu_verifikasi` | Sudah disubmit staff, menunggu admin |
-| `terverifikasi` | Disetujui admin, tampil di publik |
-| `revisi` | Dikembalikan admin, staff perlu perbaiki |
+| `menunggu_verifikasi` | Sudah disubmit staff, menunggu tinjauan Admin |
+| `lolos_admin` | Lolos tinjauan Admin, menunggu persetujuan final Ketua Tim |
+| `terverifikasi` | Disetujui Ketua Tim, tampil di publik |
+| `revisi` | Dikembalikan Admin/Ketua Tim, staff perlu perbaiki |
 | `diarsipkan` | Diarsipkan, tidak tampil di publik |
 
 ### Kategori Dokumen Default
@@ -161,18 +229,6 @@ docker-compose down
 | Lainnya | `lainnya` | 99 |
 
 > Kategori bisa ditambah/diedit/dihapus langsung dari dashboard admin di menu **Kelola Kategori**
-
-### Divisi Default
-
-| Nama | Slug | Urutan |
-|---|---|---|
-| Perencanaan | `perencanaan` | 1 |
-| Keuangan | `keuangan` | 2 |
-| Kepegawaian | `kepegawaian` | 3 |
-| Hukum | `hukum` | 4 |
-| Sekretariat | `sekretariat` | 5 |
-
-> Divisi bisa ditambah/diedit/dihapus langsung dari dashboard admin di menu **Kelola Divisi**
 
 ---
 
@@ -238,7 +294,7 @@ cp .env.example .env
 | Item | Nilai |
 |---|---|
 | Format yang didukung | PDF, DOC, DOCX, XLS, XLSX |
-| Ukuran maksimal | 100 MB per file |
+| Ukuran maksimal | 50 MB per file |
 | Penyimpanan | Docker Volume (uploads_data) |
 
 ---
@@ -249,8 +305,10 @@ cp .env.example .env
 stateDiagram-v2
     [*] --> Draft: Staff Upload
     Draft --> Menunggu_Verifikasi: Staff Submit
-    Menunggu_Verifikasi --> Terverifikasi: Admin Setujui
-    Menunggu_Verifikasi --> Revisi: Admin Revisi + Catatan
+    Menunggu_Verifikasi --> Lolos_Admin: Admin Loloskan
+    Menunggu_Verifikasi --> Revisi: Admin Kembalikan + Catatan
+    Lolos_Admin --> Terverifikasi: Ketua Tim Setujui
+    Lolos_Admin --> Revisi: Ketua Tim Kembalikan + Catatan
     Revisi --> Menunggu_Verifikasi: Staff Edit & Submit Ulang
     Terverifikasi --> [*]: Tampil di Dashboard Publik
 ```
@@ -303,11 +361,15 @@ flowchart TD
         P2D --> P2E[Submit Verifikasi\nstatus: menunggu]
     end
 
-    subgraph P3["3. Verifikasi Dokumen"]
+    subgraph P3["3. Verifikasi Dokumen 2 Tahap"]
         P3A[Admin Tinjau Dokumen] --> P3B[Preview PDF di Modal]
         P3B --> P3C{Keputusan Admin}
-        P3C -->|Setujui| P3D[status: terverifikasi\nis_public: true]
+        P3C -->|Loloskan| P3D[status: lolos_admin]
         P3C -->|Revisi| P3E[status: revisi\n+ catatan admin]
+        P3D --> P3G[Ketua Tim Tinjau]
+        P3G --> P3H{Keputusan Ketua Tim}
+        P3H -->|Setujui| P3I[status: terverifikasi\nis_public: true]
+        P3H -->|Revisi| P3E
         P3E --> P3F[Staff Edit & Submit Ulang]
     end
 
@@ -323,9 +385,9 @@ flowchart TD
     end
 
     subgraph P6["6. Manajemen Ketua Tim"]
-        P6A[Fetch Statistik & Grafik\nRealtime 30 Detik] --> P6B[Monitor Dokumen\nRead-Only]
+        P6A[Fetch Statistik & Grafik\nRealtime 30 Detik] --> P6B[Approve/Reject Dokumen\nLolos Admin]
         P6B --> P6C[Kelola User Admin & Staff\nNonaktifkan / Reset Password]
-        P6C --> P6D[Kirim Notifikasi\nSemua / Divisi / Satu User]
+        P6C --> P6D[Kirim Notifikasi\nSemua / Satu User]
         P6D --> P6E[Lihat Log Aktivitas\nSeluruh Sistem]
     end
 
@@ -371,8 +433,11 @@ flowchart TD
     M --> N{Perlu Edit?}
     N -->|Ya| O[Edit Metadata] --> N
     N -->|Tidak| P[Submit Verifikasi\nStatus: Menunggu]
-    P --> Q{Hasil Verifikasi?}
-    Q -->|Disetujui| R[Status: Terverifikasi\nMuncul di Publik]
+    P --> Q{Hasil Tinjauan Admin?}
+    Q -->|Lolos| R[Status: lolos_admin\nMenunggu Ketua Tim]
+    R --> R2{Hasil Ketua Tim?}
+    R2 -->|Setujui| R3[Status: Terverifikasi\nMuncul di Publik]
+    R2 -->|Revisi| S[Lihat Catatan] 
     Q -->|Revisi| S[Lihat Catatan Admin]
     S --> O
 
@@ -384,7 +449,7 @@ flowchart TD
     X -->|Verifikasi| Y[Lihat Dokumen Menunggu]
     Y --> Z[Preview PDF di Modal]
     Z --> AA{Keputusan?}
-    AA -->|Setujui| AB[Dokumen Publik]
+    AA -->|Loloskan| AB[Ke Antrian Ketua Tim]
     AA -->|Revisi| AC[Isi Catatan ke Staff]
     X -->|Kelola User| AD2[Tambah / Nonaktifkan / Hapus]
     X -->|Monitor| AE[Lihat User Online Realtime]
@@ -395,7 +460,8 @@ flowchart TD
     AH -->|Tidak| AI[Tampilkan Error] --> AG
     AH -->|Ya| AJ[Dashboard Ketua Tim\nGrafik Realtime 30 Detik]
     AJ --> AK{Pilih Menu}
-    AK -->|Monitor| AL[Lihat Semua Dokumen\nRead-Only]
+    AK -->|Verifikasi| AL2[Setujui & Publish /\nKembalikan Revisi]
+    AK -->|Monitor| AL[Lihat Semua Dokumen]
     AK -->|Kelola User| AM[Nonaktifkan Admin/Staff\n+ Reset Password]
     AK -->|Notifikasi| AN[Broadcast / Pesan\nke Satu User]
     AK -->|Log| AO[Lihat Log Aktivitas]
@@ -425,19 +491,27 @@ flowchart LR
         S14 --> S9
     end
 
-    subgraph ADMIN["🛡️ Admin"]
+    subgraph ADMIN["🛡️ Admin — Penyaring 1"]
         A1([Dokumen Masuk]) --> A2[Buka Verifikasi]
         A2 --> A3[Klik Tinjau]
         A3 --> A4[Preview PDF]
         A4 --> A5{Keputusan}
-        A5 -->|Setujui| A6[Status: Terverifikasi\nis_public: true]
+        A5 -->|Loloskan| A6[Status: lolos_admin\nNotif ke Ketua Tim]
         A5 -->|Revisi| A7[Isi Catatan\nKirim ke Staff]
-        A6 --> A8([Muncul di Publik])
         A7 --> A9([Kembali ke Staff])
     end
 
+    subgraph KETUA["👑 Ketua Tim — Persetujuan Final"]
+        K1([Dokumen lolos_admin]) --> K2{Tinjau}
+        K2 -->|Setujui| K3[Status: terverifikasi\nis_public: true]
+        K2 -->|Revisi| K4[Isi Catatan\nKirim ke Staff]
+        K3 --> K5([Muncul di Publik])
+    end
+
     S11 -.->|Masuk antrian| A1
+    A6 -.->|Masuk antrian| K1
     A9 -.->|Notif revisi| S12
+    K4 -.->|Notif revisi| S12
 ```
 
 ---
@@ -484,9 +558,10 @@ flowchart TD
     B --> C[Grafik: Dokumen per Staff,\nTrend 14 Hari, Distribusi Status]
     C --> D{Pilih Menu}
 
+    D -->|Verifikasi Final| E2[Setujui & Publish /\nKembalikan Revisi]
     D -->|Monitor Dokumen| E[Lihat Semua Dokumen\nSiapa Upload, Status, Kategori]
     D -->|Kelola User| F[Lihat User Admin & Staff\n+ Status Online]
-    D -->|Kirim Notifikasi| G[Broadcast Semua User\n/ Divisi Tertentu / Satu User]
+    D -->|Kirim Notifikasi| G[Broadcast Semua User\n/ Satu User]
     D -->|Log| H[Lihat Log Aktivitas\nSeluruh Sistem]
 
     F --> I{Aksi?}
@@ -546,7 +621,6 @@ erDiagram
     users {
         int id PK
         tinyint role_id FK
-        smallint divisi_id FK
         varchar nama
         varchar username
         varchar email
@@ -569,22 +643,19 @@ erDiagram
         varchar slug
         tinyint is_active
     }
-    divisi {
-        smallint id PK
-        varchar nama
-        varchar slug
-        tinyint urutan
-        tinyint is_active
-    }
     dokumen {
         int id PK
         smallint kategori_id FK
-        smallint divisi_id FK
         int uploaded_by FK
         varchar judul
+        varchar nomor_laporan
         year tahun
+        tinyint bulan
+        tinyint semester
         varchar file_path
         enum status
+        text catatan
+        varchar catatan_oleh
         tinyint is_public
         int download_count
         int verified_by FK
@@ -615,8 +686,6 @@ erDiagram
     users ||--o{ notifikasi : "menerima"
     dokumen ||--o{ notifikasi : "terkait"
     kategori_dokumen ||--o{ dokumen : "kategori"
-    divisi ||--o{ dokumen : "milik"
-    divisi ||--o{ users : "anggota"
 ```
 
 ---
@@ -635,7 +704,6 @@ erDiagram
 |---|---|---|
 | GET | `/api/dokumen` | Publik |
 | GET | `/api/dokumen/kategori` | Publik |
-| GET | `/api/dokumen/divisi` | Publik |
 | GET | `/api/dokumen/:id` | Publik |
 | GET | `/api/dokumen/:id/download` | Publik |
 | GET | `/api/dokumen/all` | Staff/Admin |
@@ -644,7 +712,8 @@ erDiagram
 | PATCH | `/api/dokumen/:id/submit` | Staff |
 | PATCH | `/api/dokumen/:id/file` | Staff/Admin |
 | GET | `/api/dokumen/:id/preview` | Admin |
-| PATCH | `/api/dokumen/:id/verify` | Admin |
+| PATCH | `/api/dokumen/:id/verify` | Admin — aksi `lolos` / `reject` (penyaring 1) |
+| PATCH | `/api/dokumen/:id/ketua-verify` | Ketua Tim — aksi `approve` / `reject` (persetujuan final) |
 | DELETE | `/api/dokumen/:id` | Admin |
 
 ### Admin
@@ -662,12 +731,6 @@ erDiagram
 | POST | `/api/admin/kategori` | Admin |
 | PATCH | `/api/admin/kategori/:id` | Admin |
 | DELETE | `/api/admin/kategori/:id` | Admin |
-| GET | `/api/admin/divisi` | Admin |
-| POST | `/api/admin/divisi` | Admin |
-| PATCH | `/api/admin/divisi/:id` | Admin |
-| DELETE | `/api/admin/divisi/:id` | Admin |
-
-> Endpoint `/api/admin/*` juga bisa diakses role `admin_dept` — tapi datanya otomatis ter-scope ke divisi milik admin_dept tersebut.
 
 ### User
 | Method | Endpoint | Akses |
@@ -685,6 +748,7 @@ erDiagram
 | PATCH | `/api/ketua/users/:id/toggle` | Ketua Tim |
 | POST | `/api/ketua/users/:id/reset-password` | Ketua Tim |
 | GET | `/api/ketua/dokumen` | Ketua Tim |
+| GET | `/api/ketua/dokumen/menunggu` | Ketua Tim — antrian `lolos_admin` |
 | GET | `/api/ketua/logs` | Ketua Tim |
 | POST | `/api/ketua/notifikasi/kirim` | Ketua Tim |
 
@@ -731,14 +795,14 @@ erDiagram
 | API endpoint baru `/api/ketua/*` + kolom `password_reset_at` | `backend/src/routes/ketua.js`, `backend/src/index.js`, `database/init/04_ketua_tim.sql` |
 | Sidebar ketua tim + update role-aware di navbar, auth context, dan hook | `frontend/src/components/ketua/KetuaSidebar.tsx`, `frontend/src/components/layout/Navbar.tsx`, `frontend/src/context/AuthContext.tsx`, `frontend/src/hooks/useRequireAuth.ts` |
 
-### v1.5.1 — Notifikasi Ketim per Divisi
+### v1.5.1 — Notifikasi Ketim per Divisi ❌ (dihapus di v2.0.0)
 
 | Perubahan | File yang Diubah |
 |---|---|
 | Mode target baru `'divisi'` + `divisi_id` di kirim notifikasi: kirim ke semua user aktif satu divisi (staff + admin divisi), error jelas bila divisi tanpa user aktif, log & response mencantumkan nama divisi | `backend/src/controllers/ketuaController.js` |
 | Tombol tujuan jadi 3 (Semua User / Divisi Tertentu / Satu User) + dropdown divisi dari endpoint publik + label konfirmasi menyebut nama divisi | `frontend/src/app/ketua/kirim-notifikasi/page.tsx` |
 
-### v1.5.0 — Sistem Divisi & Admin Divisi
+### v1.5.0 — Sistem Divisi & Admin Divisi ❌ (dihapus total di v2.0.0)
 
 | Perubahan | File yang Diubah |
 |---|---|
@@ -749,6 +813,24 @@ erDiagram
 | Halaman baru Kelola Divisi + kolom/filter divisi di admin dokumen & users | `frontend/src/app/admin/divisi/page.tsx`, `frontend/src/app/admin/dokumen/page.tsx`, `frontend/src/app/admin/users/page.tsx` |
 | Filter divisi di halaman publik + badge divisi di card dokumen | `frontend/src/components/ui/FilterBar.tsx`, `frontend/src/components/ui/DokumenCard.tsx`, `frontend/src/app/page.tsx` |
 | Akun contoh: `dept_keuangan` / `Dept@123` (Admin Divisi Keuangan) | `database/init/05_divisi.sql`, `DOCS.md` |
+
+### v2.0.0 — 20 Agustus 2026 (Refactoring Besar: Revisi Mentor & Ketua Tim)
+
+| Perubahan | File yang Diubah |
+|---|---|
+| **Verifikasi 2 tahap**: Admin loloskan (`lolos_admin`) → Ketua Tim setujui/publish (`terverifikasi`); status baru `lolos_admin` di ENUM | `database/init/01_schema.sql`, `database/migration_v2.sql`, `backend/src/controllers/dokumenController.js`, `backend/src/routes/dokumen.js` |
+| Endpoint baru `PATCH /api/dokumen/:id/ketua-verify` + `GET /api/ketua/dokumen/menunggu` | `backend/src/routes/dokumen.js`, `backend/src/routes/ketua.js`, `backend/src/controllers/ketuaController.js` |
+| **Hapus total sistem divisi & role `admin_dept`** — tabel `divisi`, kolom `divisi_id`, halaman `/admin/divisi`, filter divisi publik/ketua, endpoint `/api/admin/divisi` | seluruh backend + frontend + schema/seed |
+| **Kode tracking `nomor_laporan`** (`{KATEGORI}/{TAHUN}/{ID}`) — auto-generate saat upload + bisa dicari di halaman publik | `backend/src/controllers/dokumenController.js`, schema/seed |
+| **Field `semester`** (Sem 1 = Jan–Jun, Sem 2 = Jul–Des) — pilihan eksklusif dengan bulan di form upload & edit | `frontend/src/app/staff/dokumen/upload/page.tsx`, `frontend/src/app/staff/dokumen/[id]/edit/page.tsx` |
+| **Kolom `catatan_oleh`** — catatan revisi tampil beserta siapa yang memberi (Admin/Ketua Tim) | `database/migration_v2.sql`, `backend/src/controllers/dokumenController.js`, halaman staff |
+| **Batas upload 100MB → 50MB** | `backend/src/config/multer.js`, `backend/src/middleware/errorHandler.js`, `backend/src/index.js`, form upload & edit |
+| **Halaman `/forgot-password`** — instruksi hubungi Admin/Ketua Tim (belum ada email) | `frontend/src/app/forgot-password/page.tsx`, `frontend/src/app/login/page.tsx` |
+| UI Ketua Tim: panel "Menunggu Persetujuan Saya" + tombol Setujui & Publish / Kembalikan Revisi; UI Admin: Loloskan ke Ketua Tim / Kembalikan Revisi | `frontend/src/app/ketua/dokumen/page.tsx`, `frontend/src/app/admin/dokumen/page.tsx` |
+| **Preview dokumen untuk Ketua Tim** — tombol Tinjau + modal preview PDF (streaming dengan progress bar) di antrian persetujuan; fix header CORS invalid di endpoint preview | `frontend/src/app/ketua/dokumen/page.tsx`, `frontend/src/app/admin/dokumen/page.tsx`, `backend/src/controllers/dokumenController.js` |
+| Dokumentasi **Proses Bisnis** (pelaku & tanggung jawab, alur end-to-end, loop revisi, proses pendukung, aturan bisnis) | `README.md` |
+
+> Catatan: poin revisi "Kategori → Akun" belum dikerjakan — menunggu keputusan final mentor.
 
 ---
 

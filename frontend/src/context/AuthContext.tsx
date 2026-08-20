@@ -13,7 +13,6 @@ interface AuthContextType {
   isAdmin:   boolean;
   isStaff:   boolean;
   isKetuaTim: boolean;
-  isAdminDept: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -41,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(res.data.token);
 
     // Redirect sesuai role
-    if (res.data.user.role === 'admin' || res.data.user.role === 'admin_dept') {
+    if (res.data.user.role === 'admin') {
       router.push('/admin');
     } else if (res.data.user.role === 'ketua_tim') {
       router.push('/ketua');
@@ -70,7 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAdmin: user?.role === 'admin',
       isStaff: user?.role === 'staff',
       isKetuaTim: user?.role === 'ketua_tim',
-      isAdminDept: user?.role === 'admin_dept',
     }}>
       {children}
     </AuthContext.Provider>

@@ -3,20 +3,18 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Kategori, Divisi } from '@/lib/api';
+import { Kategori } from '@/lib/api';
 
 interface Props {
   kategoriList: Kategori[];
-  divisiList?: Divisi[];
 }
 
-export default function FilterBar({ kategoriList, divisiList = [] }: Props) {
+export default function FilterBar({ kategoriList }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
   const [q,        setQ]        = useState(searchParams.get('q')        ?? '');
   const [kategori, setKategori] = useState(searchParams.get('kategori') ?? '');
-  const [divisi,   setDivisi]   = useState(searchParams.get('divisi')   ?? '');
   const [tahun,    setTahun]    = useState(searchParams.get('tahun')    ?? '');
 
   // Buat tahun pilihan dari 2015 s/d sekarang
@@ -29,10 +27,9 @@ export default function FilterBar({ kategoriList, divisiList = [] }: Props) {
     const params = new URLSearchParams();
     if (q)        params.set('q', q);
     if (kategori) params.set('kategori', kategori);
-    if (divisi)   params.set('divisi', divisi);
     if (tahun)    params.set('tahun', tahun);
     router.push(`/?${params.toString()}`);
-  }, [q, kategori, divisi, tahun, router]);
+  }, [q, kategori, tahun, router]);
 
   // Submit saat tekan Enter di search box
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -40,11 +37,11 @@ export default function FilterBar({ kategoriList, divisiList = [] }: Props) {
   };
 
   const resetFilter = () => {
-    setQ(''); setKategori(''); setDivisi(''); setTahun('');
+    setQ(''); setKategori(''); setTahun('');
     router.push('/');
   };
 
-  const hasFilter = q || kategori || divisi || tahun;
+  const hasFilter = q || kategori || tahun;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -57,7 +54,7 @@ export default function FilterBar({ kategoriList, divisiList = [] }: Props) {
             value={q}
             onChange={e => setQ(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Cari judul dokumen..."
+            placeholder="Cari judul atau kode laporan..."
             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         </div>
@@ -73,20 +70,6 @@ export default function FilterBar({ kategoriList, divisiList = [] }: Props) {
             <option key={k.id} value={k.slug}>{k.nama}</option>
           ))}
         </select>
-
-        {/* Divisi */}
-        {divisiList.length > 0 && (
-          <select
-            value={divisi}
-            onChange={e => setDivisi(e.target.value)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="">Semua Divisi</option>
-            {divisiList.map(d => (
-              <option key={d.id} value={d.slug}>{d.nama}</option>
-            ))}
-          </select>
-        )}
 
         {/* Tahun */}
         <select

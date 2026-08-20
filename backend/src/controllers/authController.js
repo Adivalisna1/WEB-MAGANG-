@@ -27,10 +27,9 @@ async function login(req, res, next) {
 
     const [rows] = await pool.query(
       `SELECT u.id, u.role_id, u.nama, u.username, u.email,
-              u.password_hash, u.is_active, r.nama AS role, dv.nama AS divisi
+              u.password_hash, u.is_active, r.nama AS role
        FROM users u
        JOIN roles r ON r.id = u.role_id
-       LEFT JOIN divisi dv ON dv.id = u.divisi_id
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       [username, username]
@@ -98,7 +97,6 @@ async function login(req, res, next) {
           username: user.username,
           email:    user.email,
           role:     user.role,
-          divisi:   user.divisi || null,
         },
       },
     });
