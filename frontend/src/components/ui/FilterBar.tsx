@@ -7,9 +7,10 @@ import { Kategori } from '@/lib/api';
 
 interface Props {
   kategoriList: Kategori[];
+  basePath?: string;
 }
 
-export default function FilterBar({ kategoriList }: Props) {
+export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -28,8 +29,8 @@ export default function FilterBar({ kategoriList }: Props) {
     if (q)        params.set('q', q);
     if (kategori) params.set('kategori', kategori);
     if (tahun)    params.set('tahun', tahun);
-    router.push(`/?${params.toString()}`);
-  }, [q, kategori, tahun, router]);
+    router.push(`${basePath}?${params.toString()}`);
+  }, [q, kategori, tahun, router, basePath]);
 
   // Submit saat tekan Enter di search box
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -38,7 +39,7 @@ export default function FilterBar({ kategoriList }: Props) {
 
   const resetFilter = () => {
     setQ(''); setKategori(''); setTahun('');
-    router.push('/');
+    router.push(basePath);
   };
 
   const hasFilter = q || kategori || tahun;

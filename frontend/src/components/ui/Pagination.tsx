@@ -7,9 +7,10 @@ import clsx from 'clsx';
 interface Props {
   currentPage: number;
   totalPages:  number;
+  basePath?:   string;
 }
 
-export default function Pagination({ currentPage, totalPages }: Props) {
+export default function Pagination({ currentPage, totalPages, basePath = '/' }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -18,7 +19,7 @@ export default function Pagination({ currentPage, totalPages }: Props) {
   const goTo = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', String(page));
-    router.push(`/?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   };
 
   // Buat array nomor halaman yang ditampilkan

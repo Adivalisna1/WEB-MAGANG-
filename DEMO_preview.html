@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo — Dashboard Laporan Instansi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary:       #1a3a6b;
+      --primary-light: #2451a3;
+      --primary-dark:  #0f2447;
+      --accent:        #f59e0b;
+      --accent-hover:  #d97706;
+      --white:         #ffffff;
+      --gray-50:       #f9fafb;
+      --gray-100:      #f3f4f6;
+      --gray-200:      #e5e7eb;
+      --gray-300:      #d1d5db;
+      --gray-400:      #9ca3af;
+      --gray-500:      #6b7280;
+      --gray-700:      #374151;
+      --gray-900:      #111827;
+      --green-500:     #22c55e;
+      --blue-500:      #3b82f6;
+      --purple-500:    #a855f7;
+      --red-500:       #ef4444;
+      --orange-400:    #fb923c;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; color: var(--gray-900); background: var(--white); }
+
+    /* ═══════════════════════════════════════════════════════════
+       PAGE SWITCHING
+    ═══════════════════════════════════════════════════════════ */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════
+       ████  PAGE 1: LANDING PAGE
+    ═══════════════════════════════════════════════════════════ */
+
+    /* Navbar */
+    .lp-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 68px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2.5rem;
+      background: rgba(15,36,71,0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      transition: all 0.3s;
+    }
+    .lp-brand { display: flex; align-items: center; gap: 12px; }
+    .lp-logo {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--accent); color: var(--primary-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 17px; flex-shrink: 0;
+    }
+    .lp-brand-text { color: var(--white); }
+    .lp-brand-text p { font-size: 14px; font-weight: 600; }
+    .lp-brand-text small { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .lp-nav-login {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      color: var(--white); padding: 7px 18px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer; background: transparent;
+      transition: all 0.2s;
+    }
+    .lp-nav-login:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.7); }
+
+    /* Hero */
+    .lp-hero {
+      position: relative; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .lp-hero-bg {
+      position: absolute; inset: 0;
+      background: url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1600&q=80') center/cover;
+      filter: brightness(0.32); transform: scale(1.04);
+    }
+    .lp-hero-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(15,36,71,0.6) 0%, rgba(15,36,71,0.25) 50%, rgba(15,36,71,0.82) 100%);
+    }
+    .lp-hero-content {
+      position: relative; z-index: 2; text-align: center;
+      padding: 0 1.5rem; max-width: 680px;
+    }
+    .lp-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35);
+      color: #fcd34d; font-size: 12px; font-weight: 500;
+      padding: 5px 14px; border-radius: 999px; margin-bottom: 1.5rem;
+    }
+    .lp-hero-title {
+      font-size: clamp(28px, 5vw, 46px); font-weight: 800; color: var(--white);
+      line-height: 1.15; margin-bottom: 0.8rem; letter-spacing: -0.5px;
+    }
+    .lp-hero-title span { color: var(--accent); }
+    .lp-hero-sub { font-size: 15px; color: rgba(255,255,255,0.65); margin-bottom: 2.5rem; line-height: 1.7; }
+    .btn-hero-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--accent); color: var(--primary-dark);
+      padding: 15px 42px; border-radius: 12px; font-size: 16px; font-weight: 700;
+      cursor: pointer; border: none;
+      box-shadow: 0 8px 32px rgba(245,158,11,0.35);
+      transition: all 0.25s;
+    }
+    .btn-hero-cta:hover {
+      background: #fbbf24; box-shadow: 0 12px 40px rgba(245,158,11,0.5);
+      transform: translateY(-2px);
+    }
+    .lp-scroll-hint {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.35); font-size: 11px; text-align: center;
+      animation: float 2s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
+
+    /* Stats strip */
+    .lp-stats {
+      background: #080f1c; padding: 1.6rem 2.5rem;
+      display: flex; flex-wrap: wrap; justify-content: center;
+      divide-x: 1px solid rgba(255,255,255,0.08);
+    }
+    .lp-stat {
+      flex: 1; min-width: 110px; text-align: center;
+      padding: 0.4rem 1.5rem;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .lp-stat:last-child { border-right: none; }
+    .lp-stat-num { font-size: 28px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .lp-stat-lbl { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 4px; }
+
+    /* About section */
+    .lp-about { background: var(--gray-50); padding: 5rem 2.5rem; }
+    .lp-about-inner { max-width: 1060px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+    .lp-about-img-wrap { position: relative; }
+    .lp-about-img {
+      width: 100%; aspect-ratio: 4/3; object-fit: cover;
+      border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+    }
+    .lp-about-badge {
+      position: absolute; bottom: -1.2rem; right: -1.2rem;
+      background: var(--primary); color: var(--white);
+      padding: 1rem 1.5rem; border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(26,58,107,0.35); font-size: 13px; font-weight: 600;
+    }
+    .lp-about-badge span { display: block; font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #eff6ff; color: var(--primary-light);
+      font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem;
+    }
+    .sec-title { font-size: clamp(20px, 3vw, 30px); font-weight: 800; color: var(--gray-900); margin-bottom: 1rem; line-height: 1.25; }
+    .lp-about-text p { font-size: 14px; color: var(--gray-700); line-height: 1.85; margin-bottom: 0.75rem; }
+
+    /* Visi Misi */
+    .lp-visimisi { background: var(--white); padding: 5rem 2.5rem; }
+    .lp-visimisi-inner { max-width: 1060px; margin: 0 auto; }
+    .lp-vm-header { text-align: center; margin-bottom: 3rem; }
+    .lp-vm-header .sec-desc { font-size: 14px; color: var(--gray-500); max-width: 500px; margin: 0.5rem auto 0; line-height: 1.75; }
+    .lp-vm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .vm-card { border-radius: 20px; padding: 2.5rem; }
+    .vm-visi { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); }
+    .vm-misi { background: var(--gray-50); border: 1.5px solid var(--gray-200); }
+    .vm-icon {
+      width: 50px; height: 50px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;
+    }
+    .vm-visi .vm-icon { background: rgba(255,255,255,0.15); }
+    .vm-misi .vm-icon { background: #eff6ff; }
+    .vm-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 0.6rem; }
+    .vm-visi .vm-label { color: rgba(255,255,255,0.5); }
+    .vm-misi .vm-label { color: var(--primary-light); }
+    .vm-visi .vm-title { font-size: 16px; font-weight: 700; color: var(--white); line-height: 1.5; }
+    .vm-misi .vm-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 1rem; }
+    .misi-list { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }
+    .misi-item { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--gray-700); line-height: 1.6; }
+    .misi-dot { width: 6px; height: 6px; min-width: 6px; background: var(--primary-light); border-radius: 50%; margin-top: 8px; }
+
+    /* CTA section */
+    .lp-cta {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      padding: 5rem 2.5rem; text-align: center;
+    }
+    .lp-cta h2 { font-size: clamp(22px, 3vw, 32px); font-weight: 800; color: var(--white); margin-bottom: 0.75rem; }
+    .lp-cta p { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 2.5rem; }
+    .btn-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--accent); color: var(--primary-dark);
+      padding: 14px 36px; border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; border: none;
+      box-shadow: 0 8px 24px rgba(245,158,11,0.3);
+      transition: all 0.25s;
+    }
+    .btn-cta:hover { background: #fbbf24; transform: translateY(-2px); }
+
+    /* Footer */
+    .lp-footer {
+      background: #080f1c; color: rgba(255,255,255,0.4);
+      padding: 1.5rem 2.5rem; text-align: center; font-size: 13px;
+    }
+    .lp-footer strong { color: rgba(255,255,255,0.65); }
+
+    /* ═══════════════════════════════════════════════════════════
+       ████  PAGE 2: LOGIN PAGE
+    ═══════════════════════════════════════════════════════════ */
+    .login-wrapper {
+      min-height: 100vh; display: flex; flex-direction: column; background: var(--gray-50);
+    }
+    .login-nav {
+      background: var(--primary); height: 64px;
+      display: flex; align-items: center; padding: 0 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .login-nav-brand { display: flex; align-items: center; gap: 8px; color: var(--white); font-weight: 700; font-size: 16px; cursor: pointer; }
+    .login-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1.5rem; }
+    .login-card {
+      background: var(--white); width: 100%; max-width: 420px;
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid var(--gray-200);
+    }
+    .login-card-header {
+      background: linear-gradient(to right, #1e3a6e, #2451a3);
+      padding: 2.5rem 2rem; text-align: center;
+    }
+    .login-icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 0.75rem;
+    }
+    .login-card-header h1 { color: var(--white); font-size: 20px; font-weight: 700; }
+    .login-card-header p { color: rgba(255,255,255,0.65); font-size: 13px; margin-top: 4px; }
+    .login-body { padding: 2rem; }
+    .login-field { margin-bottom: 1.25rem; }
+    .login-field label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 6px; }
+    .login-field input {
+      width: 100%; padding: 10px 14px; font-size: 14px;
+      border: 1px solid var(--gray-300); border-radius: 8px;
+      outline: none; transition: border 0.2s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+    .login-field input:focus { border-color: #2451a3; box-shadow: 0 0 0 3px rgba(36,81,163,0.12); }
+    .login-error {
+      display: none; background: #fef2f2; border: 1px solid #fecaca;
+      color: #dc2626; font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 1rem;
+    }
+    .login-error.show { display: flex; align-items: center; gap: 6px; }
+    .btn-login {
+      width: 100%; padding: 11px; background: var(--primary);
+      color: var(--white); border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: background 0.2s; font-family: inherit;
+    }
+    .btn-login:hover { background: var(--primary-light); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+    .login-hint { text-align: center; margin-top: 1rem; font-size: 12px; color: var(--gray-400); }
+    .login-forgot { text-align: center; margin-top: 0.5rem; }
+    .login-forgot a { font-size: 12px; color: var(--primary-light); text-decoration: none; cursor: pointer; }
+    .login-forgot a:hover { text-decoration: underline; }
+    .demo-note {
+      margin: 1rem 0 0;
+      background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;
+      padding: 10px 12px; font-size: 12px; color: #0369a1;
+    }
+    .demo-note strong { display: block; margin-bottom: 4px; }
+    .demo-cred { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+    .login-footer-bar {
+      background: #0f2447; color: rgba(255,255,255,0.4);
+      padding: 1rem 2rem; text-align: center; font-size: 12px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       ████  PAGE 3: DASHBOARD LAPORAN
+    ═══════════════════════════════════════════════════════════ */
+    .dash-wrapper { min-height: 100vh; background: var(--gray-50); display: flex; flex-direction: column; }
+
+    /* Navbar dashboard */
+    .dash-nav {
+      background: var(--primary); height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .dash-nav-brand { display: flex; align-items: center; gap: 8px; color: var(--white); font-weight: 700; font-size: 16px; cursor: pointer; }
+    .dash-nav-links { display: flex; align-items: center; gap: 1.5rem; }
+    .dash-nav-link { color: rgba(255,255,255,0.75); font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: color 0.2s; }
+    .dash-nav-link:hover { color: var(--white); }
+    .dash-nav-user {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.1); border-radius: 8px;
+      padding: 6px 12px; cursor: pointer; position: relative;
+    }
+    .dash-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #60a5fa; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--white);
+    }
+    .dash-user-name { font-size: 13px; color: var(--white); font-weight: 500; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dash-user-dropdown {
+      display: none; position: absolute; top: calc(100% + 8px); right: 0;
+      width: 180px; background: var(--white); border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12); border: 1px solid var(--gray-100);
+      overflow: hidden; z-index: 100;
+    }
+    .dash-user-dropdown.open { display: block; }
+    .drop-header { padding: 10px 14px; border-bottom: 1px solid var(--gray-100); }
+    .drop-header p { font-size: 12px; font-weight: 600; color: var(--gray-900); }
+    .drop-header small { font-size: 11px; color: var(--gray-400); }
+    .drop-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; font-size: 13px; color: var(--gray-700); cursor: pointer;
+      transition: background 0.15s;
+    }
+    .drop-item:hover { background: var(--gray-50); }
+    .drop-item.danger { color: #dc2626; }
+    .drop-item.danger:hover { background: #fef2f2; }
+
+    /* Dashboard main */
+    .dash-main { flex: 1; max-width: 1200px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; }
+
+    /* Hero banner */
+    .dash-hero {
+      background: linear-gradient(to right, var(--primary), var(--primary-light));
+      border-radius: 16px; padding: 2rem 2.5rem; margin-bottom: 2rem; color: var(--white);
+    }
+    .dash-hero h1 { font-size: 22px; font-weight: 700; margin-bottom: 0.4rem; }
+    .dash-hero p { font-size: 14px; color: rgba(255,255,255,0.75); }
+
+    /* Stats */
+    .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--white); border-radius: 14px;
+      border: 1px solid var(--gray-200); padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stat-icon svg { width: 22px; height: 22px; color: var(--white); }
+    .stat-num { font-size: 24px; font-weight: 700; color: var(--gray-900); }
+    .stat-lbl { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+    /* Filter bar */
+    .filter-bar {
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    }
+    .filter-input {
+      flex: 1; min-width: 180px; padding: 8px 12px 8px 36px;
+      border: 1px solid var(--gray-300); border-radius: 8px;
+      font-size: 13px; outline: none; position: relative; font-family: inherit;
+    }
+    .filter-input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(36,81,163,0.1); }
+    .filter-input-wrap { position: relative; flex: 1; min-width: 180px; }
+    .filter-input-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--gray-400); }
+    .filter-select {
+      padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 8px;
+      font-size: 13px; background: var(--white); outline: none; font-family: inherit; cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--primary-light); }
+    .btn-filter {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--primary); color: var(--white);
+      padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: none; cursor: pointer; transition: background 0.2s; font-family: inherit;
+    }
+    .btn-filter:hover { background: var(--primary-light); }
+
+    /* Dokumen grid */
+    .dok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+    .dok-card {
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 14px; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: box-shadow 0.2s, transform 0.2s; cursor: pointer;
+    }
+    .dok-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .dok-card-top {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      padding: 1.5rem 1.25rem; border-bottom: 1px solid var(--gray-100);
+      display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem;
+    }
+    .dok-file-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+    }
+    .dok-file-icon svg { width: 22px; height: 22px; color: var(--white); }
+    .dok-badge {
+      font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+      background: #dbeafe; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .dok-card-body { padding: 1rem 1.25rem; }
+    .dok-title { font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 0.5rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .dok-meta { font-size: 12px; color: var(--gray-400); }
+    .dok-card-footer {
+      padding: 0.75rem 1.25rem; border-top: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dok-size { font-size: 11px; color: var(--gray-400); }
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--primary); color: var(--white);
+      padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+      border: none; cursor: pointer; transition: background 0.15s; font-family: inherit;
+    }
+    .btn-download:hover { background: var(--primary-light); }
+
+    /* Dashboard footer */
+    .dash-footer {
+      background: var(--primary-dark); color: rgba(255,255,255,0.4);
+      padding: 1.25rem 2rem; text-align: center; font-size: 12px; margin-top: auto;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .lp-nav { padding: 0 1.25rem; }
+      .lp-brand-text { display: none; }
+      .lp-about-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .lp-about-badge { display: none; }
+      .lp-vm-grid { grid-template-columns: 1fr; }
+      .dash-stats { grid-template-columns: 1fr; }
+      .dash-nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════════════════════════╗
+     ║  PAGE 1 — LANDING PAGE                                  ║
+     ╚══════════════════════════════════════════════════════════╝ -->
+<div id="page-landing" class="page active">
+
+  <!-- Navbar -->
+  <nav class="lp-nav">
+    <div class="lp-brand">
+      <div class="lp-logo">IP</div>
+      <div class="lp-brand-text">
+        <p>Instansi Pemerintah</p>
+        <small>Sistem Manajemen Dokumen Laporan</small>
+      </div>
+    </div>
+    <button class="lp-nav-login" onclick="goTo('page-login')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Masuk
+    </button>
+  </nav>
+
+  <!-- Hero -->
+  <section class="lp-hero">
+    <div class="lp-hero-bg"></div>
+    <div class="lp-hero-overlay"></div>
+    <div class="lp-hero-content">
+      <div class="lp-badge">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+        Sistem Manajemen Dokumen Resmi
+      </div>
+      <h1 class="lp-hero-title">
+        Selamat Datang di<br>
+        <span>Dashboard Laporan</span><br>
+        Instansi Pemerintah
+      </h1>
+      <p class="lp-hero-sub">
+        Platform pengelolaan dan pengarsipan dokumen laporan instansi secara digital, aman, dan terstruktur.
+      </p>
+      <!-- TOMBOL LOGIN UTAMA — tengah hero -->
+      <button class="btn-hero-cta" onclick="goTo('page-login')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Masuk ke Dashboard
+      </button>
+    </div>
+    <div class="lp-scroll-hint">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      <span>Info instansi</span>
+    </div>
+  </section>
+
+  <!-- Stats strip -->
+  <div class="lp-stats">
+    <div class="lp-stat"><div class="lp-stat-num">1.240+</div><div class="lp-stat-lbl">Dokumen Terarsip</div></div>
+    <div class="lp-stat"><div class="lp-stat-num">8</div><div class="lp-stat-lbl">Kategori Laporan</div></div>
+    <div class="lp-stat"><div class="lp-stat-num">2019</div><div class="lp-stat-lbl">Berdiri Sejak</div></div>
+    <div class="lp-stat"><div class="lp-stat-num">3-Level</div><div class="lp-stat-lbl">Verifikasi Dokumen</div></div>
+  </div>
+
+  <!-- About -->
+  <section class="lp-about">
+    <div class="lp-about-inner">
+      <div class="lp-about-img-wrap">
+        <img src="https://images.unsplash.com/photo-1564069114941-80b5b4a31c0d?w=800&q=80" alt="Gedung Instansi" class="lp-about-img" />
+        <div class="lp-about-badge"><span>Est.</span>2019</div>
+      </div>
+      <div class="lp-about-text">
+        <div class="tag">Tentang Kami</div>
+        <h2 class="sec-title">Instansi Pemerintah Daerah</h2>
+        <p><em>[Placeholder — isi dengan deskripsi singkat instansi dan tugas pokok fungsinya]</em></p>
+        <p>Sistem ini dibangun untuk memudahkan pengelolaan, pengarsipan, dan pelaporan dokumen secara digital — memastikan transparansi dan akuntabilitas dalam tata kelola organisasi.</p>
+        <p>Setiap dokumen melalui proses verifikasi dua tahap oleh Admin dan Ketua Tim sebelum dipublikasikan.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Visi Misi -->
+  <section class="lp-visimisi" id="visi-misi">
+    <div class="lp-visimisi-inner">
+      <div class="lp-vm-header">
+        <div class="tag">Visi &amp; Misi</div>
+        <h2 class="sec-title">Arah dan Tujuan Instansi</h2>
+        <p class="sec-desc">Landasan nilai dan komitmen yang menjadi panduan dalam setiap kegiatan dan pelayanan instansi.</p>
+      </div>
+      <div class="lp-vm-grid">
+        <!-- Visi -->
+        <div class="vm-card vm-visi">
+          <div class="vm-icon">
+            <svg width="24" height="24" fill="none" stroke="#fcd34d" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="vm-label">Visi</div>
+          <div class="vm-title">[Placeholder — isi dengan visi instansi, contoh: "Terwujudnya tata kelola pemerintahan yang bersih, transparan, dan akuntabel pada tahun 2029"]</div>
+        </div>
+        <!-- Misi -->
+        <div class="vm-card vm-misi">
+          <div class="vm-icon">
+            <svg width="24" height="24" fill="none" stroke="#2451a3" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div class="vm-label">Misi</div>
+          <div class="vm-title">Langkah Strategis Kami</div>
+          <ul class="misi-list" style="margin-top:0.75rem">
+            <li class="misi-item"><div class="misi-dot"></div>[Placeholder misi 1 — contoh: Meningkatkan kualitas pelayanan publik berbasis digital]</li>
+            <li class="misi-item"><div class="misi-dot"></div>[Placeholder misi 2 — contoh: Memperkuat sistem pelaporan dan dokumentasi terintegrasi]</li>
+            <li class="misi-item"><div class="misi-dot"></div>[Placeholder misi 3 — contoh: Mendorong budaya kerja profesional dan berintegritas]</li>
+            <li class="misi-item"><div class="misi-dot"></div>[Placeholder misi 4 — isi dengan misi ke-4 instansi]</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="lp-cta">
+    <h2>Siap Mengelola Dokumen?</h2>
+    <p>Masuk ke dashboard untuk mengupload, mengelola, dan memverifikasi laporan instansi.</p>
+    <button class="btn-cta" onclick="goTo('page-login')">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Masuk Sekarang
+    </button>
+  </section>
+
+  <!-- Footer -->
+  <footer class="lp-footer">
+    © 2025 <strong>Instansi Pemerintah</strong> — Sistem Manajemen Dokumen Laporan. Seluruh hak cipta dilindungi.
+  </footer>
+</div><!-- /page-landing -->
+
+
+<!-- ╔══════════════════════════════════════════════════════════╗
+     ║  PAGE 2 — LOGIN PAGE                                    ║
+     ╚══════════════════════════════════════════════════════════╝ -->
+<div id="page-login" class="page">
+  <div class="login-wrapper">
+    <header class="login-nav">
+      <div class="login-nav-brand" onclick="goTo('page-landing')">
+        <svg width="20" height="20" fill="none" stroke="#93c5fd" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Dashboard Laporan
+      </div>
+    </header>
+
+    <main class="login-main">
+      <div class="login-card">
+        <div class="login-card-header">
+          <div class="login-icon">
+            <svg width="28" height="28" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <h1>Login Dashboard</h1>
+          <p>Masuk untuk mengelola dokumen instansi</p>
+        </div>
+
+        <div class="login-body">
+          <div id="login-error" class="login-error">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span id="login-error-msg">Username atau password salah</span>
+          </div>
+
+          <div class="login-field">
+            <label for="inp-username">Username / Email</label>
+            <input id="inp-username" type="text" placeholder="Masukkan username" autocomplete="username" />
+          </div>
+
+          <div class="login-field">
+            <label for="inp-password">Password</label>
+            <input id="inp-password" type="password" placeholder="Masukkan password" autocomplete="current-password"
+              onkeydown="if(event.key==='Enter')doLogin()" />
+          </div>
+
+          <button class="btn-login" id="btn-login-submit" onclick="doLogin()">Masuk</button>
+
+          <p class="login-hint">Hanya admin, staff, dan ketua tim yang dapat login.</p>
+          <div class="login-forgot"><a onclick="alert('Hubungi Admin atau Ketua Tim untuk reset password Anda.')">Lupa Password?</a></div>
+
+          <!-- Demo credentials note -->
+          <div class="demo-note">
+            <strong>🎯 Demo — Gunakan kredensial ini:</strong>
+            <div class="demo-cred">
+              <span>Username: <b>admin</b> / <b>staff</b> / <b>ketua</b></span>
+              <span>Password: <b>demo123</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="login-footer-bar">© 2025 Sistem Informasi Laporan</footer>
+  </div>
+</div><!-- /page-login -->
+
+
+<!-- ╔══════════════════════════════════════════════════════════╗
+     ║  PAGE 3 — DASHBOARD LAPORAN                             ║
+     ╚══════════════════════════════════════════════════════════╝ -->
+<div id="page-laporan" class="page">
+  <div class="dash-wrapper">
+
+    <!-- Navbar -->
+    <nav class="dash-nav">
+      <div class="dash-nav-brand" onclick="goTo('page-laporan')">
+        <svg width="20" height="20" fill="none" stroke="#93c5fd" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Dashboard Laporan
+      </div>
+      <div class="dash-nav-links">
+        <span class="dash-nav-link">Beranda</span>
+        <span class="dash-nav-link">LKjIP</span>
+        <span class="dash-nav-link">Renstra</span>
+        <span class="dash-nav-link">Renja</span>
+      </div>
+      <div class="dash-nav-user" onclick="toggleDropdown()">
+        <div class="dash-avatar" id="dash-avatar-initial">A</div>
+        <span class="dash-user-name" id="dash-user-label">Admin</span>
+        <svg width="13" height="13" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="dash-user-dropdown" id="user-dropdown">
+          <div class="drop-header">
+            <p id="drop-user-name">Admin</p>
+            <small id="drop-user-role">Administrator</small>
+          </div>
+          <div class="drop-item" onclick="alert('Fitur Dashboard Saya — tersedia di versi Next.js')">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard Saya
+          </div>
+          <div class="drop-item danger" onclick="doLogout()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Keluar
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="dash-main">
+
+      <!-- Hero banner -->
+      <div class="dash-hero">
+        <h1>Portal Dokumen Laporan</h1>
+        <p>Akses dan unduh dokumen laporan kinerja, rencana strategis, dan dokumen perencanaan lainnya.</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="dash-stats">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#3b82f6">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div><div class="stat-num">247</div><div class="stat-lbl">Total Dokumen</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#a855f7">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div><div class="stat-num">8</div><div class="stat-lbl">Kategori</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#22c55e">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div><div class="stat-num">1.840</div><div class="stat-lbl">Total Unduhan</div></div>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="filter-bar">
+        <div class="filter-input-wrap">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="filter-input" type="text" placeholder="Cari judul atau kode laporan..." />
+        </div>
+        <select class="filter-select">
+          <option value="">Semua Kategori</option>
+          <option>LKjIP</option>
+          <option>Renstra</option>
+          <option>Renja</option>
+          <option>LPPD</option>
+          <option>RKPD</option>
+        </select>
+        <select class="filter-select">
+          <option value="">Semua Tahun</option>
+          <option>2025</option>
+          <option>2024</option>
+          <option>2023</option>
+          <option>2022</option>
+        </select>
+        <button class="btn-filter">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filter
+        </button>
+      </div>
+
+      <!-- Dokumen Grid (dummy data) -->
+      <div class="dok-grid" id="dok-grid"></div>
+    </div>
+
+    <footer class="dash-footer">
+      © 2025 <strong style="color:rgba(255,255,255,0.65)">Instansi Pemerintah</strong> — Dashboard Laporan · Akses Internal
+    </footer>
+  </div>
+</div><!-- /page-laporan -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+  /* ── State ─────────────────────────────────────────────── */
+  let currentUser = null;
+
+  // Demo users (simulasi)
+  const DEMO_USERS = {
+    admin:  { nama: 'Admin Sistem',  role: 'Administrator', initial: 'A' },
+    staff:  { nama: 'Budi Santoso',  role: 'Staff',         initial: 'B' },
+    ketua:  { nama: 'Ketua Tim',     role: 'Ketua Tim',     initial: 'K' },
+  };
+
+  /* ── Navigation ────────────────────────────────────────── */
+  function goTo(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    window.scrollTo(0, 0);
+    // Tutup dropdown kalau ada
+    const dd = document.getElementById('user-dropdown');
+    if (dd) dd.classList.remove('open');
+  }
+
+  /* ── Login Logic ───────────────────────────────────────── */
+  function doLogin() {
+    const username = document.getElementById('inp-username').value.trim().toLowerCase();
+    const password = document.getElementById('inp-password').value;
+    const errEl    = document.getElementById('login-error');
+    const btn      = document.getElementById('btn-login-submit');
+
+    errEl.classList.remove('show');
+
+    // Validasi kosong
+    if (!username || !password) {
+      showLoginError('Username dan password wajib diisi');
+      return;
+    }
+
+    // Simulasi loading
+    btn.disabled = true;
+    btn.textContent = 'Memproses...';
+
+    setTimeout(() => {
+      const user = DEMO_USERS[username];
+      if (user && password === 'demo123') {
+        currentUser = { ...user, username };
+        // Update nama di navbar dashboard
+        document.getElementById('dash-user-label').textContent  = user.nama;
+        document.getElementById('dash-avatar-initial').textContent = user.initial;
+        document.getElementById('drop-user-name').textContent   = user.nama;
+        document.getElementById('drop-user-role').textContent   = user.role;
+        // Reset form
+        document.getElementById('inp-username').value = '';
+        document.getElementById('inp-password').value = '';
+        // Redirect
+        goTo('page-laporan');
+        renderDokumen();
+      } else {
+        showLoginError('Username atau password salah. Gunakan: admin/staff/ketua + demo123');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Masuk';
+    }, 800);
+  }
+
+  function showLoginError(msg) {
+    const el = document.getElementById('login-error');
+    document.getElementById('login-error-msg').textContent = msg;
+    el.classList.add('show');
+  }
+
+  /* ── Logout ────────────────────────────────────────────── */
+  function doLogout() {
+    currentUser = null;
+    goTo('page-landing');
+  }
+
+  /* ── Dropdown toggle ───────────────────────────────────── */
+  function toggleDropdown() {
+    document.getElementById('user-dropdown').classList.toggle('open');
+  }
+  document.addEventListener('click', (e) => {
+    const dd = document.getElementById('user-dropdown');
+    const wrap = dd?.closest('.dash-nav-user');
+    if (dd && wrap && !wrap.contains(e.target)) dd.classList.remove('open');
+  });
+
+  /* ── Render dummy dokumen ──────────────────────────────── */
+  const DUMMY_DOCS = [
+    { id:1,  judul: 'Laporan Kinerja Instansi Pemerintah 2024',         kategori: 'LKjIP',  tahun: 2024, nomor: 'LKJIP/2024/001', size: '2.4 MB' },
+    { id:2,  judul: 'Rencana Strategis Instansi 2020–2025',             kategori: 'Renstra', tahun: 2023, nomor: 'RENS/2023/001',  size: '5.1 MB' },
+    { id:3,  judul: 'Rencana Kerja Tahunan 2025',                       kategori: 'Renja',  tahun: 2025, nomor: 'RENJ/2025/001',  size: '1.8 MB' },
+    { id:4,  judul: 'Laporan Penyelenggaraan Pemerintahan Daerah 2024', kategori: 'LPPD',   tahun: 2024, nomor: 'LPPD/2024/001',  size: '3.2 MB' },
+    { id:5,  judul: 'Laporan Kinerja Instansi Pemerintah 2023',         kategori: 'LKjIP',  tahun: 2023, nomor: 'LKJIP/2023/001', size: '2.1 MB' },
+    { id:6,  judul: 'Rencana Kerja Pemerintah Daerah 2024',             kategori: 'RKPD',   tahun: 2024, nomor: 'RKPD/2024/001',  size: '4.5 MB' },
+    { id:7,  judul: 'Rencana Kerja Tahunan 2024',                       kategori: 'Renja',  tahun: 2024, nomor: 'RENJ/2024/001',  size: '1.5 MB' },
+    { id:8,  judul: 'Profil Instansi dan Data Kinerja 2023',            kategori: 'Lainnya', tahun: 2023, nomor: 'LAIN/2023/001', size: '0.9 MB' },
+  ];
+
+  function renderDokumen() {
+    const grid = document.getElementById('dok-grid');
+    grid.innerHTML = DUMMY_DOCS.map(d => `
+      <div class="dok-card">
+        <div class="dok-card-top">
+          <div class="dok-file-icon">
+            <svg width="22" height="22" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <span class="dok-badge">${d.kategori}</span>
+        </div>
+        <div class="dok-card-body">
+          <div class="dok-title">${d.judul}</div>
+          <div class="dok-meta">${d.nomor} &middot; ${d.tahun}</div>
+        </div>
+        <div class="dok-card-footer">
+          <span class="dok-size">PDF &middot; ${d.size}</span>
+          <button class="btn-download" onclick="alert('Download: ${d.judul}')">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Unduh
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+</script>
+</body>
+</html>

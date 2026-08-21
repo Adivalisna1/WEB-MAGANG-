@@ -16,12 +16,12 @@ export default function LoginPage() {
   const [error,     setError]     = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Kalau sudah login, redirect
+  // Kalau sudah login, redirect sesuai role
   useEffect(() => {
     if (!loading && user) {
       if (user.role === 'admin')          router.replace('/admin');
       else if (user.role === 'ketua_tim') router.replace('/ketua');
-      else                                router.replace('/staff/dokumen');
+      else                                router.replace('/laporan');
     }
   }, [user, loading, router]);
 
