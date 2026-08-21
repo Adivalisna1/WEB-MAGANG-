@@ -68,11 +68,11 @@ export default function Sidebar() {
       {/* Kembali ke Beranda */}
       <div className="px-3 py-2 border-t border-primary-700">
         <Link
-          href="/"
+          href="/laporan"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-200 hover:bg-primary-800 hover:text-white transition-colors"
         >
           <Home className="w-4 h-4" />
-          Beranda Publik
+          Dashboard Laporan
         </Link>
       </div>
 

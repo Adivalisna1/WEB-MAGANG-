@@ -45,17 +45,17 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity">
+          <Link href="/laporan" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity">
             <FileText className="w-6 h-6 text-blue-300" />
             <span>Dashboard Laporan</span>
           </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link href="/" className="hover:text-blue-300 transition-colors">Beranda</Link>
-            <Link href="/?kategori=lkjip" className="hover:text-blue-300 transition-colors">LKjIP</Link>
-            <Link href="/?kategori=renstra" className="hover:text-blue-300 transition-colors">Renstra</Link>
-            <Link href="/?kategori=renja" className="hover:text-blue-300 transition-colors">Renja</Link>
+            <Link href="/laporan" className="hover:text-blue-300 transition-colors">Beranda</Link>
+            <Link href="/laporan?kategori=lkjip" className="hover:text-blue-300 transition-colors">LKjIP</Link>
+            <Link href="/laporan?kategori=renstra" className="hover:text-blue-300 transition-colors">Renstra</Link>
+            <Link href="/laporan?kategori=renja" className="hover:text-blue-300 transition-colors">Renja</Link>
 
             {user ? (
               /* Sudah login — tampilkan nama + dropdown */
@@ -119,10 +119,10 @@ export default function Navbar() {
         {/* Mobile Nav */}
         {open && (
           <nav className="md:hidden pb-4 flex flex-col gap-2 text-sm font-medium border-t border-primary-700 pt-3">
-            <Link href="/" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>Beranda</Link>
-            <Link href="/?kategori=lkjip" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>LKjIP</Link>
-            <Link href="/?kategori=renstra" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>Renstra</Link>
-            <Link href="/?kategori=renja" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>Renja</Link>
+            <Link href="/laporan" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>Beranda</Link>
+            <Link href="/laporan?kategori=lkjip" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>LKjIP</Link>
+            <Link href="/laporan?kategori=renstra" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>Renstra</Link>
+            <Link href="/laporan?kategori=renja" className="hover:text-blue-300 py-1" onClick={() => setOpen(false)}>Renja</Link>
 
             {user ? (
               <>

@@ -70,11 +70,11 @@ export default function KetuaSidebar() {
       {/* Kembali ke Beranda */}
       <div className="px-3 py-2 border-t border-indigo-800">
         <Link
-          href="/"
+          href="/laporan"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white transition-colors"
         >
           <Home className="w-4 h-4" />
-          Beranda Publik
+          Dashboard Laporan
         </Link>
       </div>
 
