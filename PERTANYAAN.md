@@ -1,120 +1,210 @@
-# Daftar Pertanyaan — Sistem Dashboard Laporan
+# Pertanyaan untuk Ketua Tim / Pengelola Sistem
+### Sistem Dashboard Laporan Instansi
 
-> File ini berisi pertanyaan-pertanyaan yang perlu dikonfirmasi ke Ketua Tim atau stakeholder
-> sebelum fitur dikembangkan lebih lanjut. Tandai ✅ jika sudah terjawab.
-
----
-
-## 🔐 Autentikasi & Akses
-
-- [ ] **Forgot Password** — Seberapa otomatis sistem reset password yang diinginkan?
-  - A. Informasional saja (tampilkan pesan "Hubungi Admin") ← *sudah ada sekarang*
-  - B. User input email → sistem kirim email instruksi ke admin
-  - C. Full otomatis → user input email → dapat link reset → bisa ganti password sendiri
-
-- [ ] **Jika pilih kirim email** — Email apa yang dipakai sebagai pengirim?
-  - Gmail instansi / email dinas resmi / service lain?
-
-- [ ] **Session & keamanan login** — Berapa lama token login berlaku sebelum user harus login ulang?
-  - Saat ini: **8 jam** (sesuai `JWT_EXPIRES_IN` di `.env`). Apakah perlu diubah?
-
-- [ ] **Multi-device login** — Apakah satu akun boleh login dari beberapa perangkat sekaligus?
-  - Saat ini: login baru **otomatis menutup** session sebelumnya.
+> Halo! Sebelum sistem ini selesai dibuat, ada beberapa hal yang perlu kami
+> konfirmasi. Tolong beri tanda centang (✅) atau tulis jawaban di bawah tiap
+> pertanyaan. Tidak perlu tahu teknis — cukup jawab sesuai kebutuhan kerja sehari-hari.
 
 ---
 
-## 📄 Dokumen & Verifikasi
+## 🔑 Soal Login & Akun
 
-- [ ] **Revisi berulang** — Apakah ada batas maksimal berapa kali dokumen boleh direvisi?
-  - Contoh: maksimal 3x revisi, setelah itu dokumen otomatis ditolak permanen?
+**1. Kalau staff lupa password, bagaimana cara resetnya?**
+Pilih salah satu:
+- [ ] A. Staff hubungi Admin secara langsung, Admin yang reset *(paling simpel)*
+- [ ] B. Staff isi email di aplikasi, nanti sistem kirim instruksi ke emailnya
+- [ ] C. Staff bisa langsung ganti password sendiri lewat link yang dikirim ke email
 
-- [ ] **Arsip dokumen** — Apakah dokumen yang sudah lama (misal 2+ tahun) perlu diarsipkan otomatis?
-  - Atau arsip dilakukan manual oleh admin?
-
-- [ ] **Versi dokumen** — Jika staff upload ulang dokumen yang sudah terverifikasi (konten baru/revisi tahunan), bagaimana penanganannya?
-  - Ganti file yang lama, atau buat entri baru sebagai versi baru?
-
-- [ ] **Hak unduh** — Apakah **semua user yang login** boleh mengunduh semua dokumen?
-  - Atau ada pembatasan: staff hanya bisa unduh dokumen milik divisinya?
-
-- [ ] **Notifikasi deadline** — Apakah perlu ada pengingat otomatis jika dokumen belum disubmit sampai batas waktu tertentu?
+> Jawaban: ...
 
 ---
 
-## 🏷️ Kategori & Data Master
+**2. Kalau ada email yang dipakai untuk notifikasi sistem (misal email pengirim otomatis), email apa yang dipakai?**
+Contoh: `noreply@instansi.go.id` atau email Gmail dinas?
 
-- [ ] **Kategori dokumen** — Apa saja kategori dokumen yang resmi dipakai instansi?
-  - Contoh saat ini: LKjIP, Renstra, Renja, LPPD, RKPD. Apakah ada tambahan atau yang perlu dihapus?
-
-- [ ] **Info instansi di Landing Page** — Konten apa saja yang harus tampil?
-  - Nama resmi instansi, foto gedung, visi misi, logo resmi, dan lain-lain?
-  - Siapa yang akan mengisi konten ini? (hardcode atau bisa dikelola dari admin panel?)
-
-- [ ] **Visi & Misi** — Apakah konten visi misi perlu bisa diedit dari dashboard admin?
-  - Atau cukup hardcode di kode?
+> Jawaban: ...
 
 ---
 
-## 👥 Manajemen User
+**3. Setelah login, berapa lama sampai sistem meminta login ulang?**
+Saat ini diatur **8 jam** — cocok tidak? Atau perlu lebih lama/singkat?
+Contoh: kalau kerja 8 jam/hari, apakah cukup?
 
-- [ ] **Pendaftaran user baru** — Siapa yang boleh membuat akun Staff dan Ketua Tim?
-  - Saat ini: hanya **Admin** yang bisa buat akun baru. Apakah ini sudah benar?
-
-- [ ] **Nonaktifkan user** — Jika seorang staff keluar/resign, apakah dokumennya ikut dihapus atau tetap tersimpan atas namanya?
-
-- [ ] **Jumlah Ketua Tim** — Apakah hanya ada **1 Ketua Tim** atau bisa lebih dari satu?
-  - Jika lebih dari satu, apakah semua bisa approve dokumen yang sama?
+> Jawaban: ...
 
 ---
 
-## 📊 Laporan & Tracking
+**4. Apakah satu orang boleh login dari dua perangkat sekaligus?**
+Misal: login di komputer kantor dan juga di laptop rumah secara bersamaan.
+Saat ini: **tidak bisa** (login baru akan menutup login lama secara otomatis).
 
-- [ ] **Laporan rekap** — Apakah perlu fitur export data (Excel/PDF) untuk rekap dokumen per periode?
-  - Contoh: rekap semua dokumen yang terverifikasi di tahun 2024.
-
-- [ ] **Dashboard statistik** — Apakah perlu grafik/chart di dashboard admin dan ketua tim?
-  - Contoh: jumlah upload per bulan, dokumen per kategori, dll.
-
-- [ ] **Tracking nomor laporan** — Apakah nomor laporan (`LKJIP/2024/001`) perlu bisa dicari dari luar sistem (publik)?
-  - Atau tracking hanya untuk user yang sudah login?
+> Jawaban: ...
 
 ---
 
-## 🌐 Landing Page & Tampilan Publik
+## 📋 Soal Dokumen & Laporan
 
-- [ ] **Foto instansi** — Apakah ada foto gedung resmi yang akan dipakai di landing page?
-  - Saat ini masih menggunakan foto placeholder dari Unsplash.
+**5. Apakah ada batas berapa kali dokumen boleh dikembalikan untuk direvisi?**
+Misal: kalau Staff sudah direvisi 3 kali tapi masih salah, dokumennya otomatis ditolak?
+Atau tidak ada batas, bisa revisi terus sampai benar?
 
-- [ ] **Logo instansi** — Apakah ada file logo resmi instansi (PNG/SVG) untuk ditampilkan di navbar?
-
-- [ ] **Nama instansi** — Apa nama resmi lengkap instansi yang harus ditampilkan?
-
-- [ ] **Kontak di landing page** — Apakah perlu ditampilkan informasi kontak instansi (alamat, telepon, email) di landing page?
+> Jawaban: ...
 
 ---
 
-## 🔧 Teknis & Deployment
+**6. Dokumen yang sudah lama (misal dari 3 tahun lalu) — apakah perlu "diarsipkan" atau tetap tampil seperti biasa?**
+Diarsipkan artinya: dokumen tidak muncul di halaman utama, tapi masih bisa dicari kalau perlu.
 
-- [ ] **Email untuk fitur forgot password** — Gmail instansi, email dinas, atau service pihak ketiga (Resend, SendGrid)?
-
-- [ ] **Upload server** — File dokumen disimpan di server lokal saat ini. Apakah untuk production perlu dipindahkan ke cloud storage (Google Drive, S3, dll)?
-
-- [ ] **Domain** — Apakah sistem akan di-deploy ke domain/subdomain khusus?
-  - Contoh: `laporan.instansi.go.id`
-
-- [ ] **Backup data** — Apakah perlu sistem backup otomatis untuk database dan file upload?
-  - Seberapa sering? Harian, mingguan?
-
-- [ ] **HTTPS** — Apakah server production sudah mendukung SSL/HTTPS?
+> Jawaban: ...
 
 ---
 
-## 📝 Catatan
+**7. Kalau dokumen yang sama perlu diperbarui di tahun baru (misal LKjIP 2025), apakah:**
+- [ ] A. Upload baru saja, dokumen lama tetap ada *(beda tahun = beda entri)*
+- [ ] B. Dokumen lama diganti dengan yang baru
 
-- Pertanyaan yang sudah terjawab beri tanda ✅ di awal baris
-- Tambahkan jawaban di bawah pertanyaan dengan format: **Jawaban:** ...
-- Update file ini setiap ada keputusan baru dari ketim atau stakeholder
+> Jawaban: ...
 
 ---
 
-*Dibuat: Agustus 2025 — Tim Pengembang*
+**8. Apakah semua pegawai yang login boleh mengunduh semua dokumen?**
+Atau hanya dokumen tertentu saja yang bisa diunduh oleh pegawai biasa?
+
+> Jawaban: ...
+
+---
+
+**9. Apakah perlu ada pengingat otomatis kalau laporan belum diupload mendekati deadline?**
+Misal: sistem kirim notifikasi/email ke Staff kalau laporan bulan ini belum masuk.
+
+> Jawaban: ...
+
+---
+
+## 🗂️ Soal Kategori & Jenis Dokumen
+
+**10. Apa saja jenis/kategori dokumen yang dipakai di instansi ini?**
+Saat ini sistem sudah ada: **LKjIP, Renstra, Renja, LPPD, RKPD**.
+Apakah ada yang perlu ditambah atau dihapus?
+
+> Jawaban: ...
+
+---
+
+**11. Apakah nama/jenis kategori dokumen ini bisa berubah sewaktu-waktu?**
+Kalau iya, siapa yang boleh menambah atau menghapus kategori — hanya Admin?
+
+> Jawaban: ...
+
+---
+
+## 👤 Soal Pengguna Sistem
+
+**12. Siapa saja yang boleh membuat akun baru untuk staff atau pegawai lain?**
+Saat ini hanya **Admin** yang bisa buat akun. Apakah ini sudah sesuai?
+
+> Jawaban: ...
+
+---
+
+**13. Kalau ada pegawai yang resign/keluar, dokumen yang pernah dia upload — apakah ikut dihapus atau tetap disimpan?**
+
+> Jawaban: ...
+
+---
+
+**14. Berapa jumlah Ketua Tim yang akan menggunakan sistem ini?**
+Saat ini sistem mendukung lebih dari satu Ketua Tim — apakah semua bisa menyetujui dokumen, atau hanya 1 yang utama?
+
+> Jawaban: ...
+
+---
+
+## 🖥️ Soal Tampilan Halaman Utama (yang bisa dilihat siapapun tanpa login)
+
+**15. Ada foto gedung kantor yang bisa dipakai untuk halaman utama website?**
+Saat ini masih pakai foto placeholder. Kalau ada foto asli, bisa dikirim ke pengembang.
+
+> Jawaban: ...
+
+---
+
+**16. Ada logo resmi instansi (file gambar) yang bisa dipakai?**
+Format yang dibutuhkan: PNG atau SVG.
+
+> Jawaban: ...
+
+---
+
+**17. Apa nama resmi lengkap instansi yang harus ditampilkan di website?**
+
+> Jawaban: ...
+
+---
+
+**18. Apakah di halaman utama perlu ditampilkan info kontak instansi?**
+Misal: alamat kantor, nomor telepon, atau email pengaduan.
+
+> Jawaban: ...
+
+---
+
+**19. Apakah teks Visi & Misi di halaman utama bisa diedit sendiri oleh Admin nantinya?**
+Atau cukup diisi sekali oleh pengembang dan tidak perlu diubah lagi?
+
+> Jawaban: ...
+
+---
+
+## 📊 Soal Laporan & Rekap Data
+
+**20. Apakah perlu fitur untuk "export" atau cetak rekap daftar dokumen ke Excel/PDF?**
+Misal: Admin bisa unduh daftar semua laporan tahun 2024 dalam bentuk file Excel.
+
+> Jawaban: ...
+
+---
+
+**21. Apakah perlu ada grafik atau statistik di halaman dashboard? (opsional)**
+Misal: grafik jumlah laporan per bulan, atau persentase dokumen yang sudah disetujui.
+
+> Jawaban: ...
+
+---
+
+## 🌐 Soal Website & Teknis (Dijawab Admin IT / PJ Teknis)
+
+**22. Apakah website ini nantinya akan bisa diakses dari internet (bukan hanya jaringan kantor)?**
+Kalau iya, perlu domain khusus (misal: `laporan.instansi.go.id`)?
+
+> Jawaban: ...
+
+---
+
+**23. Di mana file dokumen yang diupload akan disimpan?**
+- [ ] A. Di server/komputer kantor *(saat ini)*
+- [ ] B. Di layanan cloud (Google Drive, dll.)
+
+> Jawaban: ...
+
+---
+
+**24. Apakah perlu backup data otomatis?**
+Misal: data database dan file laporan dicadangkan setiap hari/minggu secara otomatis.
+
+> Jawaban: ...
+
+---
+
+## 📝 Cara Mengisi
+
+1. Beri tanda **✅** di depan pilihan yang dipilih, atau
+2. Tulis jawaban di bagian **"Jawaban: ..."**
+3. Kalau ada pertanyaan yang tidak relevan atau tidak perlu, tulis: *"Tidak perlu"*
+4. Kirim balik file ini ke tim pengembang setelah diisi
+
+---
+
+*Terima kasih! Jawaban dari pertanyaan ini akan sangat membantu pengembangan sistem berjalan sesuai kebutuhan instansi.*
+
+*Tim Pengembang — Agustus 2025*
