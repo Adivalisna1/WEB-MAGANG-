@@ -9,10 +9,15 @@ export default function NotFound() {
       <p className="text-gray-500 mb-6 max-w-sm">
         Halaman atau dokumen yang kamu cari tidak ditemukan atau sudah tidak tersedia.
       </p>
-      <Link href="/" className="btn-primary flex items-center gap-2">
-        <ArrowLeft className="w-4 h-4" />
-        Kembali ke Beranda
-      </Link>
+      <div className="flex gap-3">
+        <Link href="/laporan" className="btn-primary flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Dashboard Laporan
+        </Link>
+        <Link href="/" className="btn-secondary flex items-center gap-2 text-sm">
+          Beranda
+        </Link>
+      </div>
     </div>
   );
 }

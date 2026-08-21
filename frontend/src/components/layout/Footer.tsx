@@ -5,7 +5,10 @@ import { usePathname } from 'next/navigation';
 
 export default function Footer() {
   const pathname = usePathname();
-  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/admin');
+  const isDashboard = pathname.startsWith('/staff')
+    || pathname.startsWith('/admin')
+    || pathname.startsWith('/ketua')
+    || pathname.startsWith('/laporan');
   if (isDashboard) return null;
 
   return (
@@ -17,7 +20,7 @@ export default function Footer() {
             <span className="font-semibold text-white">Dashboard Laporan</span>
           </div>
           <p className="text-sm text-center">
-            Dokumen dapat diunduh secara bebas tanpa perlu login.
+            Platform dokumen laporan instansi — akses wajib login.
           </p>
           <p className="text-xs text-gray-500">
             &copy; {new Date().getFullYear()} Sistem Informasi Laporan
