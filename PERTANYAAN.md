@@ -1,9 +1,10 @@
 # Pertanyaan untuk Ketua Tim / Pengelola Sistem
-### Sistem Dashboard Laporan Instansi
+### Sistem Dashboard Laporan Instansi — Formulir Konfirmasi Kebutuhan
 
 > Halo! Sebelum sistem ini selesai dibuat, ada beberapa hal yang perlu kami
-> konfirmasi. Tolong beri tanda centang (✅) atau tulis jawaban di bawah tiap
-> pertanyaan. Tidak perlu tahu teknis — cukup jawab sesuai kebutuhan kerja sehari-hari.
+> konfirmasi terlebih dahulu. Tolong beri tanda centang (✅) atau tulis jawaban
+> di bawah tiap pertanyaan. **Tidak perlu paham teknis** — cukup jawab
+> sesuai kebutuhan dan kebiasaan kerja sehari-hari di instansi.
 
 ---
 
@@ -205,6 +206,7 @@ Misal: data database dan file laporan dicadangkan setiap hari/minggu secara otom
 
 ---
 
-*Terima kasih! Jawaban dari pertanyaan ini akan sangat membantu pengembangan sistem berjalan sesuai kebutuhan instansi.*
+*Terima kasih atas waktu dan kerjasamanya! Jawaban dari pertanyaan ini akan sangat membantu agar sistem yang dibangun benar-benar sesuai kebutuhan dan alur kerja instansi.*
 
+*Salam,*
 *Tim Pengembang — Agustus 2025*
