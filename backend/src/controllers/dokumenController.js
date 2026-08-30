@@ -1,5 +1,7 @@
 const path   = require('path');
 const fs     = require('fs');
+const os     = require('os');
+const { execFile } = require('child_process');
 const { body, param } = require('express-validator');
 const { pool } = require('../config/db');
 const { catatLog } = require('./authController');
@@ -631,11 +633,64 @@ async function previewDokumen(req, res, next) {
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Content-Type-Options');
-
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(dok.file_nama)}"`);
-    res.setHeader('Content-Type', dok.file_mime || 'application/octet-stream');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-    return res.sendFile(dok.file_path);
+
+    const mime  = dok.file_mime || '';
+    const isPDF = mime === 'application/pdf';
+
+    // ── PDF: kirim langsung (behavior lama, tidak berubah) ──────
+    if (isPDF) {
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(dok.file_nama)}"`);
+      res.setHeader('Content-Type', 'application/pdf');
+      return res.sendFile(dok.file_path);
+    }
+
+    // ── Non-PDF (Word / Excel): konversi ke PDF via LibreOffice ─
+    const tmpDir   = path.join(os.tmpdir(), 'lo_preview');
+    const baseName = path.basename(dok.file_path, path.extname(dok.file_path));
+    const pdfPath  = path.join(tmpDir, `${baseName}.pdf`);
+
+    // Pastikan folder tmp ada
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+
+    // Hapus sisa file PDF lama kalau ada
+    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+
+    execFile(
+      'libreoffice',
+      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, dok.file_path],
+      { timeout: 30000 }, // timeout 30 detik
+      (err) => {
+        if (err) {
+          console.error('[previewDokumen] LibreOffice error:', err.message);
+          return res.status(500).json({
+            success: false,
+            message: 'Gagal mengkonversi file ke PDF untuk preview. Silakan download file langsung.',
+          });
+        }
+
+        if (!fs.existsSync(pdfPath)) {
+          return res.status(500).json({
+            success: false,
+            message: 'File PDF hasil konversi tidak ditemukan.',
+          });
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(baseName)}.pdf"`);
+
+        const stream = fs.createReadStream(pdfPath);
+        stream.pipe(res);
+        stream.on('end', () => {
+          // Bersihkan file temp setelah selesai dikirim
+          fs.unlink(pdfPath, () => {});
+        });
+        stream.on('error', (streamErr) => {
+          console.error('[previewDokumen] stream error:', streamErr.message);
+          fs.unlink(pdfPath, () => {});
+        });
+      }
+    );
   } catch (err) { next(err); }
 }
 

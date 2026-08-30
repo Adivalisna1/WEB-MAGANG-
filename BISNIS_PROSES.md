@@ -27,11 +27,11 @@
 
 ## 1. Aktor & Peran
 
-| Role | `role_id` | Akses | Tugas |
-|---|---|---|---|
-| **Staff** | 2 | `/staff/dokumen`, `/laporan` | Upload, edit, submit dokumen milik sendiri |
-| **Admin** | 1 | `/admin`, `/laporan` | Menyaring dokumen (verifikasi tahap 1), kelola user & kategori |
-| **Ketua Tim** | 3 | `/ketua`, `/laporan` | Persetujuan final dokumen (verifikasi tahap 2), publikasi |
+| Role          | `role_id` | Akses                        | Tugas                                                          |
+| ------------- | --------- | ---------------------------- | -------------------------------------------------------------- |
+| **Staff**     | 2         | `/staff/dokumen`, `/laporan` | Upload, edit, submit dokumen milik sendiri                     |
+| **Admin**     | 1         | `/admin`, `/laporan`         | Menyaring dokumen (verifikasi tahap 1), kelola user & kategori |
+| **Ketua Tim** | 3         | `/ketua`, `/laporan`         | Persetujuan final dokumen (verifikasi tahap 2), publikasi      |
 
 > **Catatan:** Tidak ada role publik — semua akses ke dokumen memerlukan login.
 
@@ -49,14 +49,14 @@ draft  ──►  menunggu_verifikasi  ──►  lolos_admin  ──►  terver
                 revisi
 ```
 
-| Status | Siapa yang set | Arti | `is_public` |
-|---|---|---|---|
-| `draft` | Sistem (saat upload) | Baru diupload, belum diajukan | `0` |
-| `menunggu_verifikasi` | Staff (submit) | Menunggu tinjauan admin | `0` |
-| `lolos_admin` | Admin (loloskan) | Lolos tahap 1, menunggu ketua tim | `0` |
-| `terverifikasi` | Ketua Tim (setujui) | Disetujui, muncul di dashboard | `1` |
-| `revisi` | Admin / Ketua Tim (tolak) | Perlu diperbaiki staff | `0` |
-| `diarsipkan` | Admin | Dokumen lama yang diarsipkan | `0` |
+| Status                | Siapa yang set            | Arti                              | `is_public` |
+| --------------------- | ------------------------- | --------------------------------- | ----------- |
+| `draft`               | Sistem (saat upload)      | Baru diupload, belum diajukan     | `0`         |
+| `menunggu_verifikasi` | Staff (submit)            | Menunggu tinjauan admin           | `0`         |
+| `lolos_admin`         | Admin (loloskan)          | Lolos tahap 1, menunggu ketua tim | `0`         |
+| `terverifikasi`       | Ketua Tim (setujui)       | Disetujui, muncul di dashboard    | `1`         |
+| `revisi`              | Admin / Ketua Tim (tolak) | Perlu diperbaiki staff            | `0`         |
+| `diarsipkan`          | Admin                     | Dokumen lama yang diarsipkan      | `0`         |
 
 ---
 
@@ -107,6 +107,7 @@ flowchart TD
 **Akses:** Semua orang (tanpa login)
 
 **Konten yang ditampilkan:**
+
 - Nama & logo instansi
 - Foto gedung instansi
 - Visi & Misi instansi
@@ -115,6 +116,7 @@ flowchart TD
 - **Link "Masuk"** (di navbar kanan atas — kecil)
 
 **Aturan:**
+
 - Jika user sudah login → otomatis redirect ke dashboard role-nya
 - Tidak ada akses ke dokumen apapun tanpa login
 
@@ -160,14 +162,14 @@ User isi username + password
 
 **Form yang harus diisi:**
 
-| Field | Wajib | Keterangan |
-|---|---|---|
-| **Judul** | ✅ | Nama dokumen |
-| **Kategori** | ✅ | Pilih dari daftar (LKjIP, Renstra, Renja, dll) |
-| **Tahun** | ✅ | Tahun laporan (2015 – sekarang) |
-| **Periode** | ❌ | Pilih salah satu: **Bulan** (Jan–Des) ATAU **Semester** (1 atau 2) |
-| **Deskripsi** | ❌ | Keterangan tambahan |
-| **File** | ✅ | PDF, DOC, DOCX, XLS, XLSX — maks **50 MB** |
+| Field         | Wajib | Keterangan                                                         |
+| ------------- | ----- | ------------------------------------------------------------------ |
+| **Judul**     | ✅    | Nama dokumen                                                       |
+| **Kategori**  | ✅    | Pilih dari daftar (LKjIP, Renstra, Renja, dll)                     |
+| **Tahun**     | ✅    | Tahun laporan (2015 – sekarang)                                    |
+| **Periode**   | ❌    | Pilih salah satu: **Bulan** (Jan–Des) ATAU **Semester** (1 atau 2) |
+| **Deskripsi** | ❌    | Keterangan tambahan                                                |
+| **File**      | ✅    | PDF, DOC, DOCX, XLS, XLSX — maks **50 MB**                         |
 
 **Proses sistem saat upload:**
 
@@ -183,6 +185,7 @@ User isi username + password
 ```
 
 **Output:**
+
 - Dokumen tersimpan dengan status `draft`
 - Staff bisa lihat, edit metadata, atau ganti file selama masih `draft`
 
@@ -194,6 +197,7 @@ User isi username + password
 **API:** `PATCH /api/dokumen/:id/submit`
 
 **Syarat:**
+
 - Dokumen milik staff sendiri
 - Status harus `draft` atau `revisi`
 
@@ -284,22 +288,24 @@ User isi username + password
 **Akses:** Semua user yang sudah login (Admin, Staff, Ketua Tim)
 
 **Kondisi dokumen tampil:**
+
 ```sql
 WHERE status = 'terverifikasi' AND is_public = 1
 ```
 
 **Fitur di Dashboard Laporan:**
 
-| Fitur | Keterangan |
-|---|---|
-| **Pencarian** | Cari berdasarkan judul atau nomor laporan |
-| **Filter Kategori** | Dropdown pilih kategori (LKjIP, Renstra, dll) |
-| **Filter Tahun** | Dropdown pilih tahun laporan |
-| **Pagination** | 12 dokumen per halaman |
-| **Download** | Unduh file langsung (counter download bertambah) |
-| **Detail** | Lihat metadata lengkap dokumen |
+| Fitur               | Keterangan                                       |
+| ------------------- | ------------------------------------------------ |
+| **Pencarian**       | Cari berdasarkan judul atau nomor laporan        |
+| **Filter Kategori** | Dropdown pilih kategori (LKjIP, Renstra, dll)    |
+| **Filter Tahun**    | Dropdown pilih tahun laporan                     |
+| **Pagination**      | 12 dokumen per halaman                           |
+| **Download**        | Unduh file langsung (counter download bertambah) |
+| **Detail**          | Lihat metadata lengkap dokumen                   |
 
 **Informasi yang ditampilkan per dokumen:**
+
 - Judul dokumen
 - Nomor laporan (tracking code)
 - Kategori
@@ -332,6 +338,7 @@ Staff melihat notifikasi + catatan revisi di dashboard dokumen
 ```
 
 **Aturan revisi:**
+
 - Edit metadata hanya bisa saat status `draft` atau `revisi`
 - Ganti file hanya bisa saat status `draft` atau `revisi`
 - Setelah disubmit ulang, catatan revisi lama dihapus
@@ -342,14 +349,14 @@ Staff melihat notifikasi + catatan revisi di dashboard dokumen
 
 Sistem mengirim notifikasi **in-app** (tersimpan di tabel `notifikasi`) pada setiap pergantian status:
 
-| Pemicu | Penerima | Pesan |
-|---|---|---|
-| Staff submit dokumen | Semua Admin | `"{staff}" mengajukan "{judul}" untuk ditinjau` |
-| Admin loloskan | Staff (uploader) | `Dokumen lolos tinjauan admin, menunggu Ketua Tim` |
-| Admin loloskan | Semua Ketua Tim | `Dokumen menunggu persetujuan Anda` |
-| Admin kembalikan | Staff (uploader) | `Dokumen perlu direvisi: {catatan}` |
-| Ketua Tim setujui | Staff (uploader) | `Dokumen disetujui dan sudah dipublikasikan` |
-| Ketua Tim kembalikan | Staff (uploader) | `Dokumen perlu direvisi: {catatan}` |
+| Pemicu               | Penerima         | Pesan                                              |
+| -------------------- | ---------------- | -------------------------------------------------- |
+| Staff submit dokumen | Semua Admin      | `"{staff}" mengajukan "{judul}" untuk ditinjau`    |
+| Admin loloskan       | Staff (uploader) | `Dokumen lolos tinjauan admin, menunggu Ketua Tim` |
+| Admin loloskan       | Semua Ketua Tim  | `Dokumen menunggu persetujuan Anda`                |
+| Admin kembalikan     | Staff (uploader) | `Dokumen perlu direvisi: {catatan}`                |
+| Ketua Tim setujui    | Staff (uploader) | `Dokumen disetujui dan sudah dipublikasikan`       |
+| Ketua Tim kembalikan | Staff (uploader) | `Dokumen perlu direvisi: {catatan}`                |
 
 **Notifikasi dapat diakses** lewat ikon 🔔 di navbar dashboard masing-masing role.
 
@@ -357,37 +364,37 @@ Sistem mengirim notifikasi **in-app** (tersimpan di tabel `notifikasi`) pada set
 
 ## 7. Batasan & Aturan Teknis
 
-| Aturan | Detail |
-|---|---|
-| **Ukuran file maks** | 50 MB |
-| **Format file** | PDF, DOC, DOCX, XLS, XLSX |
-| **Duplikat dokumen** | Judul + Kategori + Tahun yang sama tidak boleh ada (kecuali yang diarsipkan) |
-| **Periode laporan** | Pilih salah satu: Bulan (1–12) **ATAU** Semester (1 atau 2) |
-| **Nomor laporan** | Ter-generate otomatis: `{SLUG}/{TAHUN}/{ID_PADDED}` — tidak bisa diubah manual |
-| **Akses dokumen** | Wajib login untuk semua akses (termasuk download) |
-| **Token JWT** | Tersimpan di `localStorage`, expired → auto logout |
+| Aturan               | Detail                                                                         |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **Ukuran file maks** | 50 MB                                                                          |
+| **Format file**      | PDF, DOC, DOCX, XLS, XLSX                                                      |
+| **Duplikat dokumen** | Judul + Kategori + Tahun yang sama tidak boleh ada (kecuali yang diarsipkan)   |
+| **Periode laporan**  | Pilih salah satu: Bulan (1–12) **ATAU** Semester (1 atau 2)                    |
+| **Nomor laporan**    | Ter-generate otomatis: `{SLUG}/{TAHUN}/{ID_PADDED}` — tidak bisa diubah manual |
+| **Akses dokumen**    | Wajib login untuk semua akses (termasuk download)                              |
+| **Token JWT**        | Tersimpan di `localStorage`, expired → auto logout                             |
 
 ---
 
 ## 8. API Endpoint Ringkasan
 
-| Method | Endpoint | Role | Fungsi |
-|---|---|---|---|
-| `GET` | `/api/dokumen` | — | *(tidak digunakan lagi, diganti /laporan)* |
-| `GET` | `/api/dokumen/all` | Staff/Admin/Ketua | List semua dokumen (staff: hanya milik sendiri) |
-| `GET` | `/api/dokumen/kategori` | — | List kategori aktif |
-| `POST` | `/api/dokumen/upload` | Staff | Upload dokumen baru |
-| `GET` | `/api/dokumen/:id` | — | Detail dokumen terverifikasi |
-| `GET` | `/api/dokumen/:id/download` | Login | Download file |
-| `GET` | `/api/dokumen/:id/preview` | Admin/Ketua | Preview file untuk review |
-| `PATCH` | `/api/dokumen/:id` | Staff/Admin | Edit metadata dokumen |
-| `PATCH` | `/api/dokumen/:id/file` | Staff/Admin | Ganti file dokumen |
-| `PATCH` | `/api/dokumen/:id/submit` | Staff | Submit ke verifikasi |
-| `PATCH` | `/api/dokumen/:id/verify` | Admin | Verifikasi tahap 1 (lolos/reject) |
-| `PATCH` | `/api/dokumen/:id/ketua-verify` | Ketua Tim | Verifikasi tahap 2 (approve/reject) |
-| `DELETE` | `/api/dokumen/:id` | Admin | Hapus dokumen permanen |
+| Method   | Endpoint                        | Role              | Fungsi                                          |
+| -------- | ------------------------------- | ----------------- | ----------------------------------------------- |
+| `GET`    | `/api/dokumen`                  | —                 | _(tidak digunakan lagi, diganti /laporan)_      |
+| `GET`    | `/api/dokumen/all`              | Staff/Admin/Ketua | List semua dokumen (staff: hanya milik sendiri) |
+| `GET`    | `/api/dokumen/kategori`         | —                 | List kategori aktif                             |
+| `POST`   | `/api/dokumen/upload`           | Staff             | Upload dokumen baru                             |
+| `GET`    | `/api/dokumen/:id`              | —                 | Detail dokumen terverifikasi                    |
+| `GET`    | `/api/dokumen/:id/download`     | Login             | Download file                                   |
+| `GET`    | `/api/dokumen/:id/preview`      | Admin/Ketua       | Preview file untuk review                       |
+| `PATCH`  | `/api/dokumen/:id`              | Staff/Admin       | Edit metadata dokumen                           |
+| `PATCH`  | `/api/dokumen/:id/file`         | Staff/Admin       | Ganti file dokumen                              |
+| `PATCH`  | `/api/dokumen/:id/submit`       | Staff             | Submit ke verifikasi                            |
+| `PATCH`  | `/api/dokumen/:id/verify`       | Admin             | Verifikasi tahap 1 (lolos/reject)               |
+| `PATCH`  | `/api/dokumen/:id/ketua-verify` | Ketua Tim         | Verifikasi tahap 2 (approve/reject)             |
+| `DELETE` | `/api/dokumen/:id`              | Admin             | Hapus dokumen permanen                          |
 
 ---
 
-*Dokumen ini dibuat berdasarkan implementasi aktual sistem per Agustus 2025.*
-*Untuk perubahan arsitektur, update dokumen ini bersamaan dengan perubahan kode.*
+_Dokumen ini dibuat berdasarkan implementasi aktual sistem per Agustus 2025._
+_Untuk perubahan arsitektur, update dokumen ini bersamaan dengan perubahan kode._

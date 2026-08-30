@@ -65,7 +65,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Kembali ke Beranda */}
+      {/* Kembali ke Dashboard Laporan */}
       <div className="px-3 py-2 border-t border-primary-700">
         <Link
           href="/laporan"

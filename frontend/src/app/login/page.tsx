@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Eye, EyeOff, Loader2, AlertCircle, Home } from 'lucide-react';
 
 export default function LoginPage() {
   const { loginFn, user, loading } = useAuth();
@@ -21,7 +21,7 @@ export default function LoginPage() {
     if (!loading && user) {
       if (user.role === 'admin')          router.replace('/admin');
       else if (user.role === 'ketua_tim') router.replace('/ketua');
-      else                                router.replace('/laporan');
+      else                                router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);
 
@@ -40,6 +40,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[calc(100vh-130px)] flex items-center justify-center px-4 bg-gray-50">
+      {/* Tombol Dashboard Publik kanan atas */}
+      <div className="fixed top-4 right-4 z-10">
+        <Link
+          href="/laporan"
+          className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
+        >
+          <Home className="w-4 h-4" />
+          Dashboard Publik
+        </Link>
+      </div>
+
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">

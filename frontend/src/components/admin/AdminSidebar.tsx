@@ -71,7 +71,7 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      {/* Kembali ke Beranda */}
+      {/* Kembali ke Dashboard Laporan */}
       <div className="px-3 py-2 border-t border-gray-700">
         <Link
           href="/laporan"

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { LogIn, Building2, Eye, CheckCircle } from 'lucide-react';
+import { LogIn, Building2, Eye, CheckCircle, LayoutDashboard } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -42,14 +42,16 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Top-right: tombol Masuk kecil */}
-        <Link
-          href="/login"
-          className="inline-flex items-center gap-1.5 border border-white/35 hover:border-white/70 hover:bg-white/10 text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-all duration-200"
-        >
-          <LogIn className="w-3.5 h-3.5" />
-          Masuk
-        </Link>
+        {/* Top-right: tombol Masuk kecil — hanya muncul kalau belum login */}
+        {!user && (
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 border border-white/35 hover:border-white/70 hover:bg-white/10 text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-all duration-200"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            Masuk
+          </Link>
+        )}
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
@@ -85,14 +87,39 @@ export default function LandingPage() {
             secara digital, aman, dan terstruktur.
           </p>
 
-          {/* Tombol LOGIN utama — besar di tengah hero */}
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"
-          >
-            <LogIn className="w-5 h-5" />
-            Masuk ke Dashboard
-          </Link>
+          {/* Tombol hero — kondisional berdasarkan status login */}
+          {user ? (
+            /* Sudah login → 1 tombol ke dashboard role-nya */
+            <Link
+              href={
+                user.role === 'admin' ? '/admin' :
+                user.role === 'ketua_tim' ? '/ketua' :
+                '/staff/dokumen'
+              }
+              className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              Buka Dashboard
+            </Link>
+          ) : (
+            /* Belum login → 2 tombol */
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"
+              >
+                <LogIn className="w-5 h-5" />
+                Masuk ke Dashboard
+              </Link>
+              <Link
+                href="/laporan"
+                className="inline-flex items-center gap-3 bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white/50 text-white font-semibold text-base px-8 py-4 rounded-xl hover:-translate-y-0.5 transition-all duration-250"
+              >
+                <Eye className="w-5 h-5" />
+                Dashboard Laporan
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Scroll hint */}
@@ -108,8 +135,8 @@ export default function LandingPage() {
       <div className="bg-[#080f1c] flex flex-wrap items-center justify-center divide-x divide-white/10 py-5 px-6">
         {[
           { num: '1.240+', label: 'Dokumen Terarsip' },
-          { num: '8',      label: 'Kategori Laporan' },
-          { num: '2019',   label: 'Berdiri Sejak' },
+          { num: '10+',    label: 'Kategori Laporan' },
+          { num: '2024',   label: 'Berdiri Sejak' },
           { num: '3-Level', label: 'Verifikasi Dokumen' },
         ].map((s) => (
           <div key={s.label} className="flex-1 min-w-[120px] text-center px-6 py-2">
@@ -122,16 +149,16 @@ export default function LandingPage() {
       {/* ── ABOUT SECTION ────────────────────────────────────────── */}
       <section className="bg-gray-50 py-20 px-6">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-          {/* Gambar placeholder dengan rounded + shadow */}
+          {/* Gambar gedung instansi */}
           <div className="relative">
             <img
-              src="https://images.unsplash.com/photo-1564069114941-80b5b4a31c0d?w=800&q=80"
-              alt="Gedung Instansi"
+              src="/gedung-dikti.avif"
+              alt="Gedung Instansi Pemerintah"
               className="w-full rounded-2xl shadow-2xl object-cover aspect-[4/3]"
             />
             <div className="absolute -bottom-5 -right-5 bg-[#1a3a6b] text-white px-5 py-4 rounded-2xl shadow-lg hidden md:block">
               <span className="block text-3xl font-extrabold text-amber-400 leading-none">Est.</span>
-              <span className="block font-bold text-lg">2019</span>
+              <span className="block font-bold text-lg">2024</span>
             </div>
           </div>
 
@@ -140,19 +167,17 @@ export default function LandingPage() {
               Tentang Kami
             </span>
             <h2 className="text-3xl font-extrabold text-gray-900 leading-tight mb-4">
-              Instansi Pemerintah Daerah
+              Instansi Pemerintah Pusat
             </h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-3">
-              <em>[Placeholder — isi dengan deskripsi singkat instansi, latar belakang, dan tugas pokok fungsi yang relevan]</em>
-            </p>
             <p className="text-gray-600 text-sm leading-relaxed mb-3">
-              Sistem ini dibangun untuk memudahkan pengelolaan, pengarsipan, dan pelaporan
-              dokumen secara digital — memastikan transparansi dan akuntabilitas dalam
-              tata kelola organisasi.
+              Sistem ini dibangun untuk memudahkan pengelolaan, pengarsipan, dan
+              pelaporan dokumen secara digital — memastikan transparansi dan
+              akuntabilitas dalam tata kelola organisasi.
             </p>
             <p className="text-gray-600 text-sm leading-relaxed">
-              Setiap dokumen melalui proses verifikasi dua tahap oleh Admin dan Ketua Tim
-              sebelum dipublikasikan, menjamin kualitas dan keabsahan informasi.
+              Setiap dokumen melalui proses verifikasi dua tahap oleh Admin dan
+              Ketua Tim sebelum dipublikasikan, menjamin kualitas dan keabsahan
+              informasi yang sampai ke publik.
             </p>
           </div>
         </div>
@@ -180,7 +205,9 @@ export default function LandingPage() {
               </div>
               <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2">Visi</p>
               <p className="text-lg font-semibold leading-relaxed">
-                [Placeholder — isi dengan visi instansi, contoh: "Terwujudnya tata kelola pemerintahan yang bersih, transparan, dan akuntabel"]
+                Terwujudnya Pendidikan Tinggi, Sains, dan Teknologi yang inklusif,
+                adaptif, dan berdampak dalam mewujudkan transformasi bangsa menuju
+                Indonesia Emas 2045.
               </p>
             </div>
 
@@ -193,14 +220,13 @@ export default function LandingPage() {
               <p className="text-base font-bold text-gray-900 mb-4">Langkah Strategis Kami</p>
               <ul className="space-y-3">
                 {[
-                  '[Placeholder misi 1 — contoh: Meningkatkan kualitas pelayanan publik berbasis digital]',
-                  '[Placeholder misi 2 — contoh: Memperkuat sistem pelaporan dan dokumentasi terintegrasi]',
-                  '[Placeholder misi 3 — contoh: Mendorong budaya kerja profesional dan berintegritas]',
-                  '[Placeholder misi 4 — isi dengan misi ke-4 instansi]',
+                  'Mewujudkan pemerataan akses pendidikan tinggi berkualitas, relevan, dan berdaya saing sebagai upaya untuk mendukung transformasi ekonomi.',
+                  'Mewujudkan riset, pengembangan, sains, teknologi, dan inovasi yang berdampak dan menjawab kebutuhan masyarakat untuk mendukung transformasi ekonomi dan transformasi sosial.',
+                  'Mewujudkan tata kelola Pendidikan Tinggi, Sains, dan Teknologi berintegritas untuk membantu mewujudkan transformasi tata kelola.',
                 ].map((misi, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-gray-600 leading-relaxed">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0" />
-                    {misi}
+                    {i + 1}. {misi}
                   </li>
                 ))}
               </ul>

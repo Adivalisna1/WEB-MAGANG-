@@ -42,7 +42,7 @@ export default async function DokumenDetailPage({ params }: Props) {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumb */}
       <Link
-        href="/"
+        href="/laporan"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -108,7 +108,7 @@ export default async function DokumenDetailPage({ params }: Props) {
               <Download className="w-5 h-5" />
               Unduh Dokumen
             </a>
-            <Link href="/" className="btn-secondary flex items-center justify-center gap-2 py-3 text-base">
+            <Link href="/laporan" className="btn-secondary flex items-center justify-center gap-2 py-3 text-base">
               <ArrowLeft className="w-5 h-5" />
               Kembali
             </Link>
