@@ -4,15 +4,11 @@ FROM node:20-slim
 WORKDIR /app
 
 # Install LibreOffice untuk konversi Word/Excel → PDF saat preview
-# + font Microsoft-compatible supaya layout tidak berantakan
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
     libreoffice-writer \
     libreoffice-calc \
     fonts-liberation \
-    fonts-crosextra-carlito \
-    fonts-crosextra-caladea \
-    fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies dulu (layer cache)

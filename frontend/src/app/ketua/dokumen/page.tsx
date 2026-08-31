@@ -67,9 +67,9 @@ export default function KetuaDokumenPage() {
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [previewError,    setPreviewError]    = useState('');
 
-  // Backend sekarang bisa konversi Word/Excel → PDF via LibreOffice
-  // isPdf hanya dipakai untuk label info, preview selalu dicoba via /preview endpoint
-  const isPdf = modalDok ? /\.pdf$/i.test(modalDok.file_nama || '') : false;
+  // Backend konversi Word → PDF via LibreOffice. Excel tetap download (layout sering berantakan).
+  const isPdf   = modalDok ? /\.pdf$/i.test(modalDok.file_nama || '') : false;
+  const isExcel = modalDok ? /\.(xls|xlsx)$/i.test(modalDok.file_nama || '') : false;
 
   // Fetch preview file as blob (streaming + progress bar)
   useEffect(() => {
@@ -82,6 +82,14 @@ export default function KetuaDokumenPage() {
     let cancelled = false;
     const controller = new AbortController();
     const session = getSession();
+
+    // Excel tidak di-preview — tampilkan UI download langsung
+    if (isExcel) {
+      setPreviewProgress(null);
+      setPreviewError('');
+      return;
+    }
+
     async function loadPreview() {
       setPreviewProgress({ loaded: 0, total: 0 });
       setPreviewError('');
@@ -115,7 +123,7 @@ export default function KetuaDokumenPage() {
           loaded = blob.size;
           if (!cancelled) setPreviewProgress({ loaded, total: total || loaded });
         }
-        // Backend selalu return PDF (hasil konversi atau file asli)
+        // Backend selalu return PDF (file asli PDF atau hasil konversi Word → PDF)
         const finalBlob = new Blob(chunks, { type: 'application/pdf' });
         if (!cancelled) {
           setPreviewUrl(URL.createObjectURL(finalBlob));
@@ -402,7 +410,20 @@ export default function KetuaDokumenPage() {
 
             {/* Preview */}
             <div className="bg-gray-100 border-b border-gray-200" style={{ height: '380px' }}>
-              {previewUrl ? (
+              {isExcel ? (
+                // Excel: langsung tampilkan tombol download — tidak di-preview
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <FileText className="w-14 h-14 mb-3 text-gray-300" />
+                  <p className="font-medium text-gray-700">Preview tidak tersedia untuk Excel</p>
+                  <p className="text-sm text-gray-400 mt-1">Format spreadsheet harus diunduh untuk dilihat</p>
+                  <button
+                    onClick={handleDownload}
+                    className="mt-4 flex items-center gap-1.5 text-sm text-white bg-indigo-600 hover:bg-indigo-700 font-medium px-5 py-2.5 rounded-lg transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> Download File Excel
+                  </button>
+                </div>
+              ) : previewUrl ? (
                 <object data={previewUrl} type="application/pdf" className="w-full h-full" style={{ height: '380px' }}>
                   <div className="flex flex-col items-center justify-center h-full text-gray-500">
                     <p>Browser tidak bisa menampilkan PDF.</p>
