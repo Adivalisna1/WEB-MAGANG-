@@ -237,11 +237,6 @@ async function toggleUserActive(req, res, next) {
       return res.status(400).json({ success: false, message: 'Tidak bisa menonaktifkan akun sendiri' });
     }
 
-    // Admin tidak bisa nonaktifkan ketua tim
-    if (rows[0].role_id === 3) {
-      return res.status(403).json({ success: false, message: 'Tidak bisa mengubah status Ketua Tim' });
-    }
-
     const newStatus = rows[0].is_active ? 0 : 1;
     await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, req.params.id]);
 
@@ -309,11 +304,6 @@ async function deleteUser(req, res, next) {
     const [rows] = await pool.query('SELECT id, role_id FROM users WHERE id = ?', [id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
-    }
-
-    // Admin tidak bisa hapus ketua tim (hierarki di atas admin)
-    if (rows[0].role_id === 3) {
-      return res.status(403).json({ success: false, message: 'Tidak bisa menghapus Ketua Tim' });
     }
 
     // Hapus session, log, lalu user (urutan penting karena FK)

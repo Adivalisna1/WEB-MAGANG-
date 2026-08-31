@@ -45,18 +45,18 @@ export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
   const hasFilter = q || kategori || tahun;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-4 transition-colors duration-200">
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
           <input
             type="text"
             value={q}
             onChange={e => setQ(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Cari judul atau kode laporan..."
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
           />
         </div>
 
@@ -64,7 +64,7 @@ export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
         <select
           value={kategori}
           onChange={e => setKategori(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          className="text-sm border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 transition-colors"
         >
           <option value="">Semua Kategori</option>
           {kategoriList.map(k => (
@@ -76,7 +76,7 @@ export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
         <select
           value={tahun}
           onChange={e => setTahun(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          className="text-sm border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 transition-colors"
         >
           <option value="">Semua Tahun</option>
           {tahunList.map(t => (

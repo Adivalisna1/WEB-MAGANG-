@@ -20,13 +20,13 @@ function StatCard({ icon: Icon, label, value, color }: {
   color: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-5 flex items-center gap-4 shadow-sm transition-colors duration-200">
       <div className={`p-3 rounded-lg ${color}`}>
         <Icon className="w-6 h-6 text-white" />
       </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-500">{label}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{label}</p>
       </div>
     </div>
   );
@@ -60,9 +60,9 @@ export default async function LaporanPage({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
       {/* Hero */}
-      <section className="bg-gradient-to-r from-primary-800 to-primary-600 rounded-2xl p-8 text-white">
+      <section className="bg-gradient-to-r from-primary-800 via-primary-700 to-primary-600 dark:from-slate-900 dark:via-slate-800 dark:to-primary-950 rounded-2xl p-8 text-white shadow-md border border-primary-700/40 dark:border-slate-800 transition-colors duration-200">
         <h1 className="text-3xl font-bold mb-2">Portal Dokumen Laporan</h1>
-        <p className="text-blue-100 text-lg max-w-2xl">
+        <p className="text-blue-100 dark:text-slate-300 text-lg max-w-2xl">
           Akses dan unduh dokumen laporan kinerja, rencana strategis, dan dokumen perencanaan lainnya.
         </p>
       </section>
@@ -75,18 +75,18 @@ export default async function LaporanPage({
       </section>
 
       {/* Filter */}
-      <Suspense fallback={<div className="h-16 bg-white rounded-xl animate-pulse" />}>
+      <Suspense fallback={<div className="h-16 bg-white dark:bg-slate-900 rounded-xl animate-pulse" />}>
         <FilterBar kategoriList={kategoriList} basePath="/laporan" />
       </Suspense>
 
       {/* Label hasil filter */}
       {(searchParams.q || searchParams.kategori || searchParams.tahun) && (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
           <span>Hasil pencarian</span>
-          {searchParams.q       && <span className="badge bg-blue-100 text-blue-800">"{searchParams.q}"</span>}
-          {searchParams.kategori && <span className="badge bg-purple-100 text-purple-800">{searchParams.kategori}</span>}
-          {searchParams.tahun   && <span className="badge bg-green-100 text-green-800">Tahun {searchParams.tahun}</span>}
-          {meta && <span className="text-gray-400">— {meta.total} dokumen ditemukan</span>}
+          {searchParams.q       && <span className="badge bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">"{searchParams.q}"</span>}
+          {searchParams.kategori && <span className="badge bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">{searchParams.kategori}</span>}
+          {searchParams.tahun   && <span className="badge bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">Tahun {searchParams.tahun}</span>}
+          {meta && <span className="text-gray-400 dark:text-slate-500">— {meta.total} dokumen ditemukan</span>}
         </div>
       )}
 
