@@ -6,6 +6,8 @@ import { LogIn, Building2, Eye, CheckCircle, LayoutDashboard } from 'lucide-reac
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+import DarkModeToggle from '@/components/ui/DarkModeToggle';
+
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -42,16 +44,19 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Top-right: tombol Masuk kecil — hanya muncul kalau belum login */}
-        {!user && (
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 border border-white/35 hover:border-white/70 hover:bg-white/10 text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-all duration-200"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            Masuk
-          </Link>
-        )}
+        {/* Top-right: Theme Toggle & tombol Masuk */}
+        <div className="flex items-center gap-3">
+          <DarkModeToggle />
+          {!user && (
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 border border-white/35 hover:border-white/70 hover:bg-white/10 text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-all duration-200"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Masuk
+            </Link>
+          )}
+        </div>
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────────────── */}

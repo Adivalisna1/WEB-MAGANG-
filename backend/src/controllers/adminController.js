@@ -243,8 +243,11 @@ async function toggleUserActive(req, res, next) {
       return res.status(400).json({ success: false, message: 'Tidak bisa menonaktifkan akun sendiri' });
     }
 
+<<<<<<< HEAD
     // Admin bisa kelola semua user termasuk ketua tim (sesuai arahan mentor & ketim)
 
+=======
+>>>>>>> b30dfea799f729319df67958d7111c04bccf0ed0
     const newStatus = rows[0].is_active ? 0 : 1;
     await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, req.params.id]);
 
@@ -314,8 +317,11 @@ async function deleteUser(req, res, next) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
 
+<<<<<<< HEAD
     // Admin bisa hapus semua user termasuk ketua tim (sesuai arahan mentor & ketim)
 
+=======
+>>>>>>> b30dfea799f729319df67958d7111c04bccf0ed0
     // Hapus session, log, lalu user (urutan penting karena FK)
     const [[userToDelete]] = await pool.query('SELECT nama, username FROM users WHERE id = ?', [id]);
     await pool.query('DELETE FROM user_sessions WHERE user_id = ?', [id]);

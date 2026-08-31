@@ -41,7 +41,7 @@ export default function Pagination({ currentPage, totalPages, basePath = '/' }: 
       <button
         onClick={() => goTo(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+        className="p-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
         aria-label="Halaman sebelumnya"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -49,7 +49,7 @@ export default function Pagination({ currentPage, totalPages, basePath = '/' }: 
 
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-gray-400 text-sm">...</span>
+          <span key={`ellipsis-${i}`} className="px-2 text-gray-400 dark:text-slate-500 text-sm">...</span>
         ) : (
           <button
             key={p}
@@ -57,8 +57,8 @@ export default function Pagination({ currentPage, totalPages, basePath = '/' }: 
             className={clsx(
               'w-9 h-9 rounded-lg text-sm font-medium border transition-colors',
               p === currentPage
-                ? 'bg-primary-600 text-white border-primary-600'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-primary-600 dark:bg-primary-600 text-white border-primary-600 shadow-sm'
+                : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700'
             )}
             aria-current={p === currentPage ? 'page' : undefined}
           >
@@ -70,7 +70,7 @@ export default function Pagination({ currentPage, totalPages, basePath = '/' }: 
       <button
         onClick={() => goTo(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+        className="p-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
         aria-label="Halaman berikutnya"
       >
         <ChevronRight className="w-4 h-4" />
