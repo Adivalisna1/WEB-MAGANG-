@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, FormEvent } from 'react';
 import { getSession } from '@/lib/auth';
 import {
   Users, UserPlus, UserCheck, UserX, Trash2,
-  Loader2, RefreshCw, AlertCircle, Wifi, WifiOff, X
+  Loader2, RefreshCw, AlertCircle, Wifi, WifiOff, X, KeyRound
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/dateUtils';
 import clsx from 'clsx';
@@ -39,6 +39,13 @@ export default function AdminUsersPage() {
   const [roleId,   setRoleId]   = useState('2');
   const [creating, setCreating] = useState(false);
   const [formErr,  setFormErr]  = useState('');
+
+  // Reset password modal
+  const [resetModal, setResetModal] = useState<{id: number; nama: string} | null>(null);
+  const [resetPass,  setResetPass]  = useState('');
+  const [resetting,  setResetting]  = useState(false);
+  const [resetErr,   setResetErr]   = useState('');
+  const [resetOk,    setResetOk]    = useState('');
 
   const fetchUsers = useCallback(async () => {
     setLoading(true); setError('');
@@ -125,13 +132,39 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resetModal) return;
+    setResetErr(''); setResetOk(''); setResetting(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/admin/users/${resetModal.id}/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({ password_baru: resetPass }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setResetOk(data.message || 'Password berhasil direset');
+      setResetPass('');
+      setTimeout(() => setResetModal(null), 1500);
+    } catch (e: any) {
+      setResetErr(e.message || 'Gagal mereset password');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Manajemen User</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Kelola akun admin dan staff</p>
+          <p className="text-sm text-gray-500 mt-0.5">Kelola akun admin, staff, dan ketua tim</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchUsers} className="btn-secondary p-2" title="Refresh">
@@ -231,6 +264,16 @@ export default function AdminUsersPage() {
                           }
                         </button>
                         <button
+                          onClick={() => {
+                            setResetPass(''); setResetErr(''); setResetOk('');
+                            setResetModal({id: u.id, nama: u.nama});
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-yellow-600 transition-colors"
+                          title="Reset password"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => deleteUser(u.id, u.nama)}
                           disabled={deleting === u.id}
                           className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
@@ -294,6 +337,7 @@ export default function AdminUsersPage() {
                 >
                   <option value="2">Staff</option>
                   <option value="1">Admin</option>
+                  <option value="3">Ketua Tim</option>
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
@@ -310,6 +354,58 @@ export default function AdminUsersPage() {
                   onClick={() => setShowModal(false)}
                   className="flex-1 btn-secondary py-2.5"
                 >
+                  Batal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal reset password */}
+      {resetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900 text-lg">Reset Password</h3>
+              <button onClick={() => setResetModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+              <p className="text-sm text-gray-600">Reset password untuk <strong>{resetModal.nama}</strong></p>
+              {resetErr && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {resetErr}
+                </div>
+              )}
+              {resetOk && (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+                  {resetOk}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password Baru</label>
+                <input
+                  type="password"
+                  value={resetPass}
+                  onChange={e => setResetPass(e.target.value)}
+                  placeholder="Min. 6 karakter"
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={resetting || resetPass.length < 6}
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+                >
+                  {resetting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Reset Password
+                </button>
+                <button type="button" onClick={() => setResetModal(null)} className="flex-1 btn-secondary py-2.5">
                   Batal
                 </button>
               </div>

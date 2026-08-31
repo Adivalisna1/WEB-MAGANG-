@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileCheck, Users,
-  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag
+  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, User
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -15,6 +15,7 @@ const adminMenu = [
   { href: '/admin/kategori', icon: Tag,             label: 'Kelola Kategori' },
   { href: '/admin/users',    icon: Users,           label: 'Manajemen User' },
   { href: '/admin/logs',     icon: Activity,        label: 'Log Aktivitas' },
+  { href: '/admin/profil',   icon: User,            label: 'Profil' },
 ];
 
 export default function AdminSidebar() {
@@ -33,8 +34,11 @@ export default function AdminSidebar() {
         </div>
       </div>
 
-      {/* User info */}
-      <div className="px-5 py-4 border-b border-gray-700">
+      {/* User info — clickable ke profil */}
+      <Link
+        href="/admin/profil"
+        className="block px-5 py-4 border-b border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer"
+      >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-yellow-500 flex items-center justify-center font-bold text-sm text-gray-900 shrink-0">
             {user?.nama?.charAt(0).toUpperCase() ?? 'A'}
@@ -46,7 +50,7 @@ export default function AdminSidebar() {
             </p>
           </div>
         </div>
-      </div>
+      </Link>
 
       {/* Menu */}
       <nav className="flex-1 px-3 py-4 space-y-1">

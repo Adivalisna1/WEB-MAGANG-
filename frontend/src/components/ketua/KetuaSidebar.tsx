@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileSearch, Users,
-  Activity, LogOut, ChevronRight, Crown, Home, Send
+  Activity, LogOut, ChevronRight, Crown, Home, Send, User
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -15,6 +15,7 @@ const ketuaMenu = [
   { href: '/ketua/users',          icon: Users,           label: 'Manajemen User' },
   { href: '/ketua/logs',           icon: Activity,        label: 'Log Aktivitas' },
   { href: '/ketua/kirim-notifikasi', icon: Send,          label: 'Kirim Notifikasi' },
+  { href: '/ketua/profil',         icon: User,            label: 'Profil' },
 ];
 
 export default function KetuaSidebar() {
@@ -31,8 +32,11 @@ export default function KetuaSidebar() {
         </div>
       </div>
 
-      {/* User info */}
-      <div className="px-5 py-4 border-b border-indigo-800">
+      {/* User info — clickable ke profil */}
+      <Link
+        href="/ketua/profil"
+        className="block px-5 py-4 border-b border-indigo-800 hover:bg-indigo-900 transition-colors cursor-pointer"
+      >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white shrink-0">
             {user?.nama?.charAt(0).toUpperCase() ?? 'K'}
@@ -42,7 +46,7 @@ export default function KetuaSidebar() {
             <p className="text-xs text-indigo-300">Ketua Tim</p>
           </div>
         </div>
-      </div>
+      </Link>
 
       {/* Menu */}
       <nav className="flex-1 px-3 py-4 space-y-1">

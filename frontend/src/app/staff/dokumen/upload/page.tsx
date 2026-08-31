@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Upload, FileText, X, CheckCircle,
-  Loader2, AlertCircle, ArrowLeft, CloudUpload
+  Loader2, AlertCircle, ArrowLeft, CloudUpload, DollarSign, Check, AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-interface Kategori { id: number; nama: string; slug: string; }
+interface Kategori { id: number; nama: string; slug: string; perlu_nominal: number; }
 
 const TAHUN_LIST = Array.from(
   { length: new Date().getFullYear() - 2014 },
@@ -36,6 +36,10 @@ export default function UploadPage() {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState('');
   const [success,     setSuccess]     = useState(false);
+
+  // Nominal perbandingan
+  const [nilaiRekKoran, setNilaiRekKoran] = useState('');
+  const [nilaiExcel,    setNilaiExcel]    = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +109,11 @@ export default function UploadPage() {
       if (jenisPeriode === 'semester' && semester) fd.append('semester', semester);
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
+
+      // Nominal (opsional, tergantung kategori)
+      const selKat = kategoriList.find(k => String(k.id) === kategoriId);
+      if (selKat?.perlu_nominal && nilaiRekKoran) fd.append('nilai_rekening_koran', nilaiRekKoran.replace(/\./g, ''));
+      if (selKat?.perlu_nominal && nilaiExcel)    fd.append('nilai_excel', nilaiExcel.replace(/\./g, ''));
 
       const res = await fetch(`${API}/dokumen/upload`, {
         method: 'POST',
@@ -259,6 +268,63 @@ export default function UploadPage() {
             </div>
           </div>
         </div>
+
+        {/* Nominal Perbandingan (hanya muncul jika kategori butuh) */}
+        {kategoriList.find(k => String(k.id) === kategoriId)?.perlu_nominal ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+              <DollarSign className="w-4 h-4" /> Perbandingan Nominal
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Nilai Rekening Koran (Rp)
+                </label>
+                <input
+                  type="text"
+                  value={nilaiRekKoran}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setNilaiRekKoran(raw ? Number(raw).toLocaleString('id-ID') : '');
+                  }}
+                  placeholder="0"
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Nilai Dari Excel (Rp)
+                </label>
+                <input
+                  type="text"
+                  value={nilaiExcel}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setNilaiExcel(raw ? Number(raw).toLocaleString('id-ID') : '');
+                  }}
+                  placeholder="0"
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+            {nilaiRekKoran && nilaiExcel && (() => {
+              const a = Number(nilaiRekKoran.replace(/\./g, ''));
+              const b = Number(nilaiExcel.replace(/\./g, ''));
+              const selisih = Math.abs(a - b);
+              const cocok = selisih === 0;
+              return (
+                <div className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium ${
+                  cocok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {cocok
+                    ? <><Check className="w-4 h-4" /> Cocok (Match) — Tidak ada selisih</>
+                    : <><AlertTriangle className="w-4 h-4" /> Selisih: Rp {selisih.toLocaleString('id-ID')}</>
+                  }
+                </div>
+              );
+            })()}
+          </div>
+        ) : null}
 
         {/* Deskripsi */}
         <div>

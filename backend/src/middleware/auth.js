@@ -26,6 +26,22 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ success: false, message: 'User tidak aktif atau tidak ditemukan' });
     }
 
+    // ── Single-device enforcement ─────────────────────────────
+    // Cek apakah session ini masih aktif (belum di-kick oleh login di device lain)
+    if (decoded.sessionId) {
+      const [sess] = await pool.query(
+        'SELECT is_online FROM user_sessions WHERE id = ?',
+        [decoded.sessionId]
+      );
+      if (sess.length && !sess[0].is_online) {
+        return res.status(401).json({
+          success: false,
+          message: 'Sesi Anda telah berakhir karena akun login di perangkat lain',
+          code: 'SESSION_KICKED',
+        });
+      }
+    }
+
     req.user = rows[0];
 
     // Update last_active_at di session

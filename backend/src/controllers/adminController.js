@@ -44,9 +44,11 @@ async function createKategori(req, res, next) {
       return res.status(409).json({ success: false, message: 'Nama kategori sudah ada' });
     }
 
+    const perlu_nominal = req.body.perlu_nominal ? 1 : 0;
+
     const [result] = await pool.query(
-      'INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, is_active) VALUES (?, ?, ?, ?, 1)',
-      [nama, slug, deskripsi || null, Number(urutan)]
+      'INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, is_active, perlu_nominal) VALUES (?, ?, ?, ?, 1, ?)',
+      [nama, slug, deskripsi || null, Number(urutan), perlu_nominal]
     );
 
     return res.status(201).json({
@@ -93,13 +95,16 @@ async function updateKategori(req, res, next) {
       }
     }
 
+    const { perlu_nominal } = req.body;
+
     await pool.query(
       `UPDATE kategori_dokumen SET
         nama      = COALESCE(?, nama),
         slug      = ?,
         deskripsi = COALESCE(?, deskripsi),
         urutan    = COALESCE(?, urutan),
-        is_active = COALESCE(?, is_active)
+        is_active = COALESCE(?, is_active),
+        perlu_nominal = COALESCE(?, perlu_nominal)
        WHERE id = ?`,
       [
         nama || null,
@@ -107,6 +112,7 @@ async function updateKategori(req, res, next) {
         deskripsi !== undefined ? deskripsi : null,
         urutan !== undefined ? Number(urutan) : null,
         is_active !== undefined ? Number(is_active) : null,
+        perlu_nominal !== undefined ? Number(perlu_nominal) : null,
         id,
       ]
     );
@@ -237,10 +243,7 @@ async function toggleUserActive(req, res, next) {
       return res.status(400).json({ success: false, message: 'Tidak bisa menonaktifkan akun sendiri' });
     }
 
-    // Admin tidak bisa nonaktifkan ketua tim
-    if (rows[0].role_id === 3) {
-      return res.status(403).json({ success: false, message: 'Tidak bisa mengubah status Ketua Tim' });
-    }
+    // Admin bisa kelola semua user termasuk ketua tim (sesuai arahan mentor & ketim)
 
     const newStatus = rows[0].is_active ? 0 : 1;
     await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, req.params.id]);
@@ -311,10 +314,7 @@ async function deleteUser(req, res, next) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
 
-    // Admin tidak bisa hapus ketua tim (hierarki di atas admin)
-    if (rows[0].role_id === 3) {
-      return res.status(403).json({ success: false, message: 'Tidak bisa menghapus Ketua Tim' });
-    }
+    // Admin bisa hapus semua user termasuk ketua tim (sesuai arahan mentor & ketim)
 
     // Hapus session, log, lalu user (urutan penting karena FK)
     const [[userToDelete]] = await pool.query('SELECT nama, username FROM users WHERE id = ?', [id]);
@@ -362,6 +362,50 @@ async function clearLogs(req, res, next) {
     return res.json({ success: true, message: `Riwayat berhasil dihapus`, data: { remaining: total } });
   } catch (err) { next(err); }
 }
+
+// ── PATCH /api/admin/users/:id/password — reset password user ──
+async function resetUserPassword(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const { password_baru } = req.body;
+
+    if (!password_baru || password_baru.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password baru minimal 6 karakter' });
+    }
+
+    // Cek user ada
+    const [rows] = await pool.query('SELECT id, nama, username FROM users WHERE id = ?', [id]);
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+    }
+
+    // Admin tidak bisa reset password diri sendiri via fitur ini
+    if (id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Gunakan fitur ganti password untuk akun sendiri' });
+    }
+
+    const hash = await bcrypt.hash(password_baru, 12);
+    await pool.query('UPDATE users SET password_hash = ?, password_reset_at = NOW() WHERE id = ?', [hash, id]);
+
+    // Logout semua session user yang di-reset
+    await pool.query(
+      'UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE user_id = ?',
+      [id]
+    );
+
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'reset_password_user',
+      entitas: 'user',
+      entitas_id: id,
+      detail: { target_nama: rows[0].nama, target_username: rows[0].username },
+      ip: req.ip,
+    });
+
+    return res.json({ success: true, message: `Password ${rows[0].nama} berhasil direset` });
+  } catch (err) { next(err); }
+}
+
 async function getStats(req, res, next) {
   try {
     await pool.query(
@@ -388,5 +432,6 @@ async function getStats(req, res, next) {
 
 module.exports = {
   getUsers, getOnlineUsers, createUser, createUserRules, toggleUserActive, deleteUser, clearLogs, getLogs, getStats,
+  resetUserPassword,
   getKategoriAdmin, createKategori, createKategoriRules, updateKategori, updateKategoriRules, deleteKategori,
 };

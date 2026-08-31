@@ -29,8 +29,11 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* User info */}
-      <div className="px-5 py-4 border-b border-primary-700">
+      {/* User info — clickable ke profil */}
+      <Link
+        href="/staff/profil"
+        className="block px-5 py-4 border-b border-primary-700 hover:bg-primary-800 transition-colors cursor-pointer"
+      >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-primary-600 flex items-center justify-center font-bold text-sm shrink-0">
             {user?.nama?.charAt(0).toUpperCase() ?? 'S'}
@@ -40,7 +43,7 @@ export default function Sidebar() {
             <p className="text-xs text-blue-300 capitalize">{user?.role ?? 'staff'}</p>
           </div>
         </div>
-      </div>
+      </Link>
 
       {/* Menu */}
       <nav className="flex-1 px-3 py-4 space-y-1">

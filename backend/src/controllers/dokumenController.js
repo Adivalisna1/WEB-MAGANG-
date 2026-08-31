@@ -151,7 +151,8 @@ async function getAllDokumen(req, res, next) {
       `SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
               d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size,
               d.download_count, d.is_public, d.created_at, d.updated_at,
-              k.nama AS kategori, u.nama AS uploaded_by
+              d.nilai_rekening_koran, d.nilai_excel,
+              k.nama AS kategori, k.perlu_nominal, u.nama AS uploaded_by
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
        JOIN users u ON u.id = d.uploaded_by
@@ -215,14 +216,20 @@ async function uploadDokumen(req, res, next) {
     // Ambil slug kategori untuk nomor laporan
     const [[katRow]] = await pool.query('SELECT slug FROM kategori_dokumen WHERE id = ?', [kategori_id]);
 
+    // Ambil nilai nominal (opsional, tergantung kategori)
+    const nilaiRekKoran = req.body.nilai_rekening_koran ? Number(req.body.nilai_rekening_koran) : null;
+    const nilaiExcel    = req.body.nilai_excel ? Number(req.body.nilai_excel) : null;
+
     const [result] = await pool.query(
       `INSERT INTO dokumen
          (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
-          file_nama, file_path, file_size, file_mime, status, is_public)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0)`,
+          file_nama, file_path, file_size, file_mime, status, is_public,
+          nilai_rekening_koran, nilai_excel)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, ?, ?)`,
       [kategori_id, req.user.id, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
-       fileName, filePath, req.file.size, req.file.mimetype]
+       fileName, filePath, req.file.size, req.file.mimetype,
+       nilaiRekKoran, nilaiExcel]
     );
 
     // Generate dan simpan nomor laporan
@@ -301,6 +308,10 @@ async function editDokumen(req, res, next) {
       });
     }
 
+    // Nilai nominal (opsional)
+    const nilaiRekKoran = req.body.nilai_rekening_koran !== undefined ? (req.body.nilai_rekening_koran ? Number(req.body.nilai_rekening_koran) : null) : undefined;
+    const nilaiExcel    = req.body.nilai_excel !== undefined ? (req.body.nilai_excel ? Number(req.body.nilai_excel) : null) : undefined;
+
     await pool.query(
       `UPDATE dokumen SET
          judul       = COALESCE(?, judul),
@@ -308,11 +319,16 @@ async function editDokumen(req, res, next) {
          bulan       = ?,
          semester    = ?,
          kategori_id = COALESCE(?, kategori_id),
-         deskripsi   = COALESCE(?, deskripsi)
+         deskripsi   = COALESCE(?, deskripsi),
+         nilai_rekening_koran = COALESCE(?, nilai_rekening_koran),
+         nilai_excel          = COALESCE(?, nilai_excel)
        WHERE id = ?`,
       [judul || null, tahun || null,
        bulanFinal, semesterFinal,
-       kategori_id || null, deskripsi || null, id]
+       kategori_id || null, deskripsi || null,
+       nilaiRekKoran !== undefined ? nilaiRekKoran : null,
+       nilaiExcel !== undefined ? nilaiExcel : null,
+       id]
     );
 
     return res.json({ success: true, message: 'Dokumen berhasil diupdate', data: { id: Number(id) } });
@@ -559,7 +575,7 @@ async function getStatsPublik(req, res, next) {
 async function getKategori(req, res, next) {
   try {
     const [rows] = await pool.query(
-      'SELECT id, nama, slug, deskripsi FROM kategori_dokumen WHERE is_active = 1 ORDER BY urutan ASC'
+      'SELECT id, nama, slug, deskripsi, perlu_nominal FROM kategori_dokumen WHERE is_active = 1 ORDER BY urutan ASC'
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }

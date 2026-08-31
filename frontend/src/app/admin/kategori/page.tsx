@@ -5,7 +5,7 @@ import { getSession } from '@/lib/auth';
 import {
   Tag, Plus, Pencil, Trash2, Loader2,
   RefreshCw, AlertCircle, CheckCircle, X,
-  ToggleLeft, ToggleRight, FileText
+  ToggleLeft, ToggleRight, FileText, DollarSign
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -19,6 +19,7 @@ interface Kategori {
   urutan: number;
   is_active: number;
   jumlah_dokumen: number;
+  perlu_nominal: number;
 }
 
 type ModalMode = 'tambah' | 'edit' | null;
@@ -39,6 +40,7 @@ export default function AdminKategoriPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError,  setFormError]  = useState('');
   const [formOk,     setFormOk]     = useState('');
+  const [perluNominal, setPerluNominal] = useState(false);
 
   const fetchKategori = useCallback(async () => {
     setLoading(true); setError('');
@@ -61,7 +63,7 @@ export default function AdminKategoriPage() {
 
   // Buka modal tambah
   const openTambah = () => {
-    setNama(''); setDeskripsi(''); setUrutan('0');
+    setNama(''); setDeskripsi(''); setUrutan('0'); setPerluNominal(false);
     setFormError(''); setFormOk('');
     setEditTarget(null);
     setModalMode('tambah');
@@ -72,6 +74,7 @@ export default function AdminKategoriPage() {
     setNama(k.nama);
     setDeskripsi(k.deskripsi ?? '');
     setUrutan(String(k.urutan));
+    setPerluNominal(!!k.perlu_nominal);
     setFormError(''); setFormOk('');
     setEditTarget(k);
     setModalMode('edit');
@@ -95,7 +98,7 @@ export default function AdminKategoriPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.token}`,
         },
-        body: JSON.stringify({ nama, deskripsi: deskripsi || undefined, urutan: Number(urutan) }),
+        body: JSON.stringify({ nama, deskripsi: deskripsi || undefined, urutan: Number(urutan), perlu_nominal: perluNominal ? 1 : 0 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -215,7 +218,14 @@ export default function AdminKategoriPage() {
                       <div className="flex items-center gap-2">
                         <Tag className="w-4 h-4 text-yellow-500 shrink-0" />
                         <div>
-                          <p className="font-medium text-gray-900">{k.nama}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-gray-900">{k.nama}</p>
+                            {!!k.perlu_nominal && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700" title="Butuh perbandingan nominal">
+                                <DollarSign className="w-3 h-3" /> Nominal
+                              </span>
+                            )}
+                          </div>
                           {k.deskripsi && <p className="text-xs text-gray-400 line-clamp-1">{k.deskripsi}</p>}
                         </div>
                       </div>
@@ -352,6 +362,29 @@ export default function AdminKategoriPage() {
                   className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">Angka lebih kecil tampil lebih dulu</p>
+              </div>
+
+              {/* Toggle Perlu Nominal */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Butuh Perbandingan Nominal?
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPerluNominal(!perluNominal)}
+                  className={clsx(
+                    'flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors w-full',
+                    perluNominal
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                      : 'bg-gray-50 border-gray-300 text-gray-500'
+                  )}
+                >
+                  {perluNominal
+                    ? <><ToggleRight className="w-5 h-5 text-emerald-600" /> Aktif — input nominal Rek. Koran vs Excel</>
+                    : <><ToggleLeft className="w-5 h-5 text-gray-400" /> Nonaktif — tanpa input nominal</>
+                  }
+                </button>
+                <p className="text-xs text-gray-400 mt-1">Aktifkan jika dokumen di kategori ini perlu input nilai rekening koran dan Excel</p>
               </div>
 
               {/* Tombol */}

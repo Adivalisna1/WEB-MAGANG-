@@ -32,6 +32,11 @@ router.delete('/users/:id',
   ctrl.deleteUser
 );
 
+// PATCH /api/admin/users/:id/password — reset password user
+router.patch('/users/:id/password',
+  ctrl.resetUserPassword
+);
+
 // GET /api/admin/logs — log aktivitas
 router.get('/logs', ctrl.getLogs);
 
