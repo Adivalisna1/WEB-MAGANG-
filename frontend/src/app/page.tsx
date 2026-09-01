@@ -3,12 +3,23 @@
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { LogIn, Building2, Eye, CheckCircle, LayoutDashboard } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [stats, setStats] = useState({ totalDokumen: 0, totalKategori: 0 });
+
+  // Fetch stats publik
+  useEffect(() => {
+    fetch(`${API}/dokumen/stats`)
+      .then(r => r.json())
+      .then(j => { if (j.success) setStats(j.data); })
+      .catch(() => {});
+  }, []);
 
   // Kalau sudah login, langsung redirect ke dashboard role-nya
   useEffect(() => {
@@ -136,10 +147,10 @@ export default function LandingPage() {
       {/* ── STATS STRIP ──────────────────────────────────────────── */}
       <div className="bg-[#080f1c] flex flex-wrap items-center justify-center divide-x divide-white/10 py-5 px-6">
         {[
-          { num: '1.240+', label: 'Dokumen Terarsip' },
-          { num: '10+',    label: 'Kategori Laporan' },
-          { num: '2024',   label: 'Berdiri Sejak' },
-          { num: '3-Level', label: 'Verifikasi Dokumen' },
+          { num: stats.totalDokumen > 0 ? `${stats.totalDokumen.toLocaleString('id-ID')}+` : '—', label: 'Dokumen Terarsip' },
+          { num: stats.totalKategori > 0 ? `${stats.totalKategori}+` : '—', label: 'Kategori Laporan' },
+          { num: '2024',    label: 'Berdiri Sejak' },
+          { num: '2-Level', label: 'Verifikasi Dokumen' },
         ].map((s) => (
           <div key={s.label} className="flex-1 min-w-[120px] text-center px-6 py-2">
             <p className="text-2xl font-extrabold text-amber-400 leading-none">{s.num}</p>
