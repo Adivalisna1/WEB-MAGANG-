@@ -28,8 +28,20 @@ app.use(compression());
 app.use(morgan('dev'));
 
 // CORS — izinkan frontend (CORS_ORIGIN boleh comma-separated untuk beberapa origin)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim());
+
 app.use(cors({
-  origin: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map((s) => s.trim()),
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (mobile apps, curl, dll)
+    if (!origin) return callback(null, true);
+    // Izinkan semua subdomain vercel.app
+    if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS not allowed'));
+  },
   credentials: true,
 }));
 
