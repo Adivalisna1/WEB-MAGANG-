@@ -116,6 +116,20 @@ async function downloadDokumen(req, res, next) {
 
     const dok = rows[0];
 
+    // Cek apakah file_path adalah path lokal lama (bukan Supabase)
+    const isLocalPath = !dok.file_path ||
+      dok.file_path.startsWith('/') ||
+      dok.file_path.startsWith('C:') ||
+      dok.file_path.includes('\\uploads\\') ||
+      dok.file_path.includes('/uploads/');
+
+    if (isLocalPath) {
+      return res.status(404).json({
+        success: false,
+        message: 'File tidak tersedia. Dokumen ini perlu di-upload ulang oleh staff.',
+      });
+    }
+
     // Download dari Supabase
     const buffer = await downloadFromSupabase(dok.file_path);
 
@@ -657,6 +671,20 @@ async function previewDokumen(req, res, next) {
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Content-Type-Options');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+
+    // Cek apakah file_path adalah path lokal lama
+    const isLocalPath = !dok.file_path ||
+      dok.file_path.startsWith('/') ||
+      dok.file_path.startsWith('C:') ||
+      dok.file_path.includes('\\uploads\\') ||
+      dok.file_path.includes('/uploads/');
+
+    if (isLocalPath) {
+      return res.status(404).json({
+        success: false,
+        message: 'File tidak tersedia. Dokumen ini perlu di-upload ulang oleh staff.',
+      });
+    }
 
     const mime  = dok.file_mime || '';
     const isPDF = mime === 'application/pdf';
