@@ -25,6 +25,7 @@ interface Dokumen {
   uploaded_by: string;
   created_at: string;
   catatan: string | null;
+  nilai_rekening_koran?: number | null;
 }
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -33,6 +34,11 @@ function periodLabel(dok: Dokumen) {
   if (dok.semester) return `Sem ${dok.semester} ${dok.tahun}`;
   if (dok.bulan) return `${NAMA_BULAN[dok.bulan]} ${dok.tahun}`;
   return String(dok.tahun);
+}
+
+function formatRupiah(val: number | null | undefined): string {
+  if (val == null) return '—';
+  return 'Rp ' + val.toLocaleString('id-ID');
 }
 
 export default function AdminDokumenPage() {
@@ -286,6 +292,7 @@ export default function AdminDokumenPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Periode</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Uploader</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Nilai</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Aksi</th>
                 </tr>
@@ -308,6 +315,12 @@ export default function AdminDokumenPage() {
                     <td className="px-4 py-3 text-gray-600">{dok.kategori}</td>
                     <td className="px-4 py-3 text-gray-600">{periodLabel(dok)}</td>
                     <td className="px-4 py-3 text-gray-600">{dok.uploaded_by}</td>
+                    <td className="px-4 py-3 text-gray-700 text-xs font-medium whitespace-nowrap">
+                      {dok.nilai_rekening_koran != null
+                        ? <span className="text-emerald-700 font-semibold">{formatRupiah(dok.nilai_rekening_koran)}</span>
+                        : <span className="text-gray-300">—</span>
+                      }
+                    </td>
                     <td className="px-4 py-3">{statusBadge(dok.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -437,6 +450,12 @@ export default function AdminDokumenPage() {
                   <p className="text-xs text-gray-400">File</p>
                   <p className="font-medium mt-0.5 truncate">{modalDok.file_nama}</p>
                 </div>
+                {modalDok.nilai_rekening_koran != null && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 col-span-2 sm:col-span-4">
+                    <p className="text-xs text-emerald-600 font-medium">Total Saldo</p>
+                    <p className="font-bold text-emerald-800 mt-0.5 text-base">{formatRupiah(modalDok.nilai_rekening_koran)}</p>
+                  </div>
+                )}
               </div>
 
               {/* Catatan sebelumnya */}

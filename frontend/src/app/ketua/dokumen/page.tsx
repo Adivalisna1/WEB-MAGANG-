@@ -24,6 +24,7 @@ interface Dokumen {
   uploaded_by: string;
   created_at: string;
   file_nama?: string;
+  nilai_rekening_koran?: number | null;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -47,6 +48,11 @@ function periodeLabel(dok: Dokumen): string {
   if (dok.semester) return `Semester ${dok.semester} ${dok.tahun}`;
   if (dok.bulan) return `${NAMA_BULAN[dok.bulan - 1]} ${dok.tahun}`;
   return String(dok.tahun);
+}
+
+function formatRupiah(val: number | null | undefined): string {
+  if (val == null) return '—';
+  return 'Rp ' + val.toLocaleString('id-ID');
 }
 
 export default function KetuaDokumenPage() {
@@ -332,6 +338,7 @@ export default function KetuaDokumenPage() {
                   <th className="px-5 py-3">Kategori</th>
                   <th className="px-5 py-3">Periode</th>
                   <th className="px-5 py-3">Diupload Oleh</th>
+                  <th className="px-5 py-3">Nilai</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Tanggal Upload</th>
                 </tr>
@@ -346,6 +353,12 @@ export default function KetuaDokumenPage() {
                     <td className="px-5 py-3 text-gray-600">{dok.kategori}</td>
                     <td className="px-5 py-3 text-gray-600">{periodeLabel(dok)}</td>
                     <td className="px-5 py-3 text-gray-600">{dok.uploaded_by}</td>
+                    <td className="px-5 py-3 text-xs font-medium whitespace-nowrap">
+                      {dok.nilai_rekening_koran != null
+                        ? <span className="text-emerald-700 font-semibold">{formatRupiah(dok.nilai_rekening_koran)}</span>
+                        : <span className="text-gray-300">—</span>
+                      }
+                    </td>
                     <td className="px-5 py-3">
                       <span className={clsx('px-2.5 py-1 rounded-full text-xs font-medium', STATUS_BADGE[dok.status] || 'bg-gray-100')}>
                         {STATUS_LABEL[dok.status] ?? dok.status}
@@ -459,14 +472,43 @@ export default function KetuaDokumenPage() {
               )}
             </div>
 
-            {/* Aksi keputusan dari modal tinjau */}
-            <div className="px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
+            {/* Info + aksi keputusan dari modal tinjau */}
+            <div className="px-6 py-4 space-y-3">
+              {/* Info grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Kategori</p>
+                  <p className="font-medium mt-0.5">{modalDok.kategori}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Periode</p>
+                  <p className="font-medium mt-0.5">{periodeLabel(modalDok)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Diupload oleh</p>
+                  <p className="font-medium mt-0.5">{modalDok.uploaded_by}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">File</p>
+                  <p className="font-medium mt-0.5 truncate">{modalDok.file_nama ?? '—'}</p>
+                </div>
+                {modalDok.nilai_rekening_koran != null && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 col-span-2 sm:col-span-4">
+                    <p className="text-xs text-emerald-600 font-medium">Total Saldo</p>
+                    <p className="font-bold text-emerald-800 mt-0.5 text-base">{formatRupiah(modalDok.nilai_rekening_koran)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Catatan admin */}
               {modalDok.catatan && (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 max-w-md">
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                   Catatan Admin: {modalDok.catatan}
                 </p>
               )}
-              <div className="flex items-center gap-2 ml-auto">
+
+              {/* Tombol aksi */}
+              <div className="flex items-center justify-end gap-2 flex-wrap pt-1">
                 <button
                   onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"

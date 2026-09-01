@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Upload, FileText, X, CheckCircle,
-  Loader2, AlertCircle, ArrowLeft, CloudUpload, DollarSign, Check, AlertTriangle
+  Loader2, AlertCircle, ArrowLeft, CloudUpload, DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,9 +37,8 @@ export default function UploadPage() {
   const [error,       setError]       = useState('');
   const [success,     setSuccess]     = useState(false);
 
-  // Nominal perbandingan
-  const [nilaiRekKoran, setNilaiRekKoran] = useState('');
-  const [nilaiExcel,    setNilaiExcel]    = useState('');
+  // Total Saldo (opsional, hanya untuk kategori perlu_nominal)
+  const [totalSaldo, setTotalSaldo] = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -112,8 +111,7 @@ export default function UploadPage() {
 
       // Nominal (opsional, tergantung kategori)
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
-      if (selKat?.perlu_nominal && nilaiRekKoran) fd.append('nilai_rekening_koran', nilaiRekKoran.replace(/\./g, ''));
-      if (selKat?.perlu_nominal && nilaiExcel)    fd.append('nilai_excel', nilaiExcel.replace(/\./g, ''));
+      if (selKat?.perlu_nominal && totalSaldo) fd.append('nilai_rekening_koran', totalSaldo.replace(/\./g, ''));
 
       const res = await fetch(`${API}/dokumen/upload`, {
         method: 'POST',
@@ -269,60 +267,38 @@ export default function UploadPage() {
           </div>
         </div>
 
-        {/* Nominal Perbandingan (hanya muncul jika kategori butuh) */}
+        {/* Total Saldo (hanya muncul jika kategori butuh nominal) */}
         {kategoriList.find(k => String(k.id) === kategoriId)?.perlu_nominal ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-3">
             <h3 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
-              <DollarSign className="w-4 h-4" /> Perbandingan Nominal
+              <DollarSign className="w-4 h-4" /> Total Saldo
             </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Nilai Rekening Koran (Rp)
-                </label>
+            <p className="text-xs text-emerald-700">
+              Masukkan total saldo sesuai dokumen yang diupload.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Total Saldo (Rp) <span className="text-gray-400 font-normal">(opsional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">Rp</span>
                 <input
                   type="text"
-                  value={nilaiRekKoran}
+                  value={totalSaldo}
                   onChange={e => {
                     const raw = e.target.value.replace(/[^0-9]/g, '');
-                    setNilaiRekKoran(raw ? Number(raw).toLocaleString('id-ID') : '');
+                    setTotalSaldo(raw ? Number(raw).toLocaleString('id-ID') : '');
                   }}
                   placeholder="0"
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Nilai Dari Excel (Rp)
-                </label>
-                <input
-                  type="text"
-                  value={nilaiExcel}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/[^0-9]/g, '');
-                    setNilaiExcel(raw ? Number(raw).toLocaleString('id-ID') : '');
-                  }}
-                  placeholder="0"
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+              {totalSaldo && (
+                <p className="text-xs text-emerald-700 mt-1.5 font-medium">
+                  Rp {totalSaldo}
+                </p>
+              )}
             </div>
-            {nilaiRekKoran && nilaiExcel && (() => {
-              const a = Number(nilaiRekKoran.replace(/\./g, ''));
-              const b = Number(nilaiExcel.replace(/\./g, ''));
-              const selisih = Math.abs(a - b);
-              const cocok = selisih === 0;
-              return (
-                <div className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium ${
-                  cocok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {cocok
-                    ? <><Check className="w-4 h-4" /> Cocok (Match) — Tidak ada selisih</>
-                    : <><AlertTriangle className="w-4 h-4" /> Selisih: Rp {selisih.toLocaleString('id-ID')}</>
-                  }
-                </div>
-              );
-            })()}
           </div>
         ) : null}
 
