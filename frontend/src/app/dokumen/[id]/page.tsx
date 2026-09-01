@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
-  FileText, Download, Calendar, Tag,
-  ArrowLeft, User, CheckCircle, Eye
+  FileText, Calendar, Tag,
+  ArrowLeft, CheckCircle, Eye
 } from 'lucide-react';
 import { getDokumenById, formatFileSize, getDownloadUrl } from '@/lib/api';
+import DownloadButton from '@/components/ui/DownloadButton';
 
 interface Props {
   params: { id: string };
@@ -98,16 +99,10 @@ export default async function DokumenDetailPage({ params }: Props) {
 
           {/* Tombol download */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
-            <a
+            <DownloadButton
               href={getDownloadUrl(dokumen.id)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary flex items-center justify-center gap-2 py-3 text-base"
-              aria-label={`Unduh ${dokumen.judul}`}
-            >
-              <Download className="w-5 h-5" />
-              Unduh Dokumen
-            </a>
+              fileName={dokumen.file_nama || `dokumen-${dokumen.id}`}
+            />
             <Link href="/laporan" className="btn-secondary flex items-center justify-center gap-2 py-3 text-base">
               <ArrowLeft className="w-5 h-5" />
               Kembali
