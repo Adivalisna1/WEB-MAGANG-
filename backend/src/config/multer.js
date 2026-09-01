@@ -1,6 +1,11 @@
 const multer = require('multer');
+const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
+
+// Pakai env UPLOAD_DIR kalau ada, fallback ke path relatif dari file ini
+// Docker: /app/uploads | Lokal: backend/uploads
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
 
 // Pastikan folder uploads/{tahun} ada
 function ensureDir(dir) {
@@ -10,7 +15,7 @@ function ensureDir(dir) {
 const storage = multer.diskStorage({
   destination(req, file, cb) {
     const tahun = req.body.tahun || new Date().getFullYear();
-    const dir   = path.join('/app/uploads', String(tahun));
+    const dir   = path.join(UPLOAD_DIR, String(tahun));
     ensureDir(dir);
     cb(null, dir);
   },

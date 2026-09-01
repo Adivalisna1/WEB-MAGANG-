@@ -346,13 +346,12 @@ async function deleteUser(req, res, next) {
 // ── DELETE /api/admin/logs ────────────────────────────────────
 async function clearLogs(req, res, next) {
   try {
-    // Hapus riwayat log hanya untuk admin global
-    if (req.user.role_id === 4) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak, hanya admin global' });
+    // Hanya role admin (role_id=1) yang bisa hapus log
+    if (req.user.role_id !== 1) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak, hanya admin yang bisa hapus log' });
     }
 
     const { before_days } = req.query;
-    // Default hapus log lebih dari 30 hari, atau semua kalau before_days=0
     const days = before_days !== undefined ? Number(before_days) : 30;
 
     if (days === 0) {

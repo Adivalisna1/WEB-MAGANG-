@@ -163,24 +163,18 @@ export default function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-<<<<<<< HEAD
-          <h1 className="text-xl font-bold text-gray-900">Manajemen User</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Kelola akun admin, staff, dan ketua tim</p>
-=======
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Manajemen User</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Kelola akun admin, ketua tim, dan staff</p>
->>>>>>> b30dfea799f729319df67958d7111c04bccf0ed0
         </div>
         <div className="flex gap-2">
           <button onClick={fetchUsers} className="btn-secondary p-2" title="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center gap-2 text-sm"
-          >
-            <UserPlus className="w-4 h-4" /> Tambah User
-          </button>
+            <button onClick={() => setShowModal(true)}
+              className="btn-primary flex items-center gap-2 text-sm"
+            >
+              <UserPlus className="w-4 h-4" /> Tambah User
+            </button>
         </div>
       </div>
 
@@ -305,7 +299,11 @@ export default function AdminUsersPage() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 dark:border-slate-800">
             <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-800">
               <h3 className="font-bold text-gray-900 dark:text-white text-lg">Tambah User Baru</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
+              <button onClick={() => {
+                setShowModal(false);
+                setNama(''); setUsername(''); setEmail('');
+                setPassword(''); setRoleId('2'); setFormErr('');
+              }} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -340,10 +338,9 @@ export default function AdminUsersPage() {
                   onChange={e => setRoleId(e.target.value)}
                   className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                 >
-                  <option value="2">Staff</option>
+                <option value="2">Staff</option>
                   <option value="3">Ketua Tim</option>
                   <option value="1">Admin</option>
-                  <option value="3">Ketua Tim</option>
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
@@ -357,7 +354,11 @@ export default function AdminUsersPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setNama(''); setUsername(''); setEmail('');
+                    setPassword(''); setRoleId('2'); setFormErr('');
+                  }}
                   className="flex-1 btn-secondary py-2.5"
                 >
                   Batal
