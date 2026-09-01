@@ -6,6 +6,7 @@ const { body, param } = require('express-validator');
 const { pool } = require('../config/db');
 const { catatLog } = require('./authController');
 const { buatNotifikasi } = require('./notifikasiController');
+const { uploadToSupabase, downloadFromSupabase, deleteFromSupabase, isSupabasePath } = require('../config/supabase');
 
 // ── Helper: generate nomor laporan ────────────────────────────
 // Format: SLUG-KATEGORI/TAHUN/ID (contoh: LKJIP/2024/042)
@@ -114,17 +115,16 @@ async function downloadDokumen(req, res, next) {
     }
 
     const dok = rows[0];
-    const filePath = dok.file_path;
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'File tidak ditemukan di server' });
-    }
+    // Download dari Supabase
+    const buffer = await downloadFromSupabase(dok.file_path);
 
     await pool.query('UPDATE dokumen SET download_count = download_count + 1 WHERE id = ?', [dok.id]);
 
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dok.file_nama)}"`);
     res.setHeader('Content-Type', dok.file_mime || 'application/octet-stream');
-    return res.sendFile(filePath);
+    res.setHeader('Content-Length', buffer.length);
+    return res.send(buffer);
   } catch (err) { next(err); }
 }
 
@@ -185,10 +185,9 @@ async function uploadDokumen(req, res, next) {
     }
 
     const { judul, tahun, kategori_id, deskripsi } = req.body;
-    const filePath = req.file.path;
     const fileName = req.file.originalname;
 
-    // ── Validasi duplikat: cek judul + kategori + tahun ──────
+    // ── Validasi duplikat ────────────────────────────────────
     const [duplikat] = await pool.query(
       `SELECT id, status FROM dokumen
        WHERE LOWER(judul) = LOWER(?)
@@ -199,7 +198,6 @@ async function uploadDokumen(req, res, next) {
     );
 
     if (duplikat.length > 0) {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       const statusAda = duplikat[0].status.replace(/_/g, ' ');
       return res.status(409).json({
         success: false,
@@ -208,17 +206,20 @@ async function uploadDokumen(req, res, next) {
     }
 
     const { bulan, semester } = req.body;
-
-    // Periode: pilih salah satu — jika semester diisi, bulan diabaikan
     const bulanFinal    = semester ? null : (bulan ? Number(bulan) : null);
     const semesterFinal = semester ? Number(semester) : null;
 
-    // Ambil slug kategori untuk nomor laporan
     const [[katRow]] = await pool.query('SELECT slug FROM kategori_dokumen WHERE id = ?', [kategori_id]);
 
-    // Ambil nilai nominal (opsional, tergantung kategori)
     const nilaiRekKoran = req.body.nilai_rekening_koran ? Number(req.body.nilai_rekening_koran) : null;
     const nilaiExcel    = req.body.nilai_excel ? Number(req.body.nilai_excel) : null;
+
+    // ── Upload ke Supabase Storage ───────────────────────────
+    const ext        = path.extname(fileName).toLowerCase();
+    const baseName   = path.basename(fileName, ext).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '').toLowerCase();
+    const uniqueName = `${baseName}-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+
+    const storagePath = await uploadToSupabase(req.file.buffer, uniqueName, req.file.mimetype, tahun);
 
     const [result] = await pool.query(
       `INSERT INTO dokumen
@@ -228,11 +229,10 @@ async function uploadDokumen(req, res, next) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, ?, ?)`,
       [kategori_id, req.user.id, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
-       fileName, filePath, req.file.size, req.file.mimetype,
+       fileName, storagePath, req.file.size, req.file.mimetype,
        nilaiRekKoran, nilaiExcel]
     );
 
-    // Generate dan simpan nomor laporan
     const nomorLaporan = buatNomorLaporan(katRow?.slug, tahun, result.insertId);
     await pool.query('UPDATE dokumen SET nomor_laporan = ? WHERE id = ?', [nomorLaporan, result.insertId]);
 
@@ -532,8 +532,10 @@ async function deleteDokumen(req, res, next) {
 
     const filePath = rows[0].file_path;
     const judulDok = rows[0].judul;
-    if (filePath && fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+
+    // Hapus file dari Supabase
+    if (filePath) {
+      await deleteFromSupabase(filePath);
     }
 
     await pool.query('DELETE FROM dokumen WHERE id = ?', [req.params.id]);
@@ -605,9 +607,18 @@ async function gantiFileDokumen(req, res, next) {
       return res.status(400).json({ success: false, message: 'File baru wajib diupload' });
     }
 
-    if (dok.file_path && fs.existsSync(dok.file_path)) {
-      fs.unlinkSync(dok.file_path);
+    // Hapus file lama dari Supabase
+    if (dok.file_path) {
+      await deleteFromSupabase(dok.file_path);
     }
+
+    // Upload file baru ke Supabase
+    const ext        = path.extname(req.file.originalname).toLowerCase();
+    const baseName   = path.basename(req.file.originalname, ext).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '').toLowerCase();
+    const uniqueName = `${baseName}-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+    const tahun      = dok.tahun || new Date().getFullYear();
+
+    const storagePath = await uploadToSupabase(req.file.buffer, uniqueName, req.file.mimetype, tahun);
 
     await pool.query(
       `UPDATE dokumen SET
@@ -617,7 +628,7 @@ async function gantiFileDokumen(req, res, next) {
         file_mime  = ?,
         updated_at = NOW()
        WHERE id = ?`,
-      [req.file.originalname, req.file.path, req.file.size, req.file.mimetype, id]
+      [req.file.originalname, storagePath, req.file.size, req.file.mimetype, id]
     );
 
     return res.json({
@@ -642,10 +653,6 @@ async function previewDokumen(req, res, next) {
 
     const dok = rows[0];
 
-    if (!fs.existsSync(dok.file_path)) {
-      return res.status(404).json({ success: false, message: 'File tidak ditemukan di server' });
-    }
-
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Content-Type-Options');
@@ -654,29 +661,37 @@ async function previewDokumen(req, res, next) {
     const mime  = dok.file_mime || '';
     const isPDF = mime === 'application/pdf';
 
-    // ── PDF: kirim langsung (behavior lama, tidak berubah) ──────
+    // Download file dari Supabase ke buffer
+    const buffer = await downloadFromSupabase(dok.file_path);
+
+    // ── PDF: kirim langsung ──────────────────────────────────
     if (isPDF) {
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(dok.file_nama)}"`);
       res.setHeader('Content-Type', 'application/pdf');
-      return res.sendFile(dok.file_path);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
     }
 
-    // ── Non-PDF (Word / Excel): konversi ke PDF via LibreOffice ─
+    // ── Non-PDF: konversi ke PDF via LibreOffice ─────────────
     const tmpDir   = path.join(os.tmpdir(), 'lo_preview');
-    const baseName = path.basename(dok.file_path, path.extname(dok.file_path));
-    const pdfPath  = path.join(tmpDir, `${baseName}.pdf`);
+    const ext      = path.extname(dok.file_nama).toLowerCase();
+    const baseName = path.basename(dok.file_nama, ext).replace(/[^a-zA-Z0-9\-_]/g, '_');
+    const tmpInput = path.join(tmpDir, `${baseName}-${Date.now()}${ext}`);
+    const pdfPath  = path.join(tmpDir, `${path.basename(tmpInput, ext)}.pdf`);
 
-    // Pastikan folder tmp ada
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
-    // Hapus sisa file PDF lama kalau ada
-    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+    // Tulis buffer ke file temp
+    fs.writeFileSync(tmpInput, buffer);
 
     execFile(
       'libreoffice',
-      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, dok.file_path],
-      { timeout: 30000 }, // timeout 30 detik
+      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, tmpInput],
+      { timeout: 30000 },
       (err) => {
+        // Hapus file input temp
+        fs.unlink(tmpInput, () => {});
+
         if (err) {
           console.error('[previewDokumen] LibreOffice error:', err.message);
           return res.status(500).json({
@@ -697,10 +712,7 @@ async function previewDokumen(req, res, next) {
 
         const stream = fs.createReadStream(pdfPath);
         stream.pipe(res);
-        stream.on('end', () => {
-          // Bersihkan file temp setelah selesai dikirim
-          fs.unlink(pdfPath, () => {});
-        });
+        stream.on('end', () => { fs.unlink(pdfPath, () => {}); });
         stream.on('error', (streamErr) => {
           console.error('[previewDokumen] stream error:', streamErr.message);
           fs.unlink(pdfPath, () => {});
