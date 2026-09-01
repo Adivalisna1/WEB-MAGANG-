@@ -38,7 +38,7 @@ function periodLabel(dok: Dokumen) {
 
 function formatRupiah(val: number | null | undefined): string {
   if (val == null) return '—';
-  return 'Rp ' + val.toLocaleString('id-ID');
+  return 'Rp ' + Math.round(val).toLocaleString('id-ID');
 }
 
 export default function AdminDokumenPage() {

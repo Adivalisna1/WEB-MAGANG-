@@ -48,7 +48,7 @@ export default function EditDokumenPage() {
   const [kategoriId, setKategoriId] = useState('');
   const [deskripsi,  setDeskripsi]  = useState('');
 
-  // Total Saldo (opsional, hanya untuk kategori perlu_nominal)
+  // Saldo Akhir (opsional, hanya untuk kategori perlu_nominal)
   const [totalSaldo, setTotalSaldo] = useState('');
 
   // State ganti file
@@ -84,7 +84,7 @@ export default function EditDokumenPage() {
         setSemester(found.semester != null ? String(found.semester) : '');
         setDeskripsi(found.deskripsi ?? '');
         setKategoriList(katRes.data ?? []);
-        // Load total saldo
+        // Load saldo akhir
         if (found.nilai_rekening_koran != null) setTotalSaldo(Number(found.nilai_rekening_koran).toLocaleString('id-ID'));
       })
       .catch(() => setError('Gagal memuat data'))
@@ -418,7 +418,7 @@ export default function EditDokumenPage() {
           </div>
         </div>
 
-        {/* Total Saldo (hanya muncul jika kategori butuh nominal) */}
+        {/* Saldo Akhir (hanya muncul jika kategori butuh nominal) */}
         {(() => {
           const katId = kategoriId || (dokumen?.kategori_id ? String(dokumen.kategori_id) : '');
           const selKat = kategoriList.find(k => String(k.id) === katId);
@@ -426,14 +426,14 @@ export default function EditDokumenPage() {
           return (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-3">
               <h3 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
-                <DollarSign className="w-4 h-4" /> Total Saldo
+                <DollarSign className="w-4 h-4" /> Saldo Akhir
               </h3>
               <p className="text-xs text-emerald-700">
-                Masukkan total saldo sesuai dokumen yang diupload.
+                Masukkan saldo akhir sesuai dokumen yang diupload.
               </p>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Total Saldo (Rp) <span className="text-gray-400 font-normal">(opsional)</span>
+                  Saldo Akhir (Rp) <span className="text-gray-400 font-normal">(opsional)</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">Rp</span>
