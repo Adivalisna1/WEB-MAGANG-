@@ -11,10 +11,17 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json({ success: false, message: err.message });
   }
 
-  // Error validasi dari express-validator ditangani di controller
+  // Error Supabase Storage
+  if (err.message && err.message.includes('Supabase')) {
+    return res.status(500).json({ success: false, message: `Gagal menyimpan file: ${err.message}` });
+  }
+
   // Error umum
   const status = err.status || err.statusCode || 500;
-  const message = status < 500 ? err.message : 'Terjadi kesalahan pada server';
+  // Di production tetap sembunyikan detail, tapi log ke console
+  const message = process.env.NODE_ENV === 'production'
+    ? (status < 500 ? err.message : `Terjadi kesalahan pada server: ${err.message}`)
+    : err.message;
 
   return res.status(status).json({ success: false, message });
 }
