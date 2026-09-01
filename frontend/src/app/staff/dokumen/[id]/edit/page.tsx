@@ -160,7 +160,7 @@ export default function EditDokumenPage() {
           semester: semester ? Number(semester) : null,
           kategori_id: kategoriId ? Number(kategoriId) : undefined,
           deskripsi: deskripsi || undefined,
-          nilai_rekening_koran: totalSaldo ? Number(totalSaldo.replace(/\./g, '')) : null,
+          nilai_rekening_koran: totalSaldo ? Number(totalSaldo.replace(/\./g, '').replace(',', '.')) : null,
         }),
       });
       const data = await res.json();
@@ -441,8 +441,12 @@ export default function EditDokumenPage() {
                     type="text"
                     value={totalSaldo}
                     onChange={e => {
-                      const raw = e.target.value.replace(/[^0-9]/g, '');
-                      setTotalSaldo(raw ? Number(raw).toLocaleString('id-ID') : '');
+                      const val = e.target.value.replace(/[^0-9,]/g, '');
+                      const parts = val.split(',');
+                      if (parts.length > 2) return;
+                      const ribuan = parts[0].replace(/\./g, '');
+                      const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                      setTotalSaldo(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
                     }}
                     placeholder="0"
                     className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"

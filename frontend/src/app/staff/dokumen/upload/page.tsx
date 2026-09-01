@@ -111,7 +111,7 @@ export default function UploadPage() {
 
       // Nominal (opsional, tergantung kategori)
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
-      if (selKat?.perlu_nominal && totalSaldo) fd.append('nilai_rekening_koran', totalSaldo.replace(/\./g, ''));
+      if (selKat?.perlu_nominal && totalSaldo) fd.append('nilai_rekening_koran', totalSaldo.replace(/\./g, '').replace(',', '.'));
 
       const res = await fetch(`${API}/dokumen/upload`, {
         method: 'POST',
@@ -286,8 +286,16 @@ export default function UploadPage() {
                   type="text"
                   value={totalSaldo}
                   onChange={e => {
-                    const raw = e.target.value.replace(/[^0-9]/g, '');
-                    setTotalSaldo(raw ? Number(raw).toLocaleString('id-ID') : '');
+                    // Izinkan angka, titik (pemisah ribuan), dan koma (desimal)
+                    const val = e.target.value.replace(/[^0-9,]/g, '');
+                    // Pastikan koma hanya muncul sekali
+                    const parts = val.split(',');
+                    if (parts.length > 2) return;
+                    // Format bagian ribuan (sebelum koma)
+                    const ribuan = parts[0].replace(/\./g, '');
+                    const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                    // Gabung dengan desimal kalau ada
+                    setTotalSaldo(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
                   }}
                   placeholder="0"
                   className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"

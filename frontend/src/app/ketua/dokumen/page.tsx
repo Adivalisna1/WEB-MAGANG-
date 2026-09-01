@@ -52,7 +52,10 @@ function periodeLabel(dok: Dokumen): string {
 
 function formatRupiah(val: number | null | undefined): string {
   if (val == null) return '—';
-  return 'Rp ' + Math.round(val).toLocaleString('id-ID');
+  const rounded = Math.round(val * 100) / 100;
+  const [int, dec] = rounded.toString().split('.');
+  const ribuan = Number(int).toLocaleString('id-ID');
+  return dec && dec !== '00' ? `Rp ${ribuan},${dec.padEnd(2, '0')}` : `Rp ${ribuan}`;
 }
 
 export default function KetuaDokumenPage() {
