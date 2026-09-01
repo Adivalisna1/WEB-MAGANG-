@@ -11,7 +11,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({ totalDokumen: 0, totalKategori: 0 });
+  const [stats, setStats] = useState({ totalDokumen: 0, totalKategori: 0, totalDownload: 0 });
 
   // Fetch stats publik
   useEffect(() => {
@@ -149,8 +149,8 @@ export default function LandingPage() {
         {[
           { num: stats.totalDokumen > 0 ? `${stats.totalDokumen.toLocaleString('id-ID')}+` : '—', label: 'Dokumen Terarsip' },
           { num: stats.totalKategori > 0 ? `${stats.totalKategori}+` : '—', label: 'Kategori Laporan' },
-          { num: '2024',    label: 'Berdiri Sejak' },
-          { num: '2-Level', label: 'Verifikasi Dokumen' },
+          { num: '2024', label: 'Berdiri Sejak' },
+          { num: stats.totalDownload > 0 ? `${stats.totalDownload.toLocaleString('id-ID')}+` : '—', label: 'Total Diunduh' },
         ].map((s) => (
           <div key={s.label} className="flex-1 min-w-[120px] text-center px-6 py-2">
             <p className="text-2xl font-extrabold text-amber-400 leading-none">{s.num}</p>
