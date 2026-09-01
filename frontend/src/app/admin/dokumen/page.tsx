@@ -378,8 +378,8 @@ export default function AdminDokumenPage() {
               )}
             </div>
 
-            {/* Preview */}
-            <div className="bg-gray-100 border-b border-gray-200" style={{ height: '380px' }}>
+            {/* Preview — flex-1 agar isi ruang sisa, min-h-0 agar bisa menyusut */}
+            <div className="bg-gray-100 border-b border-gray-200 flex-1 min-h-0" style={{ minHeight: '220px', maxHeight: '380px' }}>
               {isExcel ? (
                 // Excel: langsung tampilkan tombol download — tidak di-preview
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -431,8 +431,8 @@ export default function AdminDokumenPage() {
               )}
             </div>
 
-            {/* Info + action */}
-            <div className="p-5 space-y-4 overflow-y-auto">
+            {/* Info + action — shrink-0 + scroll sendiri */}
+            <div className="p-5 space-y-4 overflow-y-auto shrink-0 max-h-[280px]">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-400">Kategori</p>
@@ -452,7 +452,7 @@ export default function AdminDokumenPage() {
                 </div>
                 {modalDok.nilai_rekening_koran != null && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 col-span-2 sm:col-span-4">
-                    <p className="text-xs text-emerald-600 font-medium">Total Saldo</p>
+                    <p className="text-xs text-emerald-600 font-medium">Saldo Akhir</p>
                     <p className="font-bold text-emerald-800 mt-0.5 text-base">{formatRupiah(modalDok.nilai_rekening_koran)}</p>
                   </div>
                 )}

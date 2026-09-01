@@ -99,6 +99,7 @@ async function getDokumen(req, res, next) {
 
     const [rows] = await pool.query(
       `SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan,
+              d.nilai_rekening_koran,
               d.created_at, d.updated_at,
               k.nama AS kategori, u.nama AS uploaded_by
        FROM dokumen d
@@ -119,6 +120,7 @@ async function getDokumenMenungguKetua(req, res, next) {
     const [rows] = await pool.query(
       `SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
               d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
+              d.nilai_rekening_koran,
               d.created_at, d.updated_at,
               k.nama AS kategori, k.slug AS kategori_slug,
               u.nama AS uploaded_by

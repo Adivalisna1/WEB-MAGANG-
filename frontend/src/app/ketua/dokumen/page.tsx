@@ -392,9 +392,9 @@ export default function KetuaDokumenPage() {
       {/* ── Modal tinjau file ── */}
       {modalDok && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden">
-            {/* Header modal */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header modal — shrink-0 */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
               <div className="min-w-0">
                 <h3 className="font-bold text-gray-900 text-lg">Tinjau Dokumen</h3>
                 <p className="text-sm text-gray-500 mt-0.5 truncate">{modalDok.judul}</p>
@@ -421,8 +421,8 @@ export default function KetuaDokumenPage() {
               </div>
             </div>
 
-            {/* Preview */}
-            <div className="bg-gray-100 border-b border-gray-200" style={{ height: '380px' }}>
+            {/* Preview — flex-1 agar isi ruang sisa, min-h-0 agar bisa menyusut */}
+            <div className="bg-gray-100 border-b border-gray-200 flex-1 min-h-0" style={{ minHeight: '220px', maxHeight: '380px' }}>
               {isExcel ? (
                 // Excel: langsung tampilkan tombol download — tidak di-preview
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -437,7 +437,7 @@ export default function KetuaDokumenPage() {
                   </button>
                 </div>
               ) : previewUrl ? (
-                <object data={previewUrl} type="application/pdf" className="w-full h-full" style={{ height: '380px' }}>
+                <object data={previewUrl} type="application/pdf" className="w-full h-full" style={{ minHeight: '220px' }}>
                   <div className="flex flex-col items-center justify-center h-full text-gray-500">
                     <p>Browser tidak bisa menampilkan PDF.</p>
                     <button onClick={handleDownload} className="mt-3 text-indigo-600 underline">Download file</button>
@@ -473,7 +473,7 @@ export default function KetuaDokumenPage() {
             </div>
 
             {/* Info + aksi keputusan dari modal tinjau */}
-            <div className="px-6 py-4 space-y-3">
+            <div className="px-6 py-4 space-y-3 shrink-0 overflow-y-auto max-h-[280px]">
               {/* Info grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div className="bg-gray-50 rounded-lg p-3">
@@ -494,7 +494,7 @@ export default function KetuaDokumenPage() {
                 </div>
                 {modalDok.nilai_rekening_koran != null && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 col-span-2 sm:col-span-4">
-                    <p className="text-xs text-emerald-600 font-medium">Total Saldo</p>
+                    <p className="text-xs text-emerald-600 font-medium">Saldo Akhir</p>
                     <p className="font-bold text-emerald-800 mt-0.5 text-base">{formatRupiah(modalDok.nilai_rekening_koran)}</p>
                   </div>
                 )}
