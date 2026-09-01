@@ -24,7 +24,7 @@ const NAMA_BULAN = [
 ];
 
 export default function DokumenCard({ dokumen }: Props) {
-  const badgeClass = kategoriColor[dokumen.kategori_slug] ?? 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300';
+  const badgeClass = kategoriColor[dokumen.kategori_slug] ?? 'bg-gray-100 text-gray-700';
   const periodeLabel = dokumen.semester
     ? `Semester ${dokumen.semester} ${dokumen.tahun}`
     : dokumen.bulan
@@ -32,14 +32,14 @@ export default function DokumenCard({ dokumen }: Props) {
       : String(dokumen.tahun);
 
   return (
-    <div className="card p-5 flex flex-col gap-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl">
+    <div className="card p-5 flex flex-col gap-3 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl">
       {/* Header */}
       <div className="flex items-start gap-2">
-        <FileText className="w-8 h-8 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
+        <FileText className="w-8 h-8 text-primary-600 shrink-0 mt-0.5" />
         <div className="min-w-0">
           <Link
             href={`/dokumen/${dokumen.id}`}
-            className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+            className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 hover:text-primary-600:text-primary-400 transition-colors"
           >
             {dokumen.judul}
           </Link>
@@ -48,11 +48,11 @@ export default function DokumenCard({ dokumen }: Props) {
 
       {/* Deskripsi */}
       {dokumen.deskripsi && (
-        <p className="text-xs text-gray-500 dark:text-slate-400 line-clamp-2">{dokumen.deskripsi}</p>
+        <p className="text-xs text-gray-500 line-clamp-2">{dokumen.deskripsi}</p>
       )}
 
       {/* Meta */}
-      <div className="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-slate-400">
+      <div className="flex flex-wrap gap-2 text-xs text-gray-500">
         <span className="flex items-center gap-1">
           <Calendar className="w-3.5 h-3.5" />
           {periodeLabel}
@@ -64,17 +64,17 @@ export default function DokumenCard({ dokumen }: Props) {
         {dokumen.nomor_laporan && (
           <span className="flex items-center gap-1">
             <Hash className="w-3.5 h-3.5" />
-            <span className="badge bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">{dokumen.nomor_laporan}</span>
+            <span className="badge bg-cyan-100 text-cyan-800">{dokumen.nomor_laporan}</span>
           </span>
         )}
         {dokumen.file_size && (
-          <span className="text-gray-400 dark:text-slate-500">{formatFileSize(dokumen.file_size)}</span>
+          <span className="text-gray-400">{formatFileSize(dokumen.file_size)}</span>
         )}
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-slate-800">
-        <span className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1">
+      <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+        <span className="text-xs text-gray-400 flex items-center gap-1">
           <Download className="w-3.5 h-3.5" />
           {dokumen.download_count} unduhan
         </span>

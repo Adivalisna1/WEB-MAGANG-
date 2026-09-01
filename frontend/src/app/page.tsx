@@ -6,8 +6,6 @@ import { LogIn, Building2, Eye, CheckCircle, LayoutDashboard } from 'lucide-reac
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-import DarkModeToggle from '@/components/ui/DarkModeToggle';
-
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -44,9 +42,8 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Top-right: Theme Toggle & tombol Masuk */}
+        {/* Top-right: tombol Masuk */}
         <div className="flex items-center gap-3">
-          <DarkModeToggle />
           {!user && (
             <Link
               href="/login"
