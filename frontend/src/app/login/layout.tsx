@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FileText } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,8 +8,8 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
       <header className="bg-primary-800 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity">
-            <FileText className="w-6 h-6 text-blue-300" />
-            <span>Dashboard Laporan</span>
+            <ArrowLeft className="w-6 h-6 text-blue-300" />
+            <span>Kembali</span>
           </Link>
         </div>
       </header>

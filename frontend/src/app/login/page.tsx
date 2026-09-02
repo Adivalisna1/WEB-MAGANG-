@@ -50,16 +50,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[calc(100vh-130px)] flex items-center justify-center px-4 bg-gray-50">
-      {/* Tombol Dashboard Publik kanan atas */}
-      <div className="fixed top-4 right-4 z-10">
-        <Link
-          href="/laporan"
-          className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
-        >
-          <Home className="w-4 h-4" />
-          Dashboard Publik
-        </Link>
-      </div>
+
 
       <div className="w-full max-w-md">
         {/* Card */}
