@@ -162,37 +162,47 @@ async function forgotPassword(req, res, next) {
       [resetToken, tokenExpiry, user.id]
     );
 
-    // Setup Nodemailer Ethereal Email (Gratis buat dev/testing)
-    let testAccount = await nodemailer.createTestAccount();
-    let transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
+    // Setup Nodemailer menggunakan SMTP dari Environment Variables
+    let transporter;
+    
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      // Gunakan SMTP Asli (misal Gmail)
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: process.env.SMTP_PORT || 465,
+        secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+    } else {
+      throw new Error("SMTP belum dikonfigurasi di server. Harap atur SMTP_USER dan SMTP_PASS.");
+    }
 
     const resetUrl = `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const senderEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@laporan.go.id';
 
     let info = await transporter.sendMail({
-      from: '"Admin Laporan" <no-reply@laporan.go.id>',
+      from: `"Admin Dashboard Laporan" <${senderEmail}>`,
       to: user.email,
       subject: "Permintaan Reset Password",
       text: `Halo ${user.nama},\n\nAnda meminta reset password. Klik link berikut untuk membuat password baru:\n\n${resetUrl}\n\nAbaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.`,
       html: `<p>Halo <b>${user.nama}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>`
     });
 
-    console.log("Email reset terkirim!");
-    console.log("Preview URL Email (Ethereal): %s", nodemailer.getTestMessageUrl(info));
+    console.log("Email reset terkirim ke: " + user.email);
 
     return res.json({ 
       success: true, 
-      message: 'Jika email terdaftar, link reset telah dikirim. (Cek log server untuk URL Preview)',
-      testUrl: process.env.NODE_ENV !== 'production' ? nodemailer.getTestMessageUrl(info) : null 
+      message: 'Jika email terdaftar, link reset telah dikirim ke inbox Anda.'
     });
   } catch (err) {
+    console.error("SMTP Error:", err);
+    // Return friendly error if SMTP fails (like connection timeout)
+    if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+      return res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server: Connection timeout saat mengirim email.' });
+    }
     next(err);
   }
 }
