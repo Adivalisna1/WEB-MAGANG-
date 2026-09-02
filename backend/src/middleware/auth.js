@@ -45,14 +45,6 @@ async function authenticate(req, res, next) {
         });
       }
 
-      // Validasi IP untuk mencegah pembajakan token (Session Hijacking)
-      if (sess[0].ip_address && sess[0].ip_address !== req.ip) {
-        await pool.query('UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE id = ?', [decoded.sessionId]);
-        return res.status(401).json({
-          success: false,
-          message: 'Akses ditolak: IP Address tidak cocok dengan sesi login. Sesi dicabut.',
-        });
-      }
     }
 
     req.user = rows[0];
