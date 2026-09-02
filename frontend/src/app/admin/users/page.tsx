@@ -270,7 +270,7 @@ export default function AdminUsersPage() {
                           className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-yellow-600 transition-colors"
                           title="Reset password"
                         >
-                          <KeyRound className="w-3.5 h-3.5" />
+                          <KeyRound className="w-3.5 h-3.5" /> Reset PW
                         </button>
                         <button
                           onClick={() => deleteUser(u.id, u.nama)}
