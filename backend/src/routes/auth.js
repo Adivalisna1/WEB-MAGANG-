@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { login, logout, me, loginRules } = require('../controllers/authController');
+const { login, logout, me, forgotPassword, resetPassword, loginRules } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const validate         = require('../middleware/validate');
 const activityLogger   = require('../middleware/activityLogger');
@@ -26,5 +26,11 @@ router.post('/logout', logout);
 
 // GET /api/auth/me — cek token masih valid
 router.get('/me', authenticate, me);
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', forgotPassword);
+
+// POST /api/auth/reset-password
+router.post('/reset-password', resetPassword);
 
 module.exports = router;

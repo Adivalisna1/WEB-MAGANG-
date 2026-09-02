@@ -1,5 +1,7 @@
 const bcrypt   = require('bcrypt');
 const jwt      = require('jsonwebtoken');
+const crypto   = require('crypto');
+const nodemailer = require('nodemailer');
 const { body } = require('express-validator');
 const { pool } = require('../config/db');
 
@@ -139,4 +141,106 @@ async function me(req, res) {
   return res.json({ success: true, data: user });
 }
 
-module.exports = { login, logout, me, loginRules, catatLog };
+// ── POST /api/auth/forgot-password ────────────────────────────
+async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email wajib diisi' });
+
+    const [rows] = await pool.query('SELECT id, nama, email FROM users WHERE email = ? LIMIT 1', [email]);
+    if (!rows.length) {
+      // Return 200 even if not found to prevent email enumeration
+      return res.json({ success: true, message: 'Jika email terdaftar, link reset telah dikirim.' });
+    }
+    const user = rows[0];
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date(Date.now() + 3600000); // 1 jam
+
+    await pool.query(
+      'UPDATE users SET reset_password_token = ?, reset_password_expires_at = ? WHERE id = ?',
+      [resetToken, tokenExpiry, user.id]
+    );
+
+    // Setup Nodemailer Ethereal Email (Gratis buat dev/testing)
+    let testAccount = await nodemailer.createTestAccount();
+    let transporter = nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+
+    const resetUrl = `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+
+    let info = await transporter.sendMail({
+      from: '"Admin Laporan" <no-reply@laporan.go.id>',
+      to: user.email,
+      subject: "Permintaan Reset Password",
+      text: `Halo ${user.nama},\n\nAnda meminta reset password. Klik link berikut untuk membuat password baru:\n\n${resetUrl}\n\nAbaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.`,
+      html: `<p>Halo <b>${user.nama}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>`
+    });
+
+    console.log("Email reset terkirim!");
+    console.log("Preview URL Email (Ethereal): %s", nodemailer.getTestMessageUrl(info));
+
+    return res.json({ 
+      success: true, 
+      message: 'Jika email terdaftar, link reset telah dikirim. (Cek log server untuk URL Preview)',
+      testUrl: process.env.NODE_ENV !== 'production' ? nodemailer.getTestMessageUrl(info) : null 
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── POST /api/auth/reset-password ─────────────────────────────
+async function resetPassword(req, res, next) {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Token dan password baru wajib diisi' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password minimal 6 karakter' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id FROM users WHERE reset_password_token = ? AND reset_password_expires_at > NOW() LIMIT 1',
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(400).json({ success: false, message: 'Token reset password tidak valid atau sudah kedaluwarsa' });
+    }
+
+    const user = rows[0];
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await pool.query(
+      'UPDATE users SET password_hash = ?, reset_password_token = NULL, reset_password_expires_at = NULL WHERE id = ?',
+      [passwordHash, user.id]
+    );
+
+    // Otomatis logout semua sesi
+    await pool.query('UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE user_id = ?', [user.id]);
+
+    await catatLog({
+      user_id: user.id,
+      aksi: 'reset_password_success',
+      entitas: 'user',
+      entitas_id: user.id,
+      ip: req.ip,
+    });
+
+    return res.json({ success: true, message: 'Password berhasil diubah. Silakan login kembali.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { login, logout, me, forgotPassword, resetPassword, loginRules, catatLog };
