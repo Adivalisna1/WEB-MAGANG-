@@ -116,8 +116,8 @@ async function downloadDokumen(req, res, next) {
 
     const dok = rows[0];
 
-    if (!dok.file_path || !fs.existsSync(dok.file_path)) {
-      return res.status(404).json({ success: false, message: 'File tidak tersedia. Dokumen ini perlu di-upload ulang oleh staff.' });
+    if (!dok.file_path) {
+      return res.status(404).json({ success: false, message: 'File tidak tersedia di database. Dokumen ini perlu di-upload ulang.' });
     }
 
     await pool.query('UPDATE dokumen SET download_count = download_count + 1 WHERE id = ?', [dok.id]);
