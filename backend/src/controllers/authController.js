@@ -2,7 +2,11 @@ const bcrypt   = require('bcrypt');
 const jwt      = require('jsonwebtoken');
 const crypto   = require('crypto');
 const nodemailer = require('nodemailer');
+const dns      = require('dns');
 const { body } = require('express-validator');
+
+// Fix untuk masalah IPv6 (ENETUNREACH) di beberapa cloud provider (seperti Railway)
+dns.setDefaultResultOrder('ipv4first');
 const { pool } = require('../config/db');
 
 // ── Helper: catat log aktivitas ───────────────────────────────
@@ -199,9 +203,9 @@ async function forgotPassword(req, res, next) {
     });
   } catch (err) {
     console.error("SMTP Error:", err);
-    // Return friendly error if SMTP fails (like connection timeout)
-    if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
-      return res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server: Connection timeout saat mengirim email.' });
+    // Return friendly error if SMTP fails
+    if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT' || err.code === 'ENETUNREACH') {
+      return res.status(500).json({ success: false, message: `Gagal terhubung ke email server (${err.code}). Pastikan SMTP_HOST dikonfigurasi dengan benar di Railway.` });
     }
     next(err);
   }
