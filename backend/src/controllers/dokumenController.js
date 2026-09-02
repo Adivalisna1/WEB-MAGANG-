@@ -6,6 +6,7 @@ const { body, param } = require('express-validator');
 const { pool } = require('../config/db');
 const { catatLog } = require('./authController');
 const { buatNotifikasi } = require('./notifikasiController');
+const { uploadToR2, downloadFromR2, deleteFromR2 } = require('../config/r2');
 
 // ── Helper: generate nomor laporan ────────────────────────────
 // Format: SLUG-KATEGORI/TAHUN/ID (contoh: LKJIP/2024/042)
@@ -121,9 +122,11 @@ async function downloadDokumen(req, res, next) {
 
     await pool.query('UPDATE dokumen SET download_count = download_count + 1 WHERE id = ?', [dok.id]);
 
+    const buffer = await downloadFromR2(dok.file_path);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dok.file_nama)}"`);
     res.setHeader('Content-Type', dok.file_mime || 'application/octet-stream');
-    return res.sendFile(dok.file_path);
+    res.setHeader('Content-Length', buffer.length);
+    return res.send(buffer);
   } catch (err) { next(err); }
 }
 
@@ -184,7 +187,6 @@ async function uploadDokumen(req, res, next) {
     }
 
     const { judul, tahun, kategori_id, deskripsi } = req.body;
-    const filePath = req.file.path;
     const fileName = req.file.originalname;
 
     // ── Validasi duplikat ────────────────────────────────────
@@ -198,7 +200,6 @@ async function uploadDokumen(req, res, next) {
     );
 
     if (duplikat.length > 0) {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       const statusAda = duplikat[0].status.replace(/_/g, ' ');
       return res.status(409).json({
         success: false,
@@ -215,6 +216,12 @@ async function uploadDokumen(req, res, next) {
     const nilaiRekKoran = req.body.nilai_rekening_koran ? Number(req.body.nilai_rekening_koran) : null;
     const nilaiExcel    = req.body.nilai_excel ? Number(req.body.nilai_excel) : null;
 
+    // Upload ke Cloudflare R2
+    const ext        = path.extname(fileName).toLowerCase();
+    const baseName   = path.basename(fileName, ext).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '').toLowerCase();
+    const uniqueName = `${baseName}-${Date.now()}${ext}`;
+    const r2Key      = await uploadToR2(req.file.buffer, uniqueName, req.file.mimetype, tahun);
+
     const [result] = await pool.query(
       `INSERT INTO dokumen
          (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
@@ -223,7 +230,7 @@ async function uploadDokumen(req, res, next) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, ?, ?)`,
       [kategori_id, req.user.id, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
-       fileName, filePath, req.file.size, req.file.mimetype,
+       fileName, r2Key, req.file.size, req.file.mimetype,
        nilaiRekKoran, nilaiExcel]
     );
 
@@ -527,10 +534,8 @@ async function deleteDokumen(req, res, next) {
     const filePath = rows[0].file_path;
     const judulDok = rows[0].judul;
 
-    // Hapus file dari Supabase
-    if (filePath) {
-      await deleteFromSupabase(filePath);
-    }
+    // Hapus file dari R2
+    if (filePath) await deleteFromR2(filePath);
 
     await pool.query('DELETE FROM dokumen WHERE id = ?', [req.params.id]);
 
@@ -601,28 +606,19 @@ async function gantiFileDokumen(req, res, next) {
       return res.status(400).json({ success: false, message: 'File baru wajib diupload' });
     }
 
-    // Hapus file lama dari Supabase
-    if (dok.file_path) {
-      await deleteFromSupabase(dok.file_path);
-    }
+    // Hapus file lama dari R2
+    if (dok.file_path) await deleteFromR2(dok.file_path);
 
-    // Upload file baru ke Supabase
+    // Upload file baru ke R2
     const ext        = path.extname(req.file.originalname).toLowerCase();
     const baseName   = path.basename(req.file.originalname, ext).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '').toLowerCase();
-    const uniqueName = `${baseName}-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+    const uniqueName = `${baseName}-${Date.now()}${ext}`;
     const tahun      = dok.tahun || new Date().getFullYear();
-
-    const storagePath = await uploadToSupabase(req.file.buffer, uniqueName, req.file.mimetype, tahun);
+    const r2Key      = await uploadToR2(req.file.buffer, uniqueName, req.file.mimetype, tahun);
 
     await pool.query(
-      `UPDATE dokumen SET
-        file_nama  = ?,
-        file_path  = ?,
-        file_size  = ?,
-        file_mime  = ?,
-        updated_at = NOW()
-       WHERE id = ?`,
-      [req.file.originalname, storagePath, req.file.size, req.file.mimetype, id]
+      `UPDATE dokumen SET file_nama=?, file_path=?, file_size=?, file_mime=?, updated_at=NOW() WHERE id=?`,
+      [req.file.originalname, r2Key, req.file.size, req.file.mimetype, id]
     );
 
     return res.json({
@@ -647,10 +643,6 @@ async function previewDokumen(req, res, next) {
 
     const dok = rows[0];
 
-    if (!fs.existsSync(dok.file_path)) {
-      return res.status(404).json({ success: false, message: 'File tidak ditemukan di server' });
-    }
-
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Content-Type-Options');
@@ -659,46 +651,44 @@ async function previewDokumen(req, res, next) {
     const mime  = dok.file_mime || '';
     const isPDF = mime === 'application/pdf';
 
+    // Download dari R2
+    const buffer = await downloadFromR2(dok.file_path);
+
     if (isPDF) {
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(dok.file_nama)}"`);
       res.setHeader('Content-Type', 'application/pdf');
-      return res.sendFile(dok.file_path);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
     }
 
+    // Non-PDF: konversi via LibreOffice
     const tmpDir   = path.join(os.tmpdir(), 'lo_preview');
-    const baseName = path.basename(dok.file_path, path.extname(dok.file_path));
-    const pdfPath  = path.join(tmpDir, `${baseName}.pdf`);
+    const ext      = path.extname(dok.file_nama).toLowerCase();
+    const baseName = path.basename(dok.file_nama, ext).replace(/[^a-zA-Z0-9\-_]/g, '_');
+    const tmpInput = path.join(tmpDir, `${baseName}-${Date.now()}${ext}`);
+    const pdfPath  = path.join(tmpDir, `${path.basename(tmpInput, ext)}.pdf`);
 
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+    fs.writeFileSync(tmpInput, buffer);
 
     execFile(
       'libreoffice',
-      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, dok.file_path],
+      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, tmpInput],
       { timeout: 30000 },
       (err) => {
+        fs.unlink(tmpInput, () => {});
         if (err) {
-          console.error('[previewDokumen] LibreOffice error:', err.message);
-          return res.status(500).json({
-            success: false,
-            message: 'Gagal mengkonversi file ke PDF untuk preview. Silakan download file langsung.',
-          });
+          return res.status(500).json({ success: false, message: 'Gagal konversi file ke PDF. Silakan download langsung.' });
         }
-
         if (!fs.existsSync(pdfPath)) {
           return res.status(500).json({ success: false, message: 'File PDF hasil konversi tidak ditemukan.' });
         }
-
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(baseName)}.pdf"`);
-
         const stream = fs.createReadStream(pdfPath);
         stream.pipe(res);
         stream.on('end', () => { fs.unlink(pdfPath, () => {}); });
-        stream.on('error', (streamErr) => {
-          console.error('[previewDokumen] stream error:', streamErr.message);
-          fs.unlink(pdfPath, () => {});
-        });
+        stream.on('error', () => { fs.unlink(pdfPath, () => {}); });
       }
     );
   } catch (err) { next(err); }
