@@ -25,6 +25,16 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
+  // Cek apakah user baru saja ketendang (kicked)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('kicked') === 'true') {
+        setError('Sesi Anda dihentikan karena akun ini baru saja login di perangkat atau jaringan lain.');
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');

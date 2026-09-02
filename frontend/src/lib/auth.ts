@@ -67,7 +67,7 @@ export function clearSession(): void {
 // Fetch dengan auth header (untuk client component)
 export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
   const session = getSession();
-  return fetch(url, {
+  const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -75,4 +75,12 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
       ...options.headers,
     },
   });
+
+  // Interceptor Pasif: Jika server menolak token (Sesi Berakhir / Ketendang)
+  if (res.status === 401 && typeof window !== 'undefined') {
+    clearSession();
+    window.location.href = '/login?kicked=true';
+  }
+
+  return res;
 }
