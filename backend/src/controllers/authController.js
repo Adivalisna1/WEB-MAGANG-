@@ -148,8 +148,7 @@ async function forgotPassword(req, res, next) {
 
     const [rows] = await pool.query('SELECT id, nama, email FROM users WHERE email = ? LIMIT 1', [email]);
     if (!rows.length) {
-      // Return 200 even if not found to prevent email enumeration
-      return res.json({ success: true, message: 'Jika email terdaftar, link reset telah dikirim.' });
+      return res.status(404).json({ success: false, message: 'Email tidak ditemukan/terdaftar di sistem kami.' });
     }
     const user = rows[0];
 
@@ -195,7 +194,7 @@ async function forgotPassword(req, res, next) {
 
     return res.json({ 
       success: true, 
-      message: 'Jika email terdaftar, link reset telah dikirim ke inbox Anda.'
+      message: 'Link reset password berhasil dikirimkan ke email Anda.'
     });
   } catch (err) {
     console.error("Email Error:", err);
