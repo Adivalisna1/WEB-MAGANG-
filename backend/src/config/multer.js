@@ -1,7 +1,25 @@
 const multer = require('multer');
+const path   = require('path');
+const fs     = require('fs');
 
-// Pakai memoryStorage — file disimpan di RAM, lalu di-upload ke Supabase
-const storage = multer.memoryStorage();
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const tahun = req.body.tahun || new Date().getFullYear();
+    const dir   = path.join(UPLOAD_DIR, String(tahun));
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext      = path.extname(file.originalname).toLowerCase();
+    const baseName = path.basename(file.originalname, ext)
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9\-_]/g, '')
+      .toLowerCase();
+    cb(null, `${baseName}-${Date.now()}${ext}`);
+  },
+});
 
 const fileFilter = (req, file, cb) => {
   const allowed = [
@@ -21,7 +39,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 }, // maks 50MB
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 module.exports = upload;

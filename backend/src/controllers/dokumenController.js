@@ -6,7 +6,6 @@ const { body, param } = require('express-validator');
 const { pool } = require('../config/db');
 const { catatLog } = require('./authController');
 const { buatNotifikasi } = require('./notifikasiController');
-const { uploadToSupabase, downloadFromSupabase, deleteFromSupabase, isSupabasePath } = require('../config/supabase');
 
 // ── Helper: generate nomor laporan ────────────────────────────
 // Format: SLUG-KATEGORI/TAHUN/ID (contoh: LKJIP/2024/042)
@@ -116,29 +115,15 @@ async function downloadDokumen(req, res, next) {
 
     const dok = rows[0];
 
-    // Cek apakah file_path adalah path lokal lama (bukan Supabase)
-    const isLocalPath = !dok.file_path ||
-      dok.file_path.startsWith('/') ||
-      dok.file_path.startsWith('C:') ||
-      dok.file_path.includes('\\uploads\\') ||
-      dok.file_path.includes('/uploads/');
-
-    if (isLocalPath) {
-      return res.status(404).json({
-        success: false,
-        message: 'File tidak tersedia. Dokumen ini perlu di-upload ulang oleh staff.',
-      });
+    if (!dok.file_path || !fs.existsSync(dok.file_path)) {
+      return res.status(404).json({ success: false, message: 'File tidak tersedia. Dokumen ini perlu di-upload ulang oleh staff.' });
     }
-
-    // Download dari Supabase
-    const buffer = await downloadFromSupabase(dok.file_path);
 
     await pool.query('UPDATE dokumen SET download_count = download_count + 1 WHERE id = ?', [dok.id]);
 
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dok.file_nama)}"`);
     res.setHeader('Content-Type', dok.file_mime || 'application/octet-stream');
-    res.setHeader('Content-Length', buffer.length);
-    return res.send(buffer);
+    return res.sendFile(dok.file_path);
   } catch (err) { next(err); }
 }
 
@@ -199,6 +184,7 @@ async function uploadDokumen(req, res, next) {
     }
 
     const { judul, tahun, kategori_id, deskripsi } = req.body;
+    const filePath = req.file.path;
     const fileName = req.file.originalname;
 
     // ── Validasi duplikat ────────────────────────────────────
@@ -212,6 +198,7 @@ async function uploadDokumen(req, res, next) {
     );
 
     if (duplikat.length > 0) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       const statusAda = duplikat[0].status.replace(/_/g, ' ');
       return res.status(409).json({
         success: false,
@@ -228,13 +215,6 @@ async function uploadDokumen(req, res, next) {
     const nilaiRekKoran = req.body.nilai_rekening_koran ? Number(req.body.nilai_rekening_koran) : null;
     const nilaiExcel    = req.body.nilai_excel ? Number(req.body.nilai_excel) : null;
 
-    // ── Upload ke Supabase Storage ───────────────────────────
-    const ext        = path.extname(fileName).toLowerCase();
-    const baseName   = path.basename(fileName, ext).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '').toLowerCase();
-    const uniqueName = `${baseName}-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
-
-    const storagePath = await uploadToSupabase(req.file.buffer, uniqueName, req.file.mimetype, tahun);
-
     const [result] = await pool.query(
       `INSERT INTO dokumen
          (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
@@ -243,7 +223,7 @@ async function uploadDokumen(req, res, next) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, ?, ?)`,
       [kategori_id, req.user.id, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
-       fileName, storagePath, req.file.size, req.file.mimetype,
+       fileName, filePath, req.file.size, req.file.mimetype,
        nilaiRekKoran, nilaiExcel]
     );
 
@@ -667,59 +647,36 @@ async function previewDokumen(req, res, next) {
 
     const dok = rows[0];
 
+    if (!fs.existsSync(dok.file_path)) {
+      return res.status(404).json({ success: false, message: 'File tidak ditemukan di server' });
+    }
+
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Content-Type-Options');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 
-    // Cek apakah file_path adalah path lokal lama
-    const isLocalPath = !dok.file_path ||
-      dok.file_path.startsWith('/') ||
-      dok.file_path.startsWith('C:') ||
-      dok.file_path.includes('\\uploads\\') ||
-      dok.file_path.includes('/uploads/');
-
-    if (isLocalPath) {
-      return res.status(404).json({
-        success: false,
-        message: 'File tidak tersedia. Dokumen ini perlu di-upload ulang oleh staff.',
-      });
-    }
-
     const mime  = dok.file_mime || '';
     const isPDF = mime === 'application/pdf';
 
-    // Download file dari Supabase ke buffer
-    const buffer = await downloadFromSupabase(dok.file_path);
-
-    // ── PDF: kirim langsung ──────────────────────────────────
     if (isPDF) {
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(dok.file_nama)}"`);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Length', buffer.length);
-      return res.send(buffer);
+      return res.sendFile(dok.file_path);
     }
 
-    // ── Non-PDF: konversi ke PDF via LibreOffice ─────────────
     const tmpDir   = path.join(os.tmpdir(), 'lo_preview');
-    const ext      = path.extname(dok.file_nama).toLowerCase();
-    const baseName = path.basename(dok.file_nama, ext).replace(/[^a-zA-Z0-9\-_]/g, '_');
-    const tmpInput = path.join(tmpDir, `${baseName}-${Date.now()}${ext}`);
-    const pdfPath  = path.join(tmpDir, `${path.basename(tmpInput, ext)}.pdf`);
+    const baseName = path.basename(dok.file_path, path.extname(dok.file_path));
+    const pdfPath  = path.join(tmpDir, `${baseName}.pdf`);
 
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-
-    // Tulis buffer ke file temp
-    fs.writeFileSync(tmpInput, buffer);
+    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
 
     execFile(
       'libreoffice',
-      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, tmpInput],
+      ['--headless', '--convert-to', 'pdf', '--outdir', tmpDir, dok.file_path],
       { timeout: 30000 },
       (err) => {
-        // Hapus file input temp
-        fs.unlink(tmpInput, () => {});
-
         if (err) {
           console.error('[previewDokumen] LibreOffice error:', err.message);
           return res.status(500).json({
@@ -729,10 +686,7 @@ async function previewDokumen(req, res, next) {
         }
 
         if (!fs.existsSync(pdfPath)) {
-          return res.status(500).json({
-            success: false,
-            message: 'File PDF hasil konversi tidak ditemukan.',
-          });
+          return res.status(500).json({ success: false, message: 'File PDF hasil konversi tidak ditemukan.' });
         }
 
         res.setHeader('Content-Type', 'application/pdf');
