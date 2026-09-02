@@ -153,6 +153,8 @@ User isi username + password
 
 **Token:** JWT disimpan di `localStorage` + session dicatat di tabel `user_sessions`
 
+**Lupa Password:** Jika user lupa password, tersedia fasilitas *Lupa Password* yang akan mengirimkan link reset ke email terdaftar via Brevo API (dilengkapi *Rate Limiter* maks 3 request/jam/IP).
+
 ---
 
 ### Tahap 2 — Staff Upload Dokumen
@@ -396,5 +398,5 @@ Sistem mengirim notifikasi **in-app** (tersimpan di tabel `notifikasi`) pada set
 
 ---
 
-_Dokumen ini dibuat berdasarkan implementasi aktual sistem per Agustus 2025._
+_Dokumen ini dibuat berdasarkan implementasi aktual sistem per September 2026._
 _Untuk perubahan arsitektur, update dokumen ini bersamaan dengan perubahan kode._

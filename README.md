@@ -33,6 +33,7 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Submit dokumen untuk verifikasi
 - Lihat status dokumen (termasuk "Menunggu Admin" dan "Menunggu Ketua Tim") dan catatan revisi beserta siapa yang memberi catatan
 - Ganti password dan kelola profil
+- **Lupa Password via Email** menggunakan integrasi Brevo API
 - Tombol kembali ke beranda publik
 
 ### Dashboard Admin
@@ -44,6 +45,7 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - **Kelola kategori dokumen** — tambah, edit, hapus, aktif/nonaktif dari dashboard
 - Log aktivitas sistem dengan pagination dan hapus riwayat
 - Hapus dokumen beserta file fisiknya
+- **Fitur Perbandingan Nominal**: membandingkan dua laporan untuk melihat deviasi (khusus untuk dokumen tertentu)
 - Tombol kembali ke beranda publik
 
 ### Dashboard Ketua Tim
@@ -57,6 +59,7 @@ Sistem dashboard untuk menampilkan, mengelola, dan mengunduh dokumen laporan ins
 - Kirim notifikasi manual: pengumuman ke semua user (broadcast) atau pesan ke satu user tertentu
 - Lihat log aktivitas seluruh sistem dengan pagination
 - Guard keamanan: admin tidak bisa menonaktifkan/menghapus ketua tim, ketua tim tidak bisa mengubah sesama ketua tim
+- **Fitur Perbandingan Nominal**: menganalisis perbedaan nominal antar dua dokumen laporan.
 
 ---
 
@@ -283,6 +286,12 @@ Salin `.env.example` menjadi `.env` lalu sesuaikan nilainya.
 
 ```bash
 cp .env.example .env
+```
+
+Tambahkan variable berikut ke file `.env` untuk mengaktifkan fitur email:
+```env
+BREVO_API_KEY=xkeysib-kodeapikamu
+EMAIL_FROM=no-reply@laporan.go.id
 ```
 
 > Detail konfigurasi ada di file `.env.example` — jangan commit file `.env` ke GitHub.
@@ -829,6 +838,14 @@ erDiagram
 | UI Ketua Tim: panel "Menunggu Persetujuan Saya" + tombol Setujui & Publish / Kembalikan Revisi; UI Admin: Loloskan ke Ketua Tim / Kembalikan Revisi | `frontend/src/app/ketua/dokumen/page.tsx`, `frontend/src/app/admin/dokumen/page.tsx` |
 | **Preview dokumen untuk Ketua Tim** — tombol Tinjau + modal preview PDF (streaming dengan progress bar) di antrian persetujuan; fix header CORS invalid di endpoint preview | `frontend/src/app/ketua/dokumen/page.tsx`, `frontend/src/app/admin/dokumen/page.tsx`, `backend/src/controllers/dokumenController.js` |
 | Dokumentasi **Proses Bisnis** (pelaku & tanggung jawab, alur end-to-end, loop revisi, proses pendukung, aturan bisnis) | `README.md` |
+
+### v2.2.0 — 02 September 2026
+
+| Perubahan | File yang Diubah |
+|---|---|
+| **Fitur baru: Lupa Password via Email** — integrasi API Brevo via HTTPS request (solusi atas blokir SMTP port di Railway), fitur rate limiter 3 request/jam | `backend/src/controllers/authController.js`, `frontend/src/app/reset-password/page.tsx`, `backend/src/routes/auth.js` |
+| **Fitur baru: Perbandingan Nominal** — fitur bagi admin dan ketua tim untuk membandingkan nominal antar dokumen | (Berbagai komponen terkait fitur perbandingan) |
+| **Perbaikan UI Navigasi Auth** — penghapusan tombol Dashboard Publik yang membingungkan dan mengganti tulisan menjadi tombol Kembali | `frontend/src/app/login/layout.tsx`, `frontend/src/app/login/page.tsx` |
 
 > Catatan: poin revisi "Kategori → Akun" belum dikerjakan — menunggu keputusan final mentor.
 
