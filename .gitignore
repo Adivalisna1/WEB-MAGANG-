@@ -66,3 +66,5 @@ yarn-error.log*
 # ============================================================
 *.tsbuildinfo
 frontend/next-env.d.ts
+BISNIS_PROSES.md
+PENJELASAN_BISNIS_PROSES.md
