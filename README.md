@@ -235,51 +235,6 @@ docker-compose down
 
 ---
 
-## Struktur Folder
-
-```
-web-dashboard-laporan/
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-├── README.md
-├── database/
-│   └── init/
-│       ├── 01_schema.sql     ← struktur tabel
-│       └── 02_seed.sql       ← data awal
-├── backend/
-│   ├── Dockerfile
-│   ├── package.json
-│   └── src/
-│       ├── index.js
-│       ├── config/           ← db.js, multer.js
-│       ├── controllers/      ← auth, dokumen, user, admin
-│       ├── middleware/       ← auth JWT, validate, logger, error
-│       └── routes/           ← auth, dokumen, user, admin
-└── frontend/
-    ├── Dockerfile
-    ├── package.json
-    ├── next.config.js
-    ├── tailwind.config.ts
-    └── src/
-        ├── app/
-        │   ├── page.tsx              ← dashboard publik
-        │   ├── login/
-        │   ├── dokumen/[id]/
-        │   ├── staff/                ← dokumen, upload, edit, profil
-        │   └── admin/                ← dashboard, dokumen, kategori, users, logs
-        ├── components/
-        │   ├── layout/               ← Navbar, Footer
-        │   ├── ui/                   ← DokumenCard, FilterBar, Pagination
-        │   ├── staff/                ← Sidebar
-        │   └── admin/                ← AdminSidebar
-        ├── context/                  ← AuthContext
-        ├── hooks/                    ← useRequireAuth
-        └── lib/                      ← api.ts, auth.ts, dateUtils.ts
-```
-
----
-
 ## Konfigurasi .env
 
 Salin `.env.example` menjadi `.env` lalu sesuaikan nilainya.
