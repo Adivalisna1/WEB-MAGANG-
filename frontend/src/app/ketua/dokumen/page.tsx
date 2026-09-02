@@ -425,7 +425,7 @@ export default function KetuaDokumenPage() {
             </div>
 
             {/* Preview — flex-1 agar isi ruang sisa, min-h-0 agar bisa menyusut */}
-            <div className="bg-gray-100 border-b border-gray-200 flex-1 min-h-0" style={{ minHeight: '220px', maxHeight: '380px' }}>
+            <div className="bg-gray-100 border-b border-gray-200 flex-1 min-h-0 overflow-hidden">
               {isExcel ? (
                 // Excel: langsung tampilkan tombol download — tidak di-preview
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -440,7 +440,7 @@ export default function KetuaDokumenPage() {
                   </button>
                 </div>
               ) : previewUrl ? (
-                <object data={previewUrl} type="application/pdf" className="w-full h-full" style={{ minHeight: '220px' }}>
+                <object data={previewUrl} type="application/pdf" className="w-full h-full">
                   <div className="flex flex-col items-center justify-center h-full text-gray-500">
                     <p>Browser tidak bisa menampilkan PDF.</p>
                     <button onClick={handleDownload} className="mt-3 text-indigo-600 underline">Download file</button>
