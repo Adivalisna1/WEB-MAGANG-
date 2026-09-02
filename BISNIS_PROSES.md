@@ -81,12 +81,14 @@ flowchart TD
     L --> M[Status: MENUNGGU VERIFIKASI\nNotifikasi → Admin]
 
     H --> N[Admin terima notifikasi\nTinjau dokumen]
-    N --> O{Keputusan Admin}
+    N --> N2[Perbandingan Nominal]
+    N2 --> O{Keputusan Admin}
     O -- Loloskan --> P[Status: LOLOS ADMIN\nNotifikasi → Staff + Ketua Tim]
     O -- Kembalikan --> Q[Status: REVISI\nCatatan revisi muncul\nNotifikasi → Staff]
 
     I --> R[Ketua Tim terima notifikasi\nTinjau + Preview dokumen]
-    R --> S{Keputusan Ketua Tim}
+    R --> R2_Comp[Perbandingan Nominal]
+    R2_Comp --> S{Keputusan Ketua Tim}
     S -- Setujui --> T[Status: TERVERIFIKASI\nis_public = 1\nNotifikasi → Staff]
     S -- Kembalikan --> Q
 
@@ -143,6 +145,7 @@ User isi username + password
   ┌──────┴────────────────────────────┐
   │ Sukses → JWT Token + Session      │
   │ Gagal  → Pesan error di form      │
+  │ Lupa Pass → Kirim Link Email      │
   └──────┬────────────────────────────┘
          │
   Redirect berdasarkan role_id:

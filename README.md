@@ -361,6 +361,8 @@ flowchart TD
         P1B -->|Valid| P1C[Generate JWT Token]
         P1B -->|Tidak Valid| P1D[Return Error 401]
         P1C --> P1E[Simpan Session ke DB]
+        P1F[Klik Lupa Password] --> P1G[Kirim Link Reset\nvia Brevo API]
+        P1G --> P1H[Update Password DB]
     end
 
     subgraph P2["2. Manajemen Dokumen"]
@@ -457,7 +459,9 @@ flowchart TD
     W --> X{Pilih Menu}
     X -->|Verifikasi| Y[Lihat Dokumen Menunggu]
     Y --> Z[Preview PDF di Modal]
+    Y --> Y2[Perbandingan Nominal Laporan]
     Z --> AA{Keputusan?}
+    Y2 --> AA
     AA -->|Loloskan| AB[Ke Antrian Ketua Tim]
     AA -->|Revisi| AC[Isi Catatan ke Staff]
     X -->|Kelola User| AD2[Tambah / Nonaktifkan / Hapus]
@@ -471,6 +475,7 @@ flowchart TD
     AJ --> AK{Pilih Menu}
     AK -->|Verifikasi| AL2[Setujui & Publish /\nKembalikan Revisi]
     AK -->|Monitor| AL[Lihat Semua Dokumen]
+    AK -->|Perbandingan| AL3[Bandingkan Nominal Laporan]
     AK -->|Kelola User| AM[Nonaktifkan Admin/Staff\n+ Reset Password]
     AK -->|Notifikasi| AN[Broadcast / Pesan\nke Satu User]
     AK -->|Log| AO[Lihat Log Aktivitas]
