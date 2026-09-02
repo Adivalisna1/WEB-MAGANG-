@@ -26,18 +26,31 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ success: false, message: 'User tidak aktif atau tidak ditemukan' });
     }
 
-    // ── Single-device enforcement ─────────────────────────────
-    // Cek apakah session ini masih aktif (belum di-kick oleh login di device lain)
+    // ── Single-device & IP Binding ────────────────────────────
     if (decoded.sessionId) {
       const [sess] = await pool.query(
-        'SELECT is_online FROM user_sessions WHERE id = ?',
+        'SELECT is_online, ip_address FROM user_sessions WHERE id = ?',
         [decoded.sessionId]
       );
-      if (sess.length && !sess[0].is_online) {
+      
+      if (!sess.length) {
+        return res.status(401).json({ success: false, message: 'Sesi tidak ditemukan' });
+      }
+
+      if (!sess[0].is_online) {
         return res.status(401).json({
           success: false,
           message: 'Sesi Anda telah berakhir karena akun login di perangkat lain',
           code: 'SESSION_KICKED',
+        });
+      }
+
+      // Validasi IP untuk mencegah pembajakan token (Session Hijacking)
+      if (sess[0].ip_address && sess[0].ip_address !== req.ip) {
+        await pool.query('UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE id = ?', [decoded.sessionId]);
+        return res.status(401).json({
+          success: false,
+          message: 'Akses ditolak: IP Address tidak cocok dengan sesi login. Sesi dicabut.',
         });
       }
     }

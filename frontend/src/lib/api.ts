@@ -88,8 +88,14 @@ export function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// URL download — pakai API_URL publik karena dibuka dari browser
+// URL download — bisa diakses publik (tanpa token) atau internal (dengan token untuk draft)
 export function getDownloadUrl(id: number): string {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      return `${API_URL}/dokumen/${id}/download?token=${token}`;
+    }
+  }
   return `${API_URL}/dokumen/${id}/download`;
 }
 

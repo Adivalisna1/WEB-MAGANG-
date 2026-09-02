@@ -105,16 +105,33 @@ async function getDokumenDetail(req, res, next) {
 async function downloadDokumen(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT id, judul, file_nama, file_path, file_mime, status, is_public
+      `SELECT id, judul, file_nama, file_path, file_mime, status, is_public, uploaded_by
        FROM dokumen WHERE id = ?`,
       [req.params.id]
     );
 
-    if (!rows.length || rows[0].status !== 'terverifikasi' || !rows[0].is_public) {
+    if (!rows.length) {
       return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan' });
     }
 
     const dok = rows[0];
+
+    // Cek Akses
+    let hasAccess = dok.status === 'terverifikasi' && dok.is_public;
+
+    if (!hasAccess && req.query.token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET);
+        if (decoded.role === 'admin' || decoded.role === 'ketua_tim' || (decoded.role === 'staff' && dok.uploaded_by === decoded.id)) {
+          hasAccess = true;
+        }
+      } catch (err) { /* token tidak valid */ }
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke dokumen ini' });
+    }
 
     if (!dok.file_path) {
       return res.status(404).json({ success: false, message: 'File tidak tersedia di database. Dokumen ini perlu di-upload ulang.' });
