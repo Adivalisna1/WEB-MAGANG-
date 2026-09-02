@@ -1,0 +1,29 @@
+User buka link website
+        │
+        ▼
+┌─────────────────────────────────┐
+│   LANDING PAGE  (root /)        │
+│   • Logo / foto instansi        │
+│   • Nama instansi               │
+│   • Visi & Misi                 │
+│   • [ Tombol LOGIN ]            │
+└────────────┬────────────────────┘
+             │ klik Tombol Login
+             ▼
+┌─────────────────────────────────┐
+│   HALAMAN LOGIN  (/login)       │
+│   • Form username + password    │
+│   • Link "Lupa Password?"       │
+└────────────┬────────────────────┘
+             │ login sukses
+             ▼
+   ┌──────────────────────┐
+   │  Redirect by role    │
+   └──────────────────────┘
+       │           │           │
+     Admin       Staff     Ketua Tim
+       │           │           │
+   /admin    /staff/dokumen  /ketua
+   (Dashboard  (Dashboard  (Dashboard
+    Admin)      Laporan      Ketua)
+                Staff)

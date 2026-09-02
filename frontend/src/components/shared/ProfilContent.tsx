@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getSession } from '@/lib/auth';
-import { User, Lock, Loader2, AlertCircle, CheckCircle, Mail, AtSign, Clock } from 'lucide-react';
+import { User, Lock, Loader2, AlertCircle, CheckCircle, Mail, AtSign, Clock, Eye, EyeOff } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -16,6 +16,7 @@ export default function ProfilContent() {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
   const [success,     setSuccess]     = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const roleLabels: Record<string, string> = {
     admin: 'Administrator',
@@ -107,13 +108,23 @@ export default function ProfilContent() {
           ].map(({ label, val, set }) => (
             <div key={label}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-              <input
-                type="password"
-                value={val}
-                onChange={e => set(e.target.value)}
-                required
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={val}
+                  onChange={e => set(e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  title={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           ))}
           <button

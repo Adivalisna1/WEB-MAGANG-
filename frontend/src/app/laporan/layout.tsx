@@ -59,7 +59,7 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-4 text-sm font-medium">
-              <Link href="/laporan" className="hover:text-blue-200 transition-colors px-2 py-1">Beranda</Link>
+              <Link href={dashboardHref} className="hover:text-blue-200 transition-colors px-2 py-1 capitalize">Dashboard {roleLabel}</Link>
 
               {/* User dropdown */}
               <div className="relative ml-2" ref={dropRef}>
@@ -115,7 +115,7 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
           {/* Mobile Nav */}
           {open && (
             <nav className="md:hidden pb-4 flex flex-col gap-2 text-sm font-medium border-t border-primary-700/50 pt-3 animate-in fade-in duration-150">
-              <Link href="/laporan" className="hover:text-blue-200 py-1" onClick={() => setOpen(false)}>Beranda</Link>
+              <Link href={dashboardHref} className="hover:text-blue-200 py-1 capitalize" onClick={() => setOpen(false)}>Dashboard {roleLabel}</Link>
               <div className="flex items-center gap-2 py-1 border-t border-primary-700/50 pt-2">
                 <div className="w-6 h-6 rounded-full bg-blue-400 flex items-center justify-center text-xs font-bold">
                   {user.nama.charAt(0).toUpperCase()}
