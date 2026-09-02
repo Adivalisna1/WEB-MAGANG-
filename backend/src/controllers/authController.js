@@ -1,12 +1,7 @@
 const bcrypt   = require('bcrypt');
 const jwt      = require('jsonwebtoken');
 const crypto   = require('crypto');
-const nodemailer = require('nodemailer');
-const dns      = require('dns');
 const { body } = require('express-validator');
-
-// Fix untuk masalah IPv6 (ENETUNREACH) di beberapa cloud provider (seperti Railway)
-dns.setDefaultResultOrder('ipv4first');
 const { pool } = require('../config/db');
 
 // ── Helper: catat log aktivitas ───────────────────────────────
@@ -166,47 +161,44 @@ async function forgotPassword(req, res, next) {
       [resetToken, tokenExpiry, user.id]
     );
 
-    // Setup Nodemailer menggunakan SMTP dari Environment Variables
-    let transporter;
-    
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      // Gunakan SMTP Asli (misal Gmail)
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: process.env.SMTP_PORT || 465,
-        secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
-    } else {
-      throw new Error("SMTP belum dikonfigurasi di server. Harap atur SMTP_USER dan SMTP_PASS.");
+    const resetUrl = `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const senderEmail = process.env.EMAIL_FROM || 'no-reply@laporan.go.id';
+
+    if (!process.env.BREVO_API_KEY) {
+      throw new Error("BREVO_API_KEY belum dikonfigurasi di server.");
     }
 
-    const resetUrl = `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-    const senderEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@laporan.go.id';
-
-    let info = await transporter.sendMail({
-      from: `"Admin Dashboard Laporan" <${senderEmail}>`,
-      to: user.email,
+    const payload = {
+      sender: { name: "Admin Dashboard Laporan", email: senderEmail },
+      to: [{ email: user.email, name: user.nama }],
       subject: "Permintaan Reset Password",
-      text: `Halo ${user.nama},\n\nAnda meminta reset password. Klik link berikut untuk membuat password baru:\n\n${resetUrl}\n\nAbaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.`,
-      html: `<p>Halo <b>${user.nama}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>`
+      htmlContent: `<p>Halo <b>${user.nama}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>`
+    };
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
     });
 
-    console.log("Email reset terkirim ke: " + user.email);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Brevo API Error:", errorData);
+      throw new Error(`Gagal mengirim email via Brevo: ${errorData.message}`);
+    }
+
+    console.log("Email reset terkirim ke: " + user.email + " via Brevo API");
 
     return res.json({ 
       success: true, 
       message: 'Jika email terdaftar, link reset telah dikirim ke inbox Anda.'
     });
   } catch (err) {
-    console.error("SMTP Error:", err);
-    // Return friendly error if SMTP fails
-    if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT' || err.code === 'ENETUNREACH') {
-      return res.status(500).json({ success: false, message: `Gagal terhubung ke email server (${err.code}). Pastikan SMTP_HOST dikonfigurasi dengan benar di Railway.` });
-    }
+    console.error("Email Error:", err);
     next(err);
   }
 }
