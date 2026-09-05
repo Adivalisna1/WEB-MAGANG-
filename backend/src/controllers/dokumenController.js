@@ -711,9 +711,121 @@ async function previewDokumen(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ── POST /api/dokumen/bot-upload (Bot) ─────────────────────────
+async function botUploadDokumen(req, res, next) {
+  try {
+    // 1. Cek API Key khusus Bot
+    const botKey = req.headers['x-bot-api-key'];
+    const validBotKey = process.env.BOT_API_KEY || 'N8N_SECRET_BOT_KEY_2026';
+    if (botKey !== validBotKey) {
+      return res.status(401).json({ success: false, message: 'Unauthorized bot access' });
+    }
+
+    // 2. Cek File & Data
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'File wajib diupload' });
+    }
+
+    const { userEmail, judul, tahun, kategori_id, deskripsi, bulan, semester, nilai_rekening_koran, nilai_excel } = req.body;
+    
+    if (!userEmail || !judul || !tahun || !kategori_id) {
+      return res.status(400).json({ success: false, message: 'userEmail, judul, tahun, dan kategori_id wajib diisi' });
+    }
+
+    // 3. Cari User ID berdasarkan Email
+    const [users] = await pool.query('SELECT id, nama FROM users WHERE email = ?', [userEmail.trim()]);
+    if (!users.length) {
+      return res.status(404).json({ success: false, message: `User dengan email ${userEmail} tidak ditemukan di sistem.` });
+    }
+    const uploaderId = users[0].id;
+    const staffNama = users[0].nama;
+
+    const fileName = req.file.originalname;
+
+    // 4. Validasi Duplikat
+    const [duplikat] = await pool.query(
+      `SELECT id, status FROM dokumen
+       WHERE LOWER(judul) = LOWER(?)
+         AND kategori_id = ?
+         AND tahun = ?
+         AND status NOT IN ('diarsipkan')`,
+      [judul.trim(), kategori_id, tahun]
+    );
+
+    if (duplikat.length > 0) {
+      const statusAda = duplikat[0].status.replace(/_/g, ' ');
+      return res.status(409).json({
+        success: false,
+        message: `Dokumen dengan judul, kategori, dan tahun yang sama sudah ada (status: ${statusAda}).`,
+      });
+    }
+
+    const bulanFinal    = semester ? null : (bulan ? Number(bulan) : null);
+    const semesterFinal = semester ? Number(semester) : null;
+    const nilaiRekKoran = nilai_rekening_koran ? Number(nilai_rekening_koran) : null;
+    const nilaiExcel    = nilai_excel ? Number(nilai_excel) : null;
+
+    const [[katRow]] = await pool.query('SELECT slug FROM kategori_dokumen WHERE id = ?', [kategori_id]);
+
+    // 5. Upload ke R2
+    const ext        = path.extname(fileName).toLowerCase();
+    const baseName   = path.basename(fileName, ext).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_]/g, '').toLowerCase();
+    const uniqueName = `${baseName}-${Date.now()}${ext}`;
+    const r2Key      = await uploadToR2(req.file.buffer, uniqueName, req.file.mimetype, tahun);
+
+    // 6. Simpan ke Database (Langsung status: menunggu_verifikasi)
+    const [result] = await pool.query(
+      `INSERT INTO dokumen
+         (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
+          file_nama, file_path, file_size, file_mime, status, is_public,
+          nilai_rekening_koran, nilai_excel)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_verifikasi', 0, ?, ?)`,
+      [kategori_id, uploaderId, judul, deskripsi || null,
+       tahun, bulanFinal, semesterFinal,
+       fileName, r2Key, req.file.size, req.file.mimetype,
+       nilaiRekKoran, nilaiExcel]
+    );
+
+    const nomorLaporan = buatNomorLaporan(katRow?.slug, tahun, result.insertId);
+    await pool.query('UPDATE dokumen SET nomor_laporan = ? WHERE id = ?', [nomorLaporan, result.insertId]);
+
+    // 7. Catat Log
+    await catatLog({
+      user_id: uploaderId,
+      aksi: 'upload_bot',
+      entitas: 'dokumen',
+      entitas_id: result.insertId,
+      detail: { judul, tahun, kategori_id, file_nama: fileName, nomor_laporan: nomorLaporan },
+      ip: req.ip || 'bot',
+    });
+
+    // 8. Kirim Notifikasi ke Admin (karena status langsung menunggu_verifikasi)
+    try {
+      const [admins] = await pool.query('SELECT id FROM users WHERE role_id = 1 AND is_active = 1');
+      for (const admin of admins) {
+        await buatNotifikasi({
+          user_id: admin.id,
+          aksi: 'submit',
+          dokumen_id: result.insertId,
+          judul: judul,
+          pesan: `${staffNama} (via Bot) mengajukan "${judul}" untuk ditinjau`,
+        });
+      }
+    } catch (notifErr) {
+      console.error('[NOTIFIKASI] Gagal kirim notifikasi submit bot:', notifErr.message);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Dokumen berhasil diupload dan diajukan via Bot',
+      data: { id: result.insertId, nomor_laporan: nomorLaporan },
+    });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   getDokumenPublik, getDokumenDetail, downloadDokumen, getAllDokumen,
-  uploadDokumen, editDokumen, submitVerifikasi, gantiFileDokumen,
+  uploadDokumen, botUploadDokumen, editDokumen, submitVerifikasi, gantiFileDokumen,
   verifikasiDokumen, verifikasiKetua, deleteDokumen, getKategori,
   previewDokumen, getStatsPublik,
   uploadRules, editRules,

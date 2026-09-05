@@ -1,48 +1,35 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const fs = require('fs');
+const path = require('path');
 
-const R2_ENDPOINT  = process.env.R2_ENDPOINT;
-const R2_ACCESS    = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET    = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET    = process.env.R2_BUCKET || 'dokumen';
-
-const s3 = new S3Client({
-  region: 'auto',
-  endpoint: R2_ENDPOINT,
-  credentials: {
-    accessKeyId:     R2_ACCESS,
-    secretAccessKey: R2_SECRET,
-  },
-});
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 
 async function uploadToR2(buffer, fileName, mimeType, tahun) {
   const key = `${tahun}/${fileName}`;
-  await s3.send(new PutObjectCommand({
-    Bucket:      R2_BUCKET,
-    Key:         key,
-    Body:        buffer,
-    ContentType: mimeType,
-  }));
+  const filePath = path.join(UPLOAD_DIR, key);
+  
+  // Ensure directory exists
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, buffer);
+  
   return key;
 }
 
 async function downloadFromR2(key) {
-  const res = await s3.send(new GetObjectCommand({
-    Bucket: R2_BUCKET,
-    Key:    key,
-  }));
-  // Konversi stream ke buffer
-  const chunks = [];
-  for await (const chunk of res.Body) {
-    chunks.push(chunk);
+  const filePath = path.join(UPLOAD_DIR, key);
+  if (!fs.existsSync(filePath)) {
+    throw new Error('File not found locally');
   }
-  return Buffer.concat(chunks);
+  return fs.readFileSync(filePath);
 }
 
 async function deleteFromR2(key) {
+  const filePath = path.join(UPLOAD_DIR, key);
   try {
-    await s3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
   } catch (e) {
-    console.warn('[R2] Gagal hapus file:', e.message);
+    console.warn('[Local] Gagal hapus file:', e.message);
   }
 }
 

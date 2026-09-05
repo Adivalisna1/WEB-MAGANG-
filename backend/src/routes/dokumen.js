@@ -12,6 +12,12 @@ router.get('/kategori', ctrl.getKategori);
 router.get('/stats',    ctrl.getStatsPublik);
 router.get('/',         ctrl.getDokumenPublik);
 
+// ── Bot API (Internal / Webhook) ──────────────────────────────
+router.post('/bot-upload',
+  upload.single('file'),
+  ctrl.botUploadDokumen
+);
+
 // ── Staff & Admin (perlu login) — harus sebelum /:id ─────────
 router.get('/all',
   authenticate, authorize('admin', 'staff', 'ketua_tim'),
