@@ -5,17 +5,18 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileCheck, Users,
-  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, User
+  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, User, FileSpreadsheet
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const adminMenu = [
-  { href: '/admin',          icon: LayoutDashboard, label: 'Dashboard',        exact: true },
-  { href: '/admin/dokumen',  icon: FileCheck,       label: 'Verifikasi Dokumen' },
-  { href: '/admin/kategori', icon: Tag,             label: 'Kelola Kategori' },
-  { href: '/admin/users',    icon: Users,           label: 'Manajemen User' },
-  { href: '/admin/logs',     icon: Activity,        label: 'Log Aktivitas' },
-  { href: '/admin/profil',   icon: User,            label: 'Profil' },
+  { href: '/admin',              icon: LayoutDashboard, label: 'Dashboard',          exact: true },
+  { href: '/admin/dokumen',      icon: FileCheck,       label: 'Verifikasi Dokumen' },
+  { href: '/admin/kertas-kerja', icon: FileSpreadsheet,  label: 'Kertas Kerja' },
+  { href: '/admin/kategori',     icon: Tag,             label: 'Kelola Kategori' },
+  { href: '/admin/users',        icon: Users,           label: 'Manajemen User' },
+  { href: '/admin/logs',         icon: Activity,        label: 'Log Aktivitas' },
+  { href: '/admin/profil',       icon: User,            label: 'Profil' },
 ];
 
 export default function AdminSidebar() {

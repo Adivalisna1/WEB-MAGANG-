@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Upload, FileText, X, CheckCircle,
-  Loader2, AlertCircle, ArrowLeft, CloudUpload, DollarSign
+  Loader2, AlertCircle, ArrowLeft, CloudUpload, DollarSign, Sparkles, Brain, CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const N8N_AI_WEBHOOK = process.env.NEXT_PUBLIC_N8N_AI_WEBHOOK || 'http://localhost:5678/webhook/baca-dokumen';
 
 interface Kategori { id: number; nama: string; slug: string; perlu_nominal: number; }
 
@@ -36,6 +37,12 @@ export default function UploadPage() {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState('');
   const [success,     setSuccess]     = useState(false);
+
+  // AI Autofill state
+  const [aiScanning,  setAiScanning]  = useState(false);
+  const [aiResult,    setAiResult]    = useState<{judul?:string; tahun?:number; kategori?:string; semester?:number|null; nominal?:number|null; deskripsi?:string; confidence?:string} | null>(null);
+  const [aiError,     setAiError]     = useState('');
+  const [aiFilledFields, setAiFilledFields] = useState<string[]>([]);
 
   // Saldo Akhir (opsional, hanya untuk kategori perlu_nominal)
   const [totalSaldo, setTotalSaldo] = useState('');
@@ -66,6 +73,67 @@ export default function UploadPage() {
 
   useEffect(() => { fetchKategori(); }, []);
 
+  // ── AI Autofill: kirim file ke n8n webhook ──
+  const scanWithAI = async (fileToScan: File) => {
+    setAiScanning(true);
+    setAiError('');
+    setAiResult(null);
+    setAiFilledFields([]);
+    try {
+      const fd = new FormData();
+      fd.append('data', fileToScan, fileToScan.name);
+
+      const res = await fetch(N8N_AI_WEBHOOK, {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (!res.ok) throw new Error(`AI gagal (${res.status})`);
+      const result = await res.json();
+      setAiResult(result);
+
+      // Auto-fill form fields dari hasil AI
+      const filled: string[] = [];
+      if (result.judul) {
+        setJudul(result.judul);
+        filled.push('judul');
+      }
+      if (result.tahun) {
+        setTahun(String(result.tahun));
+        filled.push('tahun');
+      }
+      if (result.kategori && kategoriList.length > 0) {
+        const match = kategoriList.find(k =>
+          k.nama.toLowerCase().includes(result.kategori.toLowerCase()) ||
+          result.kategori.toLowerCase().includes(k.nama.toLowerCase())
+        );
+        if (match) {
+          setKategoriId(String(match.id));
+          filled.push('kategori');
+        }
+      }
+      if (result.semester) {
+        setJenisPeriode('semester');
+        setSemester(String(result.semester));
+        filled.push('semester');
+      }
+      if (result.nominal) {
+        const formatted = Number(result.nominal).toLocaleString('id-ID');
+        setTotalSaldo(formatted);
+        filled.push('nominal');
+      }
+      if (result.deskripsi) {
+        setDeskripsi(result.deskripsi);
+        filled.push('deskripsi');
+      }
+      setAiFilledFields(filled);
+    } catch (err: any) {
+      setAiError(err.message || 'AI tidak bisa membaca file ini');
+    } finally {
+      setAiScanning(false);
+    }
+  };
+
   const handleFilePick = (picked: File | null) => {
     if (!picked) return;
     const allowed = ['application/pdf',
@@ -84,6 +152,9 @@ export default function UploadPage() {
     }
     setError('');
     setFile(picked);
+
+    // Otomatis scan pake AI begitu file dipilih
+    scanWithAI(picked);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -155,6 +226,41 @@ export default function UploadPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+        {/* AI Scanning Indicator */}
+        {aiScanning && (
+          <div className="flex items-center gap-3 bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 text-violet-700 text-sm rounded-xl px-5 py-4 animate-pulse">
+            <Brain className="w-5 h-5 animate-spin" />
+            <div>
+              <p className="font-semibold">🤖 AI sedang membaca dokumen...</p>
+              <p className="text-xs text-violet-500 mt-0.5">Menganalisis isi file untuk mengisi form otomatis</p>
+            </div>
+          </div>
+        )}
+
+        {/* AI Success */}
+        {aiFilledFields.length > 0 && !aiScanning && (
+          <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl px-5 py-4">
+            <Sparkles className="w-5 h-5 text-emerald-500" />
+            <div>
+              <p className="font-semibold">✨ AI berhasil mengisi {aiFilledFields.length} field otomatis!</p>
+              <p className="text-xs text-emerald-500 mt-0.5">
+                Field terisi: {aiFilledFields.join(', ')}. Silakan periksa dan koreksi jika perlu.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* AI Error */}
+        {aiError && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-4 py-3">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <div>
+              <p className="font-medium">AI tidak bisa membaca file ini</p>
+              <p className="text-xs mt-0.5">{aiError}. Silakan isi form secara manual.</p>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
             <AlertCircle className="w-4 h-4 shrink-0" /> {error}
@@ -165,6 +271,11 @@ export default function UploadPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Judul Dokumen <span className="text-red-500">*</span>
+            {aiFilledFields.includes('judul') && (
+              <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600 font-normal bg-emerald-50 px-2 py-0.5 rounded-full">
+                <Sparkles className="w-3 h-3" /> Terisi oleh AI
+              </span>
+            )}
           </label>
           <input
             type="text"
@@ -172,7 +283,9 @@ export default function UploadPage() {
             onChange={e => setJudul(e.target.value)}
             placeholder="Contoh: LKjIP Tahun 2024"
             required
-            className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              aiFilledFields.includes('judul') ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-300'
+            }`}
           />
         </div>
 
@@ -336,7 +449,17 @@ export default function UploadPage() {
                 <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
                 <p className="text-xs text-gray-500">{formatSize(file.size)}</p>
               </div>
-              <button type="button" onClick={() => setFile(null)} className="text-gray-400 hover:text-red-500 transition-colors">
+              {aiScanning && (
+                <span className="flex items-center gap-1.5 text-xs text-violet-600 bg-violet-100 px-2.5 py-1 rounded-full animate-pulse">
+                  <Brain className="w-3.5 h-3.5 animate-spin" /> Scanning...
+                </span>
+              )}
+              {!aiScanning && aiFilledFields.length > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> AI Done
+                </span>
+              )}
+              <button type="button" onClick={() => { setFile(null); setAiResult(null); setAiFilledFields([]); setAiError(''); }} className="text-gray-400 hover:text-red-500 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -353,7 +476,12 @@ export default function UploadPage() {
               <CloudUpload className={`w-10 h-10 mx-auto mb-2 ${dragging ? 'text-primary-500' : 'text-gray-300'}`} />
               <p className="text-sm font-medium text-gray-700">Drag & drop file di sini</p>
               <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
-              <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX, XLS, XLSX • Maks 50MB</p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <p className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX • Maks 50MB</p>
+                <span className="inline-flex items-center gap-1 text-xs text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full">
+                  <Sparkles className="w-3 h-3" /> AI Autofill
+                </span>
+              </div>
             </div>
           )}
           <input
