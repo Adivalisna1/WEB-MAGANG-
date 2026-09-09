@@ -1,22 +1,11 @@
-import Link from 'next/link';
-import { FileText, Download, Calendar, Tag, Hash } from 'lucide-react';
+'use client';
+
+import { Download, FileText } from 'lucide-react';
 import { Dokumen, formatFileSize, getDownloadUrl } from '@/lib/api';
 
 interface Props {
   dokumen: Dokumen;
 }
-
-// Warna badge per kategori
-const kategoriColor: Record<string, string> = {
-  lkjip:   'bg-blue-100 text-blue-800',
-  renstra: 'bg-purple-100 text-purple-800',
-  renja:   'bg-green-100 text-green-800',
-  rkt:     'bg-yellow-100 text-yellow-800',
-  pk:      'bg-orange-100 text-orange-800',
-  lakip:   'bg-red-100 text-red-800',
-  iku:     'bg-pink-100 text-pink-800',
-  lainnya: 'bg-gray-100 text-gray-700',
-};
 
 const NAMA_BULAN = [
   '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -24,7 +13,6 @@ const NAMA_BULAN = [
 ];
 
 export default function DokumenCard({ dokumen }: Props) {
-  const badgeClass = kategoriColor[dokumen.kategori_slug] ?? 'bg-gray-100 text-gray-700';
   const periodeLabel = dokumen.semester
     ? `Semester ${dokumen.semester} ${dokumen.tahun}`
     : dokumen.bulan
@@ -32,63 +20,114 @@ export default function DokumenCard({ dokumen }: Props) {
       : String(dokumen.tahun);
 
   return (
-    <div className="card p-5 flex flex-col gap-3 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl">
-      {/* Header */}
-      <div className="flex items-start gap-2">
-        <FileText className="w-8 h-8 text-primary-600 shrink-0 mt-0.5" />
-        <div className="min-w-0">
-          <Link
-            href={`/dokumen/${dokumen.id}`}
-            className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 hover:text-primary-600:text-primary-400 transition-colors"
+    <>
+      <style>{`
+        .doc-row {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 18px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .doc-row:hover {
+          border-color: #bfdbfe;
+          box-shadow: 0 4px 16px -4px rgba(37, 99, 235, 0.12);
+        }
+        .btn-unduh {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #2563eb;
+          color: #fff;
+          border: none;
+          padding: 8px 18px;
+          border-radius: 8px;
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: background 0.15s;
+        }
+        .btn-unduh:hover {
+          background: #1d4ed8;
+        }
+      `}</style>
+
+      <div className="doc-row">
+        {/* LEFT: icon + info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              background: '#eff6ff',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
           >
-            {dokumen.judul}
-          </Link>
+            <FileText style={{ width: '20px', height: '20px', color: '#2563eb' }} />
+          </div>
+
+          <div>
+            <div
+              style={{
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: '#1e293b',
+                marginBottom: '4px',
+              }}
+            >
+              {dokumen.judul}
+            </div>
+            <div style={{ fontSize: '0.77rem', color: '#94a3b8' }}>
+              {dokumen.kategori}
+              {' · '}
+              {periodeLabel}
+              {dokumen.nomor_laporan && (
+                <> · <span style={{ color: '#64748b' }}>{dokumen.nomor_laporan}</span></>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: size + download count + button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
+          {dokumen.file_size && (
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 500 }}>
+              {formatFileSize(dokumen.file_size)}
+            </span>
+          )}
+          <span
+            style={{
+              fontSize: '0.75rem',
+              color: '#cbd5e1',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <Download style={{ width: '13px', height: '13px' }} />
+            {dokumen.download_count}
+          </span>
+          <a
+            href={getDownloadUrl(dokumen.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Unduh ${dokumen.judul}`}
+            className="btn-unduh"
+          >
+            <Download style={{ width: '14px', height: '14px' }} />
+            Unduh
+          </a>
         </div>
       </div>
-
-      {/* Deskripsi */}
-      {dokumen.deskripsi && (
-        <p className="text-xs text-gray-500 line-clamp-2">{dokumen.deskripsi}</p>
-      )}
-
-      {/* Meta */}
-      <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-        <span className="flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5" />
-          {periodeLabel}
-        </span>
-        <span className="flex items-center gap-1">
-          <Tag className="w-3.5 h-3.5" />
-          <span className={`badge ${badgeClass}`}>{dokumen.kategori}</span>
-        </span>
-        {dokumen.nomor_laporan && (
-          <span className="flex items-center gap-1">
-            <Hash className="w-3.5 h-3.5" />
-            <span className="badge bg-cyan-100 text-cyan-800">{dokumen.nomor_laporan}</span>
-          </span>
-        )}
-        {dokumen.file_size && (
-          <span className="text-gray-400">{formatFileSize(dokumen.file_size)}</span>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
-        <span className="text-xs text-gray-400 flex items-center gap-1">
-          <Download className="w-3.5 h-3.5" />
-          {dokumen.download_count} unduhan
-        </span>
-        <a
-          href={getDownloadUrl(dokumen.id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1"
-          aria-label={`Unduh ${dokumen.judul}`}
-        >
-          <Download className="w-3.5 h-3.5" />
-          Unduh
-        </a>
-      </div>
-    </div>
+    </>
   );
 }

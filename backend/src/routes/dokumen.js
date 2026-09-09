@@ -20,12 +20,12 @@ router.post('/bot-upload',
 
 // ── Staff & Admin (perlu login) — harus sebelum /:id ─────────
 router.get('/all',
-  authenticate, authorize('admin', 'staff', 'ketua_tim'),
+  authenticate, authorize('pimpinan', 'satker', 'eselon_1'),
   ctrl.getAllDokumen
 );
 
 router.post('/upload',
-  authenticate, authorize('staff'),
+  authenticate, authorize('satker'),
   upload.single('file'),
   ctrl.uploadRules, validate,
   ctrl.uploadDokumen
@@ -36,21 +36,21 @@ router.get('/:id/download', ctrl.downloadDokumen);
 router.get('/:id',          ctrl.getDokumenDetail);
 
 router.patch('/:id',
-  authenticate, authorize('admin', 'staff'),
+  authenticate, authorize('pimpinan', 'satker'),
   ctrl.editRules, validate,
   activityLogger('edit', 'dokumen'),
   ctrl.editDokumen
 );
 
 router.patch('/:id/submit',
-  authenticate, authorize('staff'),
+  authenticate, authorize('satker'),
   activityLogger('submit_verifikasi', 'dokumen'),
   ctrl.submitVerifikasi
 );
 
 // Ganti file saat revisi/draft
 router.patch('/:id/file',
-  authenticate, authorize('admin', 'staff'),
+  authenticate, authorize('pimpinan', 'satker'),
   upload.single('file'),
   activityLogger('ganti_file', 'dokumen'),
   ctrl.gantiFileDokumen
@@ -58,23 +58,23 @@ router.patch('/:id/file',
 
 // ── Admin — penyaring pertama (loloskan ke ketua / kembalikan revisi) ──
 router.get('/:id/preview',
-  authenticate, authorize('admin', 'ketua_tim'),
+  authenticate, authorize('pimpinan', 'eselon_1'),
   ctrl.previewDokumen
 );
 
 router.patch('/:id/verify',
-  authenticate, authorize('admin'),
+  authenticate, authorize('pimpinan'),
   ctrl.verifikasiDokumen
 );
 
 // ── Ketua Tim — persetujuan final (approve → publik / revisi) ──
 router.patch('/:id/ketua-verify',
-  authenticate, authorize('ketua_tim'),
+  authenticate, authorize('eselon_1'),
   ctrl.verifikasiKetua
 );
 
 router.delete('/:id',
-  authenticate, authorize('admin'),
+  authenticate, authorize('pimpinan'),
   ctrl.deleteDokumen
 );
 

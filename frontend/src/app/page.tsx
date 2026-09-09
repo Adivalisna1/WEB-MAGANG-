@@ -24,9 +24,9 @@ export default function LandingPage() {
   // Kalau sudah login, langsung redirect ke dashboard role-nya
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'admin')          router.replace('/admin');
-      else if (user.role === 'ketua_tim') router.replace('/ketua');
-      else                                router.replace('/staff/dokumen');
+      if (user.role === 'pimpinan')          router.replace('/pimpinan');
+      else if (user.role === 'eselon_1') router.replace('/eselon-1');
+      else                                router.replace('/satker/dokumen');
     }
   }, [user, loading, router]);
 
@@ -105,9 +105,9 @@ export default function LandingPage() {
             /* Sudah login → 1 tombol ke dashboard role-nya */
             <Link
               href={
-                user.role === 'admin' ? '/admin' :
-                user.role === 'ketua_tim' ? '/ketua' :
-                '/staff/dokumen'
+                user.role === 'pimpinan' ? '/pimpinan' :
+                user.role === 'eselon_1' ? '/eselon-1' :
+                '/satker/dokumen'
               }
               className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"
             >
@@ -188,8 +188,8 @@ export default function LandingPage() {
               akuntabilitas dalam tata kelola organisasi.
             </p>
             <p className="text-gray-600 text-sm leading-relaxed">
-              Setiap dokumen melalui proses verifikasi dua tahap oleh Admin dan
-              Ketua Tim sebelum dipublikasikan, menjamin kualitas dan keabsahan
+              Setiap dokumen melalui proses verifikasi dua tahap oleh Pimpinan dan
+              Eselon 1 sebelum dipublikasikan, menjamin kualitas dan keabsahan
               informasi yang sampai ke publik.
             </p>
           </div>
@@ -272,3 +272,4 @@ export default function LandingPage() {
     </div>
   );
 }
+

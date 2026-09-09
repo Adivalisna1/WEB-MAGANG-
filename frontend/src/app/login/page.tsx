@@ -19,9 +19,9 @@ export default function LoginPage() {
   // Kalau sudah login, redirect sesuai role
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'admin')          router.replace('/admin');
-      else if (user.role === 'ketua_tim') router.replace('/ketua');
-      else                                router.replace('/staff/dokumen');
+      if (user.role === 'pimpinan')          router.replace('/pimpinan');
+      else if (user.role === 'eselon_1')     router.replace('/eselon-1');
+      else                                   router.replace('/satker/dokumen');
     }
   }, [user, loading, router]);
 
@@ -125,7 +125,7 @@ export default function LoginPage() {
             </button>
 
             <p className="text-center text-xs text-gray-400 pt-2">
-              Hanya admin, staff, dan ketua tim yang dapat login.
+              Hanya pimpinan, eselon 1, dan satker yang dapat login.
             </p>
             <p className="text-center text-xs pt-1">
               <Link href="/forgot-password" className="text-primary-600 hover:text-primary-700 hover:underline font-medium">

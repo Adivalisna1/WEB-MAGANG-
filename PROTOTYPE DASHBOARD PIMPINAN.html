@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Pimpinan - Konsep 2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f8fafc;
+      }
+      /* Custom Scrollbar for a premium feel */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 1);
+        box-shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.05),
+          0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      }
+    </style>
+  </head>
+  <body class="flex h-screen overflow-hidden text-slate-800 antialiased">
+    <!-- Sidebar (Navy Blue) -->
+    <aside
+      class="w-[260px] bg-[#0f172a] text-slate-300 flex flex-col shrink-0 transition-all duration-300"
+      id="sidebar"
+    >
+      <!-- Padding top for alignment with header -->
+      <div class="h-20 flex items-center px-6 border-b border-[#1e293b]">
+        <div class="flex items-center gap-3 w-full">
+          <div
+            class="w-8 h-8 rounded bg-[#10b981]/20 flex items-center justify-center"
+          >
+            <svg
+              class="w-5 h-5 text-[#10b981]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-bold tracking-widest text-sm text-[#10b981] uppercase"
+            >Pimpinan</span
+          >
+        </div>
+      </div>
+
+      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <button
+          onclick="switchTab('dashboard')"
+          id="btn-dashboard"
+          class="w-full flex items-center gap-3 px-4 py-3 bg-[#10b981] text-white rounded-xl shadow-lg shadow-[#10b981]/20 font-medium transition-all group"
+        >
+          <svg
+            class="w-5 h-5 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            ></path>
+          </svg>
+          Dashboard
+        </button>
+        <button
+          onclick="switchTab('verifikasi')"
+          id="btn-verifikasi"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-xl font-medium transition-all group"
+        >
+          <svg
+            class="w-5 h-5 group-hover:text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+          Verifikasi Dokumen
+        </button>
+        <button
+          onclick="switchTab('kertas')"
+          id="btn-kertas"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-xl font-medium transition-all group"
+        >
+          <svg
+            class="w-5 h-5 group-hover:text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+          Kertas Kerja
+        </button>
+        <button
+          onclick="switchTab('kategori')"
+          id="btn-kategori"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-xl font-medium transition-all group"
+        >
+          <svg
+            class="w-5 h-5 group-hover:text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+            ></path>
+          </svg>
+          Kelola Kategori
+        </button>
+        <button
+          onclick="switchTab('users')"
+          id="btn-users"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-xl font-medium transition-all group"
+        >
+          <svg
+            class="w-5 h-5 group-hover:text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+            ></path>
+          </svg>
+          Manajemen User
+        </button>
+        <button
+          onclick="switchTab('logs')"
+          id="btn-logs"
+          class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-xl font-medium transition-all group"
+        >
+          <svg
+            class="w-5 h-5 group-hover:text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            ></path>
+          </svg>
+          Log Aktivitas
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-[#1e293b]">
+        <div
+          class="flex items-center gap-3 mb-4 cursor-pointer hover:bg-[#1e293b] p-2 rounded-xl transition-colors"
+          onclick="alert('Buka Profil Pimpinan')"
+        >
+          <div
+            class="w-10 h-10 rounded-full bg-[#10b981] flex items-center justify-center font-bold text-white shadow-inner shrink-0"
+          >
+            AW
+          </div>
+          <div class="overflow-hidden">
+            <p class="text-sm font-semibold text-white truncate">Adhi Wijaya</p>
+            <p class="text-xs text-[#10b981] truncate">Ketua Pimpinan</p>
+          </div>
+        </div>
+        <button
+          onclick="confirmLogout()"
+          class="w-full py-2.5 px-4 rounded-xl border border-[#334155] text-slate-300 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all font-medium text-sm flex items-center justify-center gap-2 group"
+        >
+          <svg
+            class="w-4 h-4 group-hover:text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            ></path>
+          </svg>
+          Keluar
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col h-screen relative bg-slate-50">
+      <!-- Top Header (Clean Enterprise Style) -->
+      <header
+        class="h-20 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border-b border-slate-200 flex justify-between items-center px-10 z-20 sticky top-0 w-full"
+      >
+        <div class="flex flex-col justify-center h-full pt-1">
+          <h1
+            class="text-2xl font-extrabold text-slate-800 tracking-tight leading-none"
+          >
+            Welcome Back, Bapak Adhi!
+          </h1>
+          <p class="text-sm text-slate-500 font-medium mt-1">
+            Sistem Informasi Manajemen Dokumen Terpadu
+          </p>
+        </div>
+
+        <!-- Right Side -->
+        <div class="flex items-center gap-6">
+          <div
+            class="text-sm text-slate-500 font-semibold bg-slate-100 px-4 py-2 rounded-lg border border-slate-200"
+          >
+            <script>
+              document.write(
+                new Date().toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                }),
+              );
+            </script>
+          </div>
+
+          <!-- Notifications -->
+          <button
+            class="relative p-2 text-slate-400 hover:text-[#10b981] transition-colors"
+            onclick="alert('Tidak ada notifikasi baru')"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              ></path>
+            </svg>
+            <span
+              class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white"
+            ></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Content Area -->
+      <main class="flex-1 overflow-y-auto p-10" id="main-content">
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="animate-fade-in max-w-[1400px] mx-auto">
+          <!-- Stats Cards (Clean & Authoritative) -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div
+              class="glass-card p-6 rounded-2xl border border-slate-200 border-l-4 border-l-[#10b981] flex justify-between items-center group hover:-translate-y-1 transition-transform duration-300"
+            >
+              <div>
+                <p
+                  class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1"
+                >
+                  Menunggu Approval
+                </p>
+                <h3 class="text-3xl font-black text-slate-800">45</h3>
+              </div>
+              <div
+                class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform"
+              >
+                <svg
+                  class="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+
+            <div
+              class="glass-card p-6 rounded-2xl border border-slate-200 flex justify-between items-center group hover:-translate-y-1 transition-transform duration-300"
+            >
+              <div>
+                <p
+                  class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1"
+                >
+                  Disetujui Hari Ini
+                </p>
+                <h3 class="text-3xl font-black text-slate-800">12</h3>
+              </div>
+              <div
+                class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform"
+              >
+                <svg
+                  class="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+
+            <div
+              class="glass-card p-6 rounded-2xl border border-slate-200 flex justify-between items-center group hover:-translate-y-1 transition-transform duration-300"
+            >
+              <div>
+                <p
+                  class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1"
+                >
+                  Total Satker
+                </p>
+                <h3 class="text-3xl font-black text-slate-800">24</h3>
+              </div>
+              <div
+                class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform"
+              >
+                <svg
+                  class="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+
+            <div
+              class="glass-card p-6 rounded-2xl border border-slate-200 flex justify-between items-center group hover:-translate-y-1 transition-transform duration-300"
+            >
+              <div>
+                <p
+                  class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1"
+                >
+                  Total Dokumen
+                </p>
+                <h3 class="text-3xl font-black text-slate-800">1,842</h3>
+              </div>
+              <div
+                class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:scale-110 transition-transform"
+              >
+                <svg
+                  class="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 h-full">
+            <!-- Main Table Area -->
+            <div class="xl:col-span-2">
+              <div
+                class="glass-card rounded-2xl border border-slate-200 overflow-hidden"
+              >
+                <div
+                  class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white"
+                >
+                  <div>
+                    <h2 class="text-xl font-extrabold text-slate-800">
+                      Antrean Verifikasi
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">
+                      Dokumen yang memerlukan persetujuan Anda segera.
+                    </p>
+                  </div>
+                  <button
+                    onclick="switchTab('verifikasi')"
+                    class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm transition-colors"
+                  >
+                    Lihat Semua
+                  </button>
+                </div>
+
+                <div class="overflow-x-auto bg-white">
+                  <table class="w-full text-left border-collapse">
+                    <thead>
+                      <tr
+                        class="bg-slate-50 text-slate-500 text-xs uppercase tracking-widest border-b border-slate-200"
+                      >
+                        <th class="px-8 py-4 font-bold">Dokumen</th>
+                        <th class="px-8 py-4 font-bold">Pengirim</th>
+                        <th class="px-8 py-4 font-bold">Tanggal</th>
+                        <th class="px-8 py-4 font-bold text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                      <!-- Row 1 -->
+                      <tr
+                        class="hover:bg-slate-50 transition-colors"
+                        id="row-1"
+                      >
+                        <td class="px-8 py-5">
+                          <p class="font-bold text-slate-800">
+                            Laporan_Triwulan_Q3.pdf
+                          </p>
+                          <p class="text-xs text-slate-500 mt-1 font-medium">
+                            Size: 2.4 MB
+                          </p>
+                        </td>
+                        <td class="px-8 py-5">
+                          <div class="flex items-center gap-3">
+                            <div
+                              class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center"
+                            >
+                              S1
+                            </div>
+                            <span class="font-semibold text-slate-700"
+                              >Satker 01 Jakarta</span
+                            >
+                          </div>
+                        </td>
+                        <td class="px-8 py-5 text-slate-600 font-medium">
+                          Hari ini, 09:14
+                        </td>
+                        <td class="px-8 py-5">
+                          <div class="flex justify-center gap-3">
+                            <button
+                              onclick="approveDoc('row-1')"
+                              class="px-4 py-2 bg-[#10b981] hover:bg-emerald-600 text-white rounded-lg font-semibold text-xs shadow-sm transition-all transform hover:scale-105"
+                            >
+                              Setujui
+                            </button>
+                            <button
+                              onclick="rejectDoc('row-1')"
+                              class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-semibold text-xs transition-colors border border-rose-200"
+                            >
+                              Tolak
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <!-- Row 2 -->
+                      <tr
+                        class="hover:bg-slate-50 transition-colors"
+                        id="row-2"
+                      >
+                        <td class="px-8 py-5">
+                          <p class="font-bold text-slate-800">
+                            RAB_Pembangunan_Gedung.xlsx
+                          </p>
+                          <p class="text-xs text-slate-500 mt-1 font-medium">
+                            Size: 1.1 MB
+                          </p>
+                        </td>
+                        <td class="px-8 py-5">
+                          <div class="flex items-center gap-3">
+                            <div
+                              class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center"
+                            >
+                              S3
+                            </div>
+                            <span class="font-semibold text-slate-700"
+                              >Satker 03 Bandung</span
+                            >
+                          </div>
+                        </td>
+                        <td class="px-8 py-5 text-slate-600 font-medium">
+                          Kemarin, 16:30
+                        </td>
+                        <td class="px-8 py-5">
+                          <div class="flex justify-center gap-3">
+                            <button
+                              onclick="approveDoc('row-2')"
+                              class="px-4 py-2 bg-[#10b981] hover:bg-emerald-600 text-white rounded-lg font-semibold text-xs shadow-sm transition-all transform hover:scale-105"
+                            >
+                              Setujui
+                            </button>
+                            <button
+                              onclick="rejectDoc('row-2')"
+                              class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-semibold text-xs transition-colors border border-rose-200"
+                            >
+                              Tolak
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <!-- Row 3 -->
+                      <tr
+                        class="hover:bg-slate-50 transition-colors"
+                        id="row-3"
+                      >
+                        <td class="px-8 py-5">
+                          <p class="font-bold text-slate-800">
+                            LHKPN_Tahun_2023.pdf
+                          </p>
+                          <p class="text-xs text-slate-500 mt-1 font-medium">
+                            Size: 5.8 MB
+                          </p>
+                        </td>
+                        <td class="px-8 py-5">
+                          <div class="flex items-center gap-3">
+                            <div
+                              class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-xs flex items-center justify-center"
+                            >
+                              S2
+                            </div>
+                            <span class="font-semibold text-slate-700"
+                              >Satker 02 Surabaya</span
+                            >
+                          </div>
+                        </td>
+                        <td class="px-8 py-5 text-slate-600 font-medium">
+                          Kemarin, 14:15
+                        </td>
+                        <td class="px-8 py-5">
+                          <div class="flex justify-center gap-3">
+                            <button
+                              onclick="approveDoc('row-3')"
+                              class="px-4 py-2 bg-[#10b981] hover:bg-emerald-600 text-white rounded-lg font-semibold text-xs shadow-sm transition-all transform hover:scale-105"
+                            >
+                              Setujui
+                            </button>
+                            <button
+                              onclick="rejectDoc('row-3')"
+                              class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-semibold text-xs transition-colors border border-rose-200"
+                            >
+                              Tolak
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column (Activity Log) -->
+            <div class="space-y-6">
+              <div
+                class="glass-card rounded-2xl border border-slate-200 p-8 h-full bg-white"
+              >
+                <h2 class="text-xl font-extrabold text-slate-800 mb-6">
+                  Log Aktivitas Terbaru
+                </h2>
+
+                <div
+                  class="relative pl-4 border-l-2 border-slate-100 space-y-8"
+                >
+                  <div class="relative">
+                    <div
+                      class="absolute -left-[21px] top-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"
+                    ></div>
+                    <p class="text-sm font-bold text-slate-800">
+                      Dokumen Disetujui
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Anda menyetujui "Surat_Keputusan.pdf"
+                    </p>
+                    <p class="text-xs text-slate-400 mt-2 font-medium">
+                      10 menit yang lalu
+                    </p>
+                  </div>
+
+                  <div class="relative">
+                    <div
+                      class="absolute -left-[21px] top-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"
+                    ></div>
+                    <p class="text-sm font-bold text-slate-800">
+                      User Baru Ditambahkan
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Satker 04 Medan berhasil diregistrasi.
+                    </p>
+                    <p class="text-xs text-slate-400 mt-2 font-medium">
+                      2 jam yang lalu
+                    </p>
+                  </div>
+
+                  <div class="relative">
+                    <div
+                      class="absolute -left-[21px] top-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white"
+                    ></div>
+                    <p class="text-sm font-bold text-slate-800">
+                      Dokumen Ditolak
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Anda menolak "Draft_Anggaran.docx" dengan catatan.
+                    </p>
+                    <p class="text-xs text-slate-400 mt-2 font-medium">
+                      Kemarin, 15:45
+                    </p>
+                  </div>
+
+                  <div class="relative">
+                    <div
+                      class="absolute -left-[21px] top-1 w-3 h-3 bg-slate-300 rounded-full border-2 border-white"
+                    ></div>
+                    <p class="text-sm font-bold text-slate-800">Login Sistem</p>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Anda masuk dari IP 192.168.1.1
+                    </p>
+                    <p class="text-xs text-slate-400 mt-2 font-medium">
+                      Kemarin, 08:00
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  class="w-full mt-8 py-3 text-sm font-semibold text-[#10b981] bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-100"
+                >
+                  Lihat Semua Log
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPTY STATE VIEW (Toggled via JS) -->
+        <div
+          id="view-empty"
+          class="hidden flex flex-col items-center justify-center h-full text-center"
+        >
+          <svg
+            class="w-24 h-24 text-slate-300 mb-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            ></path>
+          </svg>
+          <h2 class="text-2xl font-extrabold text-slate-800 mb-2">
+            Modul Sedang Dalam Pengembangan
+          </h2>
+          <p class="text-slate-500 max-w-md mx-auto font-medium">
+            Tampilan ini merupakan prototype visual. Data untuk halaman ini akan
+            segera diintegrasikan.
+          </p>
+          <button
+            onclick="switchTab('dashboard')"
+            class="mt-8 px-8 py-3 bg-[#10b981] text-white rounded-xl font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all transform hover:scale-105"
+          >
+            Kembali ke Dashboard Utama
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <style>
+      .animate-fade-in {
+        animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(15px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+
+    <script>
+      // Document Action Logic
+      function approveDoc(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) {
+          row.style.opacity = "0.5";
+          row.style.transform = "translateX(20px)";
+          row.style.transition = "all 0.3s ease";
+          setTimeout(() => {
+            row.remove();
+            alert("Berhasil! Dokumen telah disetujui dan diverifikasi.");
+          }, 300);
+        }
+      }
+
+      function rejectDoc(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) {
+          let reason = prompt("Masukkan alasan penolakan revisi:");
+          if (reason !== null) {
+            row.style.opacity = "0.5";
+            row.style.transform = "translateX(-20px)";
+            row.style.transition = "all 0.3s ease";
+            setTimeout(() => {
+              row.remove();
+              alert("Dokumen dikembalikan ke Satker untuk revisi.");
+            }, 300);
+          }
+        }
+      }
+
+      // Sidebar Tab Switching
+      function switchTab(tabId) {
+        // Reset all buttons
+        const buttons = [
+          "dashboard",
+          "verifikasi",
+          "kertas",
+          "kategori",
+          "users",
+          "logs",
+        ];
+        buttons.forEach((id) => {
+          const btn = document.getElementById(`btn-${id}`);
+          if (btn) {
+            btn.className =
+              "w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-xl font-medium transition-all group";
+            btn.querySelector("svg").classList.remove("text-white");
+          }
+        });
+
+        // Highlight active button
+        const activeBtn = document.getElementById(`btn-${tabId}`);
+        if (activeBtn) {
+          activeBtn.className =
+            "w-full flex items-center gap-3 px-4 py-3 bg-[#10b981] text-white rounded-xl shadow-lg shadow-[#10b981]/20 font-medium transition-all group";
+          activeBtn.querySelector("svg").classList.add("text-white");
+        }
+
+        // Switch view
+        const viewDashboard = document.getElementById("view-dashboard");
+        const viewEmpty = document.getElementById("view-empty");
+
+        if (tabId === "dashboard") {
+          viewDashboard.classList.remove("hidden");
+          viewEmpty.classList.add("hidden");
+        } else {
+          viewDashboard.classList.add("hidden");
+          viewEmpty.classList.remove("hidden");
+        }
+      }
+
+      // Logout
+      function confirmLogout() {
+        if (
+          confirm("Apakah Anda yakin ingin keluar dari Dashboard Pimpinan?")
+        ) {
+          alert("Logout berhasil. Sesi admin ditutup.");
+        }
+      }
+    </script>
+  </body>
+</html>

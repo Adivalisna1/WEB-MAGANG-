@@ -37,13 +37,13 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  const dashboardHref = user.role === 'admin'
-    ? '/admin'
-    : user.role === 'ketua_tim'
-      ? '/ketua'
-      : '/staff/dokumen';
+  const dashboardHref = user.role === 'pimpinan'
+    ? '/pimpinan'
+    : user.role === 'eselon_1'
+      ? '/eselon-1'
+      : '/satker/dokumen';
 
-  const roleLabels: Record<string, string> = { ketua_tim: 'Ketua Tim' };
+  const roleLabels: Record<string, string> = { ketua_tim: 'Eselon 1' };
   const roleLabel = roleLabels[user.role] ?? user.role.replace('_', ' ');
 
   return (
@@ -157,3 +157,4 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
     </div>
   );
 }
+

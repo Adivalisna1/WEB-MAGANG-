@@ -123,7 +123,7 @@ async function downloadDokumen(req, res, next) {
       try {
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET);
-        if (decoded.role === 'admin' || decoded.role === 'ketua_tim' || (decoded.role === 'staff' && dok.uploaded_by === decoded.id)) {
+        if (decoded.role === 'pimpinan' || decoded.role === 'eselon_1' || (decoded.role === 'satker' && dok.uploaded_by === decoded.id)) {
           hasAccess = true;
         }
       } catch (err) { /* token tidak valid */ }
@@ -773,13 +773,13 @@ async function botUploadDokumen(req, res, next) {
     const uniqueName = `${baseName}-${Date.now()}${ext}`;
     const r2Key      = await uploadToR2(req.file.buffer, uniqueName, req.file.mimetype, tahun);
 
-    // 6. Simpan ke Database (Langsung status: menunggu_verifikasi)
+    // 6. Simpan ke Database (Langsung status: terverifikasi, bypass approval)
     const [result] = await pool.query(
       `INSERT INTO dokumen
          (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
           file_nama, file_path, file_size, file_mime, status, is_public,
           nilai_rekening_koran, nilai_excel)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_verifikasi', 0, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'terverifikasi', 1, ?, ?)`,
       [kategori_id, uploaderId, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
        fileName, r2Key, req.file.size, req.file.mimetype,
@@ -787,7 +787,7 @@ async function botUploadDokumen(req, res, next) {
     );
 
     const nomorLaporan = buatNomorLaporan(katRow?.slug, tahun, result.insertId);
-    await pool.query('UPDATE dokumen SET nomor_laporan = ? WHERE id = ?', [nomorLaporan, result.insertId]);
+    await pool.query('UPDATE dokumen SET nomor_laporan = ?, verified_by = ?, verified_at = NOW() WHERE id = ?', [nomorLaporan, uploaderId, result.insertId]);
 
     // 7. Catat Log
     await catatLog({

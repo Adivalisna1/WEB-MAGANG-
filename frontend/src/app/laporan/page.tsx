@@ -4,32 +4,12 @@ import DokumenCard from '@/components/ui/DokumenCard';
 import FilterBar from '@/components/ui/FilterBar';
 import Pagination from '@/components/ui/Pagination';
 import EmptyState from '@/components/ui/EmptyState';
-import { FileText, Download, FolderOpen } from 'lucide-react';
 
 interface SearchParams {
   q?:       string;
   kategori?: string;
   tahun?:   string;
   page?:    string;
-}
-
-function StatCard({ icon: Icon, label, value, color }: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  color: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 shadow-sm transition-colors duration-200">
-      <div className={`p-3 rounded-lg ${color}`}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-500">{label}</p>
-      </div>
-    </div>
-  );
 }
 
 export default async function LaporanPage({
@@ -45,7 +25,7 @@ export default async function LaporanPage({
       kategori: searchParams.kategori,
       tahun:    searchParams.tahun,
       page,
-      limit: 12,
+      limit: 20,
     }),
     getKategori(),
     getStatsPublik(),
@@ -54,67 +34,144 @@ export default async function LaporanPage({
   const dokumenList  = dokumenRes.data   ?? [];
   const kategoriList = kategoriRes.data  ?? [];
   const meta         = dokumenRes.meta;
-  const stats = statsRes.data ?? { totalDokumen: meta?.total ?? 0, totalKategori: kategoriList.length, totalDownload: 0 };
+  const stats = statsRes.data ?? {
+    totalDokumen: meta?.total ?? 0,
+    totalKategori: kategoriList.length,
+    totalDownload: 0,
+  };
+
+  const hasFilter = searchParams.q || searchParams.kategori || searchParams.tahun;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="min-h-screen bg-[#f8fafc]">
 
-      {/* Hero */}
-      <section className="bg-gradient-to-r from-primary-800 via-primary-700 to-primary-600 rounded-2xl p-8 text-white shadow-md border border-primary-700/40 transition-colors duration-200">
-        <h1 className="text-3xl font-bold mb-2">Portal Dokumen Laporan</h1>
-        <p className="text-blue-100 text-lg max-w-2xl">
+      {/* ── HERO BANNER ── */}
+      <section
+        style={{
+          background: 'linear-gradient(135deg, #1e40af 0%, #312e81 100%)',
+          padding: '52px 52px 48px',
+        }}
+      >
+        <p
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '1.5px',
+            color: 'rgba(255,255,255,0.5)',
+            marginBottom: '12px',
+          }}
+        >
+          Portal Internal
+        </p>
+        <h1
+          style={{
+            fontSize: '2rem',
+            fontWeight: 700,
+            color: '#fff',
+            marginBottom: '8px',
+            letterSpacing: '-0.5px',
+          }}
+        >
+          Dokumen Laporan
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', maxWidth: '500px' }}>
           Akses dan unduh dokumen laporan kinerja, rencana strategis, dan dokumen perencanaan lainnya.
         </p>
       </section>
 
-      {/* Stats */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={FileText}   label="Total Dokumen"    value={stats.totalDokumen}                          color="bg-blue-500" />
-        <StatCard icon={FolderOpen} label="Kategori Tersedia" value={stats.totalKategori}                        color="bg-purple-500" />
-        <StatCard icon={Download}   label="Total Unduhan"    value={stats.totalDownload.toLocaleString('id-ID')} color="bg-green-500" />
-      </section>
-
-      {/* Filter */}
-      <Suspense fallback={<div className="h-16 bg-white rounded-xl animate-pulse" />}>
-        <FilterBar kategoriList={kategoriList} basePath="/laporan" />
-      </Suspense>
-
-      {/* Label hasil filter */}
-      {(searchParams.q || searchParams.kategori || searchParams.tahun) && (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>Hasil pencarian</span>
-          {searchParams.q       && <span className="badge bg-blue-100 text-blue-800">"{searchParams.q}"</span>}
-          {searchParams.kategori && <span className="badge bg-purple-100 text-purple-800">{searchParams.kategori}</span>}
-          {searchParams.tahun   && <span className="badge bg-green-100 text-green-800">Tahun {searchParams.tahun}</span>}
-          {meta && <span className="text-gray-400">— {meta.total} dokumen ditemukan</span>}
-        </div>
-      )}
-
-      {/* Daftar Dokumen */}
-      {dokumenList.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <>
-          <section
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-            aria-label="Daftar dokumen"
+      {/* ── STATS ROW ── */}
+      <div
+        style={{
+          background: '#fff',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+        }}
+      >
+        {[
+          { label: 'Total Dokumen',    value: stats.totalDokumen },
+          { label: 'Kategori Tersedia', value: stats.totalKategori },
+          { label: 'Total Unduhan',    value: stats.totalDownload.toLocaleString('id-ID') },
+        ].map((s, i, arr) => (
+          <div
+            key={s.label}
+            style={{
+              flex: 1,
+              padding: '20px 52px',
+              borderRight: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none',
+            }}
           >
-            {dokumenList.map(dok => (
-              <DokumenCard key={dok.id} dokumen={dok} />
-            ))}
-          </section>
+            <div
+              style={{
+                fontSize: '0.72rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.6px',
+                color: '#94a3b8',
+                marginBottom: '4px',
+              }}
+            >
+              {s.label}
+            </div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1e293b' }}>
+              {s.value}
+            </div>
+          </div>
+        ))}
+      </div>
 
-          {meta && meta.totalPages > 1 && (
-            <Suspense>
-              <Pagination
-                currentPage={meta.page}
-                totalPages={meta.totalPages}
-                basePath="/laporan"
-              />
-            </Suspense>
-          )}
-        </>
-      )}
+      {/* ── CONTENT ── */}
+      <div style={{ padding: '32px 52px 52px' }}>
+
+        {/* Filter Bar */}
+        <Suspense fallback={<div className="h-12 bg-white rounded-lg animate-pulse mb-5" />}>
+          <FilterBar kategoriList={kategoriList} basePath="/laporan" />
+        </Suspense>
+
+        {/* Filter label */}
+        {hasFilter && (
+          <div className="mt-3 mb-4 flex items-center gap-2 text-sm text-slate-500">
+            <span>Hasil pencarian</span>
+            {searchParams.q       && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-100">"{searchParams.q}"</span>}
+            {searchParams.kategori && <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium border border-indigo-100">{searchParams.kategori}</span>}
+            {searchParams.tahun   && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-medium">Tahun {searchParams.tahun}</span>}
+            {meta && <span className="text-slate-400">— {meta.total} dokumen ditemukan</span>}
+          </div>
+        )}
+
+        {/* Doc List */}
+        {dokumenList.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            {/* List container */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginTop: '20px',
+              }}
+            >
+              {dokumenList.map(dok => (
+                <DokumenCard key={dok.id} dokumen={dok} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {meta && meta.totalPages > 1 && (
+              <div style={{ marginTop: '32px' }}>
+                <Suspense>
+                  <Pagination
+                    currentPage={meta.page}
+                    totalPages={meta.totalPages}
+                    basePath="/laporan"
+                  />
+                </Suspense>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

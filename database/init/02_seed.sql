@@ -9,9 +9,9 @@ USE web_laporan;
 -- ROLES
 -- ============================================================
 INSERT INTO roles (id, nama, deskripsi) VALUES
-(1, 'admin',     'Administrator — penyaring pertama verifikasi, monitoring user realtime'),
-(2, 'staff',     'Staff/User — upload, edit, dan submit dokumen untuk diverifikasi'),
-(3, 'ketua_tim', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password');
+(1, 'pimpinan',     'Administrator — penyaring pertama verifikasi, monitoring user realtime'),
+(2, 'satker',     'Staff/User — upload, edit, dan submit dokumen untuk diverifikasi'),
+(3, 'eselon_1', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password');
 
 -- ============================================================
 -- USERS DEFAULT
@@ -20,29 +20,29 @@ INSERT INTO roles (id, nama, deskripsi) VALUES
 INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VALUES
 (
     1,
-    'Administrator',
-    'admin',
+    'Pimpinan',
+    'pimpinan',
     'admin@weblaporan.local',
-    -- hash dari: Admin@123
-    '$2b$12$9pbLgBcKwwu7tmKZmrGTTOJuY1d61mmDi5Z06fiJDSP/hGA7Y2sha',
+    -- hash dari: password
+    '$2b$12$JMAAuMCHRz7Hfu6DrHQyIOpdyDKor8WBveh6wI9ywEDNrUXBD9ncq',
     1
 ),
 (
     2,
-    'Staff Perencanaan',
+    'Satuan Kerja Perencanaan',
     'staff01',
     'staff01@weblaporan.local',
-    -- hash dari: Staff@123
-    '$2b$12$6lIKcpOpE9cjlkBW5WvtnOF/skWUjPz1H9tzK7GBDYa6I/uso9rG6',
+    -- hash dari: password
+    '$2b$12$JMAAuMCHRz7Hfu6DrHQyIOpdyDKor8WBveh6wI9ywEDNrUXBD9ncq',
     1
 ),
 (
     3,
-    'Ketua Tim',
+    'Pejabat Eselon 1',
     'ketua1',
     'ketua1@weblaporan.local',
-    -- hash dari: ketua@123
-    '$2b$12$rtQwql4GN6RLqh1DT2xAA.IbGnD0mXxMVtz0xYFWcZQl.298qfpmm',
+    -- hash dari: password
+    '$2b$12$JMAAuMCHRz7Hfu6DrHQyIOpdyDKor8WBveh6wI9ywEDNrUXBD9ncq',
     1
 );
 
@@ -65,3 +65,4 @@ INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES
 -- ============================================================
 INSERT INTO aktivitas_log (user_id, aksi, entitas, detail) VALUES
 (1, 'system_init', 'system', JSON_OBJECT('pesan', 'Database berhasil diinisialisasi'));
+

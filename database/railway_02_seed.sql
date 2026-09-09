@@ -4,34 +4,37 @@
 -- ============================================================
 
 INSERT INTO roles (id, nama, deskripsi) VALUES
-(1, 'admin', 'Administrator — penyaring pertama verifikasi, monitoring user realtime'),
-(2, 'staff', 'Staff/User — upload, edit, dan verifikasi dokumen'),
-(3, 'ketua_tim', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password');
+(1, 'pimpinan', 'Pimpinan — setara Admin: monitoring seluruh sistem dan hak akses penuh'),
+(2, 'satker', 'Satker — setara Staff: upload, edit, dan mengelola dokumen'),
+(3, 'eselon_1', 'Eselon 1 — setara Ketua Tim: persetujuan akhir dokumen dan manajemen tingkat atas');
 
--- Password untuk semua user default adalah: password
+-- Password untuk masing-masing user dibuat berbeda dan kuat untuk production
 INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VALUES
 (
     1,
-    'Administrator',
-    'admin',
-    'admin@weblaporan.local',
-    '$2b$12$3dvt8uRmDhx8zLtSdv8V7.r3nKmg75cbK25acb0fQs4xhUtEcuFoG',
+    'Pimpinan',
+    'pimpinan1',
+    'pimpinan1@weblaporan.local',
+    -- hash dari: Pimpinan@123
+    '$2b$12$.qBWwIa/LiILZ1nPCroZVOrC3WX3M3wb6eJ1bJ.4LDCUSqiIUWsKO',
     1
 ),
 (
     2,
-    'Staff Perencanaan',
-    'staff01',
-    'staff01@weblaporan.local',
-    '$2b$12$3dvt8uRmDhx8zLtSdv8V7.r3nKmg75cbK25acb0fQs4xhUtEcuFoG',
+    'Satuan Kerja Perencanaan',
+    'satker01',
+    'satker01@weblaporan.local',
+    -- hash dari: Satker@123
+    '$2b$12$CQoe0Wpizb9HetBH3bVuauP4jX3.I86rlzojhd2Kugv6VADwqNtRS',
     1
 ),
 (
     3,
-    'Ketua Tim',
-    'ketua1',
-    'ketua1@weblaporan.local',
-    '$2b$12$3dvt8uRmDhx8zLtSdv8V7.r3nKmg75cbK25acb0fQs4xhUtEcuFoG',
+    'Pejabat Eselon 1',
+    'eselon1',
+    'eselon1@weblaporan.local',
+    -- hash dari: Eselon@123
+    '$2b$12$4JnfZP7OR2a29sVgtDg9C.cPWd/q33Q8lFbYDzcglN2D1yQNutoty',
     1
 );
 

@@ -24,19 +24,19 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Sembunyikan navbar publik di halaman dashboard (staff/admin/ketua)
-  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/admin') || pathname.startsWith('/ketua');
+  // Sembunyikan navbar publik di halaman dashboard (Satker/pimpinan/eselon-1)
+  const isDashboard = pathname.startsWith('/satker') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1');
   if (isDashboard) return null;
 
-  const dashboardHref = user?.role === 'admin'
-    ? '/admin'
-    : user?.role === 'ketua_tim'
-      ? '/ketua'
-      : '/staff/dokumen';
+  const dashboardHref = user?.role === 'pimpinan'
+    ? '/pimpinan'
+    : user?.role === 'eselon_1'
+      ? '/eselon-1'
+      : '/satker/dokumen';
 
-  // Format role untuk tampilan: ketua_tim → Ketua Tim
+  // Format role untuk tampilan: ketua_tim → Eselon 1
   const roleLabels: Record<string, string> = {
-    ketua_tim: 'Ketua Tim',
+    ketua_tim: 'Eselon 1',
   };
   const roleLabel = user?.role ? (roleLabels[user.role] ?? user.role.replace('_', ' ')) : '';
 
@@ -161,3 +161,4 @@ export default function Navbar() {
     </header>
   );
 }
+

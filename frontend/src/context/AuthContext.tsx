@@ -10,8 +10,8 @@ interface AuthContextType {
   loading:   boolean;
   loginFn:   (username: string, password: string) => Promise<void>;
   logoutFn:  () => Promise<void>;
-  isAdmin:   boolean;
-  isStaff:   boolean;
+  isPimpinan:   boolean;
+  isSatker:   boolean;
   isKetuaTim: boolean;
 }
 
@@ -40,12 +40,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(res.data.token);
 
     // Redirect sesuai role
-    if (res.data.user.role === 'admin') {
-      router.push('/admin');
-    } else if (res.data.user.role === 'ketua_tim') {
-      router.push('/ketua');
+    if (res.data.user.role === 'pimpinan') {
+      router.push('/pimpinan');
+    } else if (res.data.user.role === 'eselon_1') {
+      router.push('/eselon-1');
     } else {
-      router.push('/staff/dokumen');
+      router.push('/satker/dokumen');
     }
   }, [router]);
 
@@ -66,9 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, token, loading,
       loginFn, logoutFn,
-      isAdmin: user?.role === 'admin',
-      isStaff: user?.role === 'staff',
-      isKetuaTim: user?.role === 'ketua_tim',
+      isPimpinan: user?.role === 'pimpinan',
+      isSatker: user?.role === 'satker',
+      isKetuaTim: user?.role === 'eselon_1',
     }}>
       {children}
     </AuthContext.Provider>
@@ -80,3 +80,4 @@ export function useAuth(): AuthContextType {
   if (!ctx) throw new Error('useAuth harus dipakai di dalam AuthProvider');
   return ctx;
 }
+

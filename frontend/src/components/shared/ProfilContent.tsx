@@ -19,9 +19,9 @@ export default function ProfilContent() {
   const [showPassword, setShowPassword] = useState(false);
 
   const roleLabels: Record<string, string> = {
-    admin: 'Administrator',
-    staff: 'Staff',
-    ketua_tim: 'Ketua Tim',
+    pimpinan: 'Pimpinan',
+    satker: 'Satker',
+    ketua_tim: 'Eselon 1',
   };
 
   const handleGantiPassword = async (e: FormEvent) => {
@@ -140,3 +140,4 @@ export default function ProfilContent() {
     </div>
   );
 }
+

@@ -135,3 +135,4 @@ function InfoItem({ icon: Icon, label, value }: {
     </div>
   );
 }
+
