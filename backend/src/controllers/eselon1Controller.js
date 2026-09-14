@@ -19,7 +19,7 @@ async function getStats(req, res, next) {
     const [[{ totalDokumen }]]  = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen`);
     const [[{ terverifikasi }]] = await pool.query(`SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi"`);
     const [[{ menunggu }]]      = await pool.query(`SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi"`);
-    const [[{ lolosAdmin }]]    = await pool.query(`SELECT COUNT(*) AS lolosAdmin FROM dokumen WHERE status = "lolos_admin"`);
+    const [[{ lolosPimpinan }]]    = await pool.query(`SELECT COUNT(*) AS lolosPimpinan FROM dokumen WHERE status = "lolos_admin"`);
     const [[{ revisi }]]        = await pool.query(`SELECT COUNT(*) AS revisi FROM dokumen WHERE status = "revisi"`);
     const [[{ onlineNow }]]     = await pool.query('SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1');
 
@@ -38,10 +38,10 @@ async function getStats(req, res, next) {
 
     // Grafik 2: upload harian 14 hari terakhir
     const [perHari] = await pool.query(
-      `SELECT DATE(created_at) AS tanggal, COUNT(*) AS total
+      `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS tanggal, COUNT(*) AS total
        FROM dokumen
        WHERE created_at >= CURDATE() - INTERVAL 13 DAY
-       GROUP BY DATE(created_at)
+       GROUP BY tanggal
        ORDER BY tanggal ASC`
     );
 
@@ -63,8 +63,8 @@ async function getStats(req, res, next) {
     return res.json({
       success: true,
       data: {
-        totalDokumen, terverifikasi, menunggu, lolosAdmin: lolosAdmin ?? 0, revisi, onlineNow,
-        perStaff, perHari, statusDist, onlineUsers,
+        totalDokumen, terverifikasi, menunggu, lolosPimpinan: lolosPimpinan ?? 0, revisi, onlineNow,
+        perSatker: perStaff, perHari, statusDist, onlineUsers,
       },
     });
   } catch (err) { next(err); }
@@ -248,6 +248,11 @@ async function kirimNotifikasi(req, res, next) {
         'SELECT id FROM users WHERE is_active = 1 AND id != ?', [req.user.id]
       );
       targets = users.map((u) => u.id);
+    } else if (target === 'satker') {
+      const [users] = await pool.query(
+        'SELECT id FROM users WHERE is_active = 1 AND role_id IN (1, 2) AND id != ?', [req.user.id]
+      );
+      targets = users.map(u => u.id);
     } else {
       const [users] = await pool.query(
         'SELECT id FROM users WHERE id = ? AND is_active = 1', [Number(target)]

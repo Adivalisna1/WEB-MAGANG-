@@ -187,14 +187,14 @@ export default function SatkerDokumenPage() {
             <input type="file" ref={fileRef} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileSelect} />
           </div>
 
-          {/* Tidy Data List */}
+          {/* Daftar Dokumen */}
           <div className="bg-white/95 backdrop-blur-md shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] rounded-2xl p-6 border border-slate-100">
             <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-indigo-100 rounded flex items-center justify-center text-indigo-700 font-bold text-xs">
-                  T
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">
+                  D
                 </div>
-                <h2 className="text-lg font-bold text-slate-800">Tidy Data List</h2>
+                <h2 className="text-lg font-bold text-slate-800">Daftar Dokumen</h2>
               </div>
               <button onClick={fetchDokumen} className="text-slate-400 hover:text-indigo-600 transition-colors p-1" title="Refresh Data">
                 <RefreshCw className="w-5 h-5" />
@@ -370,9 +370,9 @@ export default function SatkerDokumenPage() {
             <div className="relative z-10">
               <h3 className="text-lg font-bold mb-2">Panduan Sistem Baru</h3>
               <p className="text-sm text-slate-300 mb-4 opacity-90">Pelajari fitur-fitur baru di update sistem versi 2.0 untuk mempercepat alur kerjamu.</p>
-              <button className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-semibold transition-colors backdrop-blur-sm border border-white/10 flex items-center justify-center gap-2">
+              <a href="/panduan_sistem_baru.pdf" target="_blank" rel="noopener noreferrer" className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-semibold transition-colors backdrop-blur-sm border border-white/10 flex items-center justify-center gap-2">
                 Unduh Panduan (PDF)
-              </button>
+              </a>
             </div>
           </div>
         </div>

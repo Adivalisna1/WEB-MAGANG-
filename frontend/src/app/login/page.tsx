@@ -12,16 +12,18 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPass,  setShowPass]  = useState(false);
-  const [error,     setError]     = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Kalau sudah login, redirect sesuai role
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'pimpinan')          router.replace('/pimpinan');
-      else if (user.role === 'eselon_1')     router.replace('/eselon-1');
-      else                                   router.replace('/satker/dokumen');
+      if (user.role === 'pimpinan') router.replace('/pimpinan');
+      else if (user.role === 'eselon_1') router.replace('/eselon-1');
+      else if (user.role === 'admin_it') router.replace('/admin-it');
+      else if (user.role === 'satker') router.replace('/satker/dokumen');
+      else router.replace('/satker/dokumen');
     }
   }, [user, loading, router]);
 
@@ -125,7 +127,7 @@ export default function LoginPage() {
             </button>
 
             <p className="text-center text-xs text-gray-400 pt-2">
-              Hanya pimpinan, eselon 1, dan satker yang dapat login.
+              Hanya pimpinan, eselon 1,satker,dan admin yang dapat login.
             </p>
             <p className="text-center text-xs pt-1">
               <Link href="/forgot-password" className="text-primary-600 hover:text-primary-700 hover:underline font-medium">

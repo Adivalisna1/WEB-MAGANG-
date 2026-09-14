@@ -71,8 +71,8 @@ function authorize(...roles) {
       return res.status(401).json({ success: false, message: 'Tidak terautentikasi' });
     }
 
-    // role_id 1 = pimpinan (admin), 2 = satker (staff), 3 = eselon_1 (ketua_tim)
-    const roleMap = { 1: 'pimpinan', 2: 'satker', 3: 'eselon_1' };
+    // role_id 1 = pimpinan (admin), 2 = satker (staff), 3 = eselon_1 (ketua_tim), 4 = admin_it, 5 = administrasi
+    const roleMap = { 1: 'pimpinan', 2: 'satker', 3: 'eselon_1', 4: 'admin_it', 5: 'administrasi' };
     const userRole = roleMap[req.user.role_id];
 
     if (!roles.includes(userRole)) {

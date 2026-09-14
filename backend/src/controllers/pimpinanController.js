@@ -3,148 +3,7 @@ const { body }  = require('express-validator');
 const { pool }  = require('../config/db');
 const { catatLog } = require('./authController');
 
-// ── GET /api/pimpinan/kategori ───────────────────────────────────
-async function getKategoriAdmin(req, res, next) {
-  try {
-    const [rows] = await pool.query(
-      `SELECT k.id, k.nama, k.slug, k.deskripsi, k.urutan, k.is_active,
-              COUNT(d.id) AS jumlah_dokumen
-       FROM kategori_dokumen k
-       LEFT JOIN dokumen d ON d.kategori_id = k.id
-       GROUP BY k.id
-       ORDER BY k.urutan ASC, k.nama ASC`
-    );
-    return res.json({ success: true, data: rows });
-  } catch (err) { next(err); }
-}
-
-// ── POST /api/pimpinan/kategori ──────────────────────────────────
-const createKategoriRules = [
-  body('nama').trim().notEmpty().withMessage('Nama kategori wajib diisi'),
-  body('deskripsi').optional().trim(),
-  body('urutan').optional().isInt({ min: 0 }).withMessage('Urutan harus angka'),
-];
-
-async function createKategori(req, res, next) {
-  try {
-    const { nama, deskripsi, urutan = 0 } = req.body;
-
-    // Buat slug dari nama
-    const slug = nama
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9\-]/g, '')
-      .replace(/-+/g, '-');
-
-    // Cek duplikat
-    const [existing] = await pool.query(
-      'SELECT id FROM kategori_dokumen WHERE nama = ? OR slug = ?', [nama, slug]
-    );
-    if (existing.length) {
-      return res.status(409).json({ success: false, message: 'Nama kategori sudah ada' });
-    }
-
-    const perlu_nominal = req.body.perlu_nominal ? 1 : 0;
-
-    const [result] = await pool.query(
-      'INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, is_active, perlu_nominal) VALUES (?, ?, ?, ?, 1, ?)',
-      [nama, slug, deskripsi || null, Number(urutan), perlu_nominal]
-    );
-
-    return res.status(201).json({
-      success: true,
-      message: 'Kategori berhasil dibuat',
-      data: { id: result.insertId, nama, slug },
-    });
-  } catch (err) { next(err); }
-}
-
-// ── PATCH /api/pimpinan/kategori/:id ────────────────────────────
-const updateKategoriRules = [
-  body('nama').optional().trim().notEmpty().withMessage('Nama tidak boleh kosong'),
-  body('deskripsi').optional().trim(),
-  body('urutan').optional().isInt({ min: 0 }),
-];
-
-async function updateKategori(req, res, next) {
-  try {
-    const { id } = req.params;
-    const [rows] = await pool.query('SELECT * FROM kategori_dokumen WHERE id = ?', [id]);
-    if (!rows.length) {
-      return res.status(404).json({ success: false, message: 'Kategori tidak ditemukan' });
-    }
-
-    const { nama, deskripsi, urutan, is_active } = req.body;
-
-    // Kalau nama diubah, generate slug baru
-    let slug = rows[0].slug;
-    if (nama && nama !== rows[0].nama) {
-      slug = nama
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9\-]/g, '')
-        .replace(/-+/g, '-');
-
-      // Cek duplikat nama/slug (kecuali diri sendiri)
-      const [dup] = await pool.query(
-        'SELECT id FROM kategori_dokumen WHERE (nama = ? OR slug = ?) AND id != ?',
-        [nama, slug, id]
-      );
-      if (dup.length) {
-        return res.status(409).json({ success: false, message: 'Nama kategori sudah digunakan' });
-      }
-    }
-
-    const { perlu_nominal } = req.body;
-
-    await pool.query(
-      `UPDATE kategori_dokumen SET
-        nama      = COALESCE(?, nama),
-        slug      = ?,
-        deskripsi = COALESCE(?, deskripsi),
-        urutan    = COALESCE(?, urutan),
-        is_active = COALESCE(?, is_active),
-        perlu_nominal = COALESCE(?, perlu_nominal)
-       WHERE id = ?`,
-      [
-        nama || null,
-        slug,
-        deskripsi !== undefined ? deskripsi : null,
-        urutan !== undefined ? Number(urutan) : null,
-        is_active !== undefined ? Number(is_active) : null,
-        perlu_nominal !== undefined ? Number(perlu_nominal) : null,
-        id,
-      ]
-    );
-
-    return res.json({ success: true, message: 'Kategori berhasil diupdate' });
-  } catch (err) { next(err); }
-}
-
-// ── DELETE /api/pimpinan/kategori/:id ───────────────────────────
-async function deleteKategori(req, res, next) {
-  try {
-    const { id } = req.params;
-    const [rows] = await pool.query('SELECT * FROM kategori_dokumen WHERE id = ?', [id]);
-    if (!rows.length) {
-      return res.status(404).json({ success: false, message: 'Kategori tidak ditemukan' });
-    }
-
-    // Cek apakah ada dokumen yang pakai kategori ini
-    const [[{ total }]] = await pool.query(
-      'SELECT COUNT(*) AS total FROM dokumen WHERE kategori_id = ?', [id]
-    );
-    if (total > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Kategori tidak bisa dihapus karena masih digunakan oleh ${total} dokumen`,
-      });
-    }
-
-    await pool.query('DELETE FROM kategori_dokumen WHERE id = ?', [id]);
-    return res.json({ success: true, message: 'Kategori berhasil dihapus' });
-  } catch (err) { next(err); }
-}
+// Kategori Master Data dipindahkan ke administrasiController.js
 
 // ── GET /api/pimpinan/users ──────────────────────────────────────
 async function getUsers(req, res, next) {
@@ -157,6 +16,7 @@ async function getUsers(req, res, next) {
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
        FROM users u
        JOIN roles r ON r.id = u.role_id
+       WHERE u.role_id NOT IN (3, 4) -- Sembunyikan Eselon 1 dan Admin IT dari Pimpinan
        ORDER BY u.created_at DESC`
     );
     return res.json({ success: true, data: rows });
@@ -179,57 +39,14 @@ async function getOnlineUsers(req, res, next) {
        FROM user_sessions s
        JOIN users u ON u.id = s.user_id
        JOIN roles r ON r.id = u.role_id
-       WHERE s.is_online = 1
+       WHERE s.is_online = 1 AND u.role_id NOT IN (3, 4)
        ORDER BY s.last_active_at DESC`
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 }
 
-// ── POST /api/pimpinan/users ─────────────────────────────────────
-const createUserRules = [
-  body('nama').trim().notEmpty().withMessage('Nama wajib diisi'),
-  body('username').trim().notEmpty().isLength({ min: 3 }).withMessage('Username minimal 3 karakter'),
-  body('email').isEmail().withMessage('Email tidak valid'),
-  body('password').isLength({ min: 6 }).withMessage('Password minimal 6 karakter'),
-  body('role_id').isIn(['1', '2', '3', 1, 2, 3]).withMessage('Role tidak valid (1=pimpinan, 2=satker, 3=eselon_1)'),
-];
-
-async function createUser(req, res, next) {
-  try {
-    const { nama, username, email, password } = req.body;
-    const role_id = Number(req.body.role_id);
-
-    // Cek duplikat
-    const [existing] = await pool.query(
-      'SELECT id FROM users WHERE username = ? OR email = ?', [username, email]
-    );
-    if (existing.length) {
-      return res.status(409).json({ success: false, message: 'Username atau email sudah digunakan' });
-    }
-
-    const hash = await bcrypt.hash(req.body.password, 12);
-    const [result] = await pool.query(
-      'INSERT INTO users (role_id, nama, username, email, password_hash) VALUES (?, ?, ?, ?, ?)',
-      [role_id, nama, username, email, hash]
-    );
-
-    await catatLog({
-      user_id: req.user.id,
-      aksi: 'tambah_user',
-      entitas: 'user',
-      entitas_id: result.insertId,
-      detail: { nama, username, email, role_id },
-      ip: req.ip,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: 'User berhasil dibuat',
-      data: { id: result.insertId },
-    });
-  } catch (err) { next(err); }
-}
+// (Create User dipindah ke Admin IT)
 
 // ── PATCH /api/pimpinan/users/:id/toggle — aktif/nonaktif ────────
 async function toggleUserActive(req, res, next) {
@@ -243,7 +60,11 @@ async function toggleUserActive(req, res, next) {
       return res.status(400).json({ success: false, message: 'Tidak bisa menonaktifkan akun sendiri' });
     }
 
-    // Admin bisa kelola semua user termasuk ketua tim
+    // Pimpinan hanya boleh nonaktifkan Staff (role_id = 2)
+    if (rows[0].role_id !== 2) {
+      return res.status(403).json({ success: false, message: 'Pimpinan hanya dapat mengelola akun Staff (Satker)' });
+    }
+
     const newStatus = rows[0].is_active ? 0 : 1;
     await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, req.params.id]);
 
@@ -298,42 +119,7 @@ async function getLogs(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// ── DELETE /api/pimpinan/users/:id ──────────────────────────────
-async function deleteUser(req, res, next) {
-  try {
-    const id = Number(req.params.id);
-
-    // Admin tidak bisa hapus diri sendiri
-    if (id === req.user.id) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa menghapus akun sendiri' });
-    }
-
-    const [rows] = await pool.query('SELECT id, role_id FROM users WHERE id = ?', [id]);
-    if (!rows.length) {
-      return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
-    }
-
-    // Admin bisa hapus semua user termasuk ketua tim
-    // Hapus session, log, lalu user (urutan penting karena FK)
-    const [[userToDelete]] = await pool.query('SELECT nama, username FROM users WHERE id = ?', [id]);
-    await pool.query('DELETE FROM user_sessions WHERE user_id = ?', [id]);
-    await pool.query('UPDATE aktivitas_log SET user_id = NULL WHERE user_id = ?', [id]);
-    await pool.query('UPDATE dokumen SET uploaded_by = 1 WHERE uploaded_by = ?', [id]); // pindah ke admin
-    await pool.query('DELETE FROM users WHERE id = ?', [id]);
-
-    // Catat log hapus user
-    await catatLog({
-      user_id: req.user.id,
-      aksi: 'hapus_user',
-      entitas: 'user',
-      entitas_id: id,
-      detail: { nama: userToDelete?.nama, username: userToDelete?.username },
-      ip: req.ip,
-    });
-
-    return res.json({ success: true, message: 'User berhasil dihapus' });
-  } catch (err) { next(err); }
-}
+// (Delete User dipindah ke Admin IT)
 
 // ── DELETE /api/pimpinan/logs ────────────────────────────────────
 async function clearLogs(req, res, next) {
@@ -371,9 +157,14 @@ async function resetUserPassword(req, res, next) {
     }
 
     // Cek user ada
-    const [rows] = await pool.query('SELECT id, nama, username FROM users WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT id, nama, username, role_id FROM users WHERE id = ?', [id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+    }
+
+    // Pimpinan hanya boleh reset password Staff (role_id = 2)
+    if (rows[0].role_id !== 2) {
+      return res.status(403).json({ success: false, message: 'Pimpinan hanya dapat mereset password akun Staff (Satker)' });
     }
 
     // Admin tidak bisa reset password diri sendiri via fitur ini
@@ -428,7 +219,6 @@ async function getStats(req, res, next) {
 }
 
 module.exports = {
-  getUsers, getOnlineUsers, createUser, createUserRules, toggleUserActive, deleteUser, clearLogs, getLogs, getStats,
-  resetUserPassword,
-  getKategoriAdmin, createKategori, createKategoriRules, updateKategori, updateKategoriRules, deleteKategori,
+  getUsers, getOnlineUsers, toggleUserActive, clearLogs, getLogs, getStats,
+  resetUserPassword
 };

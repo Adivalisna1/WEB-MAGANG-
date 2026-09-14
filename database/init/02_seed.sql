@@ -11,7 +11,9 @@ USE web_laporan;
 INSERT INTO roles (id, nama, deskripsi) VALUES
 (1, 'pimpinan',     'Administrator — penyaring pertama verifikasi, monitoring user realtime'),
 (2, 'satker',     'Staff/User — upload, edit, dan submit dokumen untuk diverifikasi'),
-(3, 'eselon_1', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password');
+(3, 'eselon_1', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password'),
+(4, 'admin_it', 'IT Administrator (Ahli Komputer)'),
+(5, 'administrasi', 'Staf Administrasi / Pengelola Master Data');
 
 -- ============================================================
 -- USERS DEFAULT
@@ -23,26 +25,44 @@ INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VAL
     'Pimpinan',
     'pimpinan',
     'admin@weblaporan.local',
-    -- hash dari: password
-    '$2b$12$JMAAuMCHRz7Hfu6DrHQyIOpdyDKor8WBveh6wI9ywEDNrUXBD9ncq',
+    -- hash dari: Pimpinan@123
+    '$2b$12$zn1vFsic/4tKcr.SJNYl3uX/N33kUlK3118WZDJV/1h9x0RiRQzjy',
     1
 ),
 (
     2,
-    'Satuan Kerja Perencanaan',
-    'staff01',
-    'staff01@weblaporan.local',
-    -- hash dari: password
-    '$2b$12$JMAAuMCHRz7Hfu6DrHQyIOpdyDKor8WBveh6wI9ywEDNrUXBD9ncq',
+    'Staff Budi',
+    'staff_budi',
+    'budi@weblaporan.local',
+    -- hash dari: Satker@123
+    '$2b$12$NjNJ/jdaS6bJWi1QgjbVW.3714Znm8nG2XlgfGEge1Pg92cFM2TVG',
     1
 ),
 (
     3,
     'Pejabat Eselon 1',
-    'ketua1',
-    'ketua1@weblaporan.local',
-    -- hash dari: password
-    '$2b$12$JMAAuMCHRz7Hfu6DrHQyIOpdyDKor8WBveh6wI9ywEDNrUXBD9ncq',
+    'eselon1',
+    'eselon1@weblaporan.local',
+    -- hash dari: eselon@123
+    '$2b$12$ro5p.kDFNQsv4Z1RfXR2aO5qjn4sBoE3lTUwY00U7O.18uu0exJYK',
+    1
+),
+(
+    4,
+    'IT Administrator',
+    'it_admin',
+    'itadmin@weblaporan.local',
+    -- hash dari: adminIT123
+    '$2b$12$sKToS/npmdTRVYXRGAcGBuW4PqPGYDEwvBZtB2jxM.uKey.xCebX6',
+    1
+),
+(
+    5,
+    'Staf Administrasi',
+    'administrasi',
+    'admin.data@weblaporan.local',
+    -- hash dari: Admin@123
+    '$2b$10$SuG04fQkJAiV74yQwg7vLeEHeocQvq.0ZHDwFAE2nUGqHTcM8rM9O', 
     1
 );
 
@@ -50,15 +70,9 @@ INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VAL
 -- KATEGORI DOKUMEN
 -- Sesuai jenis laporan umum instansi pemerintah
 -- ============================================================
-INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES
-('LKjIP',   'lkjip',   'Laporan Kinerja Instansi Pemerintah',               1),
-('Renstra',  'renstra', 'Rencana Strategis',                                 2),
-('Renja',    'renja',   'Rencana Kerja',                                     3),
-('RKT',      'rkt',     'Rencana Kinerja Tahunan',                           4),
-('PK',       'pk',      'Perjanjian Kinerja',                                5),
-('LAKIP',    'lakip',   'Laporan Akuntabilitas Kinerja Instansi Pemerintah', 6),
-('IKU',      'iku',     'Indikator Kinerja Utama',                           7),
-('Lainnya',  'lainnya', 'Dokumen perencanaan lainnya',                       99);
+INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, perlu_nominal) VALUES
+('Rekening_koran',   'Rekening_koran',   'Rekening koran satker',               1, 1),
+('Lainnya',  'lainnya', 'Dokumen perencanaan lainnya',                       99, 0);
 
 -- ============================================================
 -- LOG AWAL

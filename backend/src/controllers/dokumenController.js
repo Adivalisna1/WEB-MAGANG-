@@ -773,13 +773,13 @@ async function botUploadDokumen(req, res, next) {
     const uniqueName = `${baseName}-${Date.now()}${ext}`;
     const r2Key      = await uploadToR2(req.file.buffer, uniqueName, req.file.mimetype, tahun);
 
-    // 6. Simpan ke Database (Langsung status: terverifikasi, bypass approval)
+    // 6. Simpan ke Database (Langsung status: menunggu_verifikasi)
     const [result] = await pool.query(
       `INSERT INTO dokumen
          (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
           file_nama, file_path, file_size, file_mime, status, is_public,
           nilai_rekening_koran, nilai_excel)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'terverifikasi', 1, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_verifikasi', 0, ?, ?)`,
       [kategori_id, uploaderId, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
        fileName, r2Key, req.file.size, req.file.mimetype,

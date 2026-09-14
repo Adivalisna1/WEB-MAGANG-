@@ -29,16 +29,6 @@ export default function PimpinanUsersPage() {
   const [error,      setError]      = useState('');
   const [toggling,   setToggling]   = useState<number | null>(null);
   const [deleting,   setDeleting]   = useState<number | null>(null);
-  const [showModal,  setShowModal]  = useState(false);
-
-  // Form tambah user
-  const [nama,     setNama]     = useState('');
-  const [username, setUsername] = useState('');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [roleId,   setRoleId]   = useState('2');
-  const [creating, setCreating] = useState(false);
-  const [formErr,  setFormErr]  = useState('');
 
   // Reset password modal
   const [resetModal, setResetModal] = useState<{id: number; nama: string} | null>(null);
@@ -84,53 +74,6 @@ export default function PimpinanUsersPage() {
     }
   };
 
-  const deleteUser = async (id: number, nama: string) => {
-    if (!confirm(`Hapus user "${nama}"? Aksi ini tidak bisa dibatalkan.`)) return;
-    setDeleting(id);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/pimpinan/users/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      await fetchUsers();
-    } catch (e: any) {
-      alert(e.message || 'Gagal menghapus user');
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  const handleCreateUser = async (e: FormEvent) => {
-    e.preventDefault();
-    setFormErr(''); setCreating(true);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/pimpinan/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.token}`,
-        },
-        body: JSON.stringify({
-          nama, username, email, password,
-          role_id: Number(roleId),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setShowModal(false);
-      setNama(''); setUsername(''); setEmail(''); setPassword('');
-      setRoleId('2');
-      await fetchUsers();
-    } catch (e: any) {
-      setFormErr(e.message || 'Gagal membuat user');
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleResetPassword = async (e: FormEvent) => {
     e.preventDefault();
@@ -164,17 +107,12 @@ export default function PimpinanUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Manajemen User</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Kelola akun pimpinan, eselon 1, dan satker</p>
+          <p className="text-sm text-gray-500 mt-0.5">Kelola akun Staff</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchUsers} className="btn-secondary p-2" title="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
-            <button onClick={() => setShowModal(true)}
-              className="btn-primary flex items-center gap-2 text-sm"
-            >
-              <UserPlus className="w-4 h-4" /> Tambah User
-            </button>
         </div>
       </div>
 
@@ -218,14 +156,8 @@ export default function PimpinanUsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={clsx('badge',
-                        u.role === 'pimpinan'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : u.role === 'eselon_1'
-                            ? 'bg-cyan-100 text-cyan-800'
-                            : 'bg-blue-100 text-blue-800'
-                      )}>
-                        {u.role === 'eselon_1' ? 'Eselon 1' : u.role}
+                      <span className="badge bg-blue-100 text-blue-800">
+                        Staff
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -272,17 +204,6 @@ export default function PimpinanUsersPage() {
                         >
                           <KeyRound className="w-3.5 h-3.5" /> Reset PW
                         </button>
-                        <button
-                          onClick={() => deleteUser(u.id, u.nama)}
-                          disabled={deleting === u.id}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                          title="Hapus user"
-                        >
-                          {deleting === u.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Trash2 className="w-3.5 h-3.5" />
-                          }
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -293,81 +214,6 @@ export default function PimpinanUsersPage() {
         )}
       </div>
 
-      {/* Modal tambah user */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-lg">Tambah User Baru</h3>
-              <button onClick={() => {
-                setShowModal(false);
-                setNama(''); setUsername(''); setEmail('');
-                setPassword(''); setRoleId('2'); setFormErr('');
-              }} className="text-gray-400 hover:text-gray-600:text-slate-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
-              {formErr && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {formErr}
-                </div>
-              )}
-              {[
-                { label: 'Nama Lengkap', val: nama,     set: setNama,     type: 'text',     ph: 'Nama lengkap' },
-                { label: 'Username',     val: username,  set: setUsername, type: 'text',     ph: 'username' },
-                { label: 'Email',        val: email,     set: setEmail,    type: 'email',    ph: 'email@contoh.com' },
-                { label: 'Password',     val: password,  set: setPassword, type: 'password', ph: 'Min. 6 karakter' },
-              ].map(({ label, val, set, type, ph }) => (
-                <div key={label}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-                  <input
-                    type={type}
-                    value={val}
-                    onChange={e => set(e.target.value)}
-                    placeholder={ph}
-                    required
-                    className="w-full px-4 py-2.5 text-sm border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  />
-                </div>
-              ))}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                <select
-                  value={roleId}
-                  onChange={e => setRoleId(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white text-gray-900"
-                >
-                <option value="2">Satker</option>
-                  <option value="3">Eselon 1</option>
-                  <option value="1">Pimpinan</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60 shadow-sm"
-                >
-                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Buat User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setNama(''); setUsername(''); setEmail('');
-                    setPassword(''); setRoleId('2'); setFormErr('');
-                  }}
-                  className="flex-1 btn-secondary py-2.5"
-                >
-                  Batal
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal reset password */}
       {resetModal && (

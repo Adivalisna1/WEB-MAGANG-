@@ -1,0 +1,264 @@
+const { pool } = require('../config/db');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const { catatLog } = require('./authController');
+
+// ── GET /api/admin-it/stats ───────────────────────────────────────
+async function getStats(req, res, next) {
+  try {
+    const [[{ totalUsers }]] = await pool.query(`SELECT COUNT(*) AS totalUsers FROM users`);
+    const [[{ totalDokumen }]] = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen`);
+    const [[{ totalKategori }]] = await pool.query(`SELECT COUNT(*) AS totalKategori FROM kategori_dokumen`);
+    const [[{ onlineNow }]] = await pool.query('SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1');
+
+    return res.json({
+      success: true,
+      data: { totalUsers, totalDokumen, totalKategori, onlineNow }
+    });
+  } catch (err) { next(err); }
+}
+
+// ── GET /api/admin-it/users ───────────────────────────────────────
+async function getUsers(req, res, next) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions,
+              u.last_login, u.created_at, r.nama AS role,
+              (SELECT is_online FROM user_sessions s
+               WHERE s.user_id = u.id AND s.is_online = 1
+               ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+       ORDER BY u.created_at DESC`
+    );
+    return res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+}
+
+// ── POST /api/admin-it/users ───────────────────────────────────────
+async function createUser(req, res, next) {
+  try {
+    const { role_id, nama, username, email, password, permissions } = req.body;
+
+    // Hash password
+    const password_hash = await bcrypt.hash(password, 12);
+
+    const [result] = await pool.query(
+      `INSERT INTO users (role_id, nama, username, email, password_hash, permissions)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [role_id, nama, username, email, password_hash, permissions ? JSON.stringify(permissions) : null]
+    );
+
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'buat_user',
+      entitas: 'user',
+      entitas_id: result.insertId,
+      detail: { username, role_id },
+      ip: req.ip,
+    });
+
+    return res.status(201).json({ success: true, message: 'User berhasil dibuat' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ success: false, message: 'Username atau email sudah digunakan' });
+    }
+    next(err);
+  }
+}
+
+// ── POST /api/admin-it/users/bulk ───────────────────────────────────────
+async function createBulkUsers(req, res, next) {
+  const connection = await pool.getConnection();
+  try {
+    const { users } = req.body;
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid data format or empty list' });
+    }
+
+    await connection.beginTransaction();
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const user of users) {
+      try {
+        const { role_id, nama, username, email, password } = user;
+        
+        // Cek data valid
+        if (!role_id || !nama || !username || !email || !password) {
+          failedCount++;
+          continue;
+        }
+
+        const password_hash = await bcrypt.hash(password, 12);
+        
+        await connection.query(
+          `INSERT INTO users (role_id, nama, username, email, password_hash, permissions)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [role_id, nama, username, email, password_hash, null]
+        );
+        successCount++;
+      } catch (err) {
+        // Skip user jika error (misal duplicate entry), lanjut ke baris selanjutnya
+        failedCount++;
+      }
+    }
+
+    await connection.commit();
+
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'buat_user_bulk',
+      entitas: 'user',
+      detail: { sukses: successCount, gagal: failedCount },
+      ip: req.ip,
+    });
+
+    return res.status(201).json({ 
+      success: true, 
+      message: `Bulk insert selesai. Berhasil: ${successCount}, Gagal/Duplikat: ${failedCount}`,
+      data: { successCount, failedCount }
+    });
+  } catch (err) {
+    await connection.rollback();
+    next(err);
+  } finally {
+    connection.release();
+  }
+}
+
+// ── PATCH /api/admin-it/users/:id ───────────────────────────────────────
+async function updateUser(req, res, next) {
+  try {
+    const { role_id, nama, username, email, permissions } = req.body;
+    const targetId = Number(req.params.id);
+
+    await pool.query(
+      `UPDATE users SET 
+        role_id = COALESCE(?, role_id),
+        nama = COALESCE(?, nama),
+        username = COALESCE(?, username),
+        email = COALESCE(?, email),
+        permissions = ?
+       WHERE id = ?`,
+      [role_id || null, nama || null, username || null, email || null, permissions ? JSON.stringify(permissions) : null, targetId]
+    );
+
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'update_user',
+      entitas: 'user',
+      entitas_id: targetId,
+      detail: { username, role_id, permissions },
+      ip: req.ip,
+    });
+
+    return res.json({ success: true, message: 'User berhasil diupdate' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ success: false, message: 'Username atau email sudah digunakan' });
+    }
+    next(err);
+  }
+}
+
+// ── DELETE /api/admin-it/users/:id ───────────────────────────────────────
+async function deleteUser(req, res, next) {
+  try {
+    const targetId = Number(req.params.id);
+    if (targetId === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Tidak bisa menghapus akun sendiri' });
+    }
+
+    await pool.query('DELETE FROM users WHERE id = ?', [targetId]);
+
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'hapus_user',
+      entitas: 'user',
+      entitas_id: targetId,
+      ip: req.ip,
+    });
+
+    return res.json({ success: true, message: 'User berhasil dihapus' });
+  } catch (err) { next(err); }
+}
+
+// ── POST /api/admin-it/users/:id/reset-password ─────────────────────────
+async function forceResetPassword(req, res, next) {
+  try {
+    const targetId = Number(req.params.id);
+    const { new_password } = req.body;
+
+    if (!new_password) {
+      return res.status(400).json({ success: false, message: 'Password baru wajib diisi' });
+    }
+
+    const password_hash = await bcrypt.hash(new_password, 12);
+    await pool.query(
+      'UPDATE users SET password_hash = ?, password_reset_at = NOW() WHERE id = ?',
+      [password_hash, targetId]
+    );
+
+    await catatLog({
+      user_id: req.user.id,
+      aksi: 'reset_password_manual',
+      entitas: 'user',
+      entitas_id: targetId,
+      ip: req.ip,
+    });
+
+    return res.json({ success: true, message: 'Password berhasil diubah' });
+  } catch (err) { next(err); }
+}
+
+// ── KATEGORI CRUD ───────────────────────────────────────
+async function getKategori(req, res, next) {
+  try {
+    const [rows] = await pool.query('SELECT * FROM kategori_dokumen ORDER BY nama ASC');
+    return res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+}
+
+async function createKategori(req, res, next) {
+  try {
+    const { nama, slug, deskripsi } = req.body;
+    await pool.query('INSERT INTO kategori_dokumen (nama, slug, deskripsi) VALUES (?, ?, ?)', [nama, slug, deskripsi]);
+    return res.status(201).json({ success: true, message: 'Kategori dibuat' });
+  } catch (err) { next(err); }
+}
+
+async function updateKategori(req, res, next) {
+  try {
+    const { nama, slug, deskripsi } = req.body;
+    await pool.query('UPDATE kategori_dokumen SET nama=?, slug=?, deskripsi=? WHERE id=?', [nama, slug, deskripsi, req.params.id]);
+    return res.json({ success: true, message: 'Kategori diupdate' });
+  } catch (err) { next(err); }
+}
+
+async function deleteKategori(req, res, next) {
+  try {
+    await pool.query('DELETE FROM kategori_dokumen WHERE id=?', [req.params.id]);
+    return res.json({ success: true, message: 'Kategori dihapus' });
+  } catch (err) { next(err); }
+}
+
+// ── LOGS ───────────────────────────────────────
+async function getLogs(req, res, next) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip, l.created_at, u.nama AS user_nama, u.username
+       FROM activity_logs l
+       LEFT JOIN users u ON u.id = l.user_id
+       ORDER BY l.created_at DESC LIMIT 500`
+    );
+    return res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  getStats, getUsers, createUser, createBulkUsers, updateUser, deleteUser, forceResetPassword,
+  getKategori, createKategori, updateKategori, deleteKategori,
+  getLogs
+};

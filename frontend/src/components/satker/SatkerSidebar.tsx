@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   FileText, Upload, LayoutDashboard,
-  LogOut, User, ChevronRight, Home, Settings, Bell
+  LogOut, User, ChevronRight, Home, Settings, Bell, FileSpreadsheet
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const SatkerMenu = [
   { href: '/satker/dokumen',        icon: LayoutDashboard, label: 'Dokumen Saya' },
   { href: '/satker/dokumen/upload', icon: Upload,          label: 'Upload Dokumen' },
+  { href: '/satker/kertas-kerja',   icon: FileSpreadsheet, label: 'Kertas Kerja' },
   { href: '/satker/profil',         icon: User,            label: 'Profil' },
 ];
 

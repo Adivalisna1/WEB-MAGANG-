@@ -28,7 +28,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 ALTER TABLE dokumen MODIFY COLUMN status ENUM(
   'draft',
   'menunggu_verifikasi',
-  'lolos_admin',
+  'lolos_pimpinann',
   'terverifikasi',
   'revisi',
   'diarsipkan'

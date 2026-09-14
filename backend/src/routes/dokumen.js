@@ -68,7 +68,7 @@ router.patch('/:id/verify',
 );
 
 // ── Ketua Tim — persetujuan final (approve → publik / revisi) ──
-router.patch('/:id/ketua-verify',
+router.patch('/:id/eselon-1-verify',
   authenticate, authorize('eselon_1'),
   ctrl.verifikasiKetua
 );

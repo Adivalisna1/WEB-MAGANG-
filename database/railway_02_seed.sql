@@ -39,13 +39,7 @@ INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VAL
 );
 
 INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES
-('LKjIP',    'lkjip',    'Laporan Kinerja Instansi Pemerintah',               1),
-('Renstra',  'renstra',  'Rencana Strategis',                                 2),
-('Renja',    'renja',    'Rencana Kerja',                                     3),
-('RKT',      'rkt',      'Rencana Kinerja Tahunan',                           4),
-('PK',       'pk',       'Perjanjian Kinerja',                                5),
-('LAKIP',    'lakip',    'Laporan Akuntabilitas Kinerja Instansi Pemerintah',  6),
-('IKU',      'iku',      'Indikator Kinerja Utama',                           7),
+('Rekening_koran ',    'Rekening koran',    'Rekening koran satker',               1),
 ('Lainnya',  'lainnya',  'Dokumen perencanaan lainnya',                       99);
 
 INSERT INTO aktivitas_log (user_id, aksi, entitas, detail) VALUES

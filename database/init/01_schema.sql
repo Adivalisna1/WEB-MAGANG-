@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash   VARCHAR(255)        NOT NULL,           -- bcrypt hash
     foto_profil     VARCHAR(255)        NULL,               -- path foto
     is_active       TINYINT(1)          NOT NULL DEFAULT 1, -- 1=aktif, 0=nonaktif
+    permissions     JSON                NULL DEFAULT NULL,  -- hak akses granular
     last_login      TIMESTAMP           NULL,
     password_reset_at TIMESTAMP         NULL,               -- kapan password terakhir direset oleh ketua tim
     created_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS kategori_dokumen (
     deskripsi   TEXT                NULL,
     urutan      TINYINT UNSIGNED    NOT NULL DEFAULT 0,     -- urutan tampil
     is_active   TINYINT(1)          NOT NULL DEFAULT 1,
+    perlu_nominal TINYINT(1)        NOT NULL DEFAULT 0,
     created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX idx_kategori_slug (slug)
@@ -99,6 +101,8 @@ CREATE TABLE IF NOT EXISTS dokumen (
     file_path       VARCHAR(500)        NOT NULL,           -- path di storage
     file_size       INT UNSIGNED        NULL,               -- ukuran dalam bytes
     file_mime       VARCHAR(100)        NULL,               -- application/pdf, dll
+    nilai_rekening_koran DECIMAL(15,2)  NULL DEFAULT NULL,  -- nilai rekening koran
+    nilai_excel     DECIMAL(15,2)       NULL DEFAULT NULL,  -- nilai hasil ekstraksi excel
     status          ENUM(
                         'draft',
                         'menunggu_verifikasi',

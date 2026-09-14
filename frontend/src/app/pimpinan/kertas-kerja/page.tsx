@@ -55,6 +55,13 @@ export default function KertasKerjaPage() {
   const [searchQ, setSearchQ] = useState('');
   const [filterTahun, setFilterTahun] = useState('');
 
+  // Excel tab: search + dynamic filters
+  const [excelSearchQ, setExcelSearchQ] = useState('');
+  const [excelFilters, setExcelFilters] = useState<Record<string, string>>({});
+
+  // Perbandingan tab: status filter
+  const [compareStatusFilter, setCompareStatusFilter] = useState<'all' | 'matched' | 'missing'>('all');
+
   // Comparison
   const [comparisonResults, setComparisonResults] = useState<ComparisonResult[]>([]);
   const [mappingKey, setMappingKey] = useState('');
@@ -160,7 +167,31 @@ export default function KertasKerjaPage() {
     return matchSearch && matchTahun;
   });
 
-  const uniqueTahun = [...new Set(dokumenList.map(d => d.tahun))].sort((a, b) => b - a);
+  const uniqueTahun = Array.from(new Set(dokumenList.map(d => d.tahun))).sort((a, b) => b - a);
+
+  // ── Filter Excel data (dynamic filter + search) ──
+  // Kolom yang ditampilkan sebagai filter: maks 4 kolom pertama yang nilainya tidak terlalu banyak unik
+  const excelFilterCols = excelHeaders.filter(h => {
+    const uniqueVals = new Set(excelData.map(row => String(row[h] ?? ''))).size;
+    return uniqueVals >= 2 && uniqueVals <= 50;
+  }).slice(0, 4);
+
+  const filteredExcelData = excelData.filter(row => {
+    // Search: cek semua kolom
+    const matchSearch = !excelSearchQ || excelHeaders.some(h =>
+      String(row[h] ?? '').toLowerCase().includes(excelSearchQ.toLowerCase())
+    );
+    // Dynamic filters: setiap kolom yang dipilih
+    const matchFilters = Object.entries(excelFilters).every(([col, val]) =>
+      !val || String(row[col] ?? '') === val
+    );
+    return matchSearch && matchFilters;
+  });
+
+  // ── Filter hasil perbandingan ──
+  const filteredCompareResults = comparisonResults.filter(r =>
+    compareStatusFilter === 'all' || r.status === compareStatusFilter
+  );
 
   // ── Stats ──
   const matchedCount = comparisonResults.filter(r => r.status === 'matched').length;
@@ -199,18 +230,16 @@ export default function KertasKerjaPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.key
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.key
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
-            }`}
+              }`}
           >
             <tab.icon className="w-4 h-4" />
             {tab.label}
             {tab.count > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                activeTab === tab.key ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'
-              }`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'
+                }`}>
                 {tab.count}
               </span>
             )}
@@ -228,11 +257,10 @@ export default function KertasKerjaPage() {
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
               onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
-                dragging
+              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${dragging
                   ? 'border-emerald-500 bg-emerald-50 scale-[1.01]'
                   : 'border-gray-300 hover:border-emerald-400 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <FileSpreadsheet className={`w-14 h-14 mx-auto mb-3 ${dragging ? 'text-emerald-500' : 'text-gray-300'}`} />
               <p className="text-lg font-semibold text-gray-700">Drag & drop file Excel di sini</p>
@@ -301,12 +329,68 @@ export default function KertasKerjaPage() {
                 </div>
               )}
 
+              {/* Search + Dynamic Filter Bar */}
+              <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-3">
+                {/* Search */}
+                <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                  <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={excelSearchQ}
+                    onChange={e => setExcelSearchQ(e.target.value)}
+                    placeholder="Cari di semua kolom Excel..."
+                    className="flex-1 text-sm outline-none bg-transparent"
+                  />
+                  {excelSearchQ && (
+                    <button onClick={() => setExcelSearchQ('')} className="text-gray-400 hover:text-gray-600 text-xs">
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Dynamic Filters */}
+                {excelFilterCols.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Filter className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-xs text-gray-400">Filter:</span>
+                    {excelFilterCols.map(col => {
+                      const uniqueVals = Array.from(new Set(excelData.map(row => String(row[col] ?? '')))).filter(v => v).sort();
+                      return (
+                        <select
+                          key={col}
+                          value={excelFilters[col] || ''}
+                          onChange={e => setExcelFilters(prev => ({ ...prev, [col]: e.target.value }))}
+                          className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white max-w-[160px] truncate"
+                        >
+                          <option value="">Semua {col}</option>
+                          {uniqueVals.map(v => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                      );
+                    })}
+                    {Object.values(excelFilters).some(v => v) && (
+                      <button
+                        onClick={() => setExcelFilters({})}
+                        className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Reset Filter
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-400">
+                  Menampilkan {filteredExcelData.length} dari {excelData.length} baris
+                </p>
+              </div>
+
               {/* Excel Table Preview */}
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[500px] border-b border-gray-200 relative">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
+                      <tr className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
                         {excelHeaders.map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">
@@ -316,22 +400,30 @@ export default function KertasKerjaPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {excelData.slice(0, 100).map((row, i) => (
-                        <tr key={i} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                          {excelHeaders.map(h => (
-                            <td key={h} className="px-4 py-2.5 text-gray-700 whitespace-nowrap max-w-[200px] truncate">
-                              {String(row[h] ?? '')}
-                            </td>
-                          ))}
+                      {filteredExcelData.length === 0 ? (
+                        <tr>
+                          <td colSpan={excelHeaders.length + 1} className="px-4 py-10 text-center text-sm text-gray-400">
+                            Tidak ada data yang sesuai filter.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredExcelData.slice(0, 200).map((row, i) => (
+                          <tr key={i} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
+                            {excelHeaders.map(h => (
+                              <td key={h} className="px-4 py-2.5 text-gray-700 whitespace-nowrap max-w-[200px] truncate">
+                                {String(row[h] ?? '')}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
-                {excelData.length > 100 && (
+                {filteredExcelData.length > 200 && (
                   <div className="px-4 py-3 bg-gray-50 text-xs text-gray-500 text-center border-t">
-                    Menampilkan 100 dari {excelData.length} baris
+                    Menampilkan 200 dari {filteredExcelData.length} baris (gunakan filter untuk mempersempit)
                   </div>
                 )}
               </div>
@@ -388,10 +480,10 @@ export default function KertasKerjaPage() {
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[500px] border-b border-gray-200 relative">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
+                    <tr className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">No. Laporan</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Judul</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kategori</th>
@@ -415,12 +507,11 @@ export default function KertasKerjaPage() {
                         </td>
                         <td className="px-4 py-2.5 text-gray-700 text-xs font-mono">{formatRp(d.nilai_rekening_koran)}</td>
                         <td className="px-4 py-2.5">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            d.status === 'disetujui' ? 'bg-green-100 text-green-700' :
-                            d.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-700' :
-                            d.status === 'revisi' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.status === 'disetujui' ? 'bg-green-100 text-green-700' :
+                              d.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-700' :
+                                d.status === 'revisi' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-600'
+                            }`}>
                             {d.status.replace(/_/g, ' ')}
                           </span>
                         </td>
@@ -448,6 +539,27 @@ export default function KertasKerjaPage() {
             </div>
           ) : (
             <>
+              {/* Filter Status Perbandingan */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium">Tampilkan:</span>
+                {([
+                  { key: 'all', label: `Semua (${comparisonResults.length})`, color: 'bg-gray-100 text-gray-700 border-gray-300' },
+                  { key: 'matched', label: `✅ Cocok (${matchedCount})`, color: 'bg-green-50 text-green-700 border-green-300' },
+                  { key: 'missing', label: `❌ Tidak Ada (${missingCount})`, color: 'bg-red-50 text-red-700 border-red-300' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setCompareStatusFilter(opt.key)}
+                    className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                      compareStatusFilter === opt.key
+                        ? opt.color + ' ring-2 ring-offset-1 ring-current'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
@@ -481,10 +593,10 @@ export default function KertasKerjaPage() {
 
               {/* Comparison Table */}
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[500px] border-b border-gray-200 relative">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
+                      <tr className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Data Excel ({mappingKey})</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Judul di Database</th>
@@ -493,10 +605,9 @@ export default function KertasKerjaPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {comparisonResults.map((r, i) => (
-                        <tr key={i} className={`transition-colors ${
-                          r.status === 'matched' ? 'hover:bg-green-50' : 'hover:bg-red-50 bg-red-50/30'
-                        }`}>
+                      {filteredCompareResults.map((r, i) => (
+                        <tr key={i} className={`transition-colors ${r.status === 'matched' ? 'hover:bg-green-50' : 'hover:bg-red-50 bg-red-50/30'
+                          }`}>
                           <td className="px-4 py-2.5">
                             {r.status === 'matched' ? (
                               <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
@@ -519,11 +630,10 @@ export default function KertasKerjaPage() {
                           </td>
                           <td className="px-4 py-2.5">
                             {r.matched ? (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                r.matched.status === 'disetujui' ? 'bg-green-100 text-green-700' :
-                                r.matched.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-gray-100 text-gray-600'
-                              }`}>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.matched.status === 'disetujui' ? 'bg-green-100 text-green-700' :
+                                  r.matched.status === 'menunggu_verifikasi' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-600'
+                                }`}>
                                 {r.matched.status.replace(/_/g, ' ')}
                               </span>
                             ) : (

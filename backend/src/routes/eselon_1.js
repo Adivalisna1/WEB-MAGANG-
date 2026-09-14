@@ -1,9 +1,9 @@
 const router = require('express').Router();
-const ctrl        = require('../controllers/eselon1Controller');
-const dokCtrl     = require('../controllers/dokumenController');
-const adminCtrl   = require('../controllers/pimpinanController');
+const ctrl = require('../controllers/eselon1Controller');
+const dokCtrl = require('../controllers/dokumenController');
+const adminCtrl = require('../controllers/pimpinanController');
 const { authenticate, authorize } = require('../middleware/auth');
-const validate    = require('../middleware/validate');
+const validate = require('../middleware/validate');
 
 // Semua route ketua tim butuh login + role eselon_1
 router.use(authenticate, authorize('eselon_1'));
@@ -26,7 +26,7 @@ router.post('/users/:id/reset-password', ctrl.resetPassword);
 // GET /api/eselon-1/dokumen — monitor semua dokumen (read-only, semua status)
 router.get('/dokumen', ctrl.getDokumen);
 
-// GET /api/eselon-1/dokumen/menunggu — dokumen yang sudah lolos admin, menunggu persetujuan ketua
+// GET /api/eselon-1/dokumen/menunggu — dokumen yang sudah lolos pimpinan, menunggu persetujuan ketua
 router.get('/dokumen/menunggu', ctrl.getDokumenMenungguKetua);
 
 // GET /api/eselon-1/logs — log aktivitas (reuse admin)

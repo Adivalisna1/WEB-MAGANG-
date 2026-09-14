@@ -15,8 +15,10 @@ const errorHandler       = require('./middleware/errorHandler');
 const authRoutes    = require('./routes/auth');
 const dokumenRoutes = require('./routes/dokumen');
 const userRoutes    = require('./routes/user');
-const adminRoutes   = require('./routes/pimpinan');
-const ketuaRoutes   = require('./routes/eselon_1');
+const pimpinanRoutes = require('./routes/pimpinan');
+const eselon1Routes  = require('./routes/eselon_1');
+const adminItRoutes  = require('./routes/adminIT');
+const administrasiRoutes = require('./routes/administrasi');
 const notifRoutes   = require('./routes/notifikasi');
 
 const app  = express();
@@ -77,8 +79,10 @@ app.use('/uploads', (req, res) => {
 app.use('/api/auth',    authRoutes);
 app.use('/api/dokumen', dokumenRoutes);
 app.use('/api/user',    userRoutes);
-app.use('/api/pimpinan',   adminRoutes);
-app.use('/api/eselon-1',   ketuaRoutes);
+app.use('/api/pimpinan', pimpinanRoutes);
+app.use('/api/eselon-1', eselon1Routes);
+app.use('/api/admin-it', adminItRoutes);
+app.use('/api/administrasi', administrasiRoutes);
 app.use('/api/notifikasi', notifRoutes);
 
 // ── Health Check ──────────────────────────────────────────────

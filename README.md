@@ -814,7 +814,7 @@ erDiagram
 
 | Perubahan | File yang Diubah |
 |---|---|
-| **Fitur baru: Lupa Password via Email** — integrasi API Brevo via HTTPS request (solusi atas blokir SMTP port di Railway), fitur rate limiter 3 request/jam | `backend/src/controllers/authController.js`, `frontend/src/app/reset-password/page.tsx`, `backend/src/routes/auth.js` |
+| **Fitur baru: Lupa Password via Email** — integrasi API Brevo via HTTPS request (solusi atas blokir SMTP port di Render/Aiven), fitur rate limiter 3 request/jam | `backend/src/controllers/authController.js`, `frontend/src/app/reset-password/page.tsx`, `backend/src/routes/auth.js` |
 | **Fitur baru: Perbandingan Nominal** — fitur bagi admin dan ketua tim untuk membandingkan nominal antar dokumen | (Berbagai komponen terkait fitur perbandingan) |
 
 ### v2.3.0 — 04 September 2026

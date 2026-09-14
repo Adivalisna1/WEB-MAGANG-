@@ -16,21 +16,14 @@ router.get('/users', ctrl.getUsers);
 // GET /api/pimpinan/users/online — monitoring realtime
 router.get('/users/online', ctrl.getOnlineUsers);
 
-// POST /api/pimpinan/users — buat user baru
-router.post('/users',
-  ctrl.createUserRules, validate,
-  ctrl.createUser
-);
+// (Pembuatan user dipindahkan ke Admin IT / Administrasi)
 
 // PATCH /api/pimpinan/users/:id/toggle — aktif/nonaktif user
 router.patch('/users/:id/toggle',
   ctrl.toggleUserActive
 );
 
-// DELETE /api/pimpinan/users/:id — hapus user
-router.delete('/users/:id',
-  ctrl.deleteUser
-);
+// (Hapus user dipindahkan ke Admin IT)
 
 // PATCH /api/pimpinan/users/:id/password — reset password user
 router.patch('/users/:id/password',
@@ -43,10 +36,6 @@ router.get('/logs', ctrl.getLogs);
 // DELETE /api/pimpinan/logs — hapus riwayat log
 router.delete('/logs', ctrl.clearLogs);
 
-// ── Kategori Dokumen (master data) ───────────────────────────
-router.get('/kategori',       ctrl.getKategoriAdmin);
-router.post('/kategori',      ctrl.createKategoriRules, validate, activityLogger('buat_kategori', 'kategori'), ctrl.createKategori);
-router.patch('/kategori/:id', ctrl.updateKategoriRules, validate, activityLogger('edit_kategori', 'kategori'), ctrl.updateKategori);
-router.delete('/kategori/:id', activityLogger('hapus_kategori', 'kategori'), ctrl.deleteKategori);
+// ── Kategori Dokumen (master data) DIPINDAH KE ADMINISTRASI ───
 
 module.exports = router;

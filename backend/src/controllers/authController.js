@@ -28,7 +28,7 @@ async function login(req, res, next) {
 
     const [rows] = await pool.query(
       `SELECT u.id, u.role_id, u.nama, u.username, u.email,
-              u.password_hash, u.is_active, r.nama AS role
+              u.password_hash, u.is_active, u.permissions, r.nama AS role
        FROM users u
        JOIN roles r ON r.id = u.role_id
        WHERE u.username = ? OR u.email = ?
@@ -72,7 +72,7 @@ async function login(req, res, next) {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: user.id, role: user.role, sessionId },
+      { id: user.id, role: user.role, sessionId, permissions: user.permissions },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
     );
@@ -98,6 +98,7 @@ async function login(req, res, next) {
           username: user.username,
           email:    user.email,
           role:     user.role,
+          permissions: user.permissions,
         },
       },
     });
@@ -135,9 +136,17 @@ async function logout(req, res, next) {
 }
 
 // ── GET /api/auth/me ──────────────────────────────────────────
-async function me(req, res) {
-  const { password_hash, ...user } = req.user; // strip password_hash sebelum kirim
-  return res.json({ success: true, data: user });
+async function me(req, res, next) {
+  try {
+    // Refresh user data from db to get latest permissions
+    const [rows] = await pool.query(
+      `SELECT u.id, u.role_id, u.nama, u.username, u.email, u.is_active, u.permissions, r.nama AS role
+       FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?`, [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    return res.json({ success: true, data: rows[0] });
+  } catch (err) { next(err); }
 }
 
 // ── POST /api/auth/forgot-password ────────────────────────────

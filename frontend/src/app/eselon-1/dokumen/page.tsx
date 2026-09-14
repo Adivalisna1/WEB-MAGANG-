@@ -63,7 +63,7 @@ export default function KetuaDokumenPage() {
   const [menunggu, setMenunggu] = useState<Dokumen[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
-  const [filter,   setFilter]   = useState('');
+  const [filter,   setFilter]   = useState('lolos_admin');
 
   // Modal keputusan approve / reject
   const [target,   setTarget]   = useState<{ dok: Dokumen; aksi: 'approve' | 'reject' } | null>(null);
