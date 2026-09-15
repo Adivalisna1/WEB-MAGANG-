@@ -97,8 +97,9 @@ export default function KertasKerjaPage() {
     const satkerStr = selectedSatker ? `_${selectedSatker.nama.replace(/\s+/g, '')}` : '_SemuaSatker';
     const semStr = filterSemester ? `_Sem${filterSemester}` : '';
     const thnStr = filterTahun ? `_${filterTahun}` : '_SemuaTahun';
+    const rekStr = filterNoRek ? `_${filterNoRek.replace(/\s+/g, '')}` : '';
     
-    const fileName = `Laporan_Kertas_Kerja${thnStr}${semStr}${satkerStr}.xlsx`;
+    const fileName = `Laporan_Kertas_Kerja${thnStr}${semStr}${satkerStr}${rekStr}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
