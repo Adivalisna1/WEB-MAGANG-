@@ -20,12 +20,12 @@ router.post('/bot-upload',
 
 // ── Staff & Admin (perlu login) — harus sebelum /:id ─────────
 router.get('/all',
-  authenticate, authorize('pimpinan', 'satker', 'eselon_1'),
+  authenticate, authorize('pimpinan', 'staff', 'eselon_1'),
   ctrl.getAllDokumen
 );
 
 router.post('/upload',
-  authenticate, authorize('satker'),
+  authenticate, authorize('staff'),
   upload.single('file'),
   ctrl.uploadRules, validate,
   ctrl.uploadDokumen
@@ -36,21 +36,21 @@ router.get('/:id/download', ctrl.downloadDokumen);
 router.get('/:id',          ctrl.getDokumenDetail);
 
 router.patch('/:id',
-  authenticate, authorize('pimpinan', 'satker'),
+  authenticate, authorize('pimpinan', 'staff', 'administrasi'),
   ctrl.editRules, validate,
   activityLogger('edit', 'dokumen'),
   ctrl.editDokumen
 );
 
 router.patch('/:id/submit',
-  authenticate, authorize('satker'),
+  authenticate, authorize('staff'),
   activityLogger('submit_verifikasi', 'dokumen'),
   ctrl.submitVerifikasi
 );
 
 // Ganti file saat revisi/draft
 router.patch('/:id/file',
-  authenticate, authorize('pimpinan', 'satker'),
+  authenticate, authorize('pimpinan', 'staff'),
   upload.single('file'),
   activityLogger('ganti_file', 'dokumen'),
   ctrl.gantiFileDokumen

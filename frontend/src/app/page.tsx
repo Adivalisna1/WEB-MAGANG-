@@ -27,7 +27,7 @@ export default function LandingPage() {
       if (user.role === 'pimpinan')          router.replace('/pimpinan');
       else if (user.role === 'eselon_1') router.replace('/eselon-1');
       else if (user.role === 'admin_it') router.replace('/admin-it');
-      else                                router.replace('/satker/dokumen');
+      else                                router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);
 
@@ -109,7 +109,7 @@ export default function LandingPage() {
                 user.role === 'pimpinan' ? '/pimpinan' :
                 user.role === 'eselon_1' ? '/eselon-1' :
                 user.role === 'admin_it' ? '/admin-it' :
-                '/satker/dokumen'
+                '/staff/dokumen'
               }
               className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"
             >

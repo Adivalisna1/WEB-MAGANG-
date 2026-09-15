@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (id),
     CONSTRAINT fk_users_role FOREIGN KEY (role_id)
         REFERENCES roles(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_users_satker FOREIGN KEY (satker_id)
+        REFERENCES satkers(id) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_users_role (role_id),
+    INDEX idx_users_satker (satker_id),
     INDEX idx_users_username (username)
 ) ENGINE=InnoDB;
 

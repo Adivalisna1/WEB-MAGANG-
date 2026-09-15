@@ -16,8 +16,14 @@ interface UserOption {
   role: string;
 }
 
+interface SatkerOption {
+  id: number;
+  nama: string;
+}
+
 export default function KirimNotifikasiPage() {
-  const [users,    setUsers]    = useState<UserOption[]>([]);
+  const [users, setUsers]       = useState<UserOption[]>([]);
+  const [satkers, setSatkers]   = useState<SatkerOption[]>([]);
   const [target,   setTarget]   = useState<string>(''); // Default empty
   const [judul,    setJudul]    = useState('');
   const [pesan,    setPesan]    = useState('');
@@ -25,20 +31,26 @@ export default function KirimNotifikasiPage() {
   const [success,  setSuccess]  = useState('');
   const [error,    setError]    = useState('');
 
-  // Daftar user untuk dropdown target
-  const fetchUsers = useCallback(async () => {
+  // Daftar user & satker untuk dropdown target
+  const fetchData = useCallback(async () => {
     try {
       const session = getSession();
-      const res = await fetch(`${API}/administrasi/users`, {
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
-      setUsers(json.data);
-    } catch { /* ignore error, just keep users empty */ }
+      const headers = { Authorization: `Bearer ${session?.token}` };
+      
+      const [resUsers, resSatkers] = await Promise.all([
+        fetch(`${API}/administrasi/users`, { headers }),
+        fetch(`${API}/satker`, { headers })
+      ]);
+      
+      const jsonUsers = await resUsers.json();
+      const jsonSatkers = await resSatkers.json();
+
+      if (resUsers.ok) setUsers(jsonUsers.data);
+      if (resSatkers.ok) setSatkers(jsonSatkers.data);
+    } catch { /* ignore error, just keep empty */ }
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleKirim = async () => {
     if (!target) {
@@ -55,6 +67,9 @@ export default function KirimNotifikasiPage() {
       labelTarget = 'Semua User';
     } else if (target === 'satker') {
       labelTarget = 'Seluruh Satker';
+    } else if (target.startsWith('grup_satker_')) {
+      const sId = Number(target.split('_')[2]);
+      labelTarget = 'Seluruh ' + (satkers.find(s => s.id === sId)?.nama || 'Grup Satker');
     } else {
       labelTarget = users.find((u: UserOption) => String(u.id) === target)?.nama ?? 'user terpilih';
     }
@@ -113,13 +128,14 @@ export default function KirimNotifikasiPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
         {/* Target */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Tujuan Notifikasi
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tujuan Notifikasi <span className="text-red-500">*</span>
           </label>
-          <UserCombobox 
-            users={users} 
-            value={target} 
-            onChange={setTarget} 
+          <UserCombobox
+            users={users}
+            satkers={satkers}
+            value={target}
+            onChange={setTarget}
           />
         </div>
 

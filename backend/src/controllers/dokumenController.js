@@ -38,7 +38,7 @@ const editRules = [
 // ── GET /api/dokumen (publik) ─────────────────────────────────
 async function getDokumenPublik(req, res, next) {
   try {
-    const { kategori, tahun, q, nomor, page = 1, limit = 12 } = req.query;
+    const { kategori, tahun, q, nomor, satker, page = 1, limit = 12 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
     let where = 'd.status = "terverifikasi" AND d.is_public = 1';
@@ -47,6 +47,7 @@ async function getDokumenPublik(req, res, next) {
     if (kategori) { where += ' AND k.slug = ?';  params.push(kategori); }
     if (tahun)    { where += ' AND d.tahun = ?';  params.push(tahun); }
     if (nomor)    { where += ' AND d.nomor_laporan LIKE ?'; params.push(`%${nomor}%`); }
+    if (satker)   { where += ' AND u.satker_id = ?'; params.push(satker); }
     if (q) {
       const escaped = q.replace(/[%_\\]/g, '\\$&');
       where += ' AND (d.judul LIKE ? OR d.nomor_laporan LIKE ?)';
@@ -60,6 +61,7 @@ async function getDokumenPublik(req, res, next) {
               k.nama AS kategori, k.slug AS kategori_slug
        FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
+       LEFT JOIN users u ON d.uploaded_by = u.id
        WHERE ${where}
        ORDER BY d.tahun DESC, d.bulan DESC, d.created_at DESC
        LIMIT ? OFFSET ?`,
@@ -69,6 +71,7 @@ async function getDokumenPublik(req, res, next) {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM dokumen d
        JOIN kategori_dokumen k ON k.id = d.kategori_id
+       LEFT JOIN users u ON d.uploaded_by = u.id
        WHERE ${where}`,
       params
     );
@@ -123,7 +126,7 @@ async function downloadDokumen(req, res, next) {
       try {
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET);
-        if (decoded.role === 'pimpinan' || decoded.role === 'eselon_1' || (decoded.role === 'satker' && dok.uploaded_by === decoded.id)) {
+        if (decoded.role === 'pimpinan' || decoded.role === 'eselon_1' || (decoded.role === 'staff' && dok.uploaded_by === decoded.id)) {
           hasAccess = true;
         }
       } catch (err) { /* token tidak valid */ }
@@ -283,12 +286,23 @@ async function editDokumen(req, res, next) {
 
     const dok = rows[0];
 
-    // Staff hanya bisa edit miliknya sendiri dan hanya saat draft/revisi
-    if (req.user.role_id === 2 && dok.uploaded_by !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Bukan dokumen Anda' });
-    }
-    if (dok.status !== 'draft' && dok.status !== 'revisi') {
-      return res.status(400).json({ success: false, message: 'Hanya dokumen draft atau revisi yang bisa diedit' });
+    // Validasi Akses & Status
+    if (req.user.role_id === 2) {
+      // Staff hanya bisa edit miliknya sendiri dan hanya saat draft/revisi
+      if (dok.uploaded_by !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'Bukan dokumen Anda' });
+      }
+      if (dok.status !== 'draft' && dok.status !== 'revisi') {
+        return res.status(400).json({ success: false, message: 'Hanya dokumen draft atau revisi yang bisa diedit oleh Staff' });
+      }
+    } else if (req.user.role_id === 5) {
+      // Administrasi hanya bisa edit metadata dokumen yang sudah diverifikasi Eselon 1
+      if (dok.status !== 'terverifikasi' && dok.status !== 'diarsipkan') {
+        return res.status(400).json({ success: false, message: 'Administrasi hanya bisa mengedit dokumen yang sudah terverifikasi' });
+      }
+    } else {
+      // Role lain tidak berhak edit via endpoint ini
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
     }
 
     const { judul, tahun, bulan, semester, kategori_id, deskripsi } = req.body;
@@ -399,7 +413,7 @@ async function submitVerifikasi(req, res, next) {
 // Admin hanya bisa loloskan ke Ketua Tim atau kembalikan revisi
 async function verifikasiDokumen(req, res, next) {
   try {
-    const { aksi, catatan } = req.body; // aksi: 'lolos' | 'reject'
+    const { aksi, catatan, nilai_rekening_koran, nilai_excel } = req.body; // aksi: 'lolos' | 'reject'
     if (!['lolos', 'reject'].includes(aksi)) {
       return res.status(400).json({ success: false, message: 'Aksi harus lolos atau reject' });
     }
@@ -416,10 +430,15 @@ async function verifikasiDokumen(req, res, next) {
     const newStatus = aksi === 'lolos' ? 'lolos_admin' : 'revisi';
     const isPublic  = 0; // belum publik sampai Ketua Tim setujui
 
+    // Nilai Kertas Kerja (Pimpinan bisa override)
+    const nilaiRekKoranFinal = nilai_rekening_koran !== undefined ? (nilai_rekening_koran ? Number(nilai_rekening_koran) : null) : rows[0].nilai_rekening_koran;
+    const nilaiExcelFinal    = nilai_excel !== undefined ? (nilai_excel ? Number(nilai_excel) : null) : rows[0].nilai_excel;
+
     await pool.query(
       `UPDATE dokumen SET status = ?, is_public = ?, catatan = ?, catatan_oleh = 'admin',
+       nilai_rekening_koran = ?, nilai_excel = ?,
        verified_by = ?, verified_at = NOW() WHERE id = ?`,
-      [newStatus, isPublic, catatan || null, req.user.id, req.params.id]
+      [newStatus, isPublic, catatan || null, nilaiRekKoranFinal, nilaiExcelFinal, req.user.id, req.params.id]
     );
 
     await catatLog({
@@ -427,7 +446,7 @@ async function verifikasiDokumen(req, res, next) {
       aksi: aksi === 'lolos' ? 'admin_loloskan' : 'admin_revisi',
       entitas: 'dokumen',
       entitas_id: Number(req.params.id),
-      detail: { aksi, catatan: catatan || null, status_baru: newStatus },
+      detail: { aksi, catatan: catatan || null, status_baru: newStatus, nilai_rekening_koran: nilaiRekKoranFinal, nilai_excel: nilaiExcelFinal },
       ip: req.ip,
     });
 

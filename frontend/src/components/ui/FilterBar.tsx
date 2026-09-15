@@ -1,22 +1,26 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { Kategori } from '@/lib/api';
+import { SlidersHorizontal, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { Kategori, Satker } from '@/lib/api';
 
 interface Props {
   kategoriList: Kategori[];
+  satkerList?: Satker[];
   basePath?: string;
 }
 
-export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
+export default function FilterBar({ kategoriList, satkerList = [], basePath = '/' }: Props) {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
-  const [q,        setQ]        = useState(searchParams.get('q')        ?? '');
+  // Kita tetap butuh baca state 'q' dari URL agar saat klik "Filter", 'q' tidak hilang
+  const q = searchParams.get('q') ?? '';
+
   const [kategori, setKategori] = useState(searchParams.get('kategori') ?? '');
   const [tahun,    setTahun]    = useState(searchParams.get('tahun')    ?? '');
+  const [satker,   setSatker]   = useState(searchParams.get('satker')   ?? '');
 
   // Buat tahun pilihan dari 2015 s/d sekarang
   const tahunList = Array.from(
@@ -29,20 +33,20 @@ export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
     if (q)        params.set('q', q);
     if (kategori) params.set('kategori', kategori);
     if (tahun)    params.set('tahun', tahun);
+    if (satker)   params.set('satker', satker);
     router.push(`${basePath}?${params.toString()}`);
-  }, [q, kategori, tahun, router, basePath]);
-
-  // Submit saat tekan Enter di search box
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') applyFilter();
-  };
+  }, [q, kategori, tahun, satker, router, basePath]);
 
   const resetFilter = () => {
-    setQ(''); setKategori(''); setTahun('');
-    router.push(basePath);
+    setKategori(''); setTahun(''); setSatker('');
+    if (q) {
+      router.push(`${basePath}?q=${encodeURIComponent(q)}`);
+    } else {
+      router.push(basePath);
+    }
   };
 
-  const hasFilter = q || kategori || tahun;
+  const hasFilter = kategori || tahun || satker;
 
   return (
     <div
@@ -57,39 +61,22 @@ export default function FilterBar({ kategoriList, basePath = '/' }: Props) {
         alignItems: 'center',
       }}
     >
-      {/* Search */}
-      <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '180px' }}>
-        <Search
-          style={{
-            position: 'absolute', left: '12px', top: '50%',
-            transform: 'translateY(-50%)', width: '15px', height: '15px', color: '#94a3b8',
-          }}
-        />
-        <input
-          type="text"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Cari judul atau kode laporan..."
-          style={{
-            width: '100%', paddingLeft: '36px', paddingRight: '12px',
-            paddingTop: '8px', paddingBottom: '8px',
-            fontSize: '0.85rem', border: '1px solid #e2e8f0',
-            borderRadius: '8px', outline: 'none',
-            background: '#f8fafc', color: '#1e293b',
-          }}
-          onFocus={e => {
-            e.currentTarget.style.borderColor = '#2563eb';
-            e.currentTarget.style.background = '#fff';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.08)';
-          }}
-          onBlur={e => {
-            e.currentTarget.style.borderColor = '#e2e8f0';
-            e.currentTarget.style.background = '#f8fafc';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-        />
-      </div>
+      {/* Satker */}
+      <select
+        value={satker}
+        onChange={e => setSatker(e.target.value)}
+        style={{
+          fontSize: '0.85rem', border: '1px solid #e2e8f0',
+          borderRadius: '8px', padding: '8px 12px',
+          outline: 'none', background: '#f8fafc', color: '#1e293b',
+          cursor: 'pointer',
+        }}
+      >
+        <option value="">Semua Divisi / Satker</option>
+        {satkerList.map(s => (
+          <option key={s.id} value={s.id}>{s.nama}</option>
+        ))}
+      </select>
 
       {/* Kategori */}
       <select

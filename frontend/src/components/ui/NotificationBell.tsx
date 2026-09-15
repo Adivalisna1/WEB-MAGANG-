@@ -102,9 +102,9 @@ export default function NotificationBell() {
     if (notif.aksi === 'submit') {
       router.push('/pimpinan/dokumen');
     } else if (notif.aksi === 'reject' && notif.dokumen_id) {
-      router.push(`/satker/dokumen/${notif.dokumen_id}/edit`);
+      router.push(`/staff/dokumen/${notif.dokumen_id}/edit`);
     } else if (notif.aksi === 'approve') {
-      router.push('/satker/dokumen');
+      router.push('/staff/dokumen');
     }
     // pesan_ketua & reset_password: cukup tandai dibaca, tanpa navigasi
     setOpen(false);

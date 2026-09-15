@@ -248,9 +248,15 @@ async function kirimNotifikasi(req, res, next) {
         'SELECT id FROM users WHERE is_active = 1 AND id != ?', [req.user.id]
       );
       targets = users.map((u) => u.id);
-    } else if (target === 'satker') {
+    } else if (target === 'staff') {
       const [users] = await pool.query(
         'SELECT id FROM users WHERE is_active = 1 AND role_id IN (1, 2) AND id != ?', [req.user.id]
+      );
+      targets = users.map(u => u.id);
+    } else if (target.startsWith('grup_staff_')) {
+      const staffId = target.replace('grup_staff_', '');
+      const [users] = await pool.query(
+        'SELECT id FROM users WHERE is_active = 1 AND satker_id = ? AND id != ?', [staffId, req.user.id]
       );
       targets = users.map(u => u.id);
     } else {

@@ -45,6 +45,7 @@ export default function UploadPage() {
 
   // Saldo Akhir (opsional, hanya untuk kategori perlu_nominal)
   const [totalSaldo, setTotalSaldo] = useState('');
+  const [nilaiExcel, setNilaiExcel] = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -181,7 +182,10 @@ export default function UploadPage() {
 
       // Nominal (opsional, tergantung kategori)
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
-      if (selKat?.perlu_nominal && totalSaldo) fd.append('nilai_rekening_koran', totalSaldo.replace(/\./g, '').replace(',', '.'));
+      if (selKat?.perlu_nominal) {
+        if (totalSaldo) fd.append('nilai_rekening_koran', totalSaldo.replace(/\./g, '').replace(',', '.'));
+        if (nilaiExcel) fd.append('nilai_excel', nilaiExcel.replace(/\./g, '').replace(',', '.'));
+      }
 
       const res = await fetch(`${API}/dokumen/upload`, {
         method: 'POST',
@@ -191,7 +195,7 @@ export default function UploadPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Upload gagal');
       setSuccess(true);
-      setTimeout(() => router.push('/satker/dokumen'), 1500);
+      setTimeout(() => router.push('/staff/dokumen'), 1500);
     } catch (err: any) {
       setError(err.message || 'Upload gagal, coba lagi');
     } finally {
@@ -217,7 +221,7 @@ export default function UploadPage() {
     <div className="max-w-2xl space-y-6">
       {/* Header */}
       <div>
-        <Link href="/satker/dokumen" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-3 transition-colors">
+        <Link href="/staff/dokumen" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-3 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Kembali
         </Link>
         <h1 className="text-xl font-bold text-gray-900">Upload Dokumen</h1>
@@ -419,6 +423,34 @@ export default function UploadPage() {
                 </p>
               )}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-4">
+                Nilai Excel (Rp) <span className="text-gray-400 font-normal">(opsional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">Rp</span>
+                <input
+                  type="text"
+                  value={nilaiExcel}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9,]/g, '');
+                    const parts = val.split(',');
+                    if (parts.length > 2) return;
+                    const ribuan = parts[0].replace(/\./g, '');
+                    const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                    setNilaiExcel(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
+                  }}
+                  placeholder="0"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              {nilaiExcel && (
+                <p className="text-xs text-emerald-700 mt-1.5 font-medium">
+                  Rp {nilaiExcel}
+                </p>
+              )}
+            </div>
           </div>
         ) : null}
 
@@ -502,7 +534,7 @@ export default function UploadPage() {
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {submitting ? 'Mengupload...' : 'Upload Dokumen'}
           </button>
-          <Link href="/satker/dokumen" className="btn-secondary">Batal</Link>
+          <Link href="/staff/dokumen" className="btn-secondary">Batal</Link>
         </div>
       </form>
     </div>

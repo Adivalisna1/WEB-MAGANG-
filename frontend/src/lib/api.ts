@@ -18,6 +18,8 @@ export interface Dokumen {
   created_at: string;
   kategori: string;
   kategori_slug: string;
+  nilai_excel?: number | null;
+  nilai_rekening_koran?: number | null;
 }
 
 export interface Kategori {
@@ -42,6 +44,7 @@ export interface DokumenParams {
   kategori?: string;
   tahun?: string;
   q?: string;
+  satker?: string;
   page?: number;
   limit?: number;
 }
@@ -52,6 +55,7 @@ export async function getDokumen(params: DokumenParams = {}): Promise<ApiRespons
   if (params.kategori) query.set('kategori', params.kategori);
   if (params.tahun)    query.set('tahun', params.tahun);
   if (params.q)        query.set('q', params.q);
+  if (params.satker)   query.set('satker', params.satker);
   if (params.page)     query.set('page', String(params.page));
   if (params.limit)    query.set('limit', String(params.limit));
 
@@ -68,6 +72,20 @@ export async function getKategori(): Promise<ApiResponse<Kategori[]>> {
     cache: 'no-store', // selalu fresh — supaya kategori baru langsung muncul
   });
   if (!res.ok) throw new Error('Gagal mengambil kategori');
+  return res.json();
+}
+
+export interface Satker {
+  id: number;
+  nama: string;
+}
+
+// Ambil daftar satker (server-side)
+export async function getSatkers(): Promise<ApiResponse<Satker[]>> {
+  const res = await fetch(`${SERVER_API_URL}/satker`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error('Gagal mengambil satker');
   return res.json();
 }
 

@@ -11,7 +11,7 @@ interface AuthContextType {
   loginFn:   (username: string, password: string) => Promise<void>;
   logoutFn:  () => Promise<void>;
   isPimpinan:   boolean;
-  isSatker:   boolean;
+  isStaff:   boolean;
   isKetuaTim: boolean;
 }
 
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else if (res.data.user.role === 'administrasi') {
       router.push('/administrasi');
     } else {
-      router.push('/satker/dokumen');
+      router.push('/staff/dokumen');
     }
   }, [router]);
 
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user, token, loading,
       loginFn, logoutFn,
       isPimpinan: user?.role === 'pimpinan',
-      isSatker: user?.role === 'satker',
+      isStaff: user?.role === 'staff',
       isKetuaTim: user?.role === 'eselon_1',
     }}>
       {children}

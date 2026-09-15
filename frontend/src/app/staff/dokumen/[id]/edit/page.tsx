@@ -48,8 +48,9 @@ export default function EditDokumenPage() {
   const [kategoriId, setKategoriId] = useState('');
   const [deskripsi,  setDeskripsi]  = useState('');
 
-  // Saldo Akhir (opsional, hanya untuk kategori perlu_nominal)
+  // Saldo Akhir & Nilai Excel (opsional, hanya untuk kategori perlu_nominal)
   const [totalSaldo, setTotalSaldo] = useState('');
+  const [nilaiExcel, setNilaiExcel] = useState('');
 
   // State ganti file
   const [fileBaruPicked, setFileBaruPicked] = useState<File | null>(null);
@@ -75,7 +76,7 @@ export default function EditDokumenPage() {
     ])
       .then(([dokRes, katRes]) => {
         const found = (dokRes.data as Dokumen[]).find(d => String(d.id) === id);
-        if (!found) { router.replace('/Satker/dokumen'); return; }
+        if (!found) { router.replace('/staff/dokumen'); return; }
         setDokumen(found);
         setJudul(found.judul);
         setTahun(String(found.tahun));
@@ -84,8 +85,9 @@ export default function EditDokumenPage() {
         setSemester(found.semester != null ? String(found.semester) : '');
         setDeskripsi(found.deskripsi ?? '');
         setKategoriList(katRes.data ?? []);
-        // Load saldo akhir
+        // Load saldo akhir & nilai excel
         if (found.nilai_rekening_koran != null) setTotalSaldo(Number(found.nilai_rekening_koran).toLocaleString('id-ID'));
+        if (found.nilai_excel != null) setNilaiExcel(Number(found.nilai_excel).toLocaleString('id-ID'));
       })
       .catch(() => setError('Gagal memuat data'))
       .finally(() => setLoading(false));
@@ -161,12 +163,13 @@ export default function EditDokumenPage() {
           kategori_id: kategoriId ? Number(kategoriId) : undefined,
           deskripsi: deskripsi || undefined,
           nilai_rekening_koran: totalSaldo ? Number(totalSaldo.replace(/\./g, '').replace(',', '.')) : null,
+          nilai_excel: nilaiExcel ? Number(nilaiExcel.replace(/\./g, '').replace(',', '.')) : null,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Gagal menyimpan');
       setSuccess(true);
-      setTimeout(() => router.push('/Satker/dokumen'), 1500);
+      setTimeout(() => router.push('/staff/dokumen'), 1500);
     } catch (err: any) {
       setError(err.message || 'Gagal menyimpan perubahan');
     } finally {
@@ -198,7 +201,7 @@ export default function EditDokumenPage() {
     <div className="max-w-2xl space-y-6">
       {/* Header */}
       <div>
-        <Link href="/Satker/dokumen" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-3 transition-colors">
+        <Link href="/staff/dokumen" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-3 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Kembali
         </Link>
         <h1 className="text-xl font-bold text-gray-900">Edit Dokumen</h1>
@@ -458,6 +461,34 @@ export default function EditDokumenPage() {
                   </p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-4">
+                  Nilai Excel (Rp) <span className="text-gray-400 font-normal">(opsional)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">Rp</span>
+                  <input
+                    type="text"
+                    value={nilaiExcel}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^0-9,]/g, '');
+                      const parts = val.split(',');
+                      if (parts.length > 2) return;
+                      const ribuan = parts[0].replace(/\./g, '');
+                      const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                      setNilaiExcel(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
+                    }}
+                    placeholder="0"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                {nilaiExcel && (
+                  <p className="text-xs text-emerald-700 mt-1.5 font-medium">
+                    Rp {nilaiExcel}
+                  </p>
+                )}
+              </div>
             </div>
           );
         })()}
@@ -485,7 +516,7 @@ export default function EditDokumenPage() {
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {submitting ? 'Menyimpan...' : 'Simpan Perubahan'}
           </button>
-          <Link href="/Satker/dokumen" className="btn-secondary">Batal</Link>
+          <Link href="/staff/dokumen" className="btn-secondary">Batal</Link>
         </div>
       </form>
     </div>

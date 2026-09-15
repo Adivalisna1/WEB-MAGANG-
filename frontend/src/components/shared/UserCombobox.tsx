@@ -10,13 +10,19 @@ interface UserOption {
   role: string;
 }
 
+interface SatkerOption {
+  id: number;
+  nama: string;
+}
+
 interface UserComboboxProps {
   users: UserOption[];
+  satkers?: SatkerOption[];
   value: string;
   onChange: (value: string) => void;
 }
 
-export default function UserCombobox({ users, value, onChange }: UserComboboxProps) {
+export default function UserCombobox({ users, satkers = [], value, onChange }: UserComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -32,6 +38,10 @@ export default function UserCombobox({ users, value, onChange }: UserComboboxPro
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const filteredSatkers = satkers.filter(s => 
+    s.nama.toLowerCase().includes(search.toLowerCase())
+  );
+
   const filteredUsers = users.filter((u) => {
     const term = search.toLowerCase();
     return (
@@ -42,13 +52,19 @@ export default function UserCombobox({ users, value, onChange }: UserComboboxPro
   });
 
   const getDisplayValue = () => {
-    if (!value) return '— Pilih Tujuan Notifikasi —';
+    if (!value) return '- Pilih Tujuan Notifikasi -';
     if (value === 'all') return 'Kirim ke: Semua User';
-    if (value === 'satker') return 'Kirim ke: Satker';
+    if (value === 'satker') return 'Kirim ke: Seluruh Satker';
     
+    if (value.startsWith('grup_satker_')) {
+      const sId = Number(value.split('_')[2]);
+      const s = satkers.find(x => x.id === sId);
+      if (s) return `[Grup] ${s.nama}`;
+    }
+
     const selectedUser = users.find(u => String(u.id) === value);
     if (selectedUser) return `${selectedUser.nama} (@${selectedUser.username})`;
-    return '— Pilih Tujuan Notifikasi —';
+    return '- Pilih Tujuan Notifikasi -';
   };
 
   return (
@@ -92,14 +108,37 @@ export default function UserCombobox({ users, value, onChange }: UserComboboxPro
                   className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === 'satker' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-gray-50'}`}
                   onClick={() => { onChange('satker'); setIsOpen(false); }}
                 >
-                  <span>Kirim ke: Satker</span>
+                  <span>Kirim ke: Seluruh Satker</span>
                   {value === 'satker' && <Check className="w-4 h-4" />}
-                </div>
-                <div className="px-3 py-1 mt-2 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Kirim ke User Individu
                 </div>
               </>
             )}
+
+            {/* Grup Satker */}
+            {filteredSatkers.length > 0 && (
+              <>
+                <div className="px-3 py-1 mt-2 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Kirim ke Grup Divisi / Satker
+                </div>
+                {filteredSatkers.map(s => {
+                  const val = `grup_satker_${s.id}`;
+                  return (
+                    <div
+                      key={val}
+                      className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === val ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-gray-50'}`}
+                      onClick={() => { onChange(val); setIsOpen(false); }}
+                    >
+                      <span>[Grup] {s.nama}</span>
+                      {value === val && <Check className="w-4 h-4" />}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            <div className="px-3 py-1 mt-2 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Kirim ke User Individu
+            </div>
 
             {filteredUsers.length === 0 ? (
               <div className="px-3 py-4 text-sm text-center text-gray-500">
@@ -117,7 +156,7 @@ export default function UserCombobox({ users, value, onChange }: UserComboboxPro
                     {String(u.id) === value && <Check className="w-4 h-4" />}
                   </div>
                   <span className="text-xs text-gray-500">
-                    @{u.username} — {u.role.replace('_', ' ')}
+                    @{u.username} - {u.role.replace('_', ' ')}
                   </span>
                 </div>
               ))

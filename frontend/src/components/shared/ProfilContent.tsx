@@ -20,7 +20,7 @@ export default function ProfilContent() {
 
   const roleLabels: Record<string, string> = {
     pimpinan: 'Pimpinan',
-    satker: 'Satker',
+    staff: 'Staff',
     ketua_tim: 'Eselon 1',
   };
 

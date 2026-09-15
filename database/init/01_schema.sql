@@ -22,12 +22,24 @@ CREATE TABLE IF NOT EXISTS roles (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+-- TABLE: satkers
+-- Mengelompokkan users ke dalam Satuan Kerja (Divisi)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS satkers (
+    id          INT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    nama        VARCHAR(255)        NOT NULL UNIQUE,
+    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB;
+
+-- ============================================================
 -- TABLE: users
 -- Menyimpan data admin dan staff/user
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
     id              INT UNSIGNED        NOT NULL AUTO_INCREMENT,
     role_id         TINYINT UNSIGNED    NOT NULL,
+    satker_id       INT UNSIGNED        NULL,
     nama            VARCHAR(100)        NOT NULL,
     username        VARCHAR(50)         NOT NULL UNIQUE,
     email           VARCHAR(150)        NOT NULL UNIQUE,
@@ -42,7 +54,10 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (id),
     CONSTRAINT fk_users_role FOREIGN KEY (role_id)
         REFERENCES roles(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_users_satker FOREIGN KEY (satker_id)
+        REFERENCES satkers(id) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_users_role (role_id),
+    INDEX idx_users_satker (satker_id),
     INDEX idx_users_username (username)
 ) ENGINE=InnoDB;
 

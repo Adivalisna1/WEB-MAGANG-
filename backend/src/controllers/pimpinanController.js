@@ -16,8 +16,9 @@ async function getUsers(req, res, next) {
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
        FROM users u
        JOIN roles r ON r.id = u.role_id
-       WHERE u.role_id NOT IN (3, 4) -- Sembunyikan Eselon 1 dan Admin IT dari Pimpinan
-       ORDER BY u.created_at DESC`
+       WHERE u.role_id NOT IN (3, 4) AND u.satker_id = ?
+       ORDER BY u.created_at DESC`,
+      [req.user.satker_id]
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -39,8 +40,9 @@ async function getOnlineUsers(req, res, next) {
        FROM user_sessions s
        JOIN users u ON u.id = s.user_id
        JOIN roles r ON r.id = u.role_id
-       WHERE s.is_online = 1 AND u.role_id NOT IN (3, 4)
-       ORDER BY s.last_active_at DESC`
+       WHERE s.is_online = 1 AND u.role_id NOT IN (3, 4) AND u.satker_id = ?
+       ORDER BY s.last_active_at DESC`,
+      [req.user.satker_id]
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -51,7 +53,7 @@ async function getOnlineUsers(req, res, next) {
 // ── PATCH /api/pimpinan/users/:id/toggle — aktif/nonaktif ────────
 async function toggleUserActive(req, res, next) {
   try {
-    const [rows] = await pool.query('SELECT id, role_id, is_active FROM users WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.query('SELECT id, role_id, is_active, satker_id FROM users WHERE id = ?', [req.params.id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
@@ -61,8 +63,8 @@ async function toggleUserActive(req, res, next) {
     }
 
     // Pimpinan hanya boleh nonaktifkan Staff (role_id = 2)
-    if (rows[0].role_id !== 2) {
-      return res.status(403).json({ success: false, message: 'Pimpinan hanya dapat mengelola akun Staff (Satker)' });
+    if (rows[0].role_id !== 2 || rows[0].satker_id !== req.user.satker_id) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Anda hanya dapat mengelola akun Staff (Satker) di divisi Anda sendiri.' });
     }
 
     const newStatus = rows[0].is_active ? 0 : 1;
@@ -91,8 +93,8 @@ async function getLogs(req, res, next) {
     const { user_id, aksi, page = 1, limit = 50 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let where = '1=1';
-    const params = [];
+    let where = 'u.satker_id = ?';
+    const params = [req.user.satker_id];
     if (user_id) { where += ' AND l.user_id = ?'; params.push(user_id); }
     if (aksi)    { where += ' AND l.aksi = ?';    params.push(aksi); }
 
@@ -108,7 +110,7 @@ async function getLogs(req, res, next) {
     );
 
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM aktivitas_log l WHERE ${where}`, params
+      `SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE ${where}`, params
     );
 
     return res.json({
@@ -157,14 +159,14 @@ async function resetUserPassword(req, res, next) {
     }
 
     // Cek user ada
-    const [rows] = await pool.query('SELECT id, nama, username, role_id FROM users WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT id, nama, username, role_id, satker_id FROM users WHERE id = ?', [id]);
     if (!rows.length) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
 
-    // Pimpinan hanya boleh reset password Staff (role_id = 2)
-    if (rows[0].role_id !== 2) {
-      return res.status(403).json({ success: false, message: 'Pimpinan hanya dapat mereset password akun Staff (Satker)' });
+    // Pimpinan hanya boleh reset password Staff (role_id = 2) dan harus satu staff
+    if (rows[0].role_id !== 2 || rows[0].satker_id !== req.user.satker_id) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Anda hanya dapat mereset password akun Staff di divisi Anda sendiri.' });
     }
 
     // Admin tidak bisa reset password diri sendiri via fitur ini
@@ -203,13 +205,14 @@ async function getStats(req, res, next) {
          AND last_active_at < NOW() - INTERVAL 15 MINUTE`
     );
 
-    const [[{ totalDokumen }]]  = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen`);
-    const [[{ terverifikasi }]] = await pool.query(`SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = "terverifikasi"`);
-    const [[{ menunggu }]]      = await pool.query(`SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = "menunggu_verifikasi"`);
-    const [[{ lolosAdmin }]]    = await pool.query(`SELECT COUNT(*) AS lolosAdmin FROM dokumen WHERE status = "lolos_admin"`);
-    const [[{ totalUser }]]     = await pool.query('SELECT COUNT(*) AS totalUser FROM users WHERE role_id = 2');
-    const [[{ totalDownload }]] = await pool.query(`SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen`);
-    const [[{ onlineNow }]]     = await pool.query('SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1');
+    const sid = req.user.satker_id;
+    const [[{ totalDokumen }]]  = await pool.query(`SELECT COUNT(*) AS totalDokumen FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE u.satker_id = ?`, [sid]);
+    const [[{ terverifikasi }]] = await pool.query(`SELECT COUNT(*) AS terverifikasi FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE status = "terverifikasi" AND u.satker_id = ?`, [sid]);
+    const [[{ menunggu }]]      = await pool.query(`SELECT COUNT(*) AS menunggu FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE status = "menunggu_verifikasi" AND u.satker_id = ?`, [sid]);
+    const [[{ lolosAdmin }]]    = await pool.query(`SELECT COUNT(*) AS lolosAdmin FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE status = "lolos_admin" AND u.satker_id = ?`, [sid]);
+    const [[{ totalUser }]]     = await pool.query('SELECT COUNT(*) AS totalUser FROM users WHERE role_id = 2 AND satker_id = ?', [sid]);
+    const [[{ totalDownload }]] = await pool.query(`SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE u.satker_id = ?`, [sid]);
+    const [[{ onlineNow }]]     = await pool.query('SELECT COUNT(s.id) AS onlineNow FROM user_sessions s JOIN users u ON u.id = s.user_id WHERE s.is_online = 1 AND u.satker_id = ?', [sid]);
 
     return res.json({
       success: true,

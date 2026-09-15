@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
-  LayoutDashboard, LogOut, Tags, ShieldCheck, User, Send
+  LayoutDashboard, LogOut, Tags, ShieldCheck, User, Send, FileText
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const Menu = [
   { href: '/administrasi',                  icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { href: '/administrasi/dokumen',          icon: FileText,        label: 'Manajemen Dokumen' },
   { href: '/administrasi/kategori',         icon: Tags,            label: 'Master Kategori' },
   { href: '/administrasi/kirim-notifikasi', icon: Send,            label: 'Kirim Notifikasi' },
   { href: '/administrasi/profil',           icon: User,            label: 'Profil Pengguna' },

@@ -16,9 +16,12 @@ async function authenticate(req, res, next) {
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Cek user masih aktif di DB
+    // Cek user masih aktif di DB dan join dengan tabel roles untuk mendapatkan nama role
     const [rows] = await pool.query(
-      'SELECT id, role_id, nama, username, email, is_active FROM users WHERE id = ?',
+      `SELECT u.id, u.role_id, u.satker_id, u.nama, u.username, u.email, u.is_active, r.nama AS role 
+       FROM users u 
+       JOIN roles r ON r.id = u.role_id 
+       WHERE u.id = ?`,
       [decoded.id]
     );
 
@@ -71,8 +74,8 @@ function authorize(...roles) {
       return res.status(401).json({ success: false, message: 'Tidak terautentikasi' });
     }
 
-    // role_id 1 = pimpinan (admin), 2 = satker (staff), 3 = eselon_1 (ketua_tim), 4 = admin_it, 5 = administrasi
-    const roleMap = { 1: 'pimpinan', 2: 'satker', 3: 'eselon_1', 4: 'admin_it', 5: 'administrasi' };
+    // role_id 1 = pimpinan (admin), 2 = staff (staff), 3 = eselon_1 (ketua_tim), 4 = admin_it, 5 = administrasi
+    const roleMap = { 1: 'pimpinan', 2: 'staff', 3: 'eselon_1', 4: 'admin_it', 5: 'administrasi' };
     const userRole = roleMap[req.user.role_id];
 
     if (!roles.includes(userRole)) {

@@ -23,12 +23,13 @@ async function getUsers(req, res, next) {
   try {
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions,
-              u.last_login, u.created_at, r.nama AS role,
+              u.last_login, u.created_at, r.nama AS role, sk.nama AS staff,
               (SELECT is_online FROM user_sessions s
                WHERE s.user_id = u.id AND s.is_online = 1
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
        FROM users u
        JOIN roles r ON r.id = u.role_id
+       LEFT JOIN satkers sk ON sk.id = u.satker_id
        ORDER BY u.created_at DESC`
     );
     return res.json({ success: true, data: rows });
@@ -38,15 +39,15 @@ async function getUsers(req, res, next) {
 // ── POST /api/admin-it/users ───────────────────────────────────────
 async function createUser(req, res, next) {
   try {
-    const { role_id, nama, username, email, password, permissions } = req.body;
+    const { role_id, nama, username, email, password, permissions, satker_id } = req.body;
 
     // Hash password
     const password_hash = await bcrypt.hash(password, 12);
 
     const [result] = await pool.query(
-      `INSERT INTO users (role_id, nama, username, email, password_hash, permissions)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [role_id, nama, username, email, password_hash, permissions ? JSON.stringify(permissions) : null]
+      `INSERT INTO users (role_id, nama, username, email, password_hash, permissions, satker_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [role_id, nama, username, email, password_hash, permissions ? JSON.stringify(permissions) : null, satker_id || null]
     );
 
     await catatLog({
@@ -83,7 +84,7 @@ async function createBulkUsers(req, res, next) {
 
     for (const user of users) {
       try {
-        const { role_id, nama, username, email, password } = user;
+        const { role_id, nama, username, email, password, staff_nama } = user;
         
         // Cek data valid
         if (!role_id || !nama || !username || !email || !password) {
@@ -91,12 +92,23 @@ async function createBulkUsers(req, res, next) {
           continue;
         }
 
+        let satker_id = null;
+        if (staff_nama) {
+          const [existing] = await connection.query('SELECT id FROM satkers WHERE nama = ?', [staff_nama]);
+          if (existing.length > 0) {
+            satker_id = existing[0].id;
+          } else {
+            const [inserted] = await connection.query('INSERT INTO satkers (nama) VALUES (?)', [staff_nama]);
+            satker_id = inserted.insertId;
+          }
+        }
+
         const password_hash = await bcrypt.hash(password, 12);
         
         await connection.query(
-          `INSERT INTO users (role_id, nama, username, email, password_hash, permissions)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [role_id, nama, username, email, password_hash, null]
+          `INSERT INTO users (role_id, satker_id, nama, username, email, password_hash, permissions)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [role_id, satker_id, nama, username, email, password_hash, null]
         );
         successCount++;
       } catch (err) {
@@ -131,18 +143,15 @@ async function createBulkUsers(req, res, next) {
 // ── PATCH /api/admin-it/users/:id ───────────────────────────────────────
 async function updateUser(req, res, next) {
   try {
-    const { role_id, nama, username, email, permissions } = req.body;
-    const targetId = Number(req.params.id);
+    const { id } = req.params;
+    const targetId = Number(id);
+    const { role_id, nama, username, email, permissions, satker_id } = req.body;
 
-    await pool.query(
-      `UPDATE users SET 
-        role_id = COALESCE(?, role_id),
-        nama = COALESCE(?, nama),
-        username = COALESCE(?, username),
-        email = COALESCE(?, email),
-        permissions = ?
-       WHERE id = ?`,
-      [role_id || null, nama || null, username || null, email || null, permissions ? JSON.stringify(permissions) : null, targetId]
+    const [result] = await pool.query(
+      `UPDATE users
+       SET role_id=?, nama=?, username=?, email=?, permissions=?, satker_id=?
+       WHERE id=?`,
+      [role_id, nama, username, email, permissions ? JSON.stringify(permissions) : null, satker_id || null, targetId]
     );
 
     await catatLog({
@@ -151,7 +160,7 @@ async function updateUser(req, res, next) {
       entitas: 'user',
       entitas_id: targetId,
       detail: { username, role_id, permissions },
-      ip: req.ip,
+      ip_address: req.ip,
     });
 
     return res.json({ success: true, message: 'User berhasil diupdate' });
@@ -248,8 +257,8 @@ async function deleteKategori(req, res, next) {
 async function getLogs(req, res, next) {
   try {
     const [rows] = await pool.query(
-      `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip, l.created_at, u.nama AS user_nama, u.username
-       FROM activity_logs l
+      `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username
+       FROM aktivitas_log l
        LEFT JOIN users u ON u.id = l.user_id
        ORDER BY l.created_at DESC LIMIT 500`
     );

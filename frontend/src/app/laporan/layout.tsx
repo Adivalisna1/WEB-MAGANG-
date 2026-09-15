@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { FileText, Menu, X, LayoutDashboard, LogOut, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function LaporanLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutFn, loading } = useAuth();
@@ -12,6 +12,8 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
   const [open,         setOpen]         = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
+  
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,21 +43,30 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
     ? '/pimpinan'
     : user.role === 'eselon_1'
       ? '/eselon-1'
-      : '/satker/dokumen';
+      : '/staff/dokumen';
 
-  const roleLabels: Record<string, string> = { ketua_tim: 'Eselon 1' };
-  const roleLabel = roleLabels[user.role] ?? user.role.replace('_', ' ');
+  const roleLabels: Record<string, string> = {
+    pimpinan:     'Pimpinan',
+    eselon_1:     'Eselon 1',
+    ketua_tim:    'Eselon 1',
+    staff:        'Staff',
+    satker:       'Staff',   // legacy: satker di DB = staff
+    admin_it:     'Admin IT',
+    administrasi: 'Administrasi',
+  };
+  const roleLabel = roleLabels[user.role] ?? 'Staff';
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Navbar */}
       <header className="bg-primary-800 text-white shadow-lg sticky top-0 z-50 border-b border-primary-700/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-[52px]">
           <div className="flex items-center justify-between h-16">
             <Link href="/laporan" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity">
               <FileText className="w-6 h-6 text-blue-300" />
-              <span>Dashboard Laporan</span>
+              <span className="hidden sm:inline">Dashboard Laporan</span>
             </Link>
+
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-4 text-sm font-medium">
@@ -115,6 +126,7 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
           {/* Mobile Nav */}
           {open && (
             <nav className="md:hidden pb-4 flex flex-col gap-2 text-sm font-medium border-t border-primary-700/50 pt-3 animate-in fade-in duration-150">
+
               <Link href={dashboardHref} className="hover:text-blue-200 py-1 capitalize" onClick={() => setOpen(false)}>Dashboard {roleLabel}</Link>
               <div className="flex items-center gap-2 py-1 border-t border-primary-700/50 pt-2">
                 <div className="w-6 h-6 rounded-full bg-blue-400 flex items-center justify-center text-xs font-bold">

@@ -4,7 +4,6 @@ import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, AlertCircle, KeyRound, ArrowRight } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();

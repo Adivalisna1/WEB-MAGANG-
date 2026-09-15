@@ -19,7 +19,10 @@ const pimpinanRoutes = require('./routes/pimpinan');
 const eselon1Routes  = require('./routes/eselon_1');
 const adminItRoutes  = require('./routes/adminIT');
 const administrasiRoutes = require('./routes/administrasi');
-const notifRoutes   = require('./routes/notifikasi');
+const notifRoutes    = require('./routes/notifikasi');
+const satkerRoutes = require('./routes/satker');
+const akuntansiRoutes = require('./routes/akuntansi');
+const kertasKerjaRoutes = require('./routes/kertasKerjaRoutes');
 
 const app  = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
@@ -84,7 +87,9 @@ app.use('/api/eselon-1', eselon1Routes);
 app.use('/api/admin-it', adminItRoutes);
 app.use('/api/administrasi', administrasiRoutes);
 app.use('/api/notifikasi', notifRoutes);
-
+app.use('/api/satker', satkerRoutes);
+app.use('/api/akuntansi', akuntansiRoutes);
+app.use('/api/kertas-kerja', kertasKerjaRoutes);
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({

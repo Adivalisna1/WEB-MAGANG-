@@ -1,14 +1,16 @@
 import { Suspense } from 'react';
-import { getDokumen, getKategori, getStatsPublik } from '@/lib/api';
+import { getDokumen, getKategori, getStatsPublik, getSatkers } from '@/lib/api';
 import DokumenCard from '@/components/ui/DokumenCard';
 import FilterBar from '@/components/ui/FilterBar';
 import Pagination from '@/components/ui/Pagination';
 import EmptyState from '@/components/ui/EmptyState';
+import HeroSearchInput from '@/components/ui/HeroSearchInput';
 
 interface SearchParams {
   q?:       string;
   kategori?: string;
   tahun?:   string;
+  satker?:  string;
   page?:    string;
 }
 
@@ -19,20 +21,23 @@ export default async function LaporanPage({
 }) {
   const page = Number(searchParams.page) || 1;
 
-  const [dokumenRes, kategoriRes, statsRes] = await Promise.all([
+  const [dokumenRes, kategoriRes, statsRes, satkerRes] = await Promise.all([
     getDokumen({
       q:        searchParams.q,
       kategori: searchParams.kategori,
       tahun:    searchParams.tahun,
+      satker:   searchParams.satker,
       page,
       limit: 20,
     }),
     getKategori(),
     getStatsPublik(),
+    getSatkers().catch(() => ({ success: true, data: [] }))
   ]);
 
   const dokumenList  = dokumenRes.data   ?? [];
   const kategoriList = kategoriRes.data  ?? [];
+  const satkerList   = satkerRes.data    ?? [];
   const meta         = dokumenRes.meta;
   const stats = statsRes.data ?? {
     totalDokumen: meta?.total ?? 0,
@@ -40,7 +45,10 @@ export default async function LaporanPage({
     totalDownload: 0,
   };
 
-  const hasFilter = searchParams.q || searchParams.kategori || searchParams.tahun;
+  const hasFilter = searchParams.q || searchParams.kategori || searchParams.tahun || searchParams.satker;
+
+  // Find the selected satker name for the filter label
+  const selectedSatkerName = searchParams.satker ? satkerList.find(s => s.id.toString() === searchParams.satker)?.nama : null;
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -78,6 +86,11 @@ export default async function LaporanPage({
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', maxWidth: '500px' }}>
           Akses dan unduh dokumen laporan kinerja, rencana strategis, dan dokumen perencanaan lainnya.
         </p>
+
+        {/* Hero Search + Filter Bar */}
+        <Suspense fallback={<div style={{ height: '50px', marginTop: '28px', maxWidth: '820px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px' }} />}>
+          <HeroSearchInput basePath="/laporan" kategoriList={kategoriList} satkerList={satkerList} />
+        </Suspense>
       </section>
 
       {/* ── STATS ROW ── */}
@@ -91,6 +104,7 @@ export default async function LaporanPage({
         {[
           { label: 'Total Dokumen',    value: stats.totalDokumen },
           { label: 'Kategori Tersedia', value: stats.totalKategori },
+          { label: 'Total Satker',     value: satkerList.length },
           { label: 'Total Unduhan',    value: stats.totalDownload.toLocaleString('id-ID') },
         ].map((s, i, arr) => (
           <div
@@ -122,18 +136,15 @@ export default async function LaporanPage({
       {/* ── CONTENT ── */}
       <div style={{ padding: '32px 52px 52px' }}>
 
-        {/* Filter Bar */}
-        <Suspense fallback={<div className="h-12 bg-white rounded-lg animate-pulse mb-5" />}>
-          <FilterBar kategoriList={kategoriList} basePath="/laporan" />
-        </Suspense>
 
         {/* Filter label */}
         {hasFilter && (
-          <div className="mt-3 mb-4 flex items-center gap-2 text-sm text-slate-500">
+          <div className="mt-3 mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <span>Hasil pencarian</span>
             {searchParams.q       && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-100">"{searchParams.q}"</span>}
             {searchParams.kategori && <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium border border-indigo-100">{searchParams.kategori}</span>}
             {searchParams.tahun   && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-medium">Tahun {searchParams.tahun}</span>}
+            {selectedSatkerName   && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-xs font-medium border border-emerald-100">{selectedSatkerName}</span>}
             {meta && <span className="text-slate-400">— {meta.total} dokumen ditemukan</span>}
           </div>
         )}

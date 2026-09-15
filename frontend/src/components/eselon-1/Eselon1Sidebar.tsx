@@ -12,6 +12,7 @@ import clsx from 'clsx';
 const ketuaMenu = [
   { href: '/eselon-1',                icon: LayoutDashboard, label: 'Dashboard',        exact: true },
   { href: '/eselon-1/dokumen',        icon: FileSearch,      label: 'Monitor Dokumen' },
+  { href: '/eselon-1/kertas-kerja',   icon: FileSearch,      label: 'Kertas Kerja' },
   { href: '/eselon-1/users',          icon: Users,           label: 'Manajemen User' },
   { href: '/eselon-1/logs',           icon: Activity,        label: 'Log Aktivitas' },
   { href: '/eselon-1/kirim-notifikasi', icon: Send,          label: 'Kirim Notifikasi' },

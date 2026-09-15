@@ -3,7 +3,6 @@
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { Mail, ArrowLeft, Loader2, CheckCircle, AlertCircle, KeyRound } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');

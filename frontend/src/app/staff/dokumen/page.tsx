@@ -10,7 +10,7 @@ import {
   RefreshCw, AlertCircle, MessageSquareWarning, Bell, Info, CloudUpload
 } from 'lucide-react';
 import clsx from 'clsx';
-import UploadModal from '@/components/satker/UploadModal';
+import UploadModal from '@/components/Staff/UploadModal';
 import { SearchContext } from '@/context/SearchContext';
 import React from 'react';
 
@@ -36,26 +36,26 @@ const CATATAN_LABEL: Record<string, string> = {
 };
 
 const statusConfig = {
-  draft:                { label: 'Draft',               color: 'bg-gray-100 text-gray-700',     icon: FileText },
-  menunggu_verifikasi:  { label: 'Menunggu Pimpinan',      color: 'bg-indigo-100 text-indigo-700', icon: Clock },
-  lolos_pimpinan:       { label: 'Menunggu Eselon 1',  color: 'bg-blue-100 text-blue-700',     icon: Clock },
-  terverifikasi:        { label: 'Selesai',       color: 'bg-emerald-100 text-emerald-700',   icon: CheckCircle },
-  revisi:               { label: 'Perlu Perbaikan',        color: 'bg-amber-100 text-amber-700', icon: MessageSquareWarning },
-  diarsipkan:           { label: 'Diarsipkan',          color: 'bg-purple-100 text-purple-700', icon: Archive },
+  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-700', icon: FileText },
+  menunggu_verifikasi: { label: 'Menunggu Pimpinan', color: 'bg-indigo-100 text-indigo-700', icon: Clock },
+  lolos_pimpinan: { label: 'Menunggu Eselon 1', color: 'bg-blue-100 text-blue-700', icon: Clock },
+  terverifikasi: { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
+  revisi: { label: 'Perlu Perbaikan', color: 'bg-amber-100 text-amber-700', icon: MessageSquareWarning },
+  diarsipkan: { label: 'Diarsipkan', color: 'bg-purple-100 text-purple-700', icon: Archive },
 };
 
-export default function SatkerDokumenPage() {
+export default function StaffDokumenPage() {
   const { user } = useAuth();
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState('');
-  const [submitting,  setSubmitting]  = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState<number | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialFile, setInitialFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
-  
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchDokumen = useCallback(async () => {
@@ -124,11 +124,11 @@ export default function SatkerDokumenPage() {
   const dokumenRevisi = dokumenList.filter(d => d.status === 'revisi' && d.catatan);
 
   const stats = {
-    total:    dokumenList.length,
-    draft:    dokumenList.filter(d => d.status === 'draft').length,
+    total: dokumenList.length,
+    draft: dokumenList.filter(d => d.status === 'draft').length,
     menunggu: dokumenList.filter(d => d.status === 'menunggu_verifikasi').length,
     verified: dokumenList.filter(d => d.status === 'terverifikasi').length,
-    revisi:   dokumenRevisi.length,
+    revisi: dokumenRevisi.length,
   };
 
   const calculatePercent = (val: number, total: number) => {
@@ -153,7 +153,7 @@ export default function SatkerDokumenPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
         {/* Left Column (Upload & Table) */}
         <div className="xl:col-span-2 space-y-6">
-          
+
           {/* Upload Card */}
           <div className="bg-white/95 backdrop-blur-md shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] rounded-2xl p-6 border border-slate-100">
             <div className="flex justify-between items-start">
@@ -272,7 +272,7 @@ export default function SatkerDokumenPage() {
                           <td className="px-4 py-4 text-right">
                             <div className="flex justify-end gap-2 text-slate-400">
                               {canEdit && (
-                                <Link href={`/satker/dokumen/${dok.id}/edit`} className="hover:text-amber-500 transition-colors" title="Edit/Revisi">
+                                <Link href={`/staff/dokumen/${dok.id}/edit`} className="hover:text-amber-500 transition-colors" title="Edit/Revisi">
                                   <Pencil className="w-5 h-5" />
                                 </Link>
                               )}
@@ -339,7 +339,7 @@ export default function SatkerDokumenPage() {
                   <div className="bg-amber-400 h-2 rounded-full" style={{ width: `${calculatePercent(stats.revisi, stats.total)}%` }}></div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
                   <span className="text-slate-600 font-medium">Menunggu Verifikasi</span>
@@ -378,12 +378,12 @@ export default function SatkerDokumenPage() {
         </div>
       </div>
 
-      <UploadModal 
-        isOpen={isModalOpen} 
+      <UploadModal
+        isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setInitialFile(null);
-        }} 
+        }}
         onSuccess={fetchDokumen}
         initialFile={initialFile}
       />

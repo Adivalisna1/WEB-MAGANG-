@@ -5,15 +5,16 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   FileText, Upload, LayoutDashboard,
-  LogOut, User, ChevronRight, Home, Settings, Bell, FileSpreadsheet
+  LogOut, User, ChevronRight, Home, Settings, Bell, FileSpreadsheet, Calculator
 } from 'lucide-react';
 import clsx from 'clsx';
 
-const SatkerMenu = [
-  { href: '/satker/dokumen',        icon: LayoutDashboard, label: 'Dokumen Saya' },
-  { href: '/satker/dokumen/upload', icon: Upload,          label: 'Upload Dokumen' },
-  { href: '/satker/kertas-kerja',   icon: FileSpreadsheet, label: 'Kertas Kerja' },
-  { href: '/satker/profil',         icon: User,            label: 'Profil' },
+const StaffMenu = [
+  { href: '/staff/dokumen',        icon: LayoutDashboard, label: 'Dokumen Saya' },
+  { href: '/staff/dokumen/upload', icon: Upload,          label: 'Upload Dokumen' },
+  { href: '/staff/kertas-kerja',   icon: FileSpreadsheet, label: 'Kertas Kerja' },
+  { href: '/staff/akuntansi',      icon: Calculator,      label: 'Akuntansi' },
+  { href: '/staff/profil',         icon: User,            label: 'Profil' },
 ];
 
 export default function Sidebar() {
@@ -26,14 +27,14 @@ export default function Sidebar() {
       <div className="h-20 border-b border-[#475569]/30 flex items-center px-6">
         <div className="flex items-center gap-2">
           <FileText className="w-6 h-6 text-indigo-400" />
-          <span className="font-bold text-sm tracking-wide text-white">SATKER DASHBOARD</span>
+          <span className="font-bold text-sm tracking-wide text-white">STAFF DASHBOARD</span>
         </div>
       </div>
 
       {/* Menu */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {SatkerMenu.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || (href !== '/satker/dokumen' && pathname.startsWith(href));
+        {StaffMenu.map(({ href, icon: Icon, label }) => {
+          const active = pathname === href || (href !== '/staff/dokumen' && pathname.startsWith(href));
           return (
             <Link
               key={href}

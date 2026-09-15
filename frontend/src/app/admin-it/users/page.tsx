@@ -17,6 +17,7 @@ const PERMISSION_LIST = [
 export default function UserManagementPage() {
   const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
+  const [satkers, setSatkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form State
@@ -32,19 +33,23 @@ export default function UserManagementPage() {
     username: '',
     email: '',
     password: '',
+    satker_id: '',
     permissions: {} as Record<string, boolean>
   });
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API}/admin-it/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const j = await res.json();
-      if (j.success) setUsers(j.data);
+      const [resUsers, resSatkers] = await Promise.all([
+        fetch(`${API}/admin-it/users`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/satker`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      const [jUsers, jSatkers] = await Promise.all([resUsers.json(), resSatkers.json()]);
+      
+      if (jUsers.success) setUsers(jUsers.data);
+      if (jSatkers.success) setSatkers(jSatkers.data);
     } catch (err) {
       console.error(err);
-      alert('Failed to load users');
+      alert('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -66,7 +71,7 @@ export default function UserManagementPage() {
       if (j.success) {
         alert('User created successfully');
         setShowAddForm(false);
-        setFormData({ role_id: 2, nama: '', username: '', email: '', password: '', permissions: {} });
+        setFormData({ role_id: 2, nama: '', username: '', email: '', password: '', satker_id: '', permissions: {} });
         fetchUsers();
       } else {
         alert(j.message || 'Failed to create user');
@@ -145,7 +150,7 @@ export default function UserManagementPage() {
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { role_id: 2, nama: 'Contoh Satker', username: 'satker01', email: 'satker@example.com', password: 'password123' }
+      { role_id: 2, satker_nama: 'Satker IT', nama: 'Contoh Satker', username: 'satker01', email: 'satker@example.com', password: 'password123' }
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Users");
@@ -213,6 +218,7 @@ export default function UserManagementPage() {
       username: u.username,
       email: u.email,
       password: '',
+      satker_id: u.satker_id || '',
       permissions: parsedPerms
     });
     setShowEditForm(true);
@@ -253,39 +259,66 @@ export default function UserManagementPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
           <select value={formData.role_id} onChange={e => setFormData({...formData, role_id: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
             <option value={1}>Pimpinan</option>
-            <option value={2}>Staff (Satker)</option>
+            <option value={2}>Staff</option>
             <option value={3}>Eselon 1</option>
             <option value={4}>IT Admin</option>
             <option value={5}>Administrasi</option>
           </select>
         </div>
+        {(formData.role_id === 1 || formData.role_id === 2) && (
+          <div className={isEdit ? "md:col-span-2" : ""}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Satker (Grup Divisi)</label>
+            <select value={formData.satker_id} onChange={e => setFormData({...formData, satker_id: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              <option value="">-- Pilih Satker --</option>
+              {satkers.map(s => (
+                <option key={s.id} value={s.id}>{s.nama}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 pt-4 border-t border-gray-200">
         <label className="block text-sm font-bold text-gray-900 mb-3">Hak Akses Spesifik (JSON Permissions)</label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-          {PERMISSION_LIST.map(p => (
-            <label key={p.key} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
-              <input
-                type="checkbox"
-                checked={!!formData.permissions[p.key]}
-                onChange={() => togglePermission(p.key)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-slate-700">{p.label}</span>
-            </label>
-          ))}
-        </div>
-        <div className="mt-3">
-          <p className="text-xs text-gray-500 font-mono bg-gray-100 p-2 rounded">
-            Preview JSON: {JSON.stringify(formData.permissions)}
-          </p>
-        </div>
+        
+        {(formData.role_id === 1 || formData.role_id === 3 || formData.role_id === 4) ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              {PERMISSION_LIST.map(p => (
+                <label key={p.key} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.permissions[p.key]}
+                    onChange={() => togglePermission(p.key)}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700">{p.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 font-mono bg-gray-100 p-2 rounded">
+                Preview JSON: {JSON.stringify(formData.permissions)}
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <p className="text-sm text-slate-500 italic">
+              {formData.role_id === 2 && "Hak akses Staff sudah dikunci oleh sistem (hanya upload dokumen)."}
+              {formData.role_id === 5 && "Hak akses Administrasi sudah dikunci oleh sistem (tambah kategori & kirim notifikasi)."}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
-        <button type="button" onClick={() => isEdit ? setShowEditForm(false) : setShowAddForm(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Batal</button>
-        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">{isEdit ? 'Simpan Perubahan' : 'Buat User'}</button>
+        <button type="button" onClick={() => { setShowAddForm(false); setShowEditForm(false); }} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+          Cancel
+        </button>
+        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm">
+          {isEdit ? 'Save Changes' : 'Create User'}
+        </button>
       </div>
     </form>
   );
@@ -307,7 +340,7 @@ export default function UserManagementPage() {
           </button>
           <button
             onClick={() => {
-              setFormData({ role_id: 2, nama: '', username: '', email: '', password: '', permissions: {} });
+              setFormData({ role_id: 2, nama: '', username: '', email: '', password: '', satker_id: '', permissions: {} });
               setShowAddForm(true);
             }}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
@@ -325,13 +358,16 @@ export default function UserManagementPage() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">User</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Satker</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
               {loading ? (
-                <tr><td colSpan={4} className="p-4 text-center text-gray-500">Loading users...</td></tr>
+                <tr><td colSpan={5} className="p-4 text-center text-gray-500">Loading users...</td></tr>
+              ) : users.length === 0 ? (
+                <tr><td colSpan={5} className="p-4 text-center text-gray-500">Belum ada data user.</td></tr>
               ) : (
                 users.map(u => (
                   <tr key={u.id} className="hover:bg-gray-50/50">
@@ -347,8 +383,13 @@ export default function UserManagementPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-md">
-                        {u.role === 'satker' ? 'Staff' : u.role}
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {u.role?.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600">
+                        {u.satker || '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3">

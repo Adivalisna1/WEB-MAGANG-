@@ -6,7 +6,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { logout, clearSession, getSession } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
-import SatkerSidebar from '@/components/satker/SatkerSidebar';
+import StaffSidebar from '@/components/Staff/StaffSidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
 import { Loader2, Search, X, FileText, ChevronRight } from 'lucide-react';
@@ -14,7 +14,7 @@ import { SearchContext } from '@/context/SearchContext';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-export default function SatkerLayout({ children }: { children: React.ReactNode }) {
+export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const { loading } = useRequireAuth('satker');
   const { user } = useAuth();
   const router = useRouter();
@@ -41,8 +41,8 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
         const d = await res.json();
         const list = d.data || [];
         const q = val.toLowerCase();
-        const filtered = list.filter((dok: any) => 
-          (dok.judul || '').toLowerCase().includes(q) || 
+        const filtered = list.filter((dok: any) =>
+          (dok.judul || '').toLowerCase().includes(q) ||
           (dok.kategori || '').toLowerCase().includes(q)
         ).slice(0, 5); // Ambil 5 teratas
         setSearchResults(filtered);
@@ -80,7 +80,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden">
-      <SatkerSidebar />
+      <StaffSidebar />
       <div className="flex-1 flex flex-col h-screen relative">
         <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-8 z-20 sticky top-0 w-full">
           {/* Search Bar */}
@@ -110,7 +110,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
                   <span>Hasil Pencarian Cepat</span>
                   {isSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />}
                 </div>
-                
+
                 {searchResults.length > 0 ? (
                   <ul className="max-h-80 overflow-y-auto">
                     {searchResults.map((res: any) => (
@@ -152,14 +152,14 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
 
           <div className="flex items-center gap-6 ml-auto">
             <div className="text-right flex items-center gap-2">
-              <span className="font-bold text-slate-800 tracking-tight hidden lg:inline">Satker Dashboard</span>
+              <span className="font-bold text-slate-800 tracking-tight hidden lg:inline">Staff Dashboard</span>
               <span className="text-slate-300 hidden lg:inline">|</span>
-              <span className="text-slate-600 font-medium">Selamat Datang, {user?.nama || 'Satker'}</span>
+              <span className="text-slate-600 font-medium">Selamat Datang, {user?.nama || 'Staff'}</span>
             </div>
             <NotificationBell />
           </div>
         </header>
-        
+
         <main className="flex-1 overflow-y-auto p-8" id="main-content">
           <SearchContext.Provider value={searchTerm}>
             <div className="animate-fade-in h-full">

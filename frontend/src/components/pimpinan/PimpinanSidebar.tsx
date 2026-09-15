@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileCheck, Users,
-  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, User, FileSpreadsheet
+  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, User, FileSpreadsheet, Calculator
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -13,6 +13,7 @@ const PimpinanMenu = [
   { href: '/pimpinan',              icon: LayoutDashboard, label: 'Dashboard',          exact: true },
   { href: '/pimpinan/dokumen',      icon: FileCheck,       label: 'Verifikasi Dokumen' },
   { href: '/pimpinan/kertas-kerja', icon: FileSpreadsheet,  label: 'Kertas Kerja' },
+  { href: '/pimpinan/akuntansi',    icon: Calculator,      label: 'Akuntansi' },
   { href: '/pimpinan/users',        icon: Users,           label: 'Manajemen User' },
   { href: '/pimpinan/logs',         icon: Activity,        label: 'Log Aktivitas' },
   { href: '/pimpinan/profil',       icon: User,            label: 'Profil' },

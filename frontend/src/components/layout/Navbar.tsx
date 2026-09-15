@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Menu, X, LayoutDashboard, LogOut, ChevronDown } from 'lucide-react';
+import { FileText, Menu, X, LayoutDashboard, LogOut, ChevronDown, Search } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function Navbar() {
   const [open,        setOpen]        = useState(false);
@@ -12,6 +13,35 @@ export default function Navbar() {
   const { user, logoutFn } = useAuth();
   const pathname  = usePathname();
   const dropRef   = useRef<HTMLDivElement>(null);
+  const router    = useRouter();
+  const searchParams = useSearchParams();
+
+  // Search State
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Sync state with URL params
+  useEffect(() => {
+    setSearchTerm(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  // Live Search Effect
+  useEffect(() => {
+    if (mounted && pathname === '/laporan') {
+      const params = new URLSearchParams(searchParams.toString());
+      if (debouncedSearchTerm) {
+        params.set('q', debouncedSearchTerm);
+      } else {
+        params.delete('q');
+      }
+      router.push(`${pathname}?${params.toString()}`);
+    }
+  }, [debouncedSearchTerm]);
 
   // Tutup dropdown kalau klik di luar
   useEffect(() => {
@@ -25,14 +55,14 @@ export default function Navbar() {
   }, []);
 
   // Sembunyikan navbar publik di halaman dashboard (Satker/pimpinan/eselon-1)
-  const isDashboard = pathname.startsWith('/satker') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1');
+  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1');
   if (isDashboard) return null;
 
   const dashboardHref = user?.role === 'pimpinan'
     ? '/pimpinan'
     : user?.role === 'eselon_1'
       ? '/eselon-1'
-      : '/satker/dokumen';
+      : '/staff/dokumen';
 
   // Format role untuk tampilan: ketua_tim → Eselon 1
   const roleLabels: Record<string, string> = {
@@ -47,15 +77,30 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/laporan" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity">
             <FileText className="w-6 h-6 text-blue-300" />
-            <span>Dashboard Laporan</span>
+            <span className="hidden sm:inline">Dashboard Laporan</span>
           </Link>
+
+          {/* Search Bar - Desktop & Tablet */}
+          {pathname === '/laporan' && (
+            <div className="relative mx-4 flex-1 max-w-lg hidden sm:block">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-primary-200" />
+              </div>
+              <input
+                type="text"
+                placeholder="Live Search: Cari judul atau kode laporan..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-primary-600 rounded-lg leading-5 bg-primary-900/40 text-white placeholder-primary-200 focus:outline-none focus:bg-white focus:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+              />
+            </div>
+          )}
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-4 text-sm font-medium">
             <Link href="/" className="hover:text-blue-200 transition-colors px-2 py-1">Dashboard Publik</Link>
 
-            {/* Dark Mode Toggle */}
-            <DarkModeToggle />
+
 
             {user ? (
               /* Sudah login — tampilkan nama + dropdown */
@@ -108,7 +153,7 @@ export default function Navbar() {
 
           {/* Mobile Actions */}
           <div className="flex md:hidden items-center gap-2">
-            <DarkModeToggle />
+
             <button
               className="p-2 rounded-md hover:bg-primary-700:bg-slate-800 transition-colors"
               onClick={() => setOpen(!open)}
@@ -122,6 +167,22 @@ export default function Navbar() {
         {/* Mobile Nav */}
         {open && (
           <nav className="md:hidden pb-4 flex flex-col gap-2 text-sm font-medium border-t border-primary-700/50 pt-3 animate-in fade-in duration-150">
+            {/* Mobile Search Bar */}
+            {pathname === '/laporan' && (
+              <div className="relative mb-2">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-primary-200" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Cari laporan..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-primary-600 rounded-lg leading-5 bg-primary-900/40 text-white placeholder-primary-200 focus:outline-none focus:bg-white focus:text-gray-900 focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+            )}
+            
             <Link href="/" className="hover:text-blue-200 py-1" onClick={() => setOpen(false)}>Dashboard Publik</Link>
 
             {user ? (
