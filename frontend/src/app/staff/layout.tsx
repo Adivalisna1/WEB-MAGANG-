@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import StaffSidebar from '@/components/Staff/StaffSidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
-import { Loader2, Search, X, FileText, ChevronRight } from 'lucide-react';
+import { Loader2, Search, X, FileText, ChevronRight, Menu } from 'lucide-react';
 import { SearchContext } from '@/context/SearchContext';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -23,6 +23,8 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Quick fetch for search dropdown
   const handleSearchChange = async (val: string) => {
@@ -79,12 +81,25 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden">
-      <StaffSidebar />
-      <div className="flex-1 flex flex-col h-screen relative">
-        <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-8 z-20 sticky top-0 w-full">
-          {/* Search Bar */}
-          <div className="relative w-96 hidden md:block group">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative">
+      <StaffSidebar 
+        isMobileOpen={isMobileOpen} 
+        setIsMobileOpen={setIsMobileOpen} 
+        isCollapsed={isCollapsed} 
+        setIsCollapsed={setIsCollapsed} 
+      />
+      <div className="flex-1 flex flex-col h-screen relative min-w-0">
+        <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-4 md:px-8 z-20 sticky top-0 w-full">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileOpen(true)}
+              className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            
+            {/* Search Bar */}
+            <div className="relative w-full max-w-[200px] md:max-w-none md:w-96 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
             </div>
@@ -148,6 +163,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
                 )}
               </div>
             )}
+          </div>
           </div>
 
           <div className="flex items-center gap-6 ml-auto">

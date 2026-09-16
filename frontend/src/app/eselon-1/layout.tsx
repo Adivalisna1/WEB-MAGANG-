@@ -8,12 +8,14 @@ import { logout, clearSession } from '@/lib/auth';
 import Eselon1Sidebar from '@/components/eselon-1/Eselon1Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 
 export default function KetuaLayout({ children }: { children: React.ReactNode }) {
   const { loading } = useRequireAuth('eselon_1');
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleLogout = useCallback(async () => {
     const token = localStorage.getItem('token') || '';
@@ -40,10 +42,23 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Eselon1Sidebar />
+    <div className="flex min-h-screen bg-gray-100 relative">
+      <Eselon1Sidebar 
+        isMobileOpen={isMobileOpen} 
+        setIsMobileOpen={setIsMobileOpen} 
+        isCollapsed={isCollapsed} 
+        setIsCollapsed={setIsCollapsed} 
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-end gap-3 px-6 py-3 bg-white border-b border-gray-200">
+        <header className="flex items-center justify-between md:justify-end gap-3 px-4 md:px-6 py-3 bg-white border-b border-gray-200">
+          <div className="flex items-center md:hidden">
+            <button 
+              onClick={() => setIsMobileOpen(true)}
+              className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
           <NotificationBell />
         </header>
         <main className="flex-1 p-6 overflow-auto">

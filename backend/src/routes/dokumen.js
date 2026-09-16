@@ -20,7 +20,7 @@ router.post('/bot-upload',
 
 // ── Staff & Admin (perlu login) — harus sebelum /:id ─────────
 router.get('/all',
-  authenticate, authorize('pimpinan', 'staff', 'eselon_1'),
+  authenticate, authorize('pimpinan', 'staff', 'eselon_1', 'administrasi', 'admin_it'),
   ctrl.getAllDokumen
 );
 

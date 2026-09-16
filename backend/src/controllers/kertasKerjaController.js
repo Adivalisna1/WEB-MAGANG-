@@ -22,6 +22,25 @@ async function initKertasKerjaTable() {
   `;
   try {
     await pool.query(query);
+    console.log('Tabel kertas_kerja sudah dipastikan ada.');
+
+    // Patch kolom-kolom baru jika belum ada (Abaikan error jika kolom sudah ada)
+    const patchQueries = [
+      "ALTER TABLE kertas_kerja ADD COLUMN no_rek VARCHAR(100) NULL AFTER kategori;",
+      "ALTER TABLE kertas_kerja ADD COLUMN judul_laporan VARCHAR(255) NULL AFTER no_rek;",
+      "ALTER TABLE kertas_kerja ADD COLUMN akun VARCHAR(255) NULL AFTER judul_laporan;"
+    ];
+
+    for (const pq of patchQueries) {
+      try {
+        await pool.query(pq);
+      } catch (e) {
+        // Abaikan jika error ER_DUP_FIELDNAME (Kolom sudah ada)
+        if (e.code !== 'ER_DUP_FIELDNAME') {
+          console.error(`Error saat menambah kolom (Query: ${pq}):`, e);
+        }
+      }
+    }
   } catch (err) {
     console.error('Error init kertas_kerja table:', err);
   }
