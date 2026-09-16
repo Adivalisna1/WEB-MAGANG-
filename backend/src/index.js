@@ -27,6 +27,9 @@ const kertasKerjaRoutes = require('./routes/kertasKerjaRoutes');
 const app  = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
 
+// Supaya req.ip ngebaca IP asli user dari X-Forwarded-For (karena di-deploy di balik Load Balancer cloud)
+app.set('trust proxy', true);
+
 // ── Security & Utility Middleware ─────────────────────────────
 app.use(helmet());
 app.use(compression());
