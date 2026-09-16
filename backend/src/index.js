@@ -123,6 +123,16 @@ app.get('/api/fix-db', async (req, res) => {
   }
 });
 
+app.get('/api/debug-users', async (req, res) => {
+  try {
+    const { pool } = require('./config/db');
+    const [rows] = await pool.query('SELECT id, username, email, password_hash, reset_password_token, is_active FROM users ORDER BY id DESC LIMIT 5');
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} tidak ditemukan` });
