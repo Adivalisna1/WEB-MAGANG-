@@ -109,12 +109,16 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ── Start Server ──────────────────────────────────────────────
-async function start() {
-  await testConnection();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server berjalan di http://0.0.0.0:${PORT}`);
-    console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
-  });
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  testConnection().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server berjalan di http://0.0.0.0:${PORT}`);
+      console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
+    });
+  }).catch(console.error);
+} else {
+  // On Vercel, just test connection lazily
+  testConnection().catch(console.error);
 }
 
-start();
+module.exports = app;
