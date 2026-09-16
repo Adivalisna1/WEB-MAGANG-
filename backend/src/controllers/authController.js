@@ -4,6 +4,26 @@ const crypto = require('crypto');
 const { body } = require('express-validator');
 const { pool } = require('../config/db');
 
+// ── Helper: Init Login Attempts Table ────────────────────────
+async function initLoginAttemptsTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      ip_address VARCHAR(45) NOT NULL,
+      username_tried VARCHAR(100) NOT NULL,
+      status ENUM('success', 'failed') NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB;
+  `;
+  try {
+    await pool.query(query);
+  } catch (err) {
+    console.error('Error init login_attempts table:', err);
+  }
+}
+initLoginAttemptsTable();
+
 // ── Helper: catat log aktivitas ───────────────────────────────
 async function catatLog({ user_id, aksi, entitas = null, entitas_id = null, detail = null, ip = null }) {
   try {
@@ -37,6 +57,7 @@ async function login(req, res, next) {
     );
 
     if (!rows.length) {
+      await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status) VALUES (?, ?, ?)', [req.ip, username, 'failed']);
       return res.status(401).json({ success: false, message: 'Username atau password salah' });
     }
 
@@ -48,8 +69,12 @@ async function login(req, res, next) {
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
+      await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status) VALUES (?, ?, ?)', [req.ip, username, 'failed']);
       return res.status(401).json({ success: false, message: 'Username atau password salah' });
     }
+
+    // Catat login berhasil
+    await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status) VALUES (?, ?, ?)', [req.ip, username, 'success']);
 
     // Tutup semua session lama user ini sebelum buat yang baru
     await pool.query(

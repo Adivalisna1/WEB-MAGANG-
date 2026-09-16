@@ -15,7 +15,8 @@ export default function AdminITDashboard() {
     onlineNow: 0,
     cpuUsage: 0,
     memoryUsage: 0,
-    dbStorage: 0
+    dbStorage: 0,
+    failedLogins: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -131,7 +132,7 @@ export default function AdminITDashboard() {
                   <p className="text-xs text-gray-500">Last 24 hours</p>
                 </div>
               </div>
-              <span className="text-sm font-semibold text-gray-900">12</span>
+              <span className="text-sm font-semibold text-gray-900">{stats.failedLogins}</span>
             </div>
           </div>
         </div>

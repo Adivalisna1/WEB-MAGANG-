@@ -28,13 +28,24 @@ async function getStats(req, res, next) {
     if (dbStorage > 100) dbStorage = 100;
     if (!dbStorage) dbStorage = 1; // Fallback if 0
 
+    // Security Metrics
+    // Tries to query login_attempts if exists (catch error if table isn't created yet)
+    let failedLogins = 0;
+    try {
+      const [[{ count }]] = await pool.query(`SELECT COUNT(*) AS count FROM login_attempts WHERE status = 'failed' AND created_at >= NOW() - INTERVAL 1 DAY`);
+      failedLogins = count;
+    } catch (e) {
+      // ignore
+    }
+
     return res.json({
       success: true,
       data: { 
         totalUsers, totalDokumen, totalKategori, onlineNow,
         cpuUsage: Math.round(cpuUsage),
         memoryUsage: Math.round(memoryUsage),
-        dbStorage: Math.round(dbStorage)
+        dbStorage: Math.round(dbStorage),
+        failedLogins
       }
     });
   } catch (err) { next(err); }
