@@ -100,6 +100,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/debug-env', (req, res) => {
+  res.json({
+    hasJwtSecret: !!process.env.JWT_SECRET,
+    hasDbUrl: !!process.env.DATABASE_URL,
+    secretLength: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0,
+    dbUrlLength: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0
+  });
+});
+
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} tidak ditemukan` });
