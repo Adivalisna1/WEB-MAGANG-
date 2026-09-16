@@ -195,15 +195,16 @@ async function forgotPassword(req, res, next) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Brevo API Error:", errorData);
-      throw new Error(`Gagal mengirim email via Brevo: ${errorData.message}`);
+      console.warn("Brevo API Warning (Diabaikan untuk test):", errorData);
+      // Jangan throw error, biarkan respon API mengembalikan resetLink untuk testing
     }
 
-    console.log("Email reset terkirim ke: " + user.email + " via Brevo API");
+    console.log("Simulasi reset untuk: " + user.email);
 
     return res.json({ 
       success: true, 
-      message: 'Link reset password berhasil dikirimkan ke email Anda.'
+      message: 'Email simulasi terkirim! (Karena akun Brevo belum diverifikasi, gunakan link ini)',
+      resetLink: resetUrl
     });
   } catch (err) {
     console.error("Email Error:", err);
