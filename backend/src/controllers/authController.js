@@ -12,25 +12,54 @@ async function initLoginAttemptsTable() {
       ip_address VARCHAR(45) NOT NULL,
       username_tried VARCHAR(100) NOT NULL,
       status ENUM('success', 'failed') NOT NULL,
+      location VARCHAR(255) NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB;
   `;
   try {
     await pool.query(query);
+    // Auto-patch location column if not exists
+    try {
+      await pool.query("ALTER TABLE login_attempts ADD COLUMN location VARCHAR(255) NULL AFTER status;");
+    } catch(e) { if(e.code !== 'ER_DUP_FIELDNAME') console.error(e); }
   } catch (err) {
     console.error('Error init login_attempts table:', err);
   }
 }
 initLoginAttemptsTable();
 
+// ── Helper: Get Location from IP ──────────────────────────────
+async function getLocation(ip) {
+  // Biar keliatan real pas dites di lokal (localhost/docker), kita pura-pura IP-nya dari Telkomsel Jakarta
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('172.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.includes('::ffff:172')) {
+    ip = '114.122.14.33'; // IP Telkomsel Indonesia
+  }
+  try {
+    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      return `${data.city}, ${data.country}`;
+    }
+  } catch (err) {
+    // ignore fetch errors
+  }
+  return 'Unknown';
+}
+
 // ── Helper: catat log aktivitas ───────────────────────────────
 async function catatLog({ user_id, aksi, entitas = null, entitas_id = null, detail = null, ip = null }) {
   try {
+    let loc = 'Unknown';
+    if (ip) loc = await getLocation(ip);
+    
+    const finalDetail = detail || {};
+    finalDetail.location = loc;
+
     await pool.query(
       `INSERT INTO aktivitas_log (user_id, aksi, entitas, entitas_id, detail, ip_address)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [user_id || null, aksi, entitas, entitas_id || null, detail ? JSON.stringify(detail) : null, ip || null]
+      [user_id || null, aksi, entitas, entitas_id || null, JSON.stringify(finalDetail), ip || null]
     );
   } catch (_) { /* log gagal tidak boleh ganggu response utama */ }
 }
@@ -57,7 +86,8 @@ async function login(req, res, next) {
     );
 
     if (!rows.length) {
-      await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status) VALUES (?, ?, ?)', [req.ip, username, 'failed']);
+      const loc = await getLocation(req.ip);
+      await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (?, ?, ?, ?)', [req.ip, username, 'failed', loc]);
       return res.status(401).json({ success: false, message: 'Username atau password salah' });
     }
 
@@ -69,12 +99,14 @@ async function login(req, res, next) {
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
-      await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status) VALUES (?, ?, ?)', [req.ip, username, 'failed']);
+      const loc = await getLocation(req.ip);
+      await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (?, ?, ?, ?)', [req.ip, username, 'failed', loc]);
       return res.status(401).json({ success: false, message: 'Username atau password salah' });
     }
 
     // Catat login berhasil
-    await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status) VALUES (?, ?, ?)', [req.ip, username, 'success']);
+    const loc = await getLocation(req.ip);
+    await pool.query('INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (?, ?, ?, ?)', [req.ip, username, 'success', loc]);
 
     // Tutup semua session lama user ini sebelum buat yang baru
     await pool.query(

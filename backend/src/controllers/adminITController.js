@@ -293,7 +293,15 @@ async function getLogs(req, res, next) {
       `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username
        FROM aktivitas_log l
        LEFT JOIN users u ON u.id = l.user_id
-       ORDER BY l.created_at DESC LIMIT 500`
+       
+       UNION ALL
+       
+       SELECT id, 'login_failed' AS aksi, 'system' AS entitas, NULL AS entitas_id, 
+              JSON_OBJECT('username_tried', username_tried, 'location', COALESCE(location, 'Unknown')) AS detail, ip_address AS ip, created_at, 'System' AS user_nama, username_tried AS username
+       FROM login_attempts
+       WHERE status = 'failed'
+       
+       ORDER BY created_at DESC LIMIT 500`
     );
     return res.json({ success: true, data: rows });
   } catch (err) { next(err); }

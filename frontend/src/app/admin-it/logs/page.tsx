@@ -25,6 +25,7 @@ export default function LogsPage() {
   const getAksiIcon = (aksi: string) => {
     switch(aksi) {
       case 'login': return <LogIn className="w-4 h-4 text-emerald-500" />;
+      case 'login_failed': return <ShieldAlert className="w-4 h-4 text-red-500" />;
       case 'logout': return <LogOut className="w-4 h-4 text-gray-500" />;
       case 'buat_dokumen':
       case 'edit_dokumen':
@@ -32,6 +33,25 @@ export default function LogsPage() {
       case 'approve_dokumen':
       case 'reject_dokumen': return <ShieldAlert className="w-4 h-4 text-amber-500" />;
       default: return <Activity className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const renderDetails = (detail: any) => {
+    if (!detail) return '-';
+    try {
+      const obj = typeof detail === 'string' ? JSON.parse(detail) : detail;
+      return (
+        <div className="flex flex-col gap-1">
+          {Object.entries(obj).map(([k, v]) => (
+            <div key={k} className="flex text-xs">
+              <span className="font-semibold text-gray-700 w-28 shrink-0 capitalize">{k.replace(/_/g, ' ')}:</span>
+              <span className="text-gray-600 truncate" title={String(v)}>{String(v)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    } catch(e) {
+      return String(detail);
     }
   };
 
@@ -86,8 +106,8 @@ export default function LogsPage() {
                       <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{log.entitas || '-'} {log.entitas_id ? `#${log.entitas_id}` : ''}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{log.ip || '-'}</td>
-                    <td className="px-4 py-3 text-gray-500 max-w-xs truncate" title={log.detail ? JSON.stringify(log.detail) : '-'}>
-                      {log.detail ? JSON.stringify(log.detail) : '-'}
+                    <td className="px-4 py-3 text-gray-500">
+                      {renderDetails(log.detail)}
                     </td>
                   </tr>
                 ))
