@@ -84,12 +84,12 @@ async function getKertasKerja(req, res, next) {
 // ── POST /api/kertas-kerja/bulk ──────────────────────────────────
 async function bulkInsertKertasKerja(req, res, next) {
   try {
-    const { data } = req.body;
+    const { data, satker_id: payloadSatkerId } = req.body;
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({ success: false, message: 'Data excel kosong atau tidak valid' });
     }
 
-    const satkerId = req.user.satker_id || null;
+    const satkerId = payloadSatkerId || req.user.satker_id || null;
     const uploadedBy = req.user.id;
     const values = [];
 
