@@ -1,31 +1,41 @@
 -- ============================================================
--- SEED DATA untuk Railway MySQL
--- Paste file ini SETELAH railway_01_schema.sql berhasil dijalankan
+-- SEED DATA: Roles, Admin, User, Kategori Dokumen
+-- File ini auto-run saat container MySQL pertama kali dibuat
 -- ============================================================
 
-INSERT INTO roles (id, nama, deskripsi) VALUES
-(1, 'pimpinan', 'Pimpinan — setara Admin: monitoring seluruh sistem dan hak akses penuh'),
-(2, 'satker', 'Satker — setara Staff: upload, edit, dan mengelola dokumen'),
-(3, 'eselon_1', 'Eselon 1 — setara Ketua Tim: persetujuan akhir dokumen dan manajemen tingkat atas');
+USE web_laporan;
 
--- Password untuk masing-masing user dibuat berbeda dan kuat untuk production
+-- ============================================================
+-- ROLES
+-- ============================================================
+INSERT INTO roles (id, nama, deskripsi) VALUES
+(1, 'pimpinan',     'Administrator — penyaring pertama verifikasi, monitoring user realtime'),
+(2, 'staff',     'Staff/User — upload, edit, dan submit dokumen untuk diverifikasi'),
+(3, 'eselon_1', 'Ketua Tim — persetujuan final dokumen, manajemen user, dan reset password'),
+(4, 'admin_it', 'IT Administrator (Ahli Komputer)'),
+(5, 'administrasi', 'Staf Administrasi / Pengelola Master Data');
+
+-- ============================================================
+-- USERS DEFAULT
+-- Password lokal bervariasi — ganti setelah pertama login!
+-- ============================================================
 INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VALUES
 (
     1,
     'Pimpinan',
-    'pimpinan1',
-    'pimpinan1@weblaporan.local',
+    'pimpinan',
+    'admin@weblaporan.local',
     -- hash dari: Pimpinan@123
-    '$2b$12$.qBWwIa/LiILZ1nPCroZVOrC3WX3M3wb6eJ1bJ.4LDCUSqiIUWsKO',
+    '$2b$12$zn1vFsic/4tKcr.SJNYl3uX/N33kUlK3118WZDJV/1h9x0RiRQzjy',
     1
 ),
 (
     2,
-    'Satuan Kerja Perencanaan',
-    'satker01',
-    'satker01@weblaporan.local',
+    'Staff User',
+    'staff',
+    'staff@weblaporan.local',
     -- hash dari: Satker@123
-    '$2b$12$CQoe0Wpizb9HetBH3bVuauP4jX3.I86rlzojhd2Kugv6VADwqNtRS',
+    '$2b$12$NjNJ/jdaS6bJWi1QgjbVW.3714Znm8nG2XlgfGEge1Pg92cFM2TVG',
     1
 ),
 (
@@ -33,14 +43,40 @@ INSERT INTO users (role_id, nama, username, email, password_hash, is_active) VAL
     'Pejabat Eselon 1',
     'eselon1',
     'eselon1@weblaporan.local',
-    -- hash dari: Eselon@123
-    '$2b$12$4JnfZP7OR2a29sVgtDg9C.cPWd/q33Q8lFbYDzcglN2D1yQNutoty',
+    -- hash dari: eselon@123
+    '$2b$12$ro5p.kDFNQsv4Z1RfXR2aO5qjn4sBoE3lTUwY00U7O.18uu0exJYK',
+    1
+),
+(
+    4,
+    'IT Administrator',
+    'it_admin',
+    'itadmin@weblaporan.local',
+    -- hash dari: adminIT123
+    '$2b$12$sKToS/npmdTRVYXRGAcGBuW4PqPGYDEwvBZtB2jxM.uKey.xCebX6',
+    1
+),
+(
+    5,
+    'Staf Administrasi',
+    'administrasi',
+    'admin.data@weblaporan.local',
+    -- hash dari: Admin@123
+    '$2b$10$SuG04fQkJAiV74yQwg7vLeEHeocQvq.0ZHDwFAE2nUGqHTcM8rM9O', 
     1
 );
 
-INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan) VALUES
-('Rekening_koran ',    'Rekening koran',    'Rekening koran satker',               1),
-('Lainnya',  'lainnya',  'Dokumen perencanaan lainnya',                       99);
+-- ============================================================
+-- KATEGORI DOKUMEN
+-- Sesuai jenis laporan umum instansi pemerintah
+-- ============================================================
+INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, perlu_nominal) VALUES
+('Rekening_koran',   'Rekening_koran',   'Rekening koran satker',               1, 1),
+('Lainnya',  'lainnya', 'Dokumen perencanaan lainnya',                       99, 0);
 
+-- ============================================================
+-- LOG AWAL
+-- ============================================================
 INSERT INTO aktivitas_log (user_id, aksi, entitas, detail) VALUES
-(1, 'system_init', 'system', JSON_OBJECT('pesan', 'Database Railway berhasil diinisialisasi'));
+(1, 'system_init', 'system', JSON_OBJECT('pesan', 'Database berhasil diinisialisasi'));
+

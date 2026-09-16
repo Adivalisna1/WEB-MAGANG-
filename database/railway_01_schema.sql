@@ -1,9 +1,18 @@
 -- ============================================================
--- SCHEMA untuk Railway MySQL
--- Paste file ini di Railway → MySQL → tab Data
--- JANGAN ubah apapun, langsung paste dan Run
+-- DATABASE: web_laporan
+-- Sistem: Dashboard Laporan Publik
 -- ============================================================
 
+CREATE DATABASE IF NOT EXISTS web_laporan
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE web_laporan;
+
+-- ============================================================
+-- TABLE: roles
+-- Role: admin, staff, ketua_tim (lihat 02_seed.sql)
+-- ============================================================
 CREATE TABLE IF NOT EXISTS roles (
     id          TINYINT UNSIGNED    NOT NULL AUTO_INCREMENT,
     nama        VARCHAR(50)         NOT NULL UNIQUE,
@@ -12,18 +21,34 @@ CREATE TABLE IF NOT EXISTS roles (
     PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 
+-- ============================================================
+-- TABLE: satkers
+-- Mengelompokkan users ke dalam Satuan Kerja (Divisi)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS satkers (
+    id          INT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    nama        VARCHAR(255)        NOT NULL UNIQUE,
+    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- TABLE: users
+-- Menyimpan data admin dan staff/user
+-- ============================================================
 CREATE TABLE IF NOT EXISTS users (
     id              INT UNSIGNED        NOT NULL AUTO_INCREMENT,
     role_id         TINYINT UNSIGNED    NOT NULL,
+    satker_id       INT UNSIGNED        NULL,
     nama            VARCHAR(100)        NOT NULL,
     username        VARCHAR(50)         NOT NULL UNIQUE,
     email           VARCHAR(150)        NOT NULL UNIQUE,
-    password_hash   VARCHAR(255)        NOT NULL,
-    foto_profil     VARCHAR(255)        NULL,
-    is_active       TINYINT(1)          NOT NULL DEFAULT 1,
-    permissions     JSON                NULL DEFAULT NULL,
-    last_login TIMESTAMP NULL DEFAULT NULL,
-    password_reset_at TIMESTAMP NULL DEFAULT NULL,
+    password_hash   VARCHAR(255)        NOT NULL,           -- bcrypt hash
+    foto_profil     VARCHAR(255)        NULL,               -- path foto
+    is_active       TINYINT(1)          NOT NULL DEFAULT 1, -- 1=aktif, 0=nonaktif
+    permissions     JSON                NULL DEFAULT NULL,  -- hak akses granular
+    last_login      TIMESTAMP           NULL,
+    password_reset_at TIMESTAMP         NULL,               -- kapan password terakhir direset oleh ketua tim
     created_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -36,10 +61,14 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_users_username (username)
 ) ENGINE=InnoDB;
 
+-- ============================================================
+-- TABLE: user_sessions
+-- Tracking session aktif untuk monitoring realtime admin
+-- ============================================================
 CREATE TABLE IF NOT EXISTS user_sessions (
-    id              VARCHAR(128)        NOT NULL,
+    id              VARCHAR(128)        NOT NULL,           -- session/token ID
     user_id         INT UNSIGNED        NOT NULL,
-    ip_address      VARCHAR(45)         NULL,
+    ip_address      VARCHAR(45)         NULL,               -- support IPv6
     user_agent      TEXT                NULL,
     is_online       TINYINT(1)          NOT NULL DEFAULT 1,
     login_at        TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -52,32 +81,43 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX idx_sessions_online (is_online)
 ) ENGINE=InnoDB;
 
+-- ============================================================
+-- TABLE: kategori_dokumen
+-- Kategori laporan (LKjIP, Renstra, Renja, dll)
+-- ============================================================
 CREATE TABLE IF NOT EXISTS kategori_dokumen (
     id          SMALLINT UNSIGNED   NOT NULL AUTO_INCREMENT,
     nama        VARCHAR(100)        NOT NULL UNIQUE,
-    slug        VARCHAR(100)        NOT NULL UNIQUE,
+    slug        VARCHAR(100)        NOT NULL UNIQUE,        -- url-friendly
     deskripsi   TEXT                NULL,
-    urutan      TINYINT UNSIGNED    NOT NULL DEFAULT 0,
+    urutan      TINYINT UNSIGNED    NOT NULL DEFAULT 0,     -- urutan tampil
     is_active   TINYINT(1)          NOT NULL DEFAULT 1,
+    perlu_nominal TINYINT(1)        NOT NULL DEFAULT 0,
     created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX idx_kategori_slug (slug)
 ) ENGINE=InnoDB;
 
+-- ============================================================
+-- TABLE: dokumen
+-- Data utama laporan yang diupload
+-- ============================================================
 CREATE TABLE IF NOT EXISTS dokumen (
     id              INT UNSIGNED        NOT NULL AUTO_INCREMENT,
     kategori_id     SMALLINT UNSIGNED   NOT NULL,
-    uploaded_by     INT UNSIGNED        NOT NULL,
+    uploaded_by     INT UNSIGNED        NOT NULL,           -- FK ke users
     judul           VARCHAR(255)        NOT NULL,
     deskripsi       TEXT                NULL,
     tahun           YEAR                NOT NULL,
-    bulan           TINYINT UNSIGNED    NULL COMMENT '1=Jan, 12=Des — opsional',
+    bulan           TINYINT UNSIGNED    NULL CHECK (bulan BETWEEN 1 AND 12),  -- 1=Jan..12=Des, NULL=dokumen tahunan
     semester        TINYINT UNSIGNED    NULL COMMENT '1=Semester 1 (Jan-Jun), 2=Semester 2 (Jul-Des)',
     nomor_laporan   VARCHAR(50)         NULL UNIQUE COMMENT 'Kode tracking, contoh: LKJIP/2024/001',
-    file_nama       VARCHAR(255)        NOT NULL,
-    file_path       VARCHAR(500)        NOT NULL,
-    file_size       INT UNSIGNED        NULL,
-    file_mime       VARCHAR(100)        NULL,
+    file_nama       VARCHAR(255)        NOT NULL,           -- nama file asli
+    file_path       VARCHAR(500)        NOT NULL,           -- path di storage
+    file_size       INT UNSIGNED        NULL,               -- ukuran dalam bytes
+    file_mime       VARCHAR(100)        NULL,               -- application/pdf, dll
+    nilai_rekening_koran DECIMAL(15,2)  NULL DEFAULT NULL,  -- nilai rekening koran
+    nilai_excel     DECIMAL(15,2)       NULL DEFAULT NULL,  -- nilai hasil ekstraksi excel
     status          ENUM(
                         'draft',
                         'menunggu_verifikasi',
@@ -86,12 +126,12 @@ CREATE TABLE IF NOT EXISTS dokumen (
                         'revisi',
                         'diarsipkan'
                     )                   NOT NULL DEFAULT 'draft',
-    catatan         TEXT                NULL,
+    catatan         TEXT                NULL,               -- catatan reviewer terakhir (admin/ketua tim)
     catatan_oleh    VARCHAR(20)         NULL COMMENT 'admin atau ketua_tim',
-    verified_by     INT UNSIGNED        NULL,
-    verified_at TIMESTAMP NULL DEFAULT NULL,
+    verified_by     INT UNSIGNED        NULL,               -- FK ke users (admin/verifikator)
+    verified_at     TIMESTAMP           NULL,
     download_count  INT UNSIGNED        NOT NULL DEFAULT 0,
-    is_public       TINYINT(1)          NOT NULL DEFAULT 0,
+    is_public       TINYINT(1)          NOT NULL DEFAULT 0, -- 1 = tampil di dashboard publik
     created_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -103,17 +143,22 @@ CREATE TABLE IF NOT EXISTS dokumen (
         REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_dokumen_status (status),
     INDEX idx_dokumen_tahun (tahun),
+    INDEX idx_dokumen_bulan (bulan),
     INDEX idx_dokumen_publik (is_public, status),
     INDEX idx_dokumen_kategori (kategori_id)
 ) ENGINE=InnoDB;
 
+-- ============================================================
+-- TABLE: aktivitas_log
+-- Log semua aktivitas user (upload, edit, verifikasi, login, dll)
+-- ============================================================
 CREATE TABLE IF NOT EXISTS aktivitas_log (
     id          BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
-    user_id     INT UNSIGNED        NULL,
-    aksi        VARCHAR(100)        NOT NULL,
-    entitas     VARCHAR(50)         NULL,
-    entitas_id  INT UNSIGNED        NULL,
-    detail      JSON                NULL,
+    user_id     INT UNSIGNED        NULL,                   -- NULL jika aksi sistem
+    aksi        VARCHAR(100)        NOT NULL,               -- 'upload', 'edit', 'verifikasi', 'login', dll
+    entitas     VARCHAR(50)         NULL,                   -- 'dokumen', 'user', dll
+    entitas_id  INT UNSIGNED        NULL,                   -- ID record yang diaksi
+    detail      JSON                NULL,                   -- detail tambahan
     ip_address  VARCHAR(45)         NULL,
     created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -130,12 +175,12 @@ CREATE TABLE IF NOT EXISTS aktivitas_log (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS notifikasi (
     id          BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
-    user_id     INT UNSIGNED        NOT NULL,
-    aksi        VARCHAR(50)         NOT NULL,
-    dokumen_id  INT UNSIGNED        NULL,
-    judul       VARCHAR(255)        NULL,
-    pesan       TEXT                NOT NULL,
-    is_read     TINYINT(1)          NOT NULL DEFAULT 0,
+    user_id     INT UNSIGNED        NOT NULL,               -- penerima notifikasi
+    aksi        VARCHAR(50)         NOT NULL,               -- 'submit', 'approve', 'reject'
+    dokumen_id  INT UNSIGNED        NULL,                   -- dokumen terkait
+    judul       VARCHAR(255)        NULL,                   -- snapshot judul dokumen
+    pesan       TEXT                NOT NULL,               -- isi notifikasi
+    is_read     TINYINT(1)          NOT NULL DEFAULT 0,     -- 0=belum dibaca, 1=sudah
     created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT fk_notif_user FOREIGN KEY (user_id)
@@ -144,4 +189,62 @@ CREATE TABLE IF NOT EXISTS notifikasi (
         REFERENCES dokumen(id) ON DELETE SET NULL,
     INDEX idx_notif_user_read (user_id, is_read),
     INDEX idx_notif_created (created_at)
+) ENGINE=InnoDB;
+-- Tabel Master Kategori Akuntansi
+CREATE TABLE IF NOT EXISTS `kategori_akuntansi` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nama_kategori` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Insert some default categories
+INSERT IGNORE INTO `kategori_akuntansi` (`nama_kategori`) VALUES 
+('Gaji & Tunjangan'), 
+('Belanja Barang Operasional'), 
+('Belanja Modal'),
+('Perjalanan Dinas'),
+('Pajak & Retribusi');
+
+-- Tabel Transaksi / Audit Akuntansi
+CREATE TABLE IF NOT EXISTS `audit_akuntansi` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tanggal` date NOT NULL,
+  `uraian` text NOT NULL,
+  `jenis` enum('debit','kredit') NOT NULL,
+  `id_kategori` int(11) NOT NULL,
+  `nominal` decimal(15,2) NOT NULL,
+  `bukti_file` varchar(255) DEFAULT NULL,
+  `catatan_audit` text DEFAULT NULL,
+  `created_by` int(10) unsigned NOT NULL,
+  `updated_by` int(10) unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_akuntansi_kategori` (`id_kategori`),
+  KEY `fk_akuntansi_created_by` (`created_by`),
+  KEY `fk_akuntansi_updated_by` (`updated_by`),
+  CONSTRAINT `fk_akuntansi_kategori` FOREIGN KEY (`id_kategori`) REFERENCES `kategori_akuntansi` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_akuntansi_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_akuntansi_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- ============================================================
+-- MIGRATION v8: Fitur Kertas Kerja (Riwayat Transaksi)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS kertas_kerja (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    satker_id INT UNSIGNED NULL,
+    uploaded_by INT UNSIGNED NOT NULL,
+    tanggal DATE NOT NULL,
+    uraian VARCHAR(255) NOT NULL,
+    kategori VARCHAR(100) NOT NULL,
+    nominal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_kk_satker FOREIGN KEY (satker_id)
+        REFERENCES satkers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_kk_uploader FOREIGN KEY (uploaded_by)
+        REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
