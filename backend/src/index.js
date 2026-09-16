@@ -109,6 +109,20 @@ app.get('/api/debug-env', (req, res) => {
   });
 });
 
+app.get('/api/fix-db', async (req, res) => {
+  try {
+    const { pool } = require('./config/db');
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN reset_password_token VARCHAR(255) NULL, 
+      ADD COLUMN reset_password_expires_at TIMESTAMP NULL;
+    `);
+    res.json({ success: true, message: 'Database fixed! Columns added.' });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} tidak ditemukan` });
