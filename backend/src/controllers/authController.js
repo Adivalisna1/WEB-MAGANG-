@@ -169,7 +169,8 @@ async function forgotPassword(req, res, next) {
       [resetToken, tokenExpiry, user.id]
     );
 
-    const resetUrl = `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const origin = req.headers.origin || process.env.CORS_ORIGIN || 'http://localhost:3000';
+    const resetUrl = `${origin}/reset-password?token=${resetToken}`;
     const senderEmail = process.env.EMAIL_FROM || 'no-reply@laporan.go.id';
 
     if (!process.env.BREVO_API_KEY) {
