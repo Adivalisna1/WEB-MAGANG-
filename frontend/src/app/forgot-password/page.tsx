@@ -9,14 +9,14 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [testUrl, setTestUrl] = useState('');
+  const [resetLink, setResetLink] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
-    setTestUrl('');
+    setResetLink('');
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/forgot-password`, {
@@ -29,8 +29,8 @@ export default function ForgotPasswordPage() {
       if (!res.ok) throw new Error(data.message || 'Gagal mengirim email');
       
       setSuccessMsg(data.message);
-      if (data.testUrl) {
-        setTestUrl(data.testUrl);
+      if (data.resetLink) {
+        setResetLink(data.resetLink);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Terjadi kesalahan jaringan');
@@ -66,11 +66,17 @@ export default function ForgotPasswordPage() {
                   <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />
                   <p>{successMsg}</p>
                 </div>
-                {testUrl && (
-                  <div className="mt-2 p-3 bg-white rounded border border-green-100 text-xs text-gray-600 break-all">
-                    <p className="font-semibold text-gray-800 mb-1">Testing Mode (Ethereal Email):</p>
-                    <a href={testUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">
-                      Buka Kotak Masuk Ethereal Disini
+                {resetLink && (
+                  <div className="mt-2 p-4 bg-white rounded-lg border border-green-100 shadow-sm flex flex-col gap-2">
+                    <p className="font-semibold text-gray-800">Bypass Keamanan Aktif:</p>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Sistem email saat ini sedang dikonfigurasi. Untuk sementara, Anda bisa langsung membuat password baru dengan menekan tombol di bawah ini.
+                    </p>
+                    <a 
+                      href={resetLink} 
+                      className="mt-1 inline-flex items-center justify-center py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Buat Password Baru Sekarang
                     </a>
                   </div>
                 )}
