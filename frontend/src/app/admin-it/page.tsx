@@ -12,7 +12,10 @@ export default function AdminITDashboard() {
     totalUsers: 0,
     totalDokumen: 0,
     totalKategori: 0,
-    onlineNow: 0
+    onlineNow: 0,
+    cpuUsage: 0,
+    memoryUsage: 0,
+    dbStorage: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -77,28 +80,28 @@ export default function AdminITDashboard() {
             <div>
               <div className="flex justify-between text-sm mb-1.5">
                 <span className="font-medium text-gray-700">Database Storage</span>
-                <span className="text-gray-500">32%</span>
+                <span className="text-gray-500">{stats.dbStorage}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: '32%' }}></div>
+                <div className="bg-blue-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${stats.dbStorage}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1.5">
                 <span className="font-medium text-gray-700">CPU Load (Avg)</span>
-                <span className="text-gray-500">14%</span>
+                <span className="text-gray-500">{stats.cpuUsage}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '14%' }}></div>
+                <div className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${stats.cpuUsage}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1.5">
                 <span className="font-medium text-gray-700">Memory Usage</span>
-                <span className="text-gray-500">45%</span>
+                <span className="text-gray-500">{stats.memoryUsage}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: '45%' }}></div>
+                <div className="bg-indigo-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${stats.memoryUsage}%` }}></div>
               </div>
             </div>
           </div>

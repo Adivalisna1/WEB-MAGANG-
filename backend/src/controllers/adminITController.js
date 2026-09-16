@@ -1,6 +1,7 @@
 const { pool } = require('../config/db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const os = require('os');
 const { catatLog } = require('./authController');
 
 // ── GET /api/admin-it/stats ───────────────────────────────────────
@@ -11,9 +12,30 @@ async function getStats(req, res, next) {
     const [[{ totalKategori }]] = await pool.query(`SELECT COUNT(*) AS totalKategori FROM kategori_dokumen`);
     const [[{ onlineNow }]] = await pool.query('SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1');
 
+    // System Metrics
+    const loadAvg = os.loadavg()[0]; 
+    const coreCount = os.cpus().length;
+    let cpuUsage = (loadAvg / coreCount) * 100;
+    if (cpuUsage > 100) cpuUsage = 100;
+
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memoryUsage = ((totalMem - freeMem) / totalMem) * 100;
+
+    // DB Size (Mock Limit = 1000MB)
+    const [[{ db_size_mb }]] = await pool.query(`SELECT SUM(data_length + index_length) / 1024 / 1024 AS db_size_mb FROM information_schema.tables WHERE table_schema = DATABASE()`);
+    let dbStorage = (db_size_mb / 1000) * 100;
+    if (dbStorage > 100) dbStorage = 100;
+    if (!dbStorage) dbStorage = 1; // Fallback if 0
+
     return res.json({
       success: true,
-      data: { totalUsers, totalDokumen, totalKategori, onlineNow }
+      data: { 
+        totalUsers, totalDokumen, totalKategori, onlineNow,
+        cpuUsage: Math.round(cpuUsage),
+        memoryUsage: Math.round(memoryUsage),
+        dbStorage: Math.round(dbStorage)
+      }
     });
   } catch (err) { next(err); }
 }
