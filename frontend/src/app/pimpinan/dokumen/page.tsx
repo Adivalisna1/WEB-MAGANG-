@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
@@ -164,7 +166,7 @@ export default function PimpinanDokumenPage() {
   // Pimpinan: loloskan ke Eselon 1 ATAU kembalikan untuk revisi
   const handleVerifikasi = async (id: number, aksi: 'lolos' | 'reject') => {
     if (aksi === 'reject' && !catatan.trim()) {
-      alert('Catatan wajib diisi jika mengembalikan untuk revisi');
+      toast.error('Catatan wajib diisi jika mengembalikan untuk revisi');
       return;
     }
     setProcessing(id);
@@ -188,7 +190,7 @@ export default function PimpinanDokumenPage() {
       setCatatan('');
       await fetchDokumen();
     } catch (e: any) {
-      alert(e.message || 'Gagal memproses verifikasi');
+      toast.error(e.message || 'Gagal memproses verifikasi');
     } finally {
       setProcessing(null);
     }
@@ -207,7 +209,7 @@ export default function PimpinanDokumenPage() {
       if (!res.ok) throw new Error(data.message);
       await fetchDokumen();
     } catch (e: any) {
-      alert(e.message || 'Gagal menghapus dokumen');
+      toast.error(e.message || 'Gagal menghapus dokumen');
     } finally {
       setDeleting(null);
     }

@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -25,7 +27,7 @@ export default function KategoriManagementPage() {
       const j = await res.json();
       if (j.success) setKategoris(j.data);
     } catch (err) {
-      alert('Failed to load kategori');
+      toast.error('Failed to load kategori');
     } finally {
       setLoading(false);
     }
@@ -45,8 +47,8 @@ export default function KategoriManagementPage() {
           body: JSON.stringify(formData)
         });
         const j = await res.json();
-        if (j.success) alert('Kategori updated');
-        else alert(j.message || 'Failed');
+        if (j.success) toast.success('Kategori updated');
+        else toast.error(j.message || 'Failed');
       } else {
         const res = await fetch(`${API}/admin-it/kategori`, {
           method: 'POST',
@@ -54,14 +56,14 @@ export default function KategoriManagementPage() {
           body: JSON.stringify(formData)
         });
         const j = await res.json();
-        if (j.success) alert('Kategori created');
-        else alert(j.message || 'Failed');
+        if (j.success) toast.success('Kategori created');
+        else toast.error(j.message || 'Failed');
       }
       setShowForm(false);
       setFormData({ nama: '', slug: '', deskripsi: '' });
       fetchKategori();
     } catch (err: any) {
-      alert('Failed to save kategori');
+      toast.error('Failed to save kategori');
     }
   };
 
@@ -74,13 +76,13 @@ export default function KategoriManagementPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('Kategori deleted');
+        toast.success('Kategori deleted');
         fetchKategori();
       } else {
-        alert(j.message || 'Failed to delete kategori');
+        toast.error(j.message || 'Failed to delete kategori');
       }
     } catch (err: any) {
-      alert('Failed to delete kategori');
+      toast.error('Failed to delete kategori');
     }
   };
 

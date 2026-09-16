@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
@@ -76,7 +78,7 @@ export default function PimpinanLogsPage() {
       setPage(1);
       await fetchLogs();
     } catch (e: any) {
-      alert(e.message || 'Gagal menghapus riwayat');
+      toast.error(e.message || 'Gagal menghapus riwayat');
     } finally {
       setClearing(false);
     }

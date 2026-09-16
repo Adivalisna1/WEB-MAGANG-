@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
@@ -88,7 +90,7 @@ export default function KetuaUsersPage() {
       if (!res.ok) throw new Error(json.message);
       await fetchUsers();
     } catch (e: any) {
-      alert(e.message || 'Gagal mengubah status user');
+      toast.error(e.message || 'Gagal mengubah status user');
     } finally {
       setProcessing(null);
     }
@@ -110,7 +112,7 @@ export default function KetuaUsersPage() {
       setCopied(false);
       await fetchUsers();
     } catch (e: any) {
-      alert(e.message || 'Gagal reset password');
+      toast.error(e.message || 'Gagal reset password');
     } finally {
       setResetting(null);
     }

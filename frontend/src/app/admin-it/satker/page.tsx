@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -25,7 +27,7 @@ export default function SatkerManagementPage() {
       const j = await res.json();
       if (j.success) setSatkers(j.data);
     } catch (err) {
-      alert('Failed to load satker');
+      toast.error('Failed to load satker');
     } finally {
       setLoading(false);
     }
@@ -45,8 +47,8 @@ export default function SatkerManagementPage() {
           body: JSON.stringify(formData)
         });
         const j = await res.json();
-        if (j.success) alert('Satker updated');
-        else alert(j.message || 'Failed');
+        if (j.success) toast.success('Satker updated');
+        else toast.error(j.message || 'Failed');
       } else {
         const res = await fetch(`${API}/satker`, {
           method: 'POST',
@@ -54,14 +56,14 @@ export default function SatkerManagementPage() {
           body: JSON.stringify(formData)
         });
         const j = await res.json();
-        if (j.success) alert('Satker created');
-        else alert(j.message || 'Failed');
+        if (j.success) toast.success('Satker created');
+        else toast.error(j.message || 'Failed');
       }
       setShowForm(false);
       setFormData({ nama: '' });
       fetchSatkers();
     } catch (err: any) {
-      alert('Failed to save satker');
+      toast.error('Failed to save satker');
     }
   };
 
@@ -74,13 +76,13 @@ export default function SatkerManagementPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('Satker deleted');
+        toast.success('Satker deleted');
         fetchSatkers();
       } else {
-        alert(j.message || 'Failed to delete satker');
+        toast.error(j.message || 'Failed to delete satker');
       }
     } catch (err: any) {
-      alert('Failed to delete satker');
+      toast.error('Failed to delete satker');
     }
   };
 

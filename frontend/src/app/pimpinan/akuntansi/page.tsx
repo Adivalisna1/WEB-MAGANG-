@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -43,7 +45,7 @@ export default function PimpinanAkuntansiPage() {
       if (jTx.success) setTransaksi(jTx.data);
       if (jCat.success) setKategori(jCat.data);
     } catch (err) {
-      alert('Gagal mengambil data');
+      toast.error('Gagal mengambil data');
     } finally {
       setLoading(false);
     }
@@ -76,15 +78,15 @@ export default function PimpinanAkuntansiPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert(`Data berhasil ${isEdit ? 'diperbarui' : 'ditambahkan'}`);
+        toast.success(`Data berhasil ${isEdit ? 'diperbarui' : 'ditambahkan'}`);
         setShowForm(false);
         resetForm();
         fetchData();
       } else {
-        alert(j.message);
+        toast.success(j.message);
       }
     } catch (err) {
-      alert('Terjadi kesalahan');
+      toast.error('Terjadi kesalahan');
     } finally {
       setSubmitLoading(false);
     }

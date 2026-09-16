@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useCallback, FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -119,7 +121,7 @@ export default function KategoriManagementPage() {
 
   const handleDelete = async (k: Kategori) => {
     if (k.jumlah_dokumen > 0) {
-      alert(`Tidak bisa menghapus kategori ini karena masih memiliki ${k.jumlah_dokumen} dokumen terkait.`);
+      toast.success(`Tidak bisa menghapus kategori ini karena masih memiliki ${k.jumlah_dokumen} dokumen terkait.`);
       return;
     }
     if (!confirm(`Hapus kategori "${k.nama}"?`)) return;
@@ -133,7 +135,7 @@ export default function KategoriManagementPage() {
       if (!res.ok) throw new Error(data.message);
       fetchKategori();
     } catch (e: any) {
-      alert(e.message || 'Gagal menghapus kategori');
+      toast.error(e.message || 'Gagal menghapus kategori');
     }
   };
 

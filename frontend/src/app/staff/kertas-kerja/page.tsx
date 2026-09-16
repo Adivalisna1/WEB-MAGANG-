@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useRef } from 'react';
 import { getSession } from '@/lib/auth';
@@ -150,16 +152,16 @@ export default function KertasKerjaPage() {
       
       const result = await res.json();
       if (result.success) {
-        alert('Data berhasil disimpan ke database!');
+        toast.success('Data berhasil disimpan ke database!');
         setExcelData([]);
         setExcelFileName('');
         setActiveTab('history');
         fetchData();
       } else {
-        alert('Gagal menyimpan: ' + result.message);
+        toast.error('Gagal menyimpan: ' + result.message);
       }
     } catch (err) {
-      alert('Terjadi kesalahan server saat menyimpan.');
+      toast.error('Terjadi kesalahan server saat menyimpan.');
     } finally {
       setIsSaving(false);
     }
@@ -175,19 +177,19 @@ export default function KertasKerjaPage() {
       });
       const result = await res.json();
       if (result.success) {
-        alert('Data berhasil dihapus');
+        toast.success('Data berhasil dihapus');
         fetchData();
       } else {
-        alert('Gagal menghapus: ' + result.message);
+        toast.error('Gagal menghapus: ' + result.message);
       }
     } catch (err) {
-      alert('Terjadi kesalahan server saat menghapus.');
+      toast.error('Terjadi kesalahan server saat menghapus.');
     }
   };
 
   const saveNewRow = async () => {
     if (!newRow.tanggal || !newRow.uraian || !newRow.kategori) {
-      alert('Isi semua kolom (Tanggal, Uraian, Kategori) untuk baris baru!');
+      toast.success('Isi semua kolom (Tanggal, Uraian, Kategori) untuk baris baru!');
       return;
     }
     setIsSavingRow('new');
@@ -203,10 +205,10 @@ export default function KertasKerjaPage() {
         setNewRow({ tanggal: '', uraian: '', kategori: '', no_rek: '', judul_laporan: '', akun: '', nominal: 0 });
         fetchData();
       } else {
-        alert('Gagal menambahkan: ' + result.message);
+        toast.error('Gagal menambahkan: ' + result.message);
       }
     } catch (err) {
-      alert('Terjadi kesalahan server saat menambahkan data.');
+      toast.error('Terjadi kesalahan server saat menambahkan data.');
     } finally {
       setIsSavingRow(null);
     }
@@ -227,7 +229,7 @@ export default function KertasKerjaPage() {
 
   const saveInlineEdit = async (id: number) => {
     if (!editRowData.tanggal || !editRowData.uraian || !editRowData.kategori) {
-      alert('Kolom Tanggal, Uraian, dan Kategori tidak boleh kosong!');
+      toast.error('Kolom Tanggal, Uraian, dan Kategori tidak boleh kosong!');
       return;
     }
     setIsSavingRow(id);
@@ -243,10 +245,10 @@ export default function KertasKerjaPage() {
         setEditingRowId(null);
         fetchData();
       } else {
-        alert('Gagal mengupdate: ' + result.message);
+        toast.error('Gagal mengupdate: ' + result.message);
       }
     } catch (err) {
-      alert('Terjadi kesalahan server saat mengupdate.');
+      toast.error('Terjadi kesalahan server saat mengupdate.');
     } finally {
       setIsSavingRow(null);
     }

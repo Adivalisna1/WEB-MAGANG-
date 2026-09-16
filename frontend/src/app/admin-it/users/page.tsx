@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Plus, Trash2, Key, Edit, X, Upload, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -49,7 +50,7 @@ export default function UserManagementPage() {
       if (jSatkers.success) setSatkers(jSatkers.data);
     } catch (err) {
       console.error(err);
-      alert('Failed to load data');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -69,15 +70,15 @@ export default function UserManagementPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('User created successfully');
+        toast.success('User created successfully');
         setShowAddForm(false);
         setFormData({ role_id: 2, nama: '', username: '', email: '', password: '', satker_id: '', permissions: {} });
         fetchUsers();
       } else {
-        alert(j.message || 'Failed to create user');
+        toast.error(j.message || 'Failed to create user');
       }
     } catch (err: any) {
-      alert('Failed to create user');
+      toast.error('Failed to create user');
     }
   };
 
@@ -92,20 +93,20 @@ export default function UserManagementPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('User updated successfully');
+        toast.success('User updated successfully');
         setShowEditForm(false);
         fetchUsers();
       } else {
-        alert(j.message || 'Failed to update user');
+        toast.error(j.message || 'Failed to update user');
       }
     } catch (err: any) {
-      alert('Failed to update user');
+      toast.error('Failed to update user');
     }
   };
 
   const handleDeleteUser = async (id: number) => {
     if (id === currentUser?.id) {
-      alert('Cannot delete your own account');
+      toast.error('Cannot delete your own account');
       return;
     }
     if (!confirm('Are you sure you want to delete this user?')) return;
@@ -117,13 +118,13 @@ export default function UserManagementPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('User deleted successfully');
+        toast.success('User deleted successfully');
         fetchUsers();
       } else {
-        alert(j.message || 'Failed to delete user');
+        toast.error(j.message || 'Failed to delete user');
       }
     } catch (err: any) {
-      alert('Failed to delete user');
+      toast.error('Failed to delete user');
     }
   };
 
@@ -139,12 +140,12 @@ export default function UserManagementPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('Password updated successfully');
+        toast.success('Password updated successfully');
       } else {
-        alert(j.message || 'Failed to reset password');
+        toast.error(j.message || 'Failed to reset password');
       }
     } catch (err: any) {
-      alert('Failed to reset password');
+      toast.error('Failed to reset password');
     }
   };
 
@@ -171,7 +172,7 @@ export default function UserManagementPage() {
         const data = XLSX.utils.sheet_to_json(ws);
         
         if (data.length === 0) {
-          alert("File Excel kosong!");
+          toast.error("File Excel kosong!");
           return;
         }
 
@@ -188,15 +189,15 @@ export default function UserManagementPage() {
         const j = await res.json();
         
         if (j.success) {
-          alert(j.message);
+          toast.success(j.message);
           setShowBulkUpload(false);
           fetchUsers();
         } else {
-          alert(j.message || 'Gagal bulk upload');
+          toast.error(j.message || 'Gagal bulk upload');
         }
       } catch (err) {
         console.error(err);
-        alert('Error parsing Excel or uploading data');
+        toast.error('Error parsing Excel or uploading data');
       } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }

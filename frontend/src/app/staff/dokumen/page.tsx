@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -89,7 +91,7 @@ export default function StaffDokumenPage() {
       if (!res.ok) throw new Error(data.message);
       await fetchDokumen();
     } catch (e: any) {
-      alert(e.message || 'Gagal submit verifikasi');
+      toast.error(e.message || 'Gagal submit verifikasi');
     } finally {
       setSubmitting(null);
     }

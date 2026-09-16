@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -37,7 +39,7 @@ export default function AdminAkuntansiPage() {
       if (jTx.success) setTransaksi(jTx.data);
       if (jCat.success) setKategori(jCat.data);
     } catch (err) {
-      alert('Gagal mengambil data');
+      toast.error('Gagal mengambil data');
     } finally {
       setLoading(false);
     }
@@ -58,15 +60,15 @@ export default function AdminAkuntansiPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('Kategori berhasil ditambahkan');
+        toast.success('Kategori berhasil ditambahkan');
         setShowCatForm(false);
         setCatName('');
         fetchData();
       } else {
-        alert(j.message);
+        toast.success(j.message);
       }
     } catch (err) {
-      alert('Gagal menambah kategori');
+      toast.error('Gagal menambah kategori');
     }
   };
 
@@ -81,14 +83,14 @@ export default function AdminAkuntansiPage() {
       });
       const j = await res.json();
       if (j.success) {
-        alert('Kategori transaksi berhasil diubah');
+        toast.success('Kategori transaksi berhasil diubah');
         setEditTxId(null);
         fetchData();
       } else {
-        alert(j.message);
+        toast.success(j.message);
       }
     } catch (err) {
-      alert('Gagal mengubah kategori transaksi');
+      toast.error('Gagal mengubah kategori transaksi');
     }
   };
 

@@ -1,4 +1,6 @@
 'use client';
+import toast from 'react-hot-toast';
+
 
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
@@ -196,7 +198,7 @@ export default function KetuaDokumenPage() {
   const kirimKeputusan = async () => {
     if (!target) return;
     if (target.aksi === 'reject' && !catatan.trim()) {
-      alert('Catatan wajib diisi saat mengembalikan untuk revisi');
+      toast.error('Catatan wajib diisi saat mengembalikan untuk revisi');
       return;
     }
     setSending(true);
@@ -217,7 +219,7 @@ export default function KetuaDokumenPage() {
       setCatatan('');
       await refresh();
     } catch (e: any) {
-      alert(e.message || 'Gagal memproses keputusan');
+      toast.error(e.message || 'Gagal memproses keputusan');
     } finally {
       setSending(false);
     }
