@@ -1,6 +1,6 @@
-const bcrypt   = require('bcrypt');
-const jwt      = require('jsonwebtoken');
-const crypto   = require('crypto');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { body } = require('express-validator');
 const { pool } = require('../config/db');
 
@@ -93,11 +93,11 @@ async function login(req, res, next) {
       data: {
         token,
         user: {
-          id:       user.id,
-          nama:     user.nama,
+          id: user.id,
+          nama: user.nama,
           username: user.username,
-          email:    user.email,
-          role:     user.role,
+          email: user.email,
+          role: user.role,
           permissions: user.permissions,
         },
       },
@@ -144,7 +144,7 @@ async function me(req, res, next) {
        FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?`, [req.user.id]
     );
     if (!rows.length) return res.status(404).json({ success: false, message: 'User not found' });
-    
+
     return res.json({ success: true, data: rows[0] });
   } catch (err) { next(err); }
 }
@@ -195,16 +195,15 @@ async function forgotPassword(req, res, next) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.warn("Brevo API Warning (Diabaikan untuk test):", errorData);
-      // Jangan throw error, biarkan respon API mengembalikan resetLink untuk testing
+      console.error("Brevo API Error:", errorData);
+      throw new Error(`Gagal mengirim email via Brevo: ${errorData.message}`);
     }
 
-    console.log("Simulasi reset untuk: " + user.email);
+    console.log("Email reset terkirim ke: " + user.email + " via Brevo API");
 
-    return res.json({ 
-      success: true, 
-      message: 'Email simulasi terkirim! (Karena akun Brevo belum diverifikasi, gunakan link ini)',
-      resetLink: resetUrl
+    return res.json({
+      success: true,
+      message: 'Link reset password berhasil dikirimkan ke email Anda.'
     });
   } catch (err) {
     console.error("Email Error:", err);
