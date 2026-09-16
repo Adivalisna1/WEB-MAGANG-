@@ -109,7 +109,7 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ── Start Server ──────────────────────────────────────────────
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   testConnection().then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server berjalan di http://0.0.0.0:${PORT}`);
