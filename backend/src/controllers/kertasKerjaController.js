@@ -9,10 +9,10 @@ async function initKertasKerjaTable() {
       satker_id INT UNSIGNED NULL,
       uploaded_by INT UNSIGNED NOT NULL,
       tanggal DATE NULL,
-      uraian VARCHAR(255) NULL,
+      uraian TEXT NULL,
       kategori VARCHAR(100) NULL,
       no_rek VARCHAR(100) NULL,
-      judul_laporan VARCHAR(255) NULL,
+      judul_laporan TEXT NULL,
       akun VARCHAR(255) NULL,
       nominal DECIMAL(18,2) NOT NULL DEFAULT 0,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -27,8 +27,10 @@ async function initKertasKerjaTable() {
     // Patch kolom-kolom baru jika belum ada (Abaikan error jika kolom sudah ada)
     const patchQueries = [
       "ALTER TABLE kertas_kerja ADD COLUMN no_rek VARCHAR(100) NULL AFTER kategori;",
-      "ALTER TABLE kertas_kerja ADD COLUMN judul_laporan VARCHAR(255) NULL AFTER no_rek;",
-      "ALTER TABLE kertas_kerja ADD COLUMN akun VARCHAR(255) NULL AFTER judul_laporan;"
+      "ALTER TABLE kertas_kerja ADD COLUMN judul_laporan TEXT NULL AFTER no_rek;",
+      "ALTER TABLE kertas_kerja ADD COLUMN akun VARCHAR(255) NULL AFTER judul_laporan;",
+      "ALTER TABLE kertas_kerja MODIFY COLUMN uraian TEXT NULL;",
+      "ALTER TABLE kertas_kerja MODIFY COLUMN judul_laporan TEXT NULL;"
     ];
 
     for (const pq of patchQueries) {

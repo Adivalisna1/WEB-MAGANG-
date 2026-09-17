@@ -2,17 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Trash2, Key, Edit, X, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, Key, Edit, X, Upload, Download, Eye, EyeOff } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const PERMISSION_LIST = [
-  { key: 'can_upload', label: 'Bisa Upload Dokumen' },
-  { key: 'can_verify', label: 'Bisa Verifikasi Dokumen' },
-  { key: 'can_delete', label: 'Bisa Hapus Dokumen' },
-  { key: 'can_manage_users', label: 'Bisa Manajemen User' }
+  { key: 'can_upload', label: 'Upload Dokumen' },
+  { key: 'can_verify', label: 'Verifikasi Dokumen' },
+  { key: 'can_delete', label: 'Hapus Dokumen' },
+  { key: 'can_manage_users', label: 'Manajemen User' },
+  { key: 'can_access_sql', label: 'Akses SQL Table Data' }
 ];
 
 export default function UserManagementPage() {
@@ -26,6 +27,11 @@ export default function UserManagementPage() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editUserId, setEditUserId] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetUserId, setResetUserId] = useState<number | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [showResetPasswordToggle, setShowResetPasswordToggle] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -128,19 +134,27 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleResetPassword = async (id: number) => {
-    const newPassword = prompt('Enter new password for this user:');
-    if (!newPassword) return;
+  const openResetPasswordModal = (id: number) => {
+    setResetUserId(id);
+    setResetPasswordValue('');
+    setShowResetPasswordToggle(false);
+    setShowResetModal(true);
+  };
+
+  const submitResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetUserId || !resetPasswordValue) return;
 
     try {
-      const res = await fetch(`${API}/admin-it/users/${id}/reset-password`, {
+      const res = await fetch(`${API}/admin-it/users/${resetUserId}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ new_password: newPassword })
+        body: JSON.stringify({ new_password: resetPasswordValue })
       });
       const j = await res.json();
       if (j.success) {
         toast.success('Password updated successfully');
+        setShowResetModal(false);
       } else {
         toast.error(j.message || 'Failed to reset password');
       }
@@ -253,12 +267,32 @@ export default function UserManagementPage() {
         {!isEdit && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                value={formData.password} 
+                onChange={e => setFormData({...formData, password: e.target.value})} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10" 
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         )}
         <div className={isEdit ? "md:col-span-2" : ""}>
           <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-          <select value={formData.role_id} onChange={e => setFormData({...formData, role_id: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+          <select 
+            value={formData.role_id} 
+            onChange={e => setFormData({...formData, role_id: Number(e.target.value)})} 
+            disabled={isEdit}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${isEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+          >
             <option value={1}>Pimpinan</option>
             <option value={2}>Staff</option>
             <option value={3}>Eselon 1</option>
@@ -282,10 +316,15 @@ export default function UserManagementPage() {
       <div className="mt-4 pt-4 border-t border-gray-200">
         <label className="block text-sm font-bold text-gray-900 mb-3">Hak Akses Spesifik (JSON Permissions)</label>
         
-        {(formData.role_id === 1 || formData.role_id === 3 || formData.role_id === 4) ? (
+        {!isEdit ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              {PERMISSION_LIST.map(p => (
+              {PERMISSION_LIST.filter(p => {
+                if (formData.role_id === 4) {
+                  return ['can_delete', 'can_manage_users', 'can_access_sql'].includes(p.key);
+                }
+                return p.key !== 'can_access_sql';
+              }).map(p => (
                 <label key={p.key} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
                   <input
                     type="checkbox"
@@ -306,8 +345,7 @@ export default function UserManagementPage() {
         ) : (
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
             <p className="text-sm text-slate-500 italic">
-              {formData.role_id === 2 && "Hak akses Staff sudah dikunci oleh sistem (hanya upload dokumen)."}
-              {formData.role_id === 5 && "Hak akses Administrasi sudah dikunci oleh sistem (tambah kategori & kirim notifikasi)."}
+              Hak akses tidak dapat diubah saat mengedit user.
             </p>
           </div>
         )}
@@ -414,7 +452,7 @@ export default function UserManagementPage() {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleResetPassword(u.id)}
+                          onClick={() => openResetPasswordModal(u.id)}
                           className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
                           title="Reset Password"
                         >
@@ -511,6 +549,49 @@ export default function UserManagementPage() {
                 />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4 border-b pb-4">
+              <h3 className="font-bold text-gray-900 text-lg">Reset Password User</h3>
+              <button onClick={() => setShowResetModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={submitResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                <div className="relative">
+                  <input 
+                    type={showResetPasswordToggle ? "text" : "password"} 
+                    required 
+                    value={resetPasswordValue} 
+                    onChange={e => setResetPasswordValue(e.target.value)} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10" 
+                    placeholder="Enter new password"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowResetPasswordToggle(!showResetPasswordToggle)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {showResetPasswordToggle ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
+                <button type="button" onClick={() => setShowResetModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors shadow-sm">
+                  Reset Password
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
