@@ -56,7 +56,7 @@ async function getUsers(req, res, next) {
   try {
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions,
-              u.last_login, u.created_at, r.nama AS role, sk.nama AS staff,
+              u.last_login, u.created_at, r.nama AS role, sk.nama AS satker,
               (SELECT is_online FROM user_sessions s
                WHERE s.user_id = u.id AND s.is_online = 1
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
