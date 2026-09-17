@@ -51,7 +51,7 @@ export default function UserManagementPage() {
         fetch(`${API}/satker`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       const [jUsers, jSatkers] = await Promise.all([resUsers.json(), resSatkers.json()]);
-      
+
       if (jUsers.success) setUsers(jUsers.data);
       if (jSatkers.success) setSatkers(jSatkers.data);
     } catch (err) {
@@ -116,7 +116,7 @@ export default function UserManagementPage() {
       return;
     }
     if (!confirm('Are you sure you want to delete this user?')) return;
-    
+
     try {
       const res = await fetch(`${API}/admin-it/users/${id}`, {
         method: 'DELETE',
@@ -184,7 +184,7 @@ export default function UserManagementPage() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
-        
+
         if (data.length === 0) {
           toast.error("File Excel kosong!");
           return;
@@ -201,7 +201,7 @@ export default function UserManagementPage() {
           body: JSON.stringify({ users: data })
         });
         const j = await res.json();
-        
+
         if (j.success) {
           toast.success(j.message);
           setShowBulkUpload(false);
@@ -225,7 +225,7 @@ export default function UserManagementPage() {
     if (u.permissions) {
       try {
         parsedPerms = typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions;
-      } catch(e) {}
+      } catch (e) { }
     }
     setFormData({
       role_id: u.role === 'pimpinan' ? 1 : u.role === 'staff' ? 2 : u.role === 'satker' ? 2 : u.role === 'eselon_1' ? 3 : u.role === 'admin_it' ? 4 : u.role === 'administrasi' ? 5 : 2,
@@ -254,28 +254,28 @@ export default function UserManagementPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-          <input type="text" required value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <input type="text" required value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <input type="text" required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <input type="text" required value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
         </div>
         {!isEdit && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                required 
-                value={formData.password} 
-                onChange={e => setFormData({...formData, password: e.target.value})} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10" 
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10"
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
@@ -287,9 +287,9 @@ export default function UserManagementPage() {
         )}
         <div className={isEdit ? "md:col-span-2" : ""}>
           <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-          <select 
-            value={formData.role_id} 
-            onChange={e => setFormData({...formData, role_id: Number(e.target.value)})} 
+          <select
+            value={formData.role_id}
+            onChange={e => setFormData({ ...formData, role_id: Number(e.target.value) })}
             disabled={isEdit}
             className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${isEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
           >
@@ -303,7 +303,7 @@ export default function UserManagementPage() {
         {(formData.role_id === 1 || formData.role_id === 2) && (
           <div className={isEdit ? "md:col-span-2" : ""}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Satker (Grup Divisi)</label>
-            <select value={formData.satker_id} onChange={e => setFormData({...formData, satker_id: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            <select value={formData.satker_id} onChange={e => setFormData({ ...formData, satker_id: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
               <option value="">-- Pilih Satker --</option>
               {satkers.map(s => (
                 <option key={s.id} value={s.id}>{s.nama}</option>
@@ -315,7 +315,7 @@ export default function UserManagementPage() {
 
       <div className="mt-4 pt-4 border-t border-gray-200">
         <label className="block text-sm font-bold text-gray-900 mb-3">Hak Akses Spesifik (JSON Permissions)</label>
-        
+
         {!isEdit ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -367,7 +367,6 @@ export default function UserManagementPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage all system accounts, roles, and granular permissions.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -461,11 +460,10 @@ export default function UserManagementPage() {
                         <button
                           onClick={() => handleDeleteUser(u.id)}
                           disabled={u.id === currentUser?.id}
-                          className={`p-1.5 rounded-md transition-colors ${
-                            u.id === currentUser?.id 
-                              ? 'text-gray-300 cursor-not-allowed' 
-                              : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
-                          }`}
+                          className={`p-1.5 rounded-md transition-colors ${u.id === currentUser?.id
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                            }`}
                           title={u.id === currentUser?.id ? "Cannot delete yourself" : "Delete User"}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -520,7 +518,7 @@ export default function UserManagementPage() {
             </div>
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Upload file Excel (.xlsx) untuk menambahkan banyak user sekaligus. 
+                Upload file Excel (.xlsx) untuk menambahkan banyak user sekaligus.
                 Pastikan format kolom sesuai dengan template.
               </p>
               <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
@@ -566,15 +564,15 @@ export default function UserManagementPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                 <div className="relative">
-                  <input 
-                    type={showResetPasswordToggle ? "text" : "password"} 
-                    required 
-                    value={resetPasswordValue} 
-                    onChange={e => setResetPasswordValue(e.target.value)} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10" 
+                  <input
+                    type={showResetPasswordToggle ? "text" : "password"}
+                    required
+                    value={resetPasswordValue}
+                    onChange={e => setResetPasswordValue(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-10"
                     placeholder="Enter new password"
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowResetPasswordToggle(!showResetPasswordToggle)}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"

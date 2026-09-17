@@ -98,7 +98,6 @@ export default function KategoriManagementPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Kategori Dokumen</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage document categories in the system.</p>
         </div>
         <button
           onClick={() => { setShowForm(!showForm); setIsEdit(false); setFormData({ nama: '', slug: '', deskripsi: '' }); }}
@@ -115,15 +114,15 @@ export default function KategoriManagementPage() {
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kategori</label>
-              <input type="text" required value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-')})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input type="text" required value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
-              <input type="text" required value={formData.slug} onChange={e => setFormData({...formData, slug: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50" />
+              <input type="text" required value={formData.slug} onChange={e => setFormData({ ...formData, slug: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50" />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-              <textarea rows={3} value={formData.deskripsi} onChange={e => setFormData({...formData, deskripsi: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+              <textarea rows={3} value={formData.deskripsi} onChange={e => setFormData({ ...formData, deskripsi: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
             </div>
             <div className="md:col-span-2 flex justify-end gap-2 mt-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Cancel</button>

@@ -35,15 +35,15 @@ export default function DatabaseConsolePage() {
     try {
       const res = await fetch(`${API}/admin-it/sql`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ query })
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success) {
         toast.success('Query dieksekusi');
         if (Array.isArray(data.data)) {
@@ -77,19 +77,10 @@ export default function DatabaseConsolePage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Database SQL Console</h1>
-          <p className="text-sm text-gray-500 mt-1">Eksekusi raw query SQL secara langsung. Gunakan dengan sangat hati-hati.</p>
         </div>
       </div>
 
-      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-bold text-amber-800">DANGER ZONE</h3>
-          <p className="text-sm text-amber-700 mt-1">
-            Fitur ini memberikan akses langsung ke database (`DELETE`, `UPDATE`, `DROP`, dll). Tidak ada validasi atau undo. Pastikan Anda tahu query yang dijalankan.
-          </p>
-        </div>
-      </div>
+
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
@@ -100,7 +91,7 @@ export default function DatabaseConsolePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="SELECT * FROM kertas_kerja LIMIT 10;"
-            className="w-full h-40 p-4 font-mono text-sm bg-gray-900 text-emerald-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-40 p-4 font-mono text-sm bg-white text-gray-800 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
             spellCheck="false"
           />
         </div>

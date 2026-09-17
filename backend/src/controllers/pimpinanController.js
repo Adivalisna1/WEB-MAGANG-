@@ -93,7 +93,7 @@ async function getLogs(req, res, next) {
     const { user_id, aksi, page = 1, limit = 50 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let where = 'u.satker_id = ?';
+    let where = 'u.satker_id = ? AND u.role_id = 2';
     const params = [req.user.satker_id];
     if (user_id) { where += ' AND l.user_id = ?'; params.push(user_id); }
     if (aksi)    { where += ' AND l.aksi = ?';    params.push(aksi); }

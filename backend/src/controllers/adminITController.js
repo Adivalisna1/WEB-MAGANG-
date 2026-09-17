@@ -289,21 +289,61 @@ async function deleteKategori(req, res, next) {
 // ── LOGS ───────────────────────────────────────
 async function getLogs(req, res, next) {
   try {
-    const [rows] = await pool.query(
-      `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username
-       FROM aktivitas_log l
-       LEFT JOIN users u ON u.id = l.user_id
-       
-       UNION ALL
-       
-       SELECT id, 'login_failed' AS aksi, 'system' AS entitas, NULL AS entitas_id, 
-              JSON_OBJECT('username_tried', username_tried, 'location', COALESCE(location, 'Unknown')) AS detail, ip_address AS ip, created_at, 'System' AS user_nama, username_tried AS username
-       FROM login_attempts
-       WHERE status = 'failed'
-       
-       ORDER BY created_at DESC LIMIT 500`
-    );
-    return res.json({ success: true, data: rows });
+    const { page = 1, limit = 50, satker_id } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+    
+    let whereClause = '1=1';
+    const params = [];
+    
+    if (satker_id) {
+      whereClause += ' AND u.satker_id = ?';
+      params.push(satker_id);
+    }
+    
+    let query = `
+      SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username, u.satker_id
+      FROM aktivitas_log l
+      LEFT JOIN users u ON u.id = l.user_id
+      WHERE ${whereClause}
+    `;
+    
+    if (!satker_id) {
+      query += `
+        UNION ALL
+        SELECT id, 'login_failed' AS aksi, 'system' AS entitas, NULL AS entitas_id, 
+               JSON_OBJECT('username_tried', username_tried, 'location', COALESCE(location, 'Unknown')) AS detail, ip_address AS ip, created_at, 'System' AS user_nama, username_tried AS username, NULL AS satker_id
+        FROM login_attempts
+        WHERE status = 'failed'
+      `;
+    }
+    
+    let countQuery = `SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE ${whereClause}`;
+    if (!satker_id) {
+      countQuery = `
+        SELECT (
+          (SELECT COUNT(*) FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE ${whereClause}) + 
+          (SELECT COUNT(*) FROM login_attempts WHERE status = 'failed')
+        ) AS total
+      `;
+    }
+    
+    const [[{ total }]] = await pool.query(countQuery, params);
+    
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(Number(limit), offset);
+    
+    const [rows] = await pool.query(query, params);
+    
+    return res.json({ 
+      success: true, 
+      data: rows,
+      meta: {
+        total: Number(total),
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(Number(total) / Number(limit))
+      }
+    });
   } catch (err) { next(err); }
 }
 

@@ -262,10 +262,30 @@ export default function KertasKerjaPage() {
 
   // Export
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredData);
+    const exportData = filteredData.map(d => ({
+      'Tahun': d.tanggal ? new Date(d.tanggal).getFullYear() : '',
+      'Tanggal': d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '',
+      'Kategori': d.kategori || '-',
+      'Akun': d.akun || '-',
+      'No Rekening': d.no_rek || '-',
+      'Uraian': d.uraian || '-',
+      'Judul Laporan': d.judul_laporan || '-',
+      'Nominal': d.nominal || 0,
+      'Satker': d.satker || '-',
+      'Status': d.status || '-'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Data Kertas Kerja');
-    XLSX.writeFile(wb, `Laporan_Kertas_Kerja_${filterTahun || 'Semua'}.xlsx`);
+    
+    const parts = ['Laporan_Kertas_Kerja'];
+    if (filterTahun) parts.push(`Tahun_${filterTahun}`);
+    if (filterKategori) parts.push(filterKategori);
+    if (filterAkun) parts.push(`Akun_${filterAkun}`);
+    
+    const filename = parts.join('_') + '.xlsx';
+    XLSX.writeFile(wb, filename);
   };
 
   // ── Filter Data ──

@@ -7,6 +7,7 @@ import {
   FileText, FileCheck, Clock, Users,
   Download, Wifi, ArrowRight, Loader2, RefreshCw, CheckCircle, Clock4, Building2
 } from 'lucide-react';
+import ActivityTimeline from '@/components/ActivityTimeline';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -32,24 +33,37 @@ export default function PimpinanDashboardPage() {
   const [stats,       setStats]       = useState<Stats | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [loading,     setLoading]     = useState(true);
+  
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logMeta, setLogMeta] = useState<any>(null);
+  const [logPage, setLogPage] = useState(1);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const session = getSession();
       const headers = { Authorization: `Bearer ${session?.token}` };
-      const [statsRes, onlineRes] = await Promise.all([
+      const [statsRes, onlineRes, logsRes] = await Promise.all([
         fetch(`${API}/pimpinan/stats`,        { headers }).then(r => r.json()),
         fetch(`${API}/pimpinan/users/online`, { headers }).then(r => r.json()),
+        fetch(`${API}/pimpinan/logs?page=${logPage}&limit=50`, { headers }).then(r => r.json()),
       ]);
       setStats(statsRes.data);
       setOnlineUsers(onlineRes.data ?? []);
+      if (logsRes.success) {
+        setLogs(logsRes.data);
+        setLogMeta(logsRes.meta);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logPage]);
+
+  const handlePageChange = (page: number) => {
+    setLogPage(page);
+  };
 
   useEffect(() => {
     fetchData();
@@ -204,43 +218,12 @@ export default function PimpinanDashboardPage() {
         </div>
 
         {/* Right Column (Activity Log) */}
-        <div className="space-y-6">
+        <div className="space-y-6 xl:col-span-3">
           <div className="bg-white rounded-2xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-slate-200 p-8 h-full">
-            <h2 className="text-xl font-extrabold text-slate-800 mb-6">Log Aktivitas Terbaru</h2>
-
-            <div className="relative pl-4 border-l-2 border-slate-100 space-y-8">
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
-                <p className="text-sm font-bold text-slate-800">Dokumen Disetujui</p>
-                <p className="text-xs text-slate-500 mt-1">Anda menyetujui "Surat_Keputusan.pdf"</p>
-                <p className="text-xs text-slate-400 mt-2 font-medium">10 menit yang lalu</p>
-              </div>
-
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-                <p className="text-sm font-bold text-slate-800">User Baru Ditambahkan</p>
-                <p className="text-xs text-slate-500 mt-1">Satker 04 Medan berhasil diregistrasi.</p>
-                <p className="text-xs text-slate-400 mt-2 font-medium">2 jam yang lalu</p>
-              </div>
-
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white"></div>
-                <p className="text-sm font-bold text-slate-800">Dokumen Ditolak</p>
-                <p className="text-xs text-slate-500 mt-1">Anda menolak "Draft_Anggaran.docx" dengan catatan.</p>
-                <p className="text-xs text-slate-400 mt-2 font-medium">Kemarin, 15:45</p>
-              </div>
-
-              <div className="relative">
-                <div className="absolute -left-[21px] top-1 w-3 h-3 bg-slate-300 rounded-full border-2 border-white"></div>
-                <p className="text-sm font-bold text-slate-800">Login Sistem</p>
-                <p className="text-xs text-slate-500 mt-1">Anda masuk dari perangkat baru.</p>
-                <p className="text-xs text-slate-400 mt-2 font-medium">Kemarin, 08:00</p>
-              </div>
+            <h2 className="text-xl font-extrabold text-slate-800 mb-6">Riwayat Aktivitas Staff Anda</h2>
+            <div className="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+              <ActivityTimeline logs={logs} meta={logMeta} onPageChange={handlePageChange} />
             </div>
-
-            <Link href="/pimpinan/logs" className="block w-full mt-8 py-3 text-center text-sm font-semibold text-[#10b981] bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-100">
-              Lihat Semua Log
-            </Link>
           </div>
         </div>
       </div>

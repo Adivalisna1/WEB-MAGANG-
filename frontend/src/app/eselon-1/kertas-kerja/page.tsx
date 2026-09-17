@@ -39,6 +39,10 @@ export default function KertasKerjaPage() {
   const [filterKategori, setFilterKategori] = useState('');
   const [filterAkun, setFilterAkun] = useState('');
   const [filterNoRek, setFilterNoRek] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
   
   const [userRole, setUserRole] = useState('');
@@ -53,6 +57,7 @@ export default function KertasKerjaPage() {
         headers: session ? { Authorization: `Bearer ${session.token}` } : {},
       });
       if (res.ok) {
+
         const d = await res.json();
         setDataList(d.data ?? []);
       }
@@ -70,11 +75,18 @@ export default function KertasKerjaPage() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQ, filterTahun, filterSemester, filterSatker, filterKategori, filterAkun, filterNoRek]);
 
   const exportToExcel = () => {
     // Modify data to match the column names and exclude internal IDs
@@ -126,6 +138,9 @@ export default function KertasKerjaPage() {
   const uniqueKategori = Array.from(new Set(dataList.map(d => d.kategori))).filter(Boolean).sort();
   const uniqueAkun = Array.from(new Set(dataList.map(d => d.akun))).filter(Boolean).sort();
   const uniqueNoRek = Array.from(new Set(dataList.map(d => d.no_rek))).filter(Boolean).sort();
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -212,8 +227,8 @@ export default function KertasKerjaPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? <tr><td colSpan={8} className="text-center py-8 text-gray-500">Memuat data riwayat...</td></tr> :
-                  filteredData.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-gray-400">Belum ada data riwayat transaksi.</td></tr> :
-                  filteredData.map(d => {
+                  paginatedData.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-gray-400">Belum ada data riwayat transaksi.</td></tr> :
+                  paginatedData.map(d => {
                     return (
                       <tr key={d.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 text-gray-600">{new Date(d.tanggal).toLocaleDateString('id-ID')}</td>
@@ -235,6 +250,34 @@ export default function KertasKerjaPage() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+              <div className="text-sm text-gray-500">
+                Menampilkan <span className="font-medium text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-medium text-gray-900">{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> dari <span className="font-medium text-gray-900">{filteredData.length}</span> data
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sebelumnya
+                </button>
+                <div className="flex items-center px-2 text-sm text-gray-600 font-medium">
+                  Halaman {currentPage} / {totalPages}
+                </div>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            </div>
+          )}
         </div>
     </div>
   );

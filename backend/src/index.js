@@ -120,6 +120,9 @@ app.get('/api/fix-db', async (req, res) => {
       ADD COLUMN reset_password_token VARCHAR(255) NULL, 
       ADD COLUMN reset_password_expires_at TIMESTAMP NULL;
     `);
+    try {
+      await pool.query(`ALTER TABLE satkers ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+    } catch (e) { console.log('satkers created_at exists'); }
     res.json({ success: true, message: 'Database fixed! Columns added.' });
   } catch (err) {
     res.json({ success: false, error: err.message });

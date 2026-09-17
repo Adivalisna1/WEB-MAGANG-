@@ -98,7 +98,6 @@ export default function SatkerManagementPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Manajemen Satker</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola data Satuan Kerja / Divisi.</p>
         </div>
         <button
           onClick={() => { setShowForm(!showForm); setIsEdit(false); setFormData({ nama: '' }); }}
@@ -115,7 +114,7 @@ export default function SatkerManagementPage() {
           <form onSubmit={handleSubmit} className="flex gap-4 items-end">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Satker</label>
-              <input type="text" required value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Satker IT" />
+              <input type="text" required value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Satker IT" />
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Batal</button>
