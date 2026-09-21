@@ -36,7 +36,7 @@ export default function KategoriManagementPage() {
   const [urutan, setUrutan] = useState(0);
   const [perluNominal, setPerluNominal] = useState(false);
   const [isActive, setIsActive] = useState(true);
-  
+
   const [formErr, setFormErr] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
@@ -109,7 +109,7 @@ export default function KategoriManagementPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      
+
       setShowModal(false);
       fetchKategori();
     } catch (e: any) {
@@ -144,7 +144,6 @@ export default function KategoriManagementPage() {
       <div className="flex items-center justify-between border-b border-gray-200 pb-5">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Master Kategori Dokumen</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola daftar klasifikasi laporan untuk Staff</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchKategori} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors shadow-sm" title="Refresh">
@@ -220,10 +219,10 @@ export default function KategoriManagementPage() {
                           <button onClick={() => openEdit(k)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={() => handleDelete(k)} 
+                          <button
+                            onClick={() => handleDelete(k)}
                             disabled={k.jumlah_dokumen > 0}
-                            className={clsx("p-1.5 rounded-md transition-colors", k.jumlah_dokumen > 0 ? "text-gray-300 cursor-not-allowed" : "text-gray-400 hover:text-red-600 hover:bg-red-50")} 
+                            className={clsx("p-1.5 rounded-md transition-colors", k.jumlah_dokumen > 0 ? "text-gray-300 cursor-not-allowed" : "text-gray-400 hover:text-red-600 hover:bg-red-50")}
                             title={k.jumlah_dokumen > 0 ? "Tidak bisa dihapus (ada dokumen)" : "Hapus"}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -248,14 +247,14 @@ export default function KategoriManagementPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {formErr && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
                   <AlertCircle className="w-4 h-4 shrink-0" /> {formErr}
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Kategori <span className="text-red-500">*</span></label>
                 <input

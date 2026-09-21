@@ -81,7 +81,7 @@ export default function KertasKerjaPage() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   // Reset page when filters change
   useEffect(() => {

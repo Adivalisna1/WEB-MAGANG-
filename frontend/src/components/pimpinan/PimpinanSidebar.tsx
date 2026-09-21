@@ -13,7 +13,7 @@ const PimpinanMenu = [
   { href: '/pimpinan',              icon: LayoutDashboard, label: 'Dashboard',          exact: true },
   { href: '/pimpinan/dokumen',      icon: FileCheck,       label: 'Verifikasi Dokumen' },
   { href: '/pimpinan/kertas-kerja', icon: FileSpreadsheet,  label: 'Kertas Kerja' },
-  { href: '/pimpinan/akuntansi',    icon: Calculator,      label: 'Akuntansi' },
+  { href: '/pimpinan/akuntansi',    icon: Calculator,      label: 'Pencatatan' },
   { href: '/pimpinan/users',        icon: Users,           label: 'Manajemen User' },
   { href: '/pimpinan/logs',         icon: Activity,        label: 'Log Aktivitas' },
   { href: '/pimpinan/profil',       icon: User,            label: 'Profil' },

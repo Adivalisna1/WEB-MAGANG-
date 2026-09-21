@@ -1,30 +1,30 @@
 require('dotenv').config();
 
-const express      = require('express');
-const helmet       = require('helmet');
-const cors         = require('cors');
-const morgan       = require('morgan');
-const compression  = require('compression');
-const rateLimit    = require('express-rate-limit');
-const path         = require('path');
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const { testConnection } = require('./config/db');
-const errorHandler       = require('./middleware/errorHandler');
+const errorHandler = require('./middleware/errorHandler');
 
 // Routes
-const authRoutes    = require('./routes/auth');
+const authRoutes = require('./routes/auth');
 const dokumenRoutes = require('./routes/dokumen');
-const userRoutes    = require('./routes/user');
+const userRoutes = require('./routes/user');
 const pimpinanRoutes = require('./routes/pimpinan');
-const eselon1Routes  = require('./routes/eselon_1');
-const adminItRoutes  = require('./routes/adminIT');
+const eselon1Routes = require('./routes/eselon_1');
+const adminItRoutes = require('./routes/adminIT');
 const administrasiRoutes = require('./routes/administrasi');
-const notifRoutes    = require('./routes/notifikasi');
+const notifRoutes = require('./routes/notifikasi');
 const satkerRoutes = require('./routes/satker');
 const akuntansiRoutes = require('./routes/akuntansi');
 const kertasKerjaRoutes = require('./routes/kertasKerjaRoutes');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
 
 // Supaya req.ip ngebaca IP asli user dari X-Forwarded-For (karena di-deploy di balik Load Balancer cloud)
@@ -82,9 +82,9 @@ app.use('/uploads', (req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────
-app.use('/api/auth',    authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/dokumen', dokumenRoutes);
-app.use('/api/user',    userRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/pimpinan', pimpinanRoutes);
 app.use('/api/eselon-1', eselon1Routes);
 app.use('/api/admin-it', adminItRoutes);

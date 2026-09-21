@@ -22,26 +22,26 @@ interface SatkerOption {
 }
 
 export default function KirimNotifikasiPage() {
-  const [users, setUsers]       = useState<UserOption[]>([]);
-  const [satkers, setSatkers]   = useState<SatkerOption[]>([]);
-  const [target,   setTarget]   = useState<string>(''); // Default empty
-  const [judul,    setJudul]    = useState('');
-  const [pesan,    setPesan]    = useState('');
-  const [sending,  setSending]  = useState(false);
-  const [success,  setSuccess]  = useState('');
-  const [error,    setError]    = useState('');
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [satkers, setSatkers] = useState<SatkerOption[]>([]);
+  const [target, setTarget] = useState<string>(''); // Default empty
+  const [judul, setJudul] = useState('');
+  const [pesan, setPesan] = useState('');
+  const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
   // Daftar user & satker untuk dropdown target
   const fetchData = useCallback(async () => {
     try {
       const session = getSession();
       const headers = { Authorization: `Bearer ${session?.token}` };
-      
+
       const [resUsers, resSatkers] = await Promise.all([
         fetch(`${API}/administrasi/users`, { headers }),
         fetch(`${API}/satker`, { headers })
       ]);
-      
+
       const jsonUsers = await resUsers.json();
       const jsonSatkers = await resSatkers.json();
 
@@ -109,9 +109,6 @@ export default function KirimNotifikasiPage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Kirim Notifikasi</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Kirim pengumuman ke user yang relevan
-        </p>
       </div>
 
       {success && (

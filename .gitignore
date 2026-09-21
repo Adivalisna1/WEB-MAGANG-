@@ -6,6 +6,7 @@
 .env.production
 .env.staging
 backend/.env.railway
+README.md
 
 # ============================================================
 # Dokumen internal — tidak perlu di-push

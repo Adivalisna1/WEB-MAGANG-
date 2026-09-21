@@ -10,13 +10,13 @@ import {
 import clsx from 'clsx';
 
 const ketuaMenu = [
-  { href: '/eselon-1',                icon: LayoutDashboard, label: 'Dashboard',        exact: true },
-  { href: '/eselon-1/dokumen',        icon: FileSearch,      label: 'Monitor Dokumen' },
-  { href: '/eselon-1/kertas-kerja',   icon: FileSearch,      label: 'Kertas Kerja' },
-  { href: '/eselon-1/users',          icon: Users,           label: 'Manajemen User' },
-  { href: '/eselon-1/logs',           icon: Activity,        label: 'Log Aktivitas' },
-  { href: '/eselon-1/kirim-notifikasi', icon: Send,          label: 'Kirim Notifikasi' },
-  { href: '/eselon-1/profil',         icon: User,            label: 'Profil' },
+  { href: '/eselon-1', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { href: '/eselon-1/dokumen', icon: FileSearch, label: 'Monitor Dokumen' },
+  { href: '/eselon-1/kertas-kerja', icon: FileSearch, label: 'Kertas Kerja' },
+  { href: '/eselon-1/users', icon: Users, label: 'Manajemen User' },
+  { href: '/eselon-1/logs', icon: Activity, label: 'Log Aktivitas' },
+  { href: '/eselon-1/kirim-notifikasi', icon: Send, label: 'Kirim Notifikasi' },
+  { href: '/eselon-1/profil', icon: User, label: 'Profil' },
 ];
 
 interface SidebarProps {
@@ -34,7 +34,7 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
     <>
       {/* Mobile Overlay */}
       {isMobileOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-indigo-950/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
@@ -54,7 +54,7 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
               <span className="font-bold text-sm mx-auto">E1</span>
             )}
           </div>
-          <button 
+          <button
             onClick={() => setIsMobileOpen(false)}
             className="md:hidden p-1.5 text-indigo-300 hover:text-white rounded-lg"
           >
@@ -62,87 +62,87 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
           </button>
         </div>
 
-      {/* User info — clickable ke profil */}
-      <Link
-        href="/eselon-1/profil"
-        className={`block py-4 border-b border-indigo-800 hover:bg-indigo-900 transition-colors cursor-pointer ${isCollapsed ? 'px-2 flex justify-center' : 'px-5'}`}
-        title={isCollapsed ? "Profil" : undefined}
-      >
-        <div className={clsx("flex items-center", isCollapsed ? 'justify-center' : 'gap-3')}>
-          <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white shrink-0">
-            {user?.nama?.charAt(0).toUpperCase() ?? 'K'}
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{user?.nama ?? '-'}</p>
-              <p className="text-xs text-indigo-300">Eselon 1</p>
-            </div>
-          )}
-        </div>
-      </Link>
-
-      {/* Menu */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {ketuaMenu.map(({ href, icon: Icon, label, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={clsx(
-                'flex items-center rounded-lg text-sm font-medium transition-colors',
-                active
-                  ? 'bg-indigo-500 text-white'
-                  : 'text-indigo-200 hover:bg-indigo-900 hover:text-white',
-                isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
-              )}
-              title={isCollapsed ? label : undefined}
-            >
-              <Icon className="w-5 h-5 shrink-0" />
-              {!isCollapsed && label}
-              {!isCollapsed && active && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Kembali ke Beranda */}
-      <div className="px-3 py-2 border-t border-indigo-800 mt-auto">
+        {/* User info — clickable ke profil */}
         <Link
-          href="/laporan"
-          className={clsx(
-            "flex items-center rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white transition-colors",
-            isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 w-full'
-          )}
-          title={isCollapsed ? "Dashboard Laporan" : undefined}
+          href="/eselon-1/profil"
+          className={`block py-4 border-b border-indigo-800 hover:bg-indigo-900 transition-colors cursor-pointer ${isCollapsed ? 'px-2 flex justify-center' : 'px-5'}`}
+          title={isCollapsed ? "Profil" : undefined}
         >
-          <Home className="w-5 h-5 shrink-0" />
-          {!isCollapsed && <span>Dashboard Laporan</span>}
+          <div className={clsx("flex items-center", isCollapsed ? 'justify-center' : 'gap-3')}>
+            <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white shrink-0">
+              {user?.nama?.charAt(0).toUpperCase() ?? 'K'}
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{user?.nama ?? '-'}</p>
+                <p className="text-xs text-indigo-300">Eselon 1</p>
+              </div>
+            )}
+          </div>
         </Link>
-      </div>
 
-      {/* Logout */}
-      <div className="px-3 py-3 border-t border-indigo-800 flex flex-col gap-2">
-        <button
-          onClick={logoutFn}
-          className={clsx(
-            "flex items-center rounded-lg text-sm font-medium text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-colors",
-            isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 w-full'
-          )}
-          title={isCollapsed ? "Keluar" : undefined}
-        >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!isCollapsed && <span>Keluar</span>}
-        </button>
+        {/* Menu */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {ketuaMenu.map(({ href, icon: Icon, label, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx(
+                  'flex items-center rounded-lg text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-indigo-500 text-white'
+                    : 'text-indigo-200 hover:bg-indigo-900 hover:text-white',
+                  isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
+                )}
+                title={isCollapsed ? label : undefined}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                {!isCollapsed && label}
+                {!isCollapsed && active && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+              </Link>
+            );
+          })}
+        </nav>
 
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex items-center justify-center p-2 mt-2 text-indigo-300 hover:text-white hover:bg-indigo-900 rounded-lg transition-colors border border-indigo-800"
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-    </aside>
+        {/* Kembali ke Beranda */}
+        <div className="px-3 py-2 border-t border-indigo-800 mt-auto">
+          <Link
+            href="/laporan"
+            className={clsx(
+              "flex items-center rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white transition-colors",
+              isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 w-full'
+            )}
+            title={isCollapsed ? "Dashboard Laporan" : undefined}
+          >
+            <Home className="w-5 h-5 shrink-0" />
+            {!isCollapsed && <span>Dashboard Laporan</span>}
+          </Link>
+        </div>
+
+        {/* Logout */}
+        <div className="px-3 py-3 border-t border-indigo-800 flex flex-col gap-2">
+          <button
+            onClick={logoutFn}
+            className={clsx(
+              "flex items-center rounded-lg text-sm font-medium text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-colors",
+              isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 w-full'
+            )}
+            title={isCollapsed ? "Keluar" : undefined}
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            {!isCollapsed && <span>Keluar</span>}
+          </button>
+
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden md:flex items-center justify-center p-2 mt-2 text-indigo-300 hover:text-white hover:bg-indigo-900 rounded-lg transition-colors border border-indigo-800"
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+      </aside>
     </>
   );
 }

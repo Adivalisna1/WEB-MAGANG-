@@ -60,7 +60,7 @@ const createAkuntansi = async (req, res) => {
     const { tanggal, uraian, jenis, id_kategori, nominal, catatan_audit } = req.body;
     let bukti_file = null;
     if (req.file) {
-      bukti_file = req.file.location; // R2 URL
+      bukti_file = `/api/akuntansi/file/${req.file.filename}`;
     }
 
     if (!tanggal || !uraian || !jenis || !id_kategori || !nominal) {
@@ -96,7 +96,7 @@ const updateAkuntansi = async (req, res) => {
 
     let bukti_file = existing[0].bukti_file;
     if (req.file) {
-      bukti_file = req.file.location;
+      bukti_file = `/api/akuntansi/file/${req.file.filename}`;
     }
 
     const updated_by = req.user.id;

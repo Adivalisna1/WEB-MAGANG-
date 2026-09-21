@@ -23,11 +23,11 @@ interface LogRow {
 interface Meta { total: number; page: number; limit: number; totalPages: number; }
 
 export default function KetuaLogsPage() {
-  const [logs,      setLogs]      = useState<LogRow[]>([]);
-  const [meta,      setMeta]      = useState<Meta | null>(null);
-  const [page,      setPage]      = useState(1);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState('');
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -66,9 +66,6 @@ export default function KetuaLogsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Log Aktivitas</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Riwayat semua aktivitas di sistem (siapa, apa, kapan)
-          </p>
         </div>
         <button
           onClick={() => { setLoading(true); fetchLogs(); }}

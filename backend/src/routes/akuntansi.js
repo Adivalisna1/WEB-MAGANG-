@@ -3,6 +3,7 @@ const ctrl = require('../controllers/akuntansiController');
 const { authenticate, authorize } = require('../middleware/auth');
 const upload = require('../config/multer');
 const activityLogger = require('../middleware/activityLogger');
+const path = require('path');
 
 // ── Master Kategori Akuntansi ──────────────────────────
 // GET Kategori: Bisa diakses oleh semua yang butuh
@@ -18,6 +19,21 @@ router.post('/kategori',
   ctrl.createKategoriAkuntansi
 );
 
+
+// ── Serve File Bukti ───────────────────────────────────
+router.get('/file/:filename', authenticate, (req, res) => {
+  const filename = req.params.filename;
+  // Cegah path traversal
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return res.status(400).json({ success: false, message: 'Invalid filename' });
+  }
+  const filePath = path.join(__dirname, '../../uploads/akuntansi', filename);
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      res.status(404).json({ success: false, message: 'File tidak ditemukan' });
+    }
+  });
+});
 
 // ── Transaksi Akuntansi ────────────────────────────────
 // GET Akuntansi: Bisa diakses oleh Staff, Pimpinan, dan Admin IT
@@ -50,3 +66,4 @@ router.patch('/:id',
 );
 
 module.exports = router;
+

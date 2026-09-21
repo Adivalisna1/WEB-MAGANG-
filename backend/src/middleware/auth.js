@@ -1,14 +1,16 @@
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 
-// Verifikasi JWT token dari header Authorization
+// Verifikasi JWT token dari header Authorization atau query parameter
 async function authenticate(req, res, next) {
   try {
-    // Ambil token hanya dari Authorization header
+    // Ambil token dari Authorization header atau query string
     let token = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token;
     }
 
     if (!token) {

@@ -36,7 +36,7 @@ export default function AdministrasiDokumenPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [editSuccess, setEditSuccess] = useState('');
   const [editError, setEditError] = useState('');
-  
+
   // Edit Form State
   const [editId, setEditId] = useState<number | null>(null);
   const [editJudul, setEditJudul] = useState('');
@@ -76,8 +76,8 @@ export default function AdministrasiDokumenPage() {
     fetchDokumen();
   }, [fetchKategori, fetchDokumen]);
 
-  const filteredDokumen = dokumenList.filter(d => 
-    d.judul.toLowerCase().includes(searchQ.toLowerCase()) || 
+  const filteredDokumen = dokumenList.filter(d =>
+    d.judul.toLowerCase().includes(searchQ.toLowerCase()) ||
     d.kategori.toLowerCase().includes(searchQ.toLowerCase()) ||
     d.tahun.toString().includes(searchQ)
   );
@@ -137,17 +137,14 @@ export default function AdministrasiDokumenPage() {
           <FileText className="w-6 h-6 text-blue-600" />
           Manajemen Dokumen
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Edit metadata dokumen yang sudah diverifikasi (Judul, Kategori, Tahun).
-        </p>
       </div>
 
       {/* Search Bar */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Ketik untuk mencari berdasarkan judul, kategori, atau tahun..."
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
@@ -207,7 +204,7 @@ export default function AdministrasiDokumenPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           {canEdit ? (
-                            <button 
+                            <button
                               onClick={() => openEditModal(dok)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded-lg transition-colors"
                             >
@@ -240,7 +237,7 @@ export default function AdministrasiDokumenPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
               {editError && (
                 <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100">

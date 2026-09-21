@@ -4,9 +4,8 @@ import toast from 'react-hot-toast';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Edit, Download, Tags, FileText } from 'lucide-react';
+import { Plus, Edit, Tags, FileText } from 'lucide-react';
 import clsx from 'clsx';
-import * as XLSX from 'xlsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -94,38 +93,16 @@ export default function AdminAkuntansiPage() {
     }
   };
 
-  // Export Excel
-  const exportToExcel = () => {
-    const wsData = transaksi.map((t, index) => ({
-      'No': index + 1,
-      'Tanggal': new Date(t.tanggal).toLocaleDateString('id-ID'),
-      'Uraian': t.uraian,
-      'Jenis': t.jenis.toUpperCase(),
-      'Kategori': t.nama_kategori,
-      'Nominal': Number(t.nominal),
-      'Catatan Audit': t.catatan_audit || '-',
-      'Dibuat Oleh': t.pembuat || '-'
-    }));
 
-    const ws = XLSX.utils.json_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data Akuntansi');
-    XLSX.writeFile(wb, `Data_Akuntansi_${new Date().getTime()}.xlsx`);
-  };
 
   return (
     <div className="w-full px-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Manajemen Akuntansi</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola data transaksi dan master kategori akun.</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Master Pencatatan</h1>
+          <p className="text-sm text-gray-500 mt-1">Kelola data transaksi dan master kategori pencatatan.</p>
         </div>
         <div className="flex gap-2">
-          {activeTab === 'transaksi' && (
-            <button onClick={exportToExcel} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-              <Download className="w-4 h-4" /> Export Excel
-            </button>
-          )}
           {activeTab === 'kategori' && (
             <button onClick={() => setShowCatForm(!showCatForm)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" /> Tambah Kategori
@@ -214,8 +191,8 @@ export default function AdminAkuntansiPage() {
                     <td className="px-4 py-3">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-4 py-3 max-w-[200px] truncate" title={t.uraian}>{t.uraian}</td>
                     <td className="px-4 py-3">
-                      <span className={clsx("px-2 py-1 text-xs font-medium rounded-full", t.jenis === 'debit' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>
-                        {t.jenis.toUpperCase()}
+                      <span className={clsx("px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider", t.jenis === 'debit' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>
+                        {t.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran'}
                       </span>
                     </td>
                     <td className="px-4 py-3">

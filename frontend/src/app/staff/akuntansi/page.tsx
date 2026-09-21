@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Edit, Download, Paperclip } from 'lucide-react';
+import { Plus, Edit, Download, Paperclip, Search } from 'lucide-react';
 import clsx from 'clsx';
 import * as XLSX from 'xlsx';
 
@@ -15,6 +15,11 @@ export default function StaffAkuntansiPage() {
   const [transaksi, setTransaksi] = useState<any[]>([]);
   const [kategori, setKategori] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter State
+  const [filterKategori, setFilterKategori] = useState('');
+  const [filterJenis, setFilterJenis] = useState('');
+  const [filterTahun, setFilterTahun] = useState('');
 
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -54,6 +59,17 @@ export default function StaffAkuntansiPage() {
   useEffect(() => {
     if (token) fetchData();
   }, [token]);
+
+  // Filtered data
+  const filteredData = transaksi.filter(t => {
+    const matchKategori = !filterKategori || String(t.id_kategori) === filterKategori;
+    const matchJenis = !filterJenis || t.jenis === filterJenis;
+    const year = t.tanggal ? new Date(t.tanggal).getFullYear().toString() : '';
+    const matchTahun = !filterTahun || year === filterTahun;
+    return matchKategori && matchJenis && matchTahun;
+  });
+
+  const uniqueTahun = Array.from(new Set(transaksi.map(t => t.tanggal ? new Date(t.tanggal).getFullYear().toString() : ''))).filter(Boolean).sort((a, b) => b.localeCompare(a));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,11 +132,11 @@ export default function StaffAkuntansiPage() {
   };
 
   const exportToExcel = () => {
-    const wsData = transaksi.map((t, index) => ({
+    const wsData = filteredData.map((t, index) => ({
       'No': index + 1,
       'Tanggal': new Date(t.tanggal).toLocaleDateString('id-ID'),
       'Uraian': t.uraian,
-      'Jenis': t.jenis.toUpperCase(),
+      'Jenis': t.jenis === 'debit' ? 'PEMASUKAN' : 'PENGELUARAN',
       'Kategori': t.nama_kategori,
       'Nominal': Number(t.nominal),
       'Catatan': t.catatan_audit || '-',
@@ -129,15 +145,21 @@ export default function StaffAkuntansiPage() {
 
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data Akuntansi');
-    XLSX.writeFile(wb, `Data_Akuntansi_${new Date().getTime()}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Pencatatan');
+
+    const katStr = filterKategori ? `_${kategori.find(k => String(k.id) === filterKategori)?.nama_kategori || ''}` : '';
+    const jenisStr = filterJenis ? `_${filterJenis === 'debit' ? 'Pemasukan' : 'Pengeluaran'}` : '';
+    const thnStr = filterTahun ? `_${filterTahun}` : '';
+    const fileName = `Pencatatan${thnStr}${jenisStr}${katStr}.xlsx`.replace(/\s+/g, '_');
+
+    XLSX.writeFile(wb, fileName);
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Akuntansi</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Pencatatan</h1>
           <p className="text-sm text-gray-500 mt-1">Pencatatan transaksi dan pelaporan keuangan.</p>
         </div>
         <div className="flex gap-2">
@@ -148,6 +170,29 @@ export default function StaffAkuntansiPage() {
             <Plus className="w-4 h-4" /> Tambah Data
           </button>
         </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={filterTahun} onChange={e => setFilterTahun(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
+          <option value="">Semua Tahun</option>
+          {uniqueTahun.map(t => <option key={t} value={t}>Tahun {t}</option>)}
+        </select>
+        <select value={filterJenis} onChange={e => setFilterJenis(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
+          <option value="">Semua Jenis</option>
+          <option value="debit">Pemasukan</option>
+          <option value="kredit">Pengeluaran</option>
+        </select>
+        <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
+          <option value="">Semua Kategori</option>
+          {kategori.map(k => <option key={k.id} value={String(k.id)}>{k.nama_kategori}</option>)}
+        </select>
+        {(filterTahun || filterJenis || filterKategori) && (
+          <button onClick={() => { setFilterTahun(''); setFilterJenis(''); setFilterKategori(''); }} className="text-sm text-red-500 hover:text-red-700 px-2 py-1 transition-colors">
+            Reset Filter
+          </button>
+        )}
+        <span className="text-xs text-gray-400 ml-auto">{filteredData.length} dari {transaksi.length} data</span>
       </div>
 
       {showForm && (
@@ -166,8 +211,8 @@ export default function StaffAkuntansiPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
                   <select required value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="debit">Pemasukan (Debit)</option>
-                    <option value="kredit">Pengeluaran (Kredit)</option>
+                    <option value="debit">Pemasukan</option>
+                    <option value="kredit">Pengeluaran</option>
                   </select>
                 </div>
               </div>
@@ -230,8 +275,8 @@ export default function StaffAkuntansiPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
               {loading ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Memuat data...</td></tr> : 
-                transaksi.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
-                transaksi.map(t => (
+                filteredData.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
+                filteredData.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 text-gray-600 font-medium">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
                   <td className="px-4 py-3">
@@ -240,7 +285,7 @@ export default function StaffAkuntansiPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={clsx("px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider", t.jenis === 'debit' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>
-                      {t.jenis}
+                      {t.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{t.nama_kategori}</td>
@@ -249,7 +294,7 @@ export default function StaffAkuntansiPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     {t.bukti_file ? (
-                      <a href={t.bukti_file} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition-colors" title="Lihat Bukti">
+                      <a href={`${t.bukti_file.startsWith('http') ? t.bukti_file : `${API.replace('/api', '')}${t.bukti_file}`}?token=${token}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition-colors" title="Lihat Bukti">
                         <Paperclip className="w-4 h-4" />
                       </a>
                     ) : (
