@@ -22,6 +22,24 @@ async function createSatker(req, res, next) {
   }
 }
 
+async function createBulkSatker(req, res, next) {
+  try {
+    if (req.user.role !== 'admin_it') return res.status(403).json({ success: false, message: 'Forbidden' });
+    const { satkers } = req.body; 
+    
+    if (!satkers || !Array.isArray(satkers) || satkers.length === 0) {
+      return res.status(400).json({ success: false, message: 'Data satker kosong atau format tidak valid' });
+    }
+
+    const values = satkers.map(s => [s]);
+    await pool.query('INSERT INTO satkers (nama) VALUES ?', [values]);
+    
+    return res.json({ success: true, message: `${satkers.length} Satker berhasil diimport` });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateSatker(req, res, next) {
   try {
     if (req.user.role !== 'admin_it') return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -55,6 +73,7 @@ async function deleteSatker(req, res, next) {
 module.exports = {
   getSatkers,
   createSatker,
+  createBulkSatker,
   updateSatker,
   deleteSatker
 };
