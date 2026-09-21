@@ -347,34 +347,10 @@ async function getLogs(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// ── SQL CONSOLE ───────────────────────────────────────
-async function executeSql(req, res, next) {
-  try {
-    const { query } = req.body;
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ success: false, message: 'Query tidak valid' });
-    }
 
-    // Execute query
-    const [result] = await pool.query(query);
-
-    await catatLog({
-      user_id: req.user.id,
-      aksi: 'eksekusi_sql',
-      entitas: 'system',
-      detail: { query: query.substring(0, 255) },
-      ip: req.ip,
-    });
-
-    return res.json({ success: true, data: result });
-  } catch (err) {
-    // Return SQL errors safely to frontend for debugging
-    return res.status(400).json({ success: false, message: err.message });
-  }
-}
 
 module.exports = {
   getStats, getUsers, createUser, createBulkUsers, updateUser, deleteUser, forceResetPassword,
   getKategori, createKategori, updateKategori, deleteKategori,
-  getLogs, executeSql
+  getLogs
 };

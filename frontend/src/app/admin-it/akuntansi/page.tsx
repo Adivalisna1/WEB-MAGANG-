@@ -16,6 +16,8 @@ export default function AdminAkuntansiPage() {
   // Data State
   const [transaksi, setTransaksi] = useState<any[]>([]);
   const [kategori, setKategori] = useState<any[]>([]);
+  const [satkers, setSatkers] = useState<any[]>([]);
+  const [filterSatker, setFilterSatker] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   // Form State Kategori
@@ -29,14 +31,17 @@ export default function AdminAkuntansiPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resTx, resCat] = await Promise.all([
+      const [resTx, resCat, resSatker] = await Promise.all([
         fetch(`${API}/akuntansi`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/akuntansi/kategori`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API}/akuntansi/kategori`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/satker`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       const jTx = await resTx.json();
       const jCat = await resCat.json();
+      const jSatker = await resSatker.json();
       if (jTx.success) setTransaksi(jTx.data);
       if (jCat.success) setKategori(jCat.data);
+      if (jSatker.success) setSatkers(jSatker.data);
     } catch (err) {
       toast.error('Gagal mengambil data');
     } finally {
@@ -95,6 +100,10 @@ export default function AdminAkuntansiPage() {
 
 
 
+  const filteredTransaksi = filterSatker
+    ? transaksi.filter(t => t.satker_id?.toString() === filterSatker)
+    : transaksi;
+
   return (
     <div className="w-full px-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -112,25 +121,42 @@ export default function AdminAkuntansiPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-max mb-6">
-        <button
-          onClick={() => setActiveTab('transaksi')}
-          className={clsx(
-            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
-            activeTab === 'transaksi' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
-          )}
-        >
-          <FileText className="w-4 h-4" /> Data Transaksi
-        </button>
-        <button
-          onClick={() => setActiveTab('kategori')}
-          className={clsx(
-            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
-            activeTab === 'kategori' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
-          )}
-        >
-          <Tags className="w-4 h-4" /> Master Kategori
-        </button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-max">
+          <button
+            onClick={() => setActiveTab('transaksi')}
+            className={clsx(
+              "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+              activeTab === 'transaksi' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <FileText className="w-4 h-4" /> Data Transaksi
+          </button>
+          <button
+            onClick={() => setActiveTab('kategori')}
+            className={clsx(
+              "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+              activeTab === 'kategori' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <Tags className="w-4 h-4" /> Master Kategori
+          </button>
+        </div>
+
+        {activeTab === 'transaksi' && (
+          <div className="w-full sm:w-auto">
+            <select
+              value={filterSatker}
+              onChange={(e) => setFilterSatker(e.target.value)}
+              className="w-full sm:w-64 px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Semua Satker</option>
+              {satkers.map(s => (
+                <option key={s.id} value={s.id}>{s.nama}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Form Tambah Kategori */}
@@ -181,12 +207,13 @@ export default function AdminAkuntansiPage() {
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Uraian</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Jenis</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Satker</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Nominal</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 text-sm">
-                {loading ? <tr><td colSpan={6} className="p-4 text-center text-gray-500">Loading...</td></tr> : transaksi.map(t => (
+                {loading ? <tr><td colSpan={7} className="p-4 text-center text-gray-500">Loading...</td></tr> : filteredTransaksi.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-4 py-3 max-w-[200px] truncate" title={t.uraian}>{t.uraian}</td>
@@ -206,6 +233,9 @@ export default function AdminAkuntansiPage() {
                       ) : (
                         <span className="text-gray-900">{t.nama_kategori}</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 truncate max-w-[150px]" title={t.satker_nama || 'Pusat'}>
+                      {t.satker_nama || 'Pusat'}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900">
                       Rp {Number(t.nominal).toLocaleString('id-ID')}

@@ -11,7 +11,7 @@ const MENU_ITEMS = [
   { href: '/admin-it/users', label: 'User Management', icon: Users },
   { href: '/admin-it/kategori', label: 'Kategori Dokumen', icon: Tags },
   { href: '/admin-it/akuntansi', label: 'Master Pencatatan', icon: Calculator },
-  { href: '/admin-it/database', label: 'Database Console', icon: Database },
+
   { href: '/admin-it/logs', label: 'Real-Time Logs', icon: Activity },
 ];
 

@@ -8,8 +8,7 @@ router.use(authenticate, authorize('admin_it'));
 // Stats
 router.get('/stats', ctrl.getStats);
 
-// Database Console
-router.post('/sql', ctrl.executeSql);
+
 
 // Users Management
 router.get('/users', ctrl.getUsers);
