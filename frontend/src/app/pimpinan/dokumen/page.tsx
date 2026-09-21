@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth';
 import {
   FileText, CheckCircle, XCircle, Clock,
   Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Trash2, Download,
-  Send
+  Send, Edit
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -28,6 +28,7 @@ interface Dokumen {
   created_at: string;
   catatan: string | null;
   nilai_rekening_koran?: number | null;
+  nilai_excel?: number | null;
 }
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -61,6 +62,15 @@ export default function PimpinanDokumenPage() {
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [previewError,    setPreviewError]    = useState('');
+
+  // Edit Metadata State
+  const [kategoriList, setKategoriList] = useState<{id: number, nama: string}[]>([]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editJudul, setEditJudul] = useState('');
+  const [editTahun, setEditTahun] = useState('');
+  const [editKategoriId, setEditKategoriId] = useState('');
 
   // Backend konversi Word → PDF via LibreOffice. Excel tetap download (layout sering berantakan).
   const isPdf   = modalDok ? /\.pdf$/i.test(modalDok.file_nama) : false;
@@ -162,6 +172,57 @@ export default function PimpinanDokumenPage() {
   }, [filter]);
 
   useEffect(() => { fetchDokumen(); }, [fetchDokumen]);
+
+  const fetchKategori = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/dokumen/kategori`);
+      const data = await res.json();
+      if (data.success) setKategoriList(data.data);
+    } catch (err) {
+      console.error('Gagal fetch kategori', err);
+    }
+  }, []);
+
+  useEffect(() => { fetchKategori(); }, [fetchKategori]);
+
+  const openEditModal = (dok: Dokumen) => {
+    setEditId(dok.id);
+    setEditJudul(dok.judul);
+    setEditTahun(dok.tahun.toString());
+    const cat = kategoriList.find(k => k.nama === dok.kategori);
+    setEditKategoriId(cat ? cat.id.toString() : '');
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editId) return;
+    setEditLoading(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/${editId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          judul: editJudul,
+          tahun: Number(editTahun),
+          kategori_id: Number(editKategoriId),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal mengedit dokumen');
+      toast.success('Dokumen berhasil diubah');
+      fetchDokumen();
+      setEditModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengedit dokumen');
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   // Pimpinan: loloskan ke Eselon 1 ATAU kembalikan untuk revisi
   const handleVerifikasi = async (id: number, aksi: 'lolos' | 'reject') => {
@@ -336,6 +397,13 @@ export default function PimpinanDokumenPage() {
                     <td className="px-4 py-3">{statusBadge(dok.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openEditModal(dok)}
+                          className="inline-flex items-center gap-1 text-xs text-orange-500 hover:text-orange-700 font-medium"
+                          title="Edit Metadata"
+                        >
+                          <Edit className="w-3.5 h-3.5" /> Edit
+                        </button>
                         {dok.status === 'menunggu_verifikasi' ? (
                           <button
                             onClick={() => { 
@@ -566,6 +634,67 @@ export default function PimpinanDokumenPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Edit Metadata */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900">Edit Metadata Dokumen</h3>
+              <button onClick={() => setEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Judul Dokumen</label>
+                <input
+                  type="text"
+                  required
+                  value={editJudul}
+                  onChange={e => setEditJudul(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                <select
+                  required
+                  value={editKategoriId}
+                  onChange={e => setEditKategoriId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="">Pilih Kategori...</option>
+                  {kategoriList.map(k => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
+                <select
+                  required
+                  value={editTahun}
+                  onChange={e => setEditTahun(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="">Pilih Tahun...</option>
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setEditModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+                  Batal
+                </button>
+                <button type="submit" disabled={editLoading} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {editLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

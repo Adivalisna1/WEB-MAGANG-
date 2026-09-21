@@ -46,8 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/eselon-1');
     } else if (res.data.user.role === 'admin_it') {
       router.push('/admin-it');
-    } else if (res.data.user.role === 'administrasi') {
-      router.push('/administrasi');
     } else {
       router.push('/staff/dokumen');
     }

@@ -1,6 +1,6 @@
 const { pool } = require('../config/db');
 
-// 📢 Helper: buat notifikasi (dipanggil dari controller lain) 📢
+//  Helper: buat notifikasi (dipanggil dari controller lain) 
 async function buatNotifikasi({ user_id, aksi, dokumen_id = null, judul = null, pesan }) {
   try {
     await pool.query(
@@ -15,7 +15,7 @@ async function buatNotifikasi({ user_id, aksi, dokumen_id = null, judul = null, 
       if (userRows.length > 0 && userRows[0].email) {
         const user = userRows[0];
         const senderEmail = process.env.EMAIL_FROM || 'no-reply@laporan.go.id';
-        
+
         // Fitur Testing: Gunakan TEST_EMAIL_RECIPIENT dari .env jika ada (email kamu)
         const targetEmail = process.env.TEST_EMAIL_RECIPIENT || user.email;
 
@@ -45,15 +45,15 @@ async function buatNotifikasi({ user_id, aksi, dokumen_id = null, judul = null, 
           },
           body: JSON.stringify(payload)
         })
-        .then(async res => {
-          if (!res.ok) {
-            const errBody = await res.text();
-            console.error('[NOTIFIKASI EMAIL] Brevo API Error:', res.status, errBody);
-          } else {
-            console.log(`[NOTIFIKASI EMAIL] Terkirim ke ${targetEmail} (Aksi: ${aksi})`);
-          }
-        })
-        .catch(err => console.error('[NOTIFIKASI EMAIL] Fetch Error:', err.message));
+          .then(async res => {
+            if (!res.ok) {
+              const errBody = await res.text();
+              console.error('[NOTIFIKASI EMAIL] Brevo API Error:', res.status, errBody);
+            } else {
+              console.log(`[NOTIFIKASI EMAIL] Terkirim ke ${targetEmail} (Aksi: ${aksi})`);
+            }
+          })
+          .catch(err => console.error('[NOTIFIKASI EMAIL] Fetch Error:', err.message));
       }
     }
     // [END] Kirim Email Notifikasi
@@ -64,7 +64,7 @@ async function buatNotifikasi({ user_id, aksi, dokumen_id = null, judul = null, 
   }
 }
 
-// 📢 GET /api/notifikasi 📢
+// GET /api/notifikasi 
 async function getNotifikasi(req, res, next) {
   try {
     const limit = Number(req.query.limit) || 20;
@@ -81,7 +81,7 @@ async function getNotifikasi(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// 📢 GET /api/notifikasi/unread-count 📢
+//  GET /api/notifikasi/unread-count 
 async function getUnreadCount(req, res, next) {
   try {
     const [[{ count }]] = await pool.query(
@@ -92,7 +92,7 @@ async function getUnreadCount(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// 📢 PATCH /api/notifikasi/:id/read 📢
+//  PATCH /api/notifikasi/:id/read 
 async function markAsRead(req, res, next) {
   try {
     await pool.query(
@@ -103,7 +103,7 @@ async function markAsRead(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// 📢 PATCH /api/notifikasi/read-all 📢
+//  PATCH /api/notifikasi/read-all 
 async function markAllAsRead(req, res, next) {
   try {
     await pool.query(

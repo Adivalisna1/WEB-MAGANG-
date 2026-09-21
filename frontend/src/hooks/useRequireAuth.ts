@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 
 // Hook untuk protect halaman — redirect ke /login kalau belum login
 // role: satu role atau daftar role yang boleh akses
-export type Role = 'pimpinan' | 'staff' | 'eselon_1' | 'admin_it' | 'administrasi';
+export type Role = 'pimpinan' | 'staff' | 'eselon_1' | 'admin_it';
 
 export function useRequireAuth(role?: Role | Role[]) {
   const { user, loading } = useAuth();
@@ -24,7 +24,6 @@ export function useRequireAuth(role?: Role | Role[]) {
       if (user.role === 'pimpinan')       router.replace('/pimpinan');
       else if (user.role === 'eselon_1')  router.replace('/eselon-1');
       else if (user.role === 'admin_it')  router.replace('/admin-it');
-      else if (user.role === 'administrasi') router.replace('/administrasi');
       else                                router.replace('/staff/dokumen');
     }
   }, [user, loading, role, router]);

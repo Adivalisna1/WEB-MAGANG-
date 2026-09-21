@@ -32,10 +32,6 @@ router.get('/dokumen/menunggu', ctrl.getDokumenMenungguKetua);
 // GET /api/eselon-1/logs — log aktivitas (reuse admin)
 router.get('/logs', adminCtrl.getLogs);
 
-// POST /api/eselon-1/notifikasi/kirim — kirim notifikasi manual
-router.post('/notifikasi/kirim',
-  ctrl.kirimNotifikasiRules, validate,
-  ctrl.kirimNotifikasi
-);
+
 
 module.exports = router;

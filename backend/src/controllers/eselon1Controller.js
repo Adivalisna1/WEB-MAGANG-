@@ -231,75 +231,9 @@ async function resetPassword(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// ── POST /api/eselon-1/notifikasi/kirim ─────────────────────────
-const kirimNotifikasiRules = [
-  body('pesan').trim().notEmpty().withMessage('Pesan wajib diisi'),
-  body('target').notEmpty().withMessage('Target wajib dipilih'),
-];
 
-async function kirimNotifikasi(req, res, next) {
-  try {
-    const { target, pesan, judul } = req.body;
-
-    // Tentukan daftar penerima: 'all' (broadcast) atau satu user_id
-    let targets = [];
-    if (target === 'all') {
-      const [users] = await pool.query(
-        'SELECT id FROM users WHERE is_active = 1 AND id != ?', [req.user.id]
-      );
-      targets = users.map((u) => u.id);
-    } else if (target === 'staff') {
-      const [users] = await pool.query(
-        'SELECT id FROM users WHERE is_active = 1 AND role_id IN (1, 2) AND id != ?', [req.user.id]
-      );
-      targets = users.map(u => u.id);
-    } else if (target.startsWith('grup_staff_')) {
-      const staffId = target.replace('grup_staff_', '');
-      const [users] = await pool.query(
-        'SELECT id FROM users WHERE is_active = 1 AND satker_id = ? AND id != ?', [staffId, req.user.id]
-      );
-      targets = users.map(u => u.id);
-    } else {
-      const [users] = await pool.query(
-        'SELECT id FROM users WHERE id = ? AND is_active = 1', [Number(target)]
-      );
-      if (!users.length) {
-        return res.status(404).json({ success: false, message: 'User tujuan tidak ditemukan atau tidak aktif' });
-      }
-      targets = [users[0].id];
-    }
-
-    if (!targets.length) {
-      return res.status(400).json({ success: false, message: 'Tidak ada user aktif untuk dikirimi notifikasi' });
-    }
-
-    for (const userId of targets) {
-      await buatNotifikasi({
-        user_id: userId,
-        aksi: 'pesan_ketua',
-        judul: judul || 'Pesan dari Eselon 1',
-        pesan,
-      });
-    }
-
-    await catatLog({
-      user_id: req.user.id,
-      aksi: 'kirim_notifikasi',
-      entitas: 'notifikasi',
-      detail: { target, jumlah_penerima: targets.length, judul: judul || 'Pesan dari Eselon 1' },
-      ip: req.ip,
-    });
-
-    return res.json({
-      success: true,
-      message: `Notifikasi terkirim ke ${targets.length} user`,
-      data: { jumlah_penerima: targets.length },
-    });
-  } catch (err) { next(err); }
-}
 
 module.exports = {
   getStats, getUsers, getDokumen, getDokumenMenungguKetua,
   toggleUserActive, resetPassword,
-  kirimNotifikasi, kirimNotifikasiRules,
 };
