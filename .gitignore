@@ -69,3 +69,10 @@ yarn-error.log*
 frontend/next-env.d.ts
 BISNIS_PROSES.md
 PENJELASAN_BISNIS_PROSES.md
+
+# ============================================================
+# Excel Templates
+# ============================================================
+template_bulk_user*.xlsx
+Data_User_Siap_Upload.xlsx
+*.xlsx

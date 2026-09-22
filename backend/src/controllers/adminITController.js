@@ -136,7 +136,7 @@ async function createBulkUsers(req, res, next) {
           }
         }
 
-        const password_hash = await bcrypt.hash(password, 12);
+        const password_hash = await bcrypt.hash(String(password), 12);
         
         await connection.query(
           `INSERT INTO users (role_id, satker_id, nama, username, email, password_hash, permissions)
@@ -145,6 +145,7 @@ async function createBulkUsers(req, res, next) {
         );
         successCount++;
       } catch (err) {
+        console.error("Bulk Insert Error:", err);
         // Skip user jika error (misal duplicate entry), lanjut ke baris selanjutnya
         failedCount++;
       }
