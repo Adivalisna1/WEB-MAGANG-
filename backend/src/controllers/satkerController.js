@@ -1,28 +1,5 @@
 const { pool } = require('../config/db');
 
-async function initSatkerTable() {
-  try {
-    // Pastikan tabel satkers ada
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS satkers (
-        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        nama VARCHAR(255) NOT NULL UNIQUE,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB;
-    `);
-    
-    // Tambahkan kolom NO_Satker jika belum ada
-    await pool.query("ALTER TABLE satkers ADD COLUMN NO_Satker INT NULL;");
-    console.log("Kolom NO_Satker berhasil ditambahkan ke tabel satkers.");
-  } catch (err) {
-    if (err.code !== 'ER_DUP_FIELDNAME') {
-      console.error("Error init tabel satkers:", err);
-    }
-  }
-}
-// Jalankan saat file di-load
-initSatkerTable();
-
 async function getSatkers(req, res, next) {
   try {
     const [rows] = await pool.query('SELECT id, NO_Satker, nama, created_at FROM satkers ORDER BY nama ASC');
@@ -48,15 +25,15 @@ async function createSatker(req, res, next) {
 async function createBulkSatker(req, res, next) {
   try {
     if (req.user.role !== 'admin_it') return res.status(403).json({ success: false, message: 'Forbidden' });
-    const { satkers } = req.body; 
-    
+    const { satkers } = req.body;
+
     if (!satkers || !Array.isArray(satkers) || satkers.length === 0) {
       return res.status(400).json({ success: false, message: 'Data satker kosong atau format tidak valid' });
     }
 
-    const values = satkers.map(s => [s.NO_Satker, s.nama]);
-    await pool.query('INSERT INTO satkers (NO_Satker, nama) VALUES ?', [values]);
-    
+    const values = satkers.map(s => [s]);
+    await pool.query('INSERT INTO satkers (nama) VALUES ?', [values]);
+
     return res.json({ success: true, message: `${satkers.length} Satker berhasil diimport` });
   } catch (err) {
     next(err);
@@ -79,7 +56,7 @@ async function updateSatker(req, res, next) {
 async function deleteSatker(req, res, next) {
   try {
     if (req.user.role !== 'admin_it') return res.status(403).json({ success: false, message: 'Forbidden' });
-    
+
     // Check if any user is associated with this staff
     const [users] = await pool.query('SELECT id FROM users WHERE satker_id = ?', [req.params.id]);
     if (users.length > 0) {

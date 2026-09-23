@@ -77,6 +77,11 @@ async function bulkInsertKertasKerja(req, res, next) {
     const uploadedBy = req.user.id;
     const values = [];
 
+    // Buat mapping NO_Satker -> id
+    const [satkersData] = await pool.query('SELECT id, NO_Satker FROM satkers WHERE NO_Satker IS NOT NULL');
+    const satkerMap = {};
+    satkersData.forEach(s => { satkerMap[s.NO_Satker] = s.id; });
+
     // Parsing data excel
     for (const row of data) {
       const keys = Object.keys(row);
@@ -111,8 +116,15 @@ async function bulkInsertKertasKerja(req, res, next) {
       const saldo_rpl_lpj = parseNum(row['SALDO PER AKHIR BULAN (RPL/LPJ)'] || getVal(['(rpl/lpj)']));
       const keterangan = getVal(['keterangan']) || null;
 
+      let rowSatkerId = satkerId;
+      const kodeSatker = getVal(['kode satker', 'no_satker']);
+      if (kodeSatker) {
+          const matchId = satkerMap[kodeSatker] || satkerMap[parseInt(kodeSatker)];
+          if (matchId) rowSatkerId = matchId;
+      }
+
       values.push([
-        satkerId, uploadedBy, nama_bank, nomor_rekening_bank, nama_rekening, 
+        rowSatkerId, uploadedBy, nama_bank, nomor_rekening_bank, nama_rekening, 
         nomor_pembukaan_rekening, tanggal_pembukaan_rekening, 
         saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan
       ]);

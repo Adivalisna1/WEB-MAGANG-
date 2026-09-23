@@ -325,12 +325,12 @@ export default function KertasKerjaPage() {
                 <div className="flex gap-2 items-center">
                   {['admin_it', 'pimpinan'].includes(userRole) && satkerList.length > 0 && (
                     <select value={selectedUploadSatker} onChange={e => setSelectedUploadSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
-                      <option value="">-- Pilih Satker --</option>
+                      <option value="">-- Otomatis dari Excel (atau pilih) --</option>
                       {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
                     </select>
                   )}
                   <button onClick={() => setExcelData([])} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg">Batal</button>
-                  <button onClick={saveToDatabase} disabled={isSaving || (['admin_it', 'pimpinan'].includes(userRole) && satkerList.length > 0 && !selectedUploadSatker)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                  <button onClick={saveToDatabase} disabled={isSaving} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Simpan ke Database
                   </button>
                 </div>
