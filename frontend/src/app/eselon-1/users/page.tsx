@@ -130,6 +130,9 @@ export default function KetuaUsersPage() {
     } catch { /* clipboard tidak tersedia */ }
   };
 
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  const currentUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -172,7 +175,7 @@ export default function KetuaUsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((user) => (
+                {currentUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -246,24 +249,23 @@ export default function KetuaUsersPage() {
               </div>
             )}
             
-            {/* Pagination Controls */}
-            {users.length > itemsPerPage && (
+            {users.length > 0 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
-                <span className="text-sm text-gray-500">
-                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, users.length)} dari {users.length} akun
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                <div className="text-sm text-gray-500">
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, users.length)} dari {users.length}
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    disabled={currentPage === 1} 
+                    onClick={() => setCurrentPage(p => p - 1)} 
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
                   >
                     Sebelumnya
                   </button>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(users.length / itemsPerPage), p + 1))}
-                    disabled={currentPage === Math.ceil(users.length / itemsPerPage)}
-                    className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  <button 
+                    disabled={currentPage === totalPages} 
+                    onClick={() => setCurrentPage(p => p + 1)} 
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
                   >
                     Selanjutnya
                   </button>

@@ -40,7 +40,7 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
       )}
 
       <aside className={`
-        fixed left-0 top-0 md:relative h-screen bg-indigo-950 text-indigo-100 flex flex-col shrink-0 z-50 transition-all duration-300
+        fixed left-0 top-0 md:sticky md:top-0 h-screen bg-indigo-950 text-indigo-100 flex flex-col shrink-0 z-50 transition-all duration-300
         ${isMobileOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
         ${isCollapsed ? 'md:w-20' : 'md:w-[260px]'}
       `}>

@@ -42,7 +42,7 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100 relative">
+    <div className="flex min-h-screen bg-gray-100 relative">
       <Eselon1Sidebar 
         isMobileOpen={isMobileOpen} 
         setIsMobileOpen={setIsMobileOpen} 
