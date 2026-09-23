@@ -1,9 +1,9 @@
 'use client';
+import toast from 'react-hot-toast';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getSession } from '@/lib/auth';
-import { FileSpreadsheet, Download, ArrowLeft, Search, Table2 } from 'lucide-react';
-import Link from 'next/link';
+import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -11,41 +11,63 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 interface KertasKerja {
   id: number;
   satker_id: number | null;
-  tanggal: string;
-  uraian: string;
-  kategori: string;
-  no_rek: string | null;
-  judul_laporan: string | null;
-  akun: string | null;
-  nominal: number;
-  created_at: string;
   nama_satker?: string;
+  kode_satker?: string;
+  nama_bank: string | null;
+  nomor_rekening_bank: string | null;
+  nama_rekening: string | null;
+  nomor_pembukaan_rekening: string | null;
+  tanggal_pembukaan_rekening: string | null;
+  saldo_akhir_bulan: number;
+  saldo_rk: number;
+  saldo_rekening: number;
+  saldo_rpl_lpj: number;
+  keterangan: string | null;
+  created_at: string;
 }
 
 interface Satker {
   id: number;
   nama: string;
+  NO_Satker?: string;
 }
+
+const initialRowState = {
+  nama_bank: '', nomor_rekening_bank: '', nama_rekening: '', nomor_pembukaan_rekening: '', 
+  tanggal_pembukaan_rekening: '', saldo_akhir_bulan: 0, saldo_rk: 0, saldo_rekening: 0, 
+  saldo_rpl_lpj: 0, keterangan: ''
+};
 
 export default function KertasKerjaPage() {
   const [dataList, setDataList] = useState<KertasKerja[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Excel state
+  const [excelData, setExcelData] = useState<any[]>([]);
+  const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
+  const [excelFileName, setExcelFileName] = useState('');
+  const [dragging, setDragging] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   // Filter state
+  const [activeTab, setActiveTab] = useState<'excel' | 'history'>('history');
   const [searchQ, setSearchQ] = useState('');
-  const [filterTahun, setFilterTahun] = useState('');
-  const [filterSemester, setFilterSemester] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
-  const [filterKategori, setFilterKategori] = useState('');
-  const [filterAkun, setFilterAkun] = useState('');
-  const [filterNoRek, setFilterNoRek] = useState('');
-  
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 100;
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
   
   const [userRole, setUserRole] = useState('');
+
+  // Edit State
+  const [editingRowId, setEditingRowId] = useState<number | null>(null);
+  const [editRowData, setEditRowData] = useState(initialRowState);
+  const [isSavingRow, setIsSavingRow] = useState<number | 'new' | null>(null);
+
+  // New Row State
+  const [newRow, setNewRow] = useState(initialRowState);
+
+  // Selected Satker for Excel Upload
+  const [selectedUploadSatker, setSelectedUploadSatker] = useState<string>('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -57,12 +79,10 @@ export default function KertasKerjaPage() {
         headers: session ? { Authorization: `Bearer ${session.token}` } : {},
       });
       if (res.ok) {
-
         const d = await res.json();
         setDataList(d.data ?? []);
       }
 
-      // Fetch satker list if role needs it
       if (['eselon_1', 'pimpinan', 'admin_it'].includes(session?.user?.role || '')) {
         const resSatker = await fetch(`${API}/satker`, {
           headers: session ? { Authorization: `Bearer ${session.token}` } : {},
@@ -79,131 +99,275 @@ export default function KertasKerjaPage() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQ, filterTahun, filterSemester, filterSatker, filterKategori, filterAkun, filterNoRek]);
+  const handleExcelFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      
+      if (jsonData.length > 0) {
+        setExcelHeaders(Object.keys(jsonData[0]));
+        setExcelData(jsonData);
+        setExcelFileName(file.name);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleExcelFile(file);
+  };
+
+  const downloadTemplate = () => {
+    const templateData = [{ 
+      'Kode Satker': '191',
+      'Nama Satker': 'BPS Provinsi Jawa Tengah',
+      'Nama Bank': 'BRI',
+      'Nomor Rekening Bank': '0123456789',
+      'Nama Rekening': 'BPS JATENG',
+      'Nomor Pembukaan Rekening': 'SK-123/2026',
+      'Tanggal Pembukaan Rekening': '2026-01-01',
+      'SALDO PER AKHIR BULAN': 1000000,
+      'SALDO PER AKHIR BULAN (RK)': 500000,
+      'LAPORAN SALDO PER AKHIR BULAN (SALDO REKENING)': 1500000,
+      'SALDO PER AKHIR BULAN (RPL/LPJ)': 0,
+      'KETERANGAN': 'Aman'
+    }];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Rekening Koran');
+    XLSX.writeFile(wb, 'Template_Rekening_Koran.xlsx');
+  };
+
+  const saveToDatabase = async () => {
+    if (excelData.length === 0) return;
+    setIsSaving(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
+        body: JSON.stringify({ data: excelData, satker_id: selectedUploadSatker ? parseInt(selectedUploadSatker) : null })
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success('Data berhasil disimpan ke database!');
+        setExcelData([]); setExcelFileName(''); setActiveTab('history'); fetchData();
+      } else {
+        toast.error('Gagal menyimpan: ' + result.message);
+      }
+    } catch (err) { toast.error('Terjadi kesalahan server saat menyimpan.'); } 
+    finally { setIsSaving(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const result = await res.json();
+      if (result.success) { toast.success('Data berhasil dihapus'); fetchData(); } 
+      else { toast.error('Gagal menghapus: ' + result.message); }
+    } catch (err) { toast.error('Terjadi kesalahan server saat menghapus.'); }
+  };
+
+  const saveNewRow = async () => {
+    if (!newRow.nama_bank || !newRow.nomor_rekening_bank) {
+      toast.error('Isi minimal Nama Bank dan Nomor Rekening!');
+      return;
+    }
+    setIsSavingRow('new');
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
+        body: JSON.stringify(newRow)
+      });
+      const result = await res.json();
+      if (result.success) { setNewRow(initialRowState); fetchData(); } 
+      else { toast.error('Gagal menambahkan: ' + result.message); }
+    } catch (err) { toast.error('Terjadi kesalahan server.'); } 
+    finally { setIsSavingRow(null); }
+  };
+
+  const startEdit = (d: KertasKerja) => {
+    setEditingRowId(d.id);
+    setEditRowData({
+      nama_bank: d.nama_bank || '',
+      nomor_rekening_bank: d.nomor_rekening_bank || '',
+      nama_rekening: d.nama_rekening || '',
+      nomor_pembukaan_rekening: d.nomor_pembukaan_rekening || '',
+      tanggal_pembukaan_rekening: d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toISOString().split('T')[0] : '',
+      saldo_akhir_bulan: d.saldo_akhir_bulan || 0,
+      saldo_rk: d.saldo_rk || 0,
+      saldo_rekening: d.saldo_rekening || 0,
+      saldo_rpl_lpj: d.saldo_rpl_lpj || 0,
+      keterangan: d.keterangan || ''
+    });
+  };
+
+  const saveInlineEdit = async (id: number) => {
+    if (!editRowData.nama_bank || !editRowData.nomor_rekening_bank) {
+      toast.error('Nama Bank dan No Rekening tidak boleh kosong!'); return;
+    }
+    setIsSavingRow(id);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
+        body: JSON.stringify(editRowData)
+      });
+      const result = await res.json();
+      if (result.success) { setEditingRowId(null); fetchData(); } 
+      else { toast.error('Gagal mengupdate: ' + result.message); }
+    } catch (err) { toast.error('Terjadi kesalahan server.'); } 
+    finally { setIsSavingRow(null); }
+  };
 
   const exportToExcel = () => {
-    // Modify data to match the column names and exclude internal IDs
     const exportData = filteredData.map(d => ({
-      'Tanggal': d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '',
-      'Nama Satker': d.nama_satker || 'Tidak Ada',
-      'No Rekening': d.no_rek || '',
-      'Judul Laporan': d.judul_laporan || '',
-      'Akun': d.akun || '',
-      'Uraian': d.uraian,
-      'Kategori': d.kategori,
-      'Nominal': Number(d.nominal || 0)
+      'Kode Satker': d.kode_satker || '-',
+      'Nama Satker': d.nama_satker || '-',
+      'Nama Bank': d.nama_bank || '-',
+      'Nomor Rekening Bank': d.nomor_rekening_bank || '-',
+      'Nama Rekening': d.nama_rekening || '-',
+      'Nomor Pembukaan Rekening': d.nomor_pembukaan_rekening || '-',
+      'Tanggal Pembukaan Rekening': d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-',
+      'SALDO PER AKHIR BULAN': d.saldo_akhir_bulan || 0,
+      'SALDO PER AKHIR BULAN (RK)': d.saldo_rk || 0,
+      'LAPORAN SALDO PER AKHIR BULAN (SALDO REKENING)': d.saldo_rekening || 0,
+      'SALDO PER AKHIR BULAN (RPL/LPJ)': d.saldo_rpl_lpj || 0,
+      'KETERANGAN': d.keterangan || '-'
     }));
-    
+
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Data Rekening Koran');
-    
-    const selectedSatker = satkerList.find(s => s.id === Number(filterSatker));
-    const satkerStr = selectedSatker ? `_${selectedSatker.nama.replace(/\s+/g, '')}` : '_SemuaSatker';
-    const semStr = filterSemester ? `_Sem${filterSemester}` : '';
-    const thnStr = filterTahun ? `_${filterTahun}` : '_SemuaTahun';
-    const rekStr = filterNoRek ? `_${filterNoRek.replace(/\s+/g, '')}` : '';
-    
-    const fileName = `Laporan_Kertas_Kerja${thnStr}${semStr}${satkerStr}${rekStr}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    XLSX.writeFile(wb, 'Laporan_Rekening_Koran.xlsx');
   };
 
-  // ── Filter Data ──
   const filteredData = dataList.filter(d => {
-    const matchSearch = !searchQ || d.uraian?.toLowerCase().includes(searchQ.toLowerCase());
-    const year = d.tanggal ? new Date(d.tanggal).getFullYear().toString() : '';
-    const month = d.tanggal ? new Date(d.tanggal).getMonth() + 1 : 0;
-    
-    const matchTahun = !filterTahun || year === filterTahun;
-    let matchSemester = true;
-    if (filterSemester === '1') matchSemester = month >= 1 && month <= 6;
-    if (filterSemester === '2') matchSemester = month >= 7 && month <= 12;
-    
+    const matchSearch = !searchQ || d.nama_bank?.toLowerCase().includes(searchQ.toLowerCase()) || d.nomor_rekening_bank?.includes(searchQ) || d.nama_rekening?.toLowerCase().includes(searchQ.toLowerCase());
     const matchSatker = !filterSatker || d.satker_id === Number(filterSatker);
-    const matchKategori = !filterKategori || d.kategori?.toLowerCase() === filterKategori.toLowerCase();
-    const matchAkun = !filterAkun || d.akun?.toLowerCase() === filterAkun.toLowerCase();
-    const matchNoRek = !filterNoRek || d.no_rek?.toLowerCase() === filterNoRek.toLowerCase();
-    
-    return matchSearch && matchTahun && matchSemester && matchSatker && matchKategori && matchAkun && matchNoRek;
+    return matchSearch && matchSatker;
   });
 
-  const uniqueTahun = Array.from(new Set(dataList.map(d => d.tanggal ? new Date(d.tanggal).getFullYear().toString() : ''))).filter(Boolean).sort((a, b) => b.localeCompare(a));
-  const uniqueKategori = Array.from(new Set(dataList.map(d => d.kategori))).filter(Boolean).sort();
-  const uniqueAkun = Array.from(new Set(dataList.map(d => d.akun))).filter(Boolean).sort();
-  const uniqueNoRek = Array.from(new Set(dataList.map(d => d.no_rek))).filter(Boolean).sort();
+  const isEselon1 = userRole === 'eselon_1';
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  useEffect(() => {
+    if (isEselon1 && activeTab === 'excel') setActiveTab('history');
+  }, [isEselon1, activeTab]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/eselon-1" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-2 transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Kembali ke Dashboard
-          </Link>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileSpreadsheet className="w-7 h-7 text-emerald-600" />
             Rekening Koran
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Laporan Riwayat Transaksi Rekening Koran Satker
+            {isEselon1 ? 'Laporan Riwayat Rekening Koran Satker' : 'Kelola dan impor Rekening Koran via Excel.'}
           </p>
         </div>
       </div>
 
-      {/* TAB: Riwayat (Data Database) */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max">
+        {!isEselon1 && (
+          <button onClick={() => setActiveTab('excel')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'excel' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+            <Upload className="w-4 h-4" /> Import Excel
+          </button>
+        )}
+        <button onClick={() => setActiveTab('history')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+          <Table2 className="w-4 h-4" /> Data Rekening Koran
+        </button>
+      </div>
+
+      {activeTab === 'excel' && !isEselon1 && (
+        <div className="space-y-4">
+          {excelData.length === 0 ? (
+            <div
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${dragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 hover:bg-gray-50'}`}
+            >
+              <FileSpreadsheet className={`w-14 h-14 mx-auto mb-3 ${dragging ? 'text-emerald-500' : 'text-gray-300'}`} />
+              <p className="text-lg font-semibold text-gray-700">Drag & drop file Excel di sini</p>
+              <p className="text-sm text-gray-400 mt-1 mb-4">Gunakan format kolom yang sesuai dengan template (Bank, No Rekening, Saldo, dll).</p>
+              <button onClick={(e) => { e.stopPropagation(); downloadTemplate(); }} className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors mx-auto">
+                <Download className="w-4 h-4" /> Download Template Excel
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="w-8 h-8 text-emerald-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">{excelFileName}</p>
+                    <p className="text-xs text-gray-500">{excelData.length} baris siap disimpan</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 items-center">
+                  {['admin_it', 'pimpinan'].includes(userRole) && satkerList.length > 0 && (
+                    <select value={selectedUploadSatker} onChange={e => setSelectedUploadSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+                      <option value="">-- Pilih Satker --</option>
+                      {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+                    </select>
+                  )}
+                  <button onClick={() => setExcelData([])} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg">Batal</button>
+                  <button onClick={saveToDatabase} disabled={isSaving || (['admin_it', 'pimpinan'].includes(userRole) && satkerList.length > 0 && !selectedUploadSatker)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Simpan ke Database
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-auto max-h-[400px] border rounded-lg">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>{excelHeaders.map(h => <th key={h} className="px-4 py-3 font-medium text-gray-500 whitespace-nowrap">{h}</th>)}</tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {excelData.slice(0, 50).map((row, i) => (
+                      <tr key={i}>{excelHeaders.map(h => <td key={h} className="px-4 py-2 whitespace-nowrap text-gray-700">{String(row[h] || '')}</td>)}</tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => e.target.files?.[0] && handleExcelFile(e.target.files[0])} />
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 flex-1 min-w-[200px] max-w-sm">
                 <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Cari uraian..." className="flex-1 text-sm outline-none" />
+                <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Cari Bank / No Rek..." className="flex-1 text-sm outline-none" />
               </div>
               
-              {/* Dropdown Tahun & Semester */}
-              <select value={filterTahun} onChange={e => setFilterTahun(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
-                <option value="">Semua Tahun</option>
-                {uniqueTahun.map(t => <option key={t} value={t}>Tahun {t}</option>)}
-              </select>
-              <select value={filterSemester} onChange={e => setFilterSemester(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
-                <option value="">Semua Semester</option>
-                <option value="1">Semester 1 (Jan-Jun)</option>
-                <option value="2">Semester 2 (Jul-Des)</option>
-              </select>
-
-              {/* Dropdown Kategori */}
-              <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
-                <option value="">Semua Kategori</option>
-                {uniqueKategori.map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-
-              {/* Dropdown Akun */}
-              <select value={filterAkun} onChange={e => setFilterAkun(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white max-w-[150px] truncate">
-                <option value="">Semua Akun</option>
-                {uniqueAkun.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-              
-              {/* Dropdown No Rekening */}
-              <select value={filterNoRek} onChange={e => setFilterNoRek(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white max-w-[150px] truncate">
-                <option value="">Semua No Rekening</option>
-                {uniqueNoRek.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-
-              {/* Dropdown Satker */}
-              <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white min-w-[150px]">
-                <option value="">Semua Satker</option>
-                {satkerList.map(s => (
-                  <option key={s.id} value={s.id}>{s.nama}</option>
-                ))}
-              </select>
+              {['eselon_1', 'pimpinan', 'admin_it'].includes(userRole) && (
+                <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white min-w-[150px]">
+                  <option value="">Semua Satker</option>
+                  {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+                </select>
+              )}
             </div>
             
             <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
@@ -211,74 +375,98 @@ export default function KertasKerjaPage() {
             </button>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <table className="w-full text-sm text-left">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
+            <table className="w-full text-sm text-left min-w-[1400px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Tanggal</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Satker</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Uraian</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Kategori</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">No Rekening</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Judul Laporan</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Akun</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Nominal</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Satker</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[150px]">Bank</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[150px]">No Rekening</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[180px]">Nama Rekening</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Tgl Buka</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Akhir</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RK</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Rekening</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RPL/LPJ</th>
+                  {!isEselon1 && <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right w-[100px]">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {loading ? <tr><td colSpan={8} className="text-center py-8 text-gray-500">Memuat data riwayat...</td></tr> :
-                  paginatedData.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-gray-400">Belum ada data riwayat transaksi.</td></tr> :
-                  paginatedData.map(d => {
+                {loading ? <tr><td colSpan={10} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
+                  filteredData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
+                  filteredData.map(d => {
+                    const isEditing = editingRowId === d.id;
                     return (
-                      <tr key={d.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-600">{new Date(d.tanggal).toLocaleDateString('id-ID')}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate" title={d.nama_satker || ''}>{d.nama_satker || '-'}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate" title={d.uraian}>{d.uraian}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">{d.kategori}</span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{d.no_rek || '-'}</td>
-                        <td className="px-4 py-3 text-gray-600 max-w-[150px] truncate" title={d.judul_laporan || ''}>{d.judul_laporan || '-'}</td>
-                        <td className="px-4 py-3 text-gray-600">{d.akun || '-'}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
-                          Rp {Number(d.nominal || 0).toLocaleString('id-ID')}
-                        </td>
+                      <tr key={d.id} className="hover:bg-gray-50 transition-colors group">
+                        {isEditing ? (
+                          <>
+                            <td className="px-2 py-2 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
+                            <td className="px-1 py-1"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({...editRowData, nama_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({...editRowData, nomor_rekening_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({...editRowData, nama_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="date" value={editRowData.tanggal_pembukaan_rekening} onChange={e => setEditRowData({...editRowData, tanggal_pembukaan_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rk} onChange={e => setEditRowData({...editRowData, saldo_rk: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rekening} onChange={e => setEditRowData({...editRowData, saldo_rekening: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rpl_lpj} onChange={e => setEditRowData({...editRowData, saldo_rpl_lpj: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-2 py-2 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => saveInlineEdit(d.id)} disabled={isSavingRow === d.id} className="p-1 text-white bg-green-500 hover:bg-green-600 rounded">
+                                  {isSavingRow === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Save className="w-3.5 h-3.5" />}
+                                </button>
+                                <button onClick={() => setEditingRowId(null)} className="p-1 text-gray-500 hover:bg-gray-200 rounded"><X className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer">{d.nama_bank || '-'}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 font-mono text-xs cursor-pointer">{d.nomor_rekening_bank || '-'}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>{d.nama_rekening || '-'}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rk || 0).toLocaleString('id-ID')}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rekening || 0).toLocaleString('id-ID')}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rpl_lpj || 0).toLocaleString('id-ID')}</td>
+                            {!isEselon1 && (
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => startEdit(d)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
+                                  <button onClick={() => handleDelete(d.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                              </td>
+                            )}
+                          </>
+                        )}
                       </tr>
                     );
                   })
                 }
+                  
+                  {!isEselon1 && (
+                    <tr className="bg-emerald-50/30 border-t border-emerald-100">
+                      <td className="px-2 py-2 text-[10px] text-emerald-600 font-bold uppercase tracking-wider text-center bg-emerald-100/50">Data Baru</td>
+                      <td className="px-1 py-1"><input type="text" placeholder="Bank..." value={newRow.nama_bank} onChange={e => setNewRow({...newRow, nama_bank: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="text" placeholder="No Rek..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({...newRow, nomor_rekening_bank: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="text" placeholder="Nama Rek..." value={newRow.nama_rekening} onChange={e => setNewRow({...newRow, nama_rekening: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="date" value={newRow.tanggal_pembukaan_rekening} onChange={e => setNewRow({...newRow, tanggal_pembukaan_rekening: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_akhir_bulan} onChange={e => setNewRow({...newRow, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rk} onChange={e => setNewRow({...newRow, saldo_rk: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rekening} onChange={e => setNewRow({...newRow, saldo_rekening: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rpl_lpj} onChange={e => setNewRow({...newRow, saldo_rpl_lpj: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
+                      <td className="px-2 py-2 text-right">
+                        <button onClick={saveNewRow} disabled={isSavingRow === 'new'} className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded text-xs ml-auto disabled:opacity-50 transition-colors">
+                          {isSavingRow === 'new' ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Plus className="w-3.5 h-3.5" />} <span>Tambah</span>
+                        </button>
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
-          
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="p-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-              <div className="text-sm text-gray-500">
-                Menampilkan <span className="font-medium text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-medium text-gray-900">{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> dari <span className="font-medium text-gray-900">{filteredData.length}</span> data
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Sebelumnya
-                </button>
-                <div className="flex items-center px-2 text-sm text-gray-600 font-medium">
-                  Halaman {currentPage} / {totalPages}
-                </div>
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Selanjutnya
-                </button>
-              </div>
-            </div>
-          )}
         </div>
+      )}
     </div>
   );
 }
