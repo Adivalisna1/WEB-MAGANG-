@@ -132,7 +132,7 @@ export default function KertasKerjaPage() {
     }];
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Kertas Kerja');
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Rekening Koran');
     XLSX.writeFile(wb, 'Template_Kertas_Kerja.xlsx');
   };
 
@@ -258,7 +258,7 @@ export default function KertasKerjaPage() {
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(filteredData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data Kertas Kerja');
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Rekening Koran');
     XLSX.writeFile(wb, `Laporan_Kertas_Kerja_${filterTahun || 'Semua'}.xlsx`);
   };
 
@@ -289,10 +289,10 @@ export default function KertasKerjaPage() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileSpreadsheet className="w-7 h-7 text-emerald-600" />
-            Kertas Kerja
+            Rekening Koran
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola dan impor history transaksi Kertas Kerja via Excel.
+            Kelola dan impor history transaksi Rekening Koran via Excel.
           </p>
         </div>
       </div>
@@ -303,7 +303,7 @@ export default function KertasKerjaPage() {
           <Upload className="w-4 h-4" /> Import Excel
         </button>
         <button onClick={() => setActiveTab('history')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-          <Table2 className="w-4 h-4" /> Riwayat Kertas Kerja
+          <Table2 className="w-4 h-4" /> Riwayat Rekening Koran
         </button>
       </div>
 

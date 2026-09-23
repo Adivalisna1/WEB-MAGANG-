@@ -6,10 +6,9 @@ const data = [
   {
     role_id: 2, // 1: Pimpinan, 2: Staff, 3: Eselon 1, 4: Admin IT
     nama: 'Budi Santoso',
-    username: 'budi_staff',
+    username: '693439', // Jika angka = otomatis dicek ke NO_Satker. Jika string = Eselon 1.
     email: 'budi@example.com',
-    password: 'password123',
-    staff_nama: 'BPS Provinsi Jawa Tengah' // Pastikan nama satker ini valid/ada di tabel satkers (opsional jika bukan staff/eselon 1)
+    password: 'password123'
   }
 ];
 

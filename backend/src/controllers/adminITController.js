@@ -117,7 +117,7 @@ async function createBulkUsers(req, res, next) {
 
     for (const user of users) {
       try {
-        const { role_id, nama, username, email, password, staff_nama } = user;
+        const { role_id, nama, username, email, password } = user;
         
         // Cek data valid
         if (!role_id || !nama || !username || !email || !password) {
@@ -126,13 +126,16 @@ async function createBulkUsers(req, res, next) {
         }
 
         let satker_id = null;
-        if (staff_nama) {
-          const [existing] = await connection.query('SELECT id FROM satkers WHERE nama = ?', [staff_nama]);
+        const isNumeric = /^\d+$/.test(String(username));
+        
+        if (isNumeric) {
+          const [existing] = await connection.query('SELECT id FROM satkers WHERE NO_Satker = ?', [username]);
           if (existing.length > 0) {
             satker_id = existing[0].id;
           } else {
-            const [inserted] = await connection.query('INSERT INTO satkers (nama) VALUES (?)', [staff_nama]);
-            satker_id = inserted.insertId;
+            // Tolak jika NO_Satker tidak terdaftar
+            failedCount++;
+            continue;
           }
         }
 

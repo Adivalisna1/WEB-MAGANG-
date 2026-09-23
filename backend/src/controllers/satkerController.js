@@ -2,7 +2,7 @@ const { pool } = require('../config/db');
 
 async function getSatkers(req, res, next) {
   try {
-    const [rows] = await pool.query('SELECT id, nama, created_at FROM satkers ORDER BY nama ASC');
+    const [rows] = await pool.query('SELECT id, NO_Satker, nama, created_at FROM satkers ORDER BY nama ASC');
     return res.json({ success: true, data: rows });
   } catch (err) {
     next(err);
@@ -12,11 +12,11 @@ async function getSatkers(req, res, next) {
 async function createSatker(req, res, next) {
   try {
     if (req.user.role !== 'admin_it') return res.status(403).json({ success: false, message: 'Forbidden' });
-    const { nama } = req.body;
-    if (!nama) return res.status(400).json({ success: false, message: 'Nama Satker wajib diisi' });
+    const { NO_Satker, nama } = req.body;
+    if (!nama || !NO_Satker) return res.status(400).json({ success: false, message: 'Kode Satker dan Nama Satker wajib diisi' });
 
-    const [result] = await pool.query('INSERT INTO satkers (nama) VALUES (?)', [nama]);
-    return res.json({ success: true, message: 'Satker berhasil ditambahkan', data: { id: result.insertId, nama } });
+    const [result] = await pool.query('INSERT INTO satkers (NO_Satker, nama) VALUES (?, ?)', [NO_Satker, nama]);
+    return res.json({ success: true, message: 'Satker berhasil ditambahkan', data: { id: result.insertId, NO_Satker, nama } });
   } catch (err) {
     next(err);
   }
@@ -31,8 +31,8 @@ async function createBulkSatker(req, res, next) {
       return res.status(400).json({ success: false, message: 'Data satker kosong atau format tidak valid' });
     }
 
-    const values = satkers.map(s => [s]);
-    await pool.query('INSERT INTO satkers (nama) VALUES ?', [values]);
+    const values = satkers.map(s => [s.NO_Satker, s.nama]);
+    await pool.query('INSERT INTO satkers (NO_Satker, nama) VALUES ?', [values]);
     
     return res.json({ success: true, message: `${satkers.length} Satker berhasil diimport` });
   } catch (err) {
@@ -43,10 +43,10 @@ async function createBulkSatker(req, res, next) {
 async function updateSatker(req, res, next) {
   try {
     if (req.user.role !== 'admin_it') return res.status(403).json({ success: false, message: 'Forbidden' });
-    const { nama } = req.body;
-    if (!nama) return res.status(400).json({ success: false, message: 'Nama Satker wajib diisi' });
+    const { NO_Satker, nama } = req.body;
+    if (!nama || !NO_Satker) return res.status(400).json({ success: false, message: 'Kode Satker dan Nama Satker wajib diisi' });
 
-    await pool.query('UPDATE satkers SET nama = ? WHERE id = ?', [nama, req.params.id]);
+    await pool.query('UPDATE satkers SET NO_Satker = ?, nama = ? WHERE id = ?', [NO_Satker, nama, req.params.id]);
     return res.json({ success: true, message: 'Satker berhasil diupdate' });
   } catch (err) {
     next(err);

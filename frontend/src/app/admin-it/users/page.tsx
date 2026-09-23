@@ -165,7 +165,7 @@ export default function UserManagementPage() {
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { role_id: 2, satker_nama: 'Satker IT', nama: 'Contoh Satker', username: 'satker01', email: 'satker@example.com', password: 'password123' }
+      { role_id: 2, nama: 'Budi Santoso', username: '693439', email: 'budi@example.com', password: 'password123' }
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Users");

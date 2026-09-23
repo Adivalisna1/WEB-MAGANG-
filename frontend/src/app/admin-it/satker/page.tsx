@@ -23,7 +23,7 @@ export default function SatkerManagementPage() {
   const [showForm, setShowForm] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ nama: '' });
+  const [formData, setFormData] = useState({ NO_Satker: '', nama: '' });
 
   const fetchSatkers = async () => {
     try {
@@ -66,7 +66,7 @@ export default function SatkerManagementPage() {
         else toast.error(j.message || 'Failed');
       }
       setShowForm(false);
-      setFormData({ nama: '' });
+      setFormData({ NO_Satker: '', nama: '' });
       fetchSatkers();
     } catch (err: any) {
       toast.error('Failed to save satker');
@@ -95,7 +95,7 @@ export default function SatkerManagementPage() {
   const handleEditClick = (k: any) => {
     setIsEdit(true);
     setEditId(k.id);
-    setFormData({ nama: k.nama });
+    setFormData({ NO_Satker: k.NO_Satker || '', nama: k.nama });
     setShowForm(true);
   };
 
@@ -114,10 +114,13 @@ export default function SatkerManagementPage() {
           const worksheet = workbook.Sheets[firstSheetName];
           const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
           
-          const satkerNames = jsonData.map(row => row.Satker || row['Nama Satker']).filter(Boolean);
+          const satkerData = jsonData.map(row => ({
+            NO_Satker: row['Kode Satker'] || row.Kode || row.NO_Satker,
+            nama: row.Satker || row['Nama Satker']
+          })).filter(s => s.NO_Satker && s.nama);
           
-          if (satkerNames.length === 0) {
-            toast.error('Tidak ada data Satker yang ditemukan dalam file. Pastikan header kolom bernama "Satker".');
+          if (satkerData.length === 0) {
+            toast.error('Tidak ada data yang valid. Pastikan header kolom "Kode Satker" dan "Nama Satker" terisi.');
             setImporting(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
             return;
@@ -129,7 +132,7 @@ export default function SatkerManagementPage() {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ satkers: satkerNames })
+            body: JSON.stringify({ satkers: satkerData })
           });
           const result = await res.json();
           if (result.success) {
@@ -159,6 +162,15 @@ export default function SatkerManagementPage() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      { 'Kode Satker': 191, 'Nama Satker': 'Contoh Satker IT' }
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Satker");
+    XLSX.writeFile(wb, "Template_Import_Satker.xlsx");
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -166,14 +178,13 @@ export default function SatkerManagementPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Manajemen Satker</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a
-            href="/template_import_satker.xlsx"
-            download
+          <button
+            onClick={handleDownloadTemplate}
             className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Download className="w-4 h-4" />
             Template
-          </a>
+          </button>
           
           <input
             type="file"
@@ -192,7 +203,7 @@ export default function SatkerManagementPage() {
           </button>
 
           <button
-            onClick={() => { setShowForm(!showForm); setIsEdit(false); setFormData({ nama: '' }); }}
+            onClick={() => { setShowForm(!showForm); setIsEdit(false); setFormData({ NO_Satker: '', nama: '' }); }}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -205,6 +216,10 @@ export default function SatkerManagementPage() {
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">{isEdit ? 'Edit Satker' : 'Buat Satker Baru'}</h2>
           <form onSubmit={handleSubmit} className="flex gap-4 items-end">
+            <div className="w-1/4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kode Satker</label>
+              <input type="number" required value={formData.NO_Satker} onChange={e => setFormData({ ...formData, NO_Satker: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Misal: 191" />
+            </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Satker</label>
               <input type="text" required value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Satker IT" />
@@ -222,6 +237,7 @@ export default function SatkerManagementPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Kode</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Nama Satker</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tgl Dibuat</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Aksi</th>
@@ -229,12 +245,15 @@ export default function SatkerManagementPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
               {loading ? (
-                <tr><td colSpan={3} className="p-4 text-center text-gray-500">Loading satker...</td></tr>
+                <tr><td colSpan={4} className="p-4 text-center text-gray-500">Loading satker...</td></tr>
               ) : satkers.length === 0 ? (
-                <tr><td colSpan={3} className="p-4 text-center text-gray-500">Belum ada data satker.</td></tr>
+                <tr><td colSpan={4} className="p-4 text-center text-gray-500">Belum ada data satker.</td></tr>
               ) : (
                 satkers.map(k => (
                   <tr key={k.id} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-3 text-gray-900 font-medium">
+                      {k.NO_Satker || '-'}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">

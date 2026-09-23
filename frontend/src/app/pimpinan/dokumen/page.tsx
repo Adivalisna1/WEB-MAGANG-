@@ -537,9 +537,9 @@ export default function PimpinanDokumenPage() {
                 </div>
               </div>
 
-              {/* Edit Nilai Kertas Kerja */}
+              {/* Edit Nilai Rekening Koran */}
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
-                <h4 className="text-sm font-semibold text-emerald-800">Evaluasi Kertas Kerja</h4>
+                <h4 className="text-sm font-semibold text-emerald-800">Evaluasi Rekening Koran</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-emerald-700 mb-1">
@@ -562,7 +562,7 @@ export default function PimpinanDokumenPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-emerald-700 mb-1">
-                      Nilai Kertas Kerja Excel (Rp)
+                      Nilai Rekening Koran Excel (Rp)
                     </label>
                     <input
                       type="text"
