@@ -68,6 +68,8 @@ export default function KertasKerjaPage() {
 
   // Selected Satker for Excel Upload
   const [selectedUploadSatker, setSelectedUploadSatker] = useState<string>('');
+  const [uploadTahun, setUploadTahun] = useState<string>('2026');
+  const [uploadPeriode, setUploadPeriode] = useState<string>('1');
 
   const fetchData = async () => {
     setLoading(true);
@@ -154,7 +156,12 @@ export default function KertasKerjaPage() {
       const res = await fetch(`${API}/kertas-kerja/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
-        body: JSON.stringify({ data: excelData, satker_id: selectedUploadSatker ? parseInt(selectedUploadSatker) : null })
+        body: JSON.stringify({ 
+          data: excelData, 
+          satker_id: selectedUploadSatker ? parseInt(selectedUploadSatker) : null,
+          tahun: parseInt(uploadTahun),
+          periode: uploadPeriode
+        })
       });
       const result = await res.json();
       if (result.success) {
@@ -322,10 +329,22 @@ export default function KertasKerjaPage() {
                     <p className="text-xs text-gray-500">{excelData.length} baris siap disimpan</p>
                   </div>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center flex-wrap justify-end mt-2">
+                  <select value={uploadTahun} onChange={e => setUploadTahun(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                  </select>
+                  <select value={uploadPeriode} onChange={e => setUploadPeriode(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+                    <option value="1">Periode 1 (Jan - Jun)</option>
+                    <option value="2">Periode 2 (Jul - Des)</option>
+                  </select>
+
                   {['admin_it', 'pimpinan'].includes(userRole) && satkerList.length > 0 && (
-                    <select value={selectedUploadSatker} onChange={e => setSelectedUploadSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
-                      <option value="">-- Otomatis dari Excel (atau pilih) --</option>
+                    <select value={selectedUploadSatker} onChange={e => setSelectedUploadSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white max-w-[200px]">
+                      <option value="">-- Otomatis (atau pilih Satker) --</option>
                       {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
                     </select>
                   )}

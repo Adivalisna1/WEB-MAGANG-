@@ -5,13 +5,17 @@ import FilterBar from '@/components/ui/FilterBar';
 import Pagination from '@/components/ui/Pagination';
 import EmptyState from '@/components/ui/EmptyState';
 import HeroSearchInput from '@/components/ui/HeroSearchInput';
+import ChartDashboard from '@/components/ui/ChartDashboard';
+import Link from 'next/link';
 
 interface SearchParams {
   q?:       string;
   kategori?: string;
   tahun?:   string;
   satker?:  string;
+  satker?:  string;
   page?:    string;
+  view?:    string;
 }
 
 export default async function LaporanPage({
@@ -20,6 +24,7 @@ export default async function LaporanPage({
   searchParams: SearchParams;
 }) {
   const page = Number(searchParams.page) || 1;
+  const viewMode = searchParams.view === 'chart' ? 'chart' : 'list';
 
   const [dokumenRes, kategoriRes, statsRes, satkerRes] = await Promise.all([
     getDokumen({
@@ -87,13 +92,35 @@ export default async function LaporanPage({
           Akses dan unduh dokumen laporan kinerja, rencana strategis, dan dokumen perencanaan lainnya.
         </p>
 
-        {/* Hero Search + Filter Bar */}
-        <Suspense fallback={<div style={{ height: '50px', marginTop: '28px', maxWidth: '820px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px' }} />}>
-          <HeroSearchInput basePath="/laporan" kategoriList={kategoriList} satkerList={satkerList} />
-        </Suspense>
+        {/* Toggle View (List vs Chart) */}
+        <div className="mt-6 flex items-center bg-white/10 backdrop-blur-md rounded-lg p-1 w-fit border border-white/20">
+          <Link 
+            href="?view=list" 
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white text-blue-900 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+          >
+            📄 Daftar Dokumen
+          </Link>
+          <Link 
+            href="?view=chart" 
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'chart' ? 'bg-white text-blue-900 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+          >
+            📊 Statistik & Grafik
+          </Link>
+        </div>
+
+        {/* Hero Search + Filter Bar (Hanya tampil di mode List) */}
+        {viewMode === 'list' && (
+          <Suspense fallback={<div style={{ height: '50px', marginTop: '28px', maxWidth: '820px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px' }} />}>
+            <HeroSearchInput basePath="/laporan" kategoriList={kategoriList} satkerList={satkerList} />
+          </Suspense>
+        )}
       </section>
 
-      {/* ── STATS ROW ── */}
+      {viewMode === 'chart' ? (
+        <ChartDashboard />
+      ) : (
+        <>
+          {/* ── STATS ROW ── */}
       <div
         style={{
           background: '#fff',
@@ -183,6 +210,8 @@ export default async function LaporanPage({
           </>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

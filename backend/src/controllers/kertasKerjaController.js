@@ -68,7 +68,7 @@ async function getKertasKerja(req, res, next) {
 // ── POST /api/kertas-kerja/bulk ──────────────────────────────────
 async function bulkInsertKertasKerja(req, res, next) {
   try {
-    const { data, satker_id: payloadSatkerId } = req.body;
+    const { data, satker_id: payloadSatkerId, tahun, periode } = req.body;
     if (!data || !Array.isArray(data) || data.length === 0) {
       return res.status(400).json({ success: false, message: 'Data excel kosong atau tidak valid' });
     }
@@ -126,7 +126,8 @@ async function bulkInsertKertasKerja(req, res, next) {
       values.push([
         rowSatkerId, uploadedBy, nama_bank, nomor_rekening_bank, nama_rekening, 
         nomor_pembukaan_rekening, tanggal_pembukaan_rekening, 
-        saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan
+        saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan,
+        tahun || 2026, periode || '1'
       ]);
     }
 
@@ -135,7 +136,7 @@ async function bulkInsertKertasKerja(req, res, next) {
         `INSERT INTO kertas_kerja (
           satker_id, uploaded_by, nama_bank, nomor_rekening_bank, nama_rekening,
           nomor_pembukaan_rekening, tanggal_pembukaan_rekening,
-          saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan
+          saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan, tahun, periode
         ) VALUES ?`,
         [values]
       );

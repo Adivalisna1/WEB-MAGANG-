@@ -22,6 +22,7 @@ const notifRoutes = require('./routes/notifikasi');
 const satkerRoutes = require('./routes/satker');
 const akuntansiRoutes = require('./routes/akuntansi');
 const kertasKerjaRoutes = require('./routes/kertasKerjaRoutes');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
@@ -91,6 +92,7 @@ app.use('/api/notifikasi', notifRoutes);
 app.use('/api/satker', satkerRoutes);
 app.use('/api/akuntansi', akuntansiRoutes);
 app.use('/api/kertas-kerja', kertasKerjaRoutes);
+app.use('/api/stats', statsRoutes);
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({
@@ -113,14 +115,22 @@ app.get('/api/debug-env', (req, res) => {
 app.get('/api/fix-db', async (req, res) => {
   try {
     const { pool } = require('./config/db');
-    await pool.query(`
-      ALTER TABLE users 
-      ADD COLUMN reset_password_token VARCHAR(255) NULL, 
-      ADD COLUMN reset_password_expires_at TIMESTAMP NULL;
-    `);
     try {
-      await pool.query(`ALTER TABLE satkers ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+      await pool.query(`
+        ALTER TABLE users 
+        ADD COLUMN reset_password_token VARCHAR(255) NULL, 
+        ADD COLUMN reset_password_expires_at TIMESTAMP NULL;
+      `);
+    } catch (e) { console.log('users columns exist'); }
+    try {
+      await pool.query(`ALTER TABLE satkers ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     } catch (e) { console.log('satkers created_at exists'); }
+    try {
+      await pool.query("ALTER TABLE kertas_kerja ADD COLUMN periode ENUM('1', '2') DEFAULT '1'");
+    } catch (e) { console.log('periode column exists'); }
+    try {
+      await pool.query("ALTER TABLE kertas_kerja ADD COLUMN tahun INT(4) DEFAULT 2026");
+    } catch (e) { console.log('tahun column exists'); }
     res.json({ success: true, message: 'Database fixed! Columns added.' });
   } catch (err) {
     res.json({ success: false, error: err.message });
