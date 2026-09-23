@@ -1,5 +1,28 @@
 const { pool } = require('../config/db');
 
+async function initSatkerTable() {
+  try {
+    // Pastikan tabel satkers ada
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS satkers (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        nama VARCHAR(255) NOT NULL UNIQUE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `);
+    
+    // Tambahkan kolom NO_Satker jika belum ada
+    await pool.query("ALTER TABLE satkers ADD COLUMN NO_Satker INT NULL;");
+    console.log("Kolom NO_Satker berhasil ditambahkan ke tabel satkers.");
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error("Error init tabel satkers:", err);
+    }
+  }
+}
+// Jalankan saat file di-load
+initSatkerTable();
+
 async function getSatkers(req, res, next) {
   try {
     const [rows] = await pool.query('SELECT id, NO_Satker, nama, created_at FROM satkers ORDER BY nama ASC');
