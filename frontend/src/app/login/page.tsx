@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { FileText, Eye, EyeOff, Loader2, AlertCircle, Home } from 'lucide-react';
 
 export default function LoginPage() {
@@ -43,6 +44,17 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await loginFn(username, password);
+      if (password === '123456') {
+        toast('Akun Anda masih menggunakan password default. Segera ganti password demi keamanan!', {
+          icon: '⚠️',
+          duration: 8000,
+          style: {
+            background: '#fff3cd',
+            color: '#856404',
+            border: '1px solid #ffeeba'
+          }
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Username atau password salah');
     } finally {
