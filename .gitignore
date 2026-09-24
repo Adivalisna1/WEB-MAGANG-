@@ -77,3 +77,6 @@ PENJELASAN_BISNIS_PROSES.md
 template_bulk_user*.xlsx
 Data_User_Siap_Upload.xlsx
 *.xlsx
+
+# Ignore Dummy Data
+dummy-data/

@@ -23,6 +23,8 @@ interface KertasKerja {
   saldo_rekening: number;
   saldo_rpl_lpj: number;
   keterangan: string | null;
+  periode?: string;
+  tahun?: number;
   created_at: string;
 }
 
@@ -33,15 +35,15 @@ interface Satker {
 }
 
 const initialRowState = {
-  nama_bank: '', nomor_rekening_bank: '', nama_rekening: '', nomor_pembukaan_rekening: '', 
-  tanggal_pembukaan_rekening: '', saldo_akhir_bulan: 0, saldo_rk: 0, saldo_rekening: 0, 
-  saldo_rpl_lpj: 0, keterangan: ''
+  nama_bank: '', nomor_rekening_bank: '', nama_rekening: '', nomor_pembukaan_rekening: '',
+  tanggal_pembukaan_rekening: '', saldo_akhir_bulan: 0, saldo_rk: 0, saldo_rekening: 0,
+  saldo_rpl_lpj: 0, keterangan: '', tahun: 2026, periode: '1'
 };
 
 export default function KertasKerjaPage() {
   const [dataList, setDataList] = useState<KertasKerja[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Excel state
   const [excelData, setExcelData] = useState<any[]>([]);
   const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
@@ -55,7 +57,7 @@ export default function KertasKerjaPage() {
   const [searchQ, setSearchQ] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
-  
+
   const [userRole, setUserRole] = useState('');
 
   // Edit State
@@ -76,7 +78,7 @@ export default function KertasKerjaPage() {
     try {
       const session = getSession();
       setUserRole(session?.user?.role || '');
-      
+
       const res = await fetch(`${API}/kertas-kerja`, {
         headers: session ? { Authorization: `Bearer ${session.token}` } : {},
       });
@@ -110,7 +112,7 @@ export default function KertasKerjaPage() {
       const wb = XLSX.read(data, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      
+
       if (jsonData.length > 0) {
         setExcelHeaders(Object.keys(jsonData[0]));
         setExcelData(jsonData);
@@ -128,7 +130,7 @@ export default function KertasKerjaPage() {
   };
 
   const downloadTemplate = () => {
-    const templateData = [{ 
+    const templateData = [{
       'Kode Satker': '191',
       'Nama Satker': 'BPS Provinsi Jawa Tengah',
       'Nama Bank': 'BRI',
@@ -156,8 +158,8 @@ export default function KertasKerjaPage() {
       const res = await fetch(`${API}/kertas-kerja/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
-        body: JSON.stringify({ 
-          data: excelData, 
+        body: JSON.stringify({
+          data: excelData,
           satker_id: selectedUploadSatker ? parseInt(selectedUploadSatker) : null,
           tahun: parseInt(uploadTahun),
           periode: uploadPeriode
@@ -170,7 +172,7 @@ export default function KertasKerjaPage() {
       } else {
         toast.error('Gagal menyimpan: ' + result.message);
       }
-    } catch (err) { toast.error('Terjadi kesalahan server saat menyimpan.'); } 
+    } catch (err) { toast.error('Terjadi kesalahan server saat menyimpan.'); }
     finally { setIsSaving(false); }
   };
 
@@ -183,7 +185,7 @@ export default function KertasKerjaPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const result = await res.json();
-      if (result.success) { toast.success('Data berhasil dihapus'); fetchData(); } 
+      if (result.success) { toast.success('Data berhasil dihapus'); fetchData(); }
       else { toast.error('Gagal menghapus: ' + result.message); }
     } catch (err) { toast.error('Terjadi kesalahan server saat menghapus.'); }
   };
@@ -202,9 +204,9 @@ export default function KertasKerjaPage() {
         body: JSON.stringify(newRow)
       });
       const result = await res.json();
-      if (result.success) { setNewRow(initialRowState); fetchData(); } 
+      if (result.success) { setNewRow(initialRowState); fetchData(); }
       else { toast.error('Gagal menambahkan: ' + result.message); }
-    } catch (err) { toast.error('Terjadi kesalahan server.'); } 
+    } catch (err) { toast.error('Terjadi kesalahan server.'); }
     finally { setIsSavingRow(null); }
   };
 
@@ -237,9 +239,9 @@ export default function KertasKerjaPage() {
         body: JSON.stringify(editRowData)
       });
       const result = await res.json();
-      if (result.success) { setEditingRowId(null); fetchData(); } 
+      if (result.success) { setEditingRowId(null); fetchData(); }
       else { toast.error('Gagal mengupdate: ' + result.message); }
-    } catch (err) { toast.error('Terjadi kesalahan server.'); } 
+    } catch (err) { toast.error('Terjadi kesalahan server.'); }
     finally { setIsSavingRow(null); }
   };
 
@@ -331,6 +333,9 @@ export default function KertasKerjaPage() {
                 </div>
                 <div className="flex gap-2 items-center flex-wrap justify-end mt-2">
                   <select value={uploadTahun} onChange={e => setUploadTahun(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+
+                    <option value="2022">2022</option>
+                    <option value="2023">2023</option>
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
                     <option value="2026">2026</option>
@@ -380,7 +385,7 @@ export default function KertasKerjaPage() {
                 <Search className="w-4 h-4 text-gray-400" />
                 <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Cari Bank / No Rek..." className="flex-1 text-sm outline-none" />
               </div>
-              
+
               {['eselon_1', 'pimpinan', 'admin_it'].includes(userRole) && (
                 <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white min-w-[150px]">
                   <option value="">Semua Satker</option>
@@ -388,7 +393,7 @@ export default function KertasKerjaPage() {
                 </select>
               )}
             </div>
-            
+
             <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
               <Download className="w-4 h-4" /> Export Excel
             </button>
@@ -402,6 +407,8 @@ export default function KertasKerjaPage() {
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[150px]">Bank</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[150px]">No Rekening</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[180px]">Nama Rekening</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[80px]">Tahun</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[80px]">Periode</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Tgl Buka</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Akhir</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RK</th>
@@ -413,74 +420,90 @@ export default function KertasKerjaPage() {
               <tbody className="divide-y divide-gray-100">
                 {loading ? <tr><td colSpan={10} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
                   filteredData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
-                  filteredData.map(d => {
-                    const isEditing = editingRowId === d.id;
-                    return (
-                      <tr key={d.id} className="hover:bg-gray-50 transition-colors group">
-                        {isEditing ? (
-                          <>
-                            <td className="px-2 py-2 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
-                            <td className="px-1 py-1"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({...editRowData, nama_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({...editRowData, nomor_rekening_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({...editRowData, nama_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="date" value={editRowData.tanggal_pembukaan_rekening} onChange={e => setEditRowData({...editRowData, tanggal_pembukaan_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rk} onChange={e => setEditRowData({...editRowData, saldo_rk: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rekening} onChange={e => setEditRowData({...editRowData, saldo_rekening: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rpl_lpj} onChange={e => setEditRowData({...editRowData, saldo_rpl_lpj: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-2 py-2 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button onClick={() => saveInlineEdit(d.id)} disabled={isSavingRow === d.id} className="p-1 text-white bg-green-500 hover:bg-green-600 rounded">
-                                  {isSavingRow === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Save className="w-3.5 h-3.5" />}
-                                </button>
-                                <button onClick={() => setEditingRowId(null)} className="p-1 text-gray-500 hover:bg-gray-200 rounded"><X className="w-3.5 h-3.5" /></button>
-                              </div>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer">{d.nama_bank || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 font-mono text-xs cursor-pointer">{d.nomor_rekening_bank || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>{d.nama_rekening || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rk || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rekening || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rpl_lpj || 0).toLocaleString('id-ID')}</td>
-                            {!isEselon1 && (
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(d)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
-                                  <button onClick={() => handleDelete(d.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                    filteredData.map(d => {
+                      const isEditing = editingRowId === d.id;
+                      return (
+                        <tr key={d.id} className="hover:bg-gray-50 transition-colors group">
+                          {isEditing ? (
+                            <>
+                              <td className="px-2 py-2 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
+                              <td className="px-1 py-1"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({ ...editRowData, nama_bank: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({ ...editRowData, nomor_rekening_bank: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({ ...editRowData, nama_rekening: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="number" value={editRowData.tahun} onChange={e => setEditRowData({ ...editRowData, tahun: parseInt(e.target.value) || 2026 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1">
+                                <select value={editRowData.periode} onChange={e => setEditRowData({ ...editRowData, periode: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none">
+                                  <option value="1">1</option>
+                                  <option value="2">2</option>
+                                </select>
+                              </td>
+                              <td className="px-1 py-1"><input type="date" value={editRowData.tanggal_pembukaan_rekening} onChange={e => setEditRowData({ ...editRowData, tanggal_pembukaan_rekening: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({ ...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rk} onChange={e => setEditRowData({ ...editRowData, saldo_rk: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rekening} onChange={e => setEditRowData({ ...editRowData, saldo_rekening: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rpl_lpj} onChange={e => setEditRowData({ ...editRowData, saldo_rpl_lpj: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                              <td className="px-2 py-2 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button onClick={() => saveInlineEdit(d.id)} disabled={isSavingRow === d.id} className="p-1 text-white bg-green-500 hover:bg-green-600 rounded">
+                                    {isSavingRow === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <button onClick={() => setEditingRowId(null)} className="p-1 text-gray-500 hover:bg-gray-200 rounded"><X className="w-3.5 h-3.5" /></button>
                                 </div>
                               </td>
-                            )}
-                          </>
-                        )}
-                      </tr>
-                    );
-                  })
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer">{d.nama_bank || '-'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 font-mono text-xs cursor-pointer">{d.nomor_rekening_bank || '-'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>{d.nama_rekening || '-'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 cursor-pointer">{d.tahun || '2026'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 cursor-pointer">{d.periode || '1'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rk || 0).toLocaleString('id-ID')}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rekening || 0).toLocaleString('id-ID')}</td>
+                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rpl_lpj || 0).toLocaleString('id-ID')}</td>
+                              {!isEselon1 && (
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => startEdit(d)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
+                                    <button onClick={() => handleDelete(d.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </td>
+                              )}
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })
                 }
-                  
-                  {!isEselon1 && (
-                    <tr className="bg-emerald-50/30 border-t border-emerald-100">
-                      <td className="px-2 py-2 text-[10px] text-emerald-600 font-bold uppercase tracking-wider text-center bg-emerald-100/50">Data Baru</td>
-                      <td className="px-1 py-1"><input type="text" placeholder="Bank..." value={newRow.nama_bank} onChange={e => setNewRow({...newRow, nama_bank: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="text" placeholder="No Rek..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({...newRow, nomor_rekening_bank: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="text" placeholder="Nama Rek..." value={newRow.nama_rekening} onChange={e => setNewRow({...newRow, nama_rekening: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="date" value={newRow.tanggal_pembukaan_rekening} onChange={e => setNewRow({...newRow, tanggal_pembukaan_rekening: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_akhir_bulan} onChange={e => setNewRow({...newRow, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rk} onChange={e => setNewRow({...newRow, saldo_rk: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rekening} onChange={e => setNewRow({...newRow, saldo_rekening: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rpl_lpj} onChange={e => setNewRow({...newRow, saldo_rpl_lpj: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                      <td className="px-2 py-2 text-right">
-                        <button onClick={saveNewRow} disabled={isSavingRow === 'new'} className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded text-xs ml-auto disabled:opacity-50 transition-colors">
-                          {isSavingRow === 'new' ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Plus className="w-3.5 h-3.5" />} <span>Tambah</span>
-                        </button>
-                      </td>
-                    </tr>
-                  )}
+
+                {!isEselon1 && (
+                  <tr className="bg-emerald-50/30 border-t border-emerald-100">
+                    <td className="px-2 py-2 text-[10px] text-emerald-600 font-bold uppercase tracking-wider text-center bg-emerald-100/50">Data Baru</td>
+                    <td className="px-1 py-1"><input type="text" placeholder="Bank..." value={newRow.nama_bank} onChange={e => setNewRow({ ...newRow, nama_bank: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="text" placeholder="No Rek..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({ ...newRow, nomor_rekening_bank: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="text" placeholder="Nama Rek..." value={newRow.nama_rekening} onChange={e => setNewRow({ ...newRow, nama_rekening: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="number" value={newRow.tahun} onChange={e => setNewRow({ ...newRow, tahun: parseInt(e.target.value) || 2026 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1">
+                      <select value={newRow.periode} onChange={e => setNewRow({ ...newRow, periode: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                      </select>
+                    </td>
+                    <td className="px-1 py-1"><input type="date" value={newRow.tanggal_pembukaan_rekening} onChange={e => setNewRow({ ...newRow, tanggal_pembukaan_rekening: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_akhir_bulan} onChange={e => setNewRow({ ...newRow, saldo_akhir_bulan: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rk} onChange={e => setNewRow({ ...newRow, saldo_rk: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rekening} onChange={e => setNewRow({ ...newRow, saldo_rekening: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rpl_lpj} onChange={e => setNewRow({ ...newRow, saldo_rpl_lpj: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                    <td className="px-2 py-2 text-right">
+                      <button onClick={saveNewRow} disabled={isSavingRow === 'new'} className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded text-xs ml-auto disabled:opacity-50 transition-colors">
+                        {isSavingRow === 'new' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} <span>Tambah</span>
+                      </button>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

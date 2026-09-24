@@ -18,6 +18,8 @@ async function initKertasKerjaTable() {
       saldo_rekening DECIMAL(18,2) NOT NULL DEFAULT 0,
       saldo_rpl_lpj DECIMAL(18,2) NOT NULL DEFAULT 0,
       keterangan TEXT NULL,
+      periode ENUM('1', '2') DEFAULT '1',
+      tahun INT(4) DEFAULT 2026,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       CONSTRAINT fk_kk_uploader FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
@@ -123,11 +125,14 @@ async function bulkInsertKertasKerja(req, res, next) {
           if (matchId) rowSatkerId = matchId;
       }
 
+      const excelTahun = getVal(['tahun']);
+      const excelPeriode = getVal(['periode']);
+
       values.push([
         rowSatkerId, uploadedBy, nama_bank, nomor_rekening_bank, nama_rekening, 
         nomor_pembukaan_rekening, tanggal_pembukaan_rekening, 
         saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan,
-        tahun || 2026, periode || '1'
+        excelTahun || tahun || 2026, excelPeriode ? String(excelPeriode) : (periode || '1')
       ]);
     }
 
@@ -160,7 +165,8 @@ async function createKertasKerja(req, res, next) {
   try {
     const { 
       nama_bank, nomor_rekening_bank, nama_rekening, nomor_pembukaan_rekening, 
-      tanggal_pembukaan_rekening, saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan 
+      tanggal_pembukaan_rekening, saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan,
+      tahun, periode
     } = req.body;
     
     const satkerId = req.user.satker_id || null;
@@ -170,12 +176,13 @@ async function createKertasKerja(req, res, next) {
       `INSERT INTO kertas_kerja (
         satker_id, uploaded_by, nama_bank, nomor_rekening_bank, nama_rekening,
         nomor_pembukaan_rekening, tanggal_pembukaan_rekening,
-        saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan, tahun, periode
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         satkerId, uploadedBy, nama_bank || null, nomor_rekening_bank || null, nama_rekening || null,
         nomor_pembukaan_rekening || null, tanggal_pembukaan_rekening || null,
-        saldo_akhir_bulan || 0, saldo_rk || 0, saldo_rekening || 0, saldo_rpl_lpj || 0, keterangan || null
+        saldo_akhir_bulan || 0, saldo_rk || 0, saldo_rekening || 0, saldo_rpl_lpj || 0, keterangan || null,
+        tahun || 2026, periode || '1'
       ]
     );
 
@@ -198,19 +205,22 @@ async function updateKertasKerja(req, res, next) {
     const { id } = req.params;
     const { 
       nama_bank, nomor_rekening_bank, nama_rekening, nomor_pembukaan_rekening, 
-      tanggal_pembukaan_rekening, saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan 
+      tanggal_pembukaan_rekening, saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan,
+      tahun, periode
     } = req.body;
 
     const [result] = await pool.query(
       `UPDATE kertas_kerja SET 
         nama_bank = ?, nomor_rekening_bank = ?, nama_rekening = ?, 
         nomor_pembukaan_rekening = ?, tanggal_pembukaan_rekening = ?, 
-        saldo_akhir_bulan = ?, saldo_rk = ?, saldo_rekening = ?, saldo_rpl_lpj = ?, keterangan = ? 
+        saldo_akhir_bulan = ?, saldo_rk = ?, saldo_rekening = ?, saldo_rpl_lpj = ?, keterangan = ?,
+        tahun = ?, periode = ?
        WHERE id = ?`,
       [
         nama_bank || null, nomor_rekening_bank || null, nama_rekening || null,
         nomor_pembukaan_rekening || null, tanggal_pembukaan_rekening || null,
         saldo_akhir_bulan || 0, saldo_rk || 0, saldo_rekening || 0, saldo_rpl_lpj || 0, keterangan || null, 
+        tahun || 2026, periode || '1',
         id
       ]
     );
