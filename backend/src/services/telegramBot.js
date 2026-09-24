@@ -119,13 +119,13 @@ function initTelegramBot() {
       case 'ASK_PASSWORD':
         const password = text;
         try {
-          const [users] = await pool.query('SELECT id, password, nama FROM users WHERE username = ?', [state.data.username]);
+          const [users] = await pool.query('SELECT id, password_hash, nama FROM users WHERE username = ?', [state.data.username]);
           if (users.length === 0) {
             state.step = 'IDLE';
             return bot.sendMessage(chatId, 'Username tidak ditemukan! Ketik /start untuk mengulang.');
           }
           
-          const validPass = await bcrypt.compare(password, users[0].password);
+          const validPass = await bcrypt.compare(password, users[0].password_hash);
           if (!validPass) {
             state.step = 'IDLE';
             return bot.sendMessage(chatId, 'Password salah! Ketik /start untuk mengulang.');
