@@ -62,9 +62,15 @@ export default function ChartDashboard() {
 
   if (!data) return null;
 
-  // Format currency
   const formatRp = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
+  const formatSingkat = (val: number) => {
+    if (val >= 1_000_000_000_000) return `Rp ${(val / 1_000_000_000_000).toFixed(1).replace('.0', '')} T`;
+    if (val >= 1_000_000_000) return `Rp ${(val / 1_000_000_000).toFixed(1).replace('.0', '')} M`;
+    if (val >= 1_000_000) return `Rp ${(val / 1_000_000).toFixed(1).replace('.0', '')} Jt`;
+    return `Rp ${val}`;
   };
 
   // Prepare data for Pie Chart (Top 5 + Others)
@@ -72,7 +78,7 @@ export default function ChartDashboard() {
   if (data.saldo_per_satker.length > 5) {
     const top5 = data.saldo_per_satker.slice(0, 5);
     const others = data.saldo_per_satker.slice(5).reduce((acc, curr) => acc + Number(curr.value), 0);
-    pieData = [...top5, { nama: 'Lainnya', value: others }];
+    pieData = [...top5, { nama: 'satker Lainnya', value: others }];
   } else {
     pieData = data.saldo_per_satker;
   }
@@ -82,7 +88,7 @@ export default function ChartDashboard() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      
+
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow">
@@ -118,7 +124,7 @@ export default function ChartDashboard() {
 
       {/* ── Charts ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Pie Chart */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
@@ -143,8 +149,8 @@ export default function ChartDashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <RechartsTooltip 
-                    formatter={(value: number) => formatRp(value)} 
+                  <RechartsTooltip
+                    formatter={(value: number) => formatRp(value)}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
@@ -180,14 +186,14 @@ export default function ChartDashboard() {
                 <BarChart data={filteredBarData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="tahun" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fontSize: 12, fill: '#64748b' }}
-                    tickFormatter={(val) => `Rp${(val / 1000000).toFixed(0)}M`}
+                    tickFormatter={formatSingkat}
                     width={80}
                   />
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     cursor={{ fill: '#f8fafc' }}
                     formatter={(value: number, name: string) => [formatRp(value), name === 'periode_1' ? 'Periode 1' : 'Periode 2']}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}

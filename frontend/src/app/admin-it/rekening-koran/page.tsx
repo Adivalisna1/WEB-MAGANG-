@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 
 import { useEffect, useState, useRef } from 'react';
 import { getSession } from '@/lib/auth';
+import { useSearchParams } from 'next/navigation';
+import Pagination from '@/components/ui/Pagination';
 import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -57,6 +59,10 @@ export default function KertasKerjaPage() {
   const [searchQ, setSearchQ] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
+
+  const searchParams = useSearchParams();
+  const currentPage = parseInt(searchParams.get('page') || '1') || 1;
+  const itemsPerPage = 40;
 
   const [userRole, setUserRole] = useState('');
 
@@ -275,6 +281,9 @@ export default function KertasKerjaPage() {
 
   const isEselon1 = userRole === 'eselon_1';
 
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   useEffect(() => {
     if (isEselon1 && activeTab === 'excel') setActiveTab('history');
   }, [isEselon1, activeTab]);
@@ -419,8 +428,8 @@ export default function KertasKerjaPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? <tr><td colSpan={10} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
-                  filteredData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
-                    filteredData.map(d => {
+                  paginatedData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
+                    paginatedData.map(d => {
                       const isEditing = editingRowId === d.id;
                       return (
                         <tr key={d.id} className="hover:bg-gray-50 transition-colors group">
@@ -507,6 +516,8 @@ export default function KertasKerjaPage() {
               </tbody>
             </table>
           </div>
+          
+          <Pagination currentPage={currentPage} totalPages={totalPages} basePath="/admin-it/rekening-koran" />
         </div>
       )}
     </div>

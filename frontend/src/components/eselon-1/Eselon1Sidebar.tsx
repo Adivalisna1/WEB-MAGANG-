@@ -34,18 +34,18 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-indigo-950/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       <aside className={`
-        fixed left-0 top-0 md:sticky md:top-0 h-screen bg-indigo-950 text-indigo-100 flex flex-col shrink-0 z-50 transition-all duration-300
+        fixed left-0 top-0 md:sticky md:top-0 h-screen bg-slate-950 text-slate-100 flex flex-col shrink-0 z-50 transition-all duration-300
         ${isMobileOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
         ${isCollapsed ? 'md:w-20' : 'md:w-[260px]'}
       `}>
         {/* Logo */}
-        <div className="px-4 md:px-5 py-5 border-b border-indigo-800 flex items-center justify-between">
+        <div className="px-4 md:px-5 py-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {!isCollapsed ? (
               <span className="font-bold text-sm">Dashboard Eselon 1</span>
@@ -55,7 +55,7 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
           </div>
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="md:hidden p-1.5 text-indigo-300 hover:text-white rounded-lg"
+            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>
@@ -64,17 +64,17 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
         {/* User info — clickable ke profil */}
         <Link
           href="/eselon-1/profil"
-          className={`block py-4 border-b border-indigo-800 hover:bg-indigo-900 transition-colors cursor-pointer ${isCollapsed ? 'px-2 flex justify-center' : 'px-5'}`}
+          className={`block py-4 border-b border-slate-800 hover:bg-slate-900 transition-colors cursor-pointer ${isCollapsed ? 'px-2 flex justify-center' : 'px-5'}`}
           title={isCollapsed ? "Profil" : undefined}
         >
           <div className={clsx("flex items-center", isCollapsed ? 'justify-center' : 'gap-3')}>
-            <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white shrink-0">
+            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm text-white shrink-0">
               {user?.nama?.charAt(0).toUpperCase() ?? 'K'}
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{user?.nama ?? '-'}</p>
-                <p className="text-xs text-indigo-300">Eselon 1</p>
+                <p className="text-xs text-slate-400">Eselon 1</p>
               </div>
             )}
           </div>
@@ -91,8 +91,8 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
                 className={clsx(
                   'flex items-center rounded-lg text-sm font-medium transition-colors',
                   active
-                    ? 'bg-indigo-500 text-white'
-                    : 'text-indigo-200 hover:bg-indigo-900 hover:text-white',
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white',
                   isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
                 )}
                 title={isCollapsed ? label : undefined}
@@ -106,11 +106,11 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
         </nav>
 
         {/* Kembali ke Beranda */}
-        <div className="px-3 py-2 border-t border-indigo-800 mt-auto">
+        <div className="px-3 py-2 border-t border-slate-800 mt-auto">
           <Link
             href="/laporan"
             className={clsx(
-              "flex items-center rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white transition-colors",
+              "flex items-center rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors",
               isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 w-full'
             )}
             title={isCollapsed ? "Dashboard Laporan" : undefined}
@@ -121,7 +121,7 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
         </div>
 
         {/* Logout */}
-        <div className="px-3 py-3 border-t border-indigo-800 flex flex-col gap-2">
+        <div className="px-3 py-3 border-t border-slate-800 flex flex-col gap-2">
           <button
             onClick={logoutFn}
             className={clsx(
@@ -136,7 +136,7 @@ export default function KetuaSidebar({ isMobileOpen, setIsMobileOpen, isCollapse
 
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden md:flex items-center justify-center p-2 mt-2 text-indigo-300 hover:text-white hover:bg-indigo-900 rounded-lg transition-colors border border-indigo-800"
+            className="hidden md:flex items-center justify-center p-2 mt-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-slate-700"
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
