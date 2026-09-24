@@ -1,5 +1,4 @@
-const fetch = require('node-fetch'); // Fallback in case native fetch is missing in older node
-// But Node 18+ has global fetch. Let's use global fetch if available.
+// Use native fetch (Node 18+)
 
 async function sendTelegramNotification(message) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -13,8 +12,7 @@ async function sendTelegramNotification(message) {
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   try {
-    const fetchToUse = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
-    const response = await fetchToUse(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

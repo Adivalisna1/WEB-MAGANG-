@@ -146,7 +146,8 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ── Start Server ──────────────────────────────────────────────
-const { initTelegramBot } = require('./services/telegramBot');
+const { initTelegramBot } = require('./bots/bot_telegram');
+const { initWhatsAppBot } = require('./bots/bot_whatsapp');
 
 if (!process.env.VERCEL) {
   testConnection().then(() => {
@@ -154,8 +155,9 @@ if (!process.env.VERCEL) {
       console.log(`🚀 Server berjalan di http://0.0.0.0:${PORT}`);
       console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
     });
-    // Start interactive telegram bot
+    // Start interactive bots
     initTelegramBot();
+    initWhatsAppBot();
   }).catch(console.error);
 } else {
   // On Vercel, just test connection lazily

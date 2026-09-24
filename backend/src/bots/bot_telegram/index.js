@@ -1,5 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
-const { pool } = require('../config/db');
+const { pool } = require('../../config/db');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
@@ -210,15 +210,71 @@ function initTelegramBot() {
         }
         state.data.nominal = nominal;
         
+        state.step = 'ASK_FILE';
+        bot.sendMessage(chatId, 'Unggah Bukti File (Kirim Foto/Dokumen) atau ketik "Lewati" jika tidak ada:');
+        break;
+
+      case 'ASK_FILE':
+        let fileId = null;
+        if (msg.photo && msg.photo.length > 0) {
+          // Ambil resolusi tertinggi
+          fileId = msg.photo[msg.photo.length - 1].file_id;
+        } else if (msg.document) {
+          fileId = msg.document.file_id;
+        }
+
+        if (fileId) {
+          try {
+            bot.sendMessage(chatId, 'Sedang mengunduh file...');
+            const path = require('path');
+            const fs = require('fs');
+            const uploadDir = path.join(__dirname, '../../uploads/akuntansi');
+            if (!fs.existsSync(uploadDir)) {
+              fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            
+            const downloadedPath = await bot.downloadFile(fileId, uploadDir);
+            const filename = path.basename(downloadedPath);
+            state.data.bukti_file = `/api/akuntansi/file/${filename}`;
+          } catch (err) {
+            console.error('Error download file:', err);
+            bot.sendMessage(chatId, 'Gagal mengunduh file, file akan dilewati.');
+          }
+        } else if (text && text.toLowerCase() !== 'lewati') {
+          return bot.sendMessage(chatId, 'Harap kirim Foto/Dokumen, atau ketik "Lewati"');
+        }
+
+        state.step = 'ASK_CATATAN';
+        bot.sendMessage(chatId, 'Masukkan Catatan Tambahan (Opsional), atau ketik "Lewati":');
+        break;
+
+      case 'ASK_CATATAN':
+        if (text && text.toLowerCase() !== 'lewati') {
+          state.data.catatan = text;
+        } else {
+          state.data.catatan = null;
+        }
+
         // Finalize and save
         try {
           const tanggal = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
           
+          const dbJenis = state.data.jenis === 'PEMASUKAN' ? 'debit' : 'kredit';
+
           await pool.query(`
             INSERT INTO audit_akuntansi 
-            (tanggal, uraian, jenis, id_kategori, nominal, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?)
-          `, [tanggal, state.data.uraian, state.data.jenis.toLowerCase(), state.data.id_kategori, state.data.nominal, state.userId]);
+            (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            tanggal, 
+            state.data.uraian, 
+            dbJenis, 
+            state.data.id_kategori, 
+            state.data.nominal, 
+            state.data.bukti_file || null,
+            state.data.catatan || null,
+            state.userId
+          ]);
 
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
 
