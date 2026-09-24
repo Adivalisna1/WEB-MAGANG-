@@ -31,11 +31,20 @@ function activityLogger(aksi, entitas = null) {
           const role = req.user?.role || 'User';
           
           let actionText = '';
+          const nominalStr = req.body?.nominal ? ` senilai <b>Rp ${Number(req.body.nominal).toLocaleString('id-ID')}</b>` : '';
+          const uraianStr = req.body?.uraian ? ` (<i>${req.body.uraian}</i>)` : '';
+          
           switch (aksi) {
             case 'login': actionText = 'baru saja <b>Login</b> ke dalam sistem'; break;
             case 'logout': actionText = 'baru saja <b>Logout</b>'; break;
             case 'upload': actionText = `mengunggah data <b>${entitas || 'file'}</b> baru`; break;
-            case 'create': actionText = `membuat data <b>${entitas || ''}</b> baru`; break;
+            case 'create': 
+              if (entitas === 'akuntansi') {
+                actionText = `menambahkan Pencatatan <b>${req.body?.jenis || 'Transaksi'}</b>${nominalStr}${uraianStr}`;
+              } else {
+                actionText = `membuat data <b>${entitas || ''}</b> baru`; 
+              }
+              break;
             case 'update': actionText = `memperbarui data <b>${entitas || ''}</b>`; break;
             case 'delete': actionText = `menghapus data <b>${entitas || ''}</b>`; break;
             case 'download': actionText = `mengunduh laporan <b>${entitas || ''}</b>`; break;
