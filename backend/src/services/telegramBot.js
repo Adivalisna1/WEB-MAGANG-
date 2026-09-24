@@ -1,10 +1,11 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { pool } = require('../config/db');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 
-// In-memory state storage: { chatId: { step, data: {} } }
+// In-memory state storage: { chatId: { step, data: {}, userId: <number> } }
 const userStates = {};
 
 let bot = null;
@@ -21,13 +22,32 @@ function initTelegramBot() {
   // Handle command /start
   bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    userStates[chatId] = { step: 'IDLE', data: {} };
+    if (!userStates[chatId]) {
+      userStates[chatId] = { step: 'IDLE', data: {}, userId: null };
+    }
+    
+    // Reset step
+    userStates[chatId].step = 'IDLE';
+
+    if (!userStates[chatId].userId) {
+      const opts = {
+        reply_markup: {
+          keyboard: [
+            [{ text: '🔑 Login' }]
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        }
+      };
+      bot.sendMessage(chatId, 'Halo! Anda belum login. Silakan klik tombol 🔑 Login untuk menghubungkan akun Web Anda.', opts);
+      return;
+    }
 
     const opts = {
       reply_markup: {
         keyboard: [
           [{ text: '➕ Tambah Transaksi' }],
-          [{ text: '❌ Batal' }]
+          [{ text: '🚪 Logout' }]
         ],
         resize_keyboard: true,
         one_time_keyboard: true
@@ -44,19 +64,35 @@ function initTelegramBot() {
     // Abaikan kalau isinya /start
     if (text === '/start') return;
 
+    if (!userStates[chatId]) {
+      userStates[chatId] = { step: 'IDLE', data: {}, userId: null };
+    }
+
     if (text === '❌ Batal') {
-      userStates[chatId] = { step: 'IDLE', data: {} };
+      userStates[chatId].step = 'IDLE';
       bot.sendMessage(chatId, 'Aksi dibatalkan. Ketik /start kalau mau mulai lagi.', { reply_markup: { remove_keyboard: true } });
       return;
     }
 
-    if (!userStates[chatId]) {
-      userStates[chatId] = { step: 'IDLE', data: {} };
+    if (text === '🚪 Logout') {
+      userStates[chatId] = { step: 'IDLE', data: {}, userId: null };
+      bot.sendMessage(chatId, 'Berhasil Logout dari Telegram. Ketik /start untuk login kembali.', { reply_markup: { remove_keyboard: true } });
+      return;
     }
 
     let state = userStates[chatId];
 
+    if (text === '🔑 Login') {
+      state.step = 'ASK_USERNAME';
+      bot.sendMessage(chatId, 'Masukkan Username akun Web Anda:', { reply_markup: { remove_keyboard: true } });
+      return;
+    }
+
     if (text === '➕ Tambah Transaksi') {
+      if (!state.userId) {
+        bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu! Ketik /start lalu klik 🔑 Login.');
+        return;
+      }
       state.step = 'ASK_JENIS';
       state.data = {};
       const opts = {
@@ -74,6 +110,47 @@ function initTelegramBot() {
     }
 
     switch (state.step) {
+      case 'ASK_USERNAME':
+        state.data.username = text;
+        state.step = 'ASK_PASSWORD';
+        bot.sendMessage(chatId, 'Masukkan Password Anda:');
+        break;
+
+      case 'ASK_PASSWORD':
+        const password = text;
+        try {
+          const [users] = await pool.query('SELECT id, password, nama FROM users WHERE username = ?', [state.data.username]);
+          if (users.length === 0) {
+            state.step = 'IDLE';
+            return bot.sendMessage(chatId, 'Username tidak ditemukan! Ketik /start untuk mengulang.');
+          }
+          
+          const validPass = await bcrypt.compare(password, users[0].password);
+          if (!validPass) {
+            state.step = 'IDLE';
+            return bot.sendMessage(chatId, 'Password salah! Ketik /start untuk mengulang.');
+          }
+
+          state.userId = users[0].id;
+          state.step = 'IDLE';
+          
+          const opts = {
+            reply_markup: {
+              keyboard: [
+                [{ text: '➕ Tambah Transaksi' }],
+                [{ text: '🚪 Logout' }]
+              ],
+              resize_keyboard: true,
+              one_time_keyboard: true
+            }
+          };
+          bot.sendMessage(chatId, `✅ Login Berhasil! Selamat datang, ${users[0].nama}. Mau ngapain sekarang?`, opts);
+        } catch (err) {
+          console.error(err);
+          bot.sendMessage(chatId, 'Terjadi kesalahan sistem saat login.');
+        }
+        break;
+
       case 'ASK_JENIS':
         if (text !== 'PEMASUKAN' && text !== 'PENGELUARAN') {
           return bot.sendMessage(chatId, 'Pilih PEMASUKAN atau PENGELUARAN ya!');
@@ -137,21 +214,18 @@ function initTelegramBot() {
         try {
           const tanggal = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
           
-          // Asumsi id_user = 1 (Misal Admin/Sistem) karena input via Telegram
-          const created_by = 1;
-
           await pool.query(`
             INSERT INTO audit_akuntansi 
             (tanggal, uraian, jenis, id_kategori, nominal, created_by) 
             VALUES (?, ?, ?, ?, ?, ?)
-          `, [tanggal, state.data.uraian, state.data.jenis, state.data.id_kategori, state.data.nominal, created_by]);
+          `, [tanggal, state.data.uraian, state.data.jenis.toLowerCase(), state.data.id_kategori, state.data.nominal, state.userId]);
 
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
 
           bot.sendMessage(chatId, `✅ <b>Berhasil Disimpan ke Web!</b>\n\nJenis: ${state.data.jenis}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}`, { parse_mode: 'HTML' });
           
           // Reset
-          userStates[chatId] = { step: 'IDLE', data: {} };
+          state.step = 'IDLE';
 
         } catch (err) {
           console.error(err);
