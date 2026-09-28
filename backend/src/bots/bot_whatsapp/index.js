@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const ExcelJS = require('exceljs');
@@ -7,8 +7,101 @@ const { pool } = require('../../config/db');
 const bcrypt = require('bcrypt');
 const path = require('path');
 
-// In-memory state storage: { remoteJid: { step, data: {}, userId: null } }
+// In-memory state storage: { remoteJid: { step, data: {}, userId: null, userRole: null, nama: null, satkerId: null } }
 const userStates = {};
+
+async function generateLaporanExcelWA(satkerId, satkerNama, jid, sock, pool) {
+  try {
+    await sock.sendMessage(jid, { text: '⏳ Sedang memproses laporan Excel... Mohon tunggu.' });
+    
+    let query = `
+      SELECT a.tanggal, a.uraian, a.jenis, k.nama_kategori, a.nominal, a.catatan_audit, u.nama as dibuat_oleh, s.nama as satker
+      FROM audit_akuntansi a
+      LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
+      LEFT JOIN users u ON a.created_by = u.id
+      LEFT JOIN satkers s ON u.satker_id = s.id
+    `;
+    const params = [];
+    if (satkerId) {
+      query += ' WHERE u.satker_id = ?';
+      params.push(satkerId);
+    }
+    query += ' ORDER BY a.tanggal DESC';
+    
+    const [rows] = await pool.query(query, params);
+    
+    if (rows.length === 0) {
+      return sock.sendMessage(jid, { text: `📭 Tidak ada data transaksi untuk satker *${satkerNama}*.` });
+    }
+    
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Laporan Keuangan');
+    
+    sheet.columns = [
+      { header: 'No', key: 'no', width: 5 },
+      { header: 'Tanggal', key: 'tanggal', width: 14 },
+      { header: 'Uraian', key: 'uraian', width: 30 },
+      { header: 'Jenis', key: 'jenis', width: 14 },
+      { header: 'Kategori', key: 'kategori', width: 25 },
+      { header: 'Nominal', key: 'nominal', width: 18 },
+      { header: 'Catatan', key: 'catatan', width: 25 },
+      { header: 'Dibuat Oleh', key: 'dibuat_oleh', width: 20 },
+      { header: 'Satker', key: 'satker', width: 30 },
+    ];
+    
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E86C1' } };
+    sheet.getRow(1).alignment = { horizontal: 'center' };
+    
+    let totalDebit = 0;
+    let totalKredit = 0;
+    rows.forEach((r, idx) => {
+      const tgl = r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID') : '-';
+      const jns = r.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
+      if (r.jenis === 'debit') totalDebit += Number(r.nominal);
+      else totalKredit += Number(r.nominal);
+      
+      sheet.addRow({
+        no: idx + 1,
+        tanggal: tgl,
+        uraian: r.uraian,
+        jenis: jns,
+        kategori: r.nama_kategori || '-',
+        nominal: Number(r.nominal),
+        catatan: r.catatan_audit || '-',
+        dibuat_oleh: r.dibuat_oleh || '-',
+        satker: r.satker || '-',
+      });
+    });
+    
+    sheet.addRow({});
+    sheet.addRow({ uraian: 'Total Pemasukan', nominal: totalDebit });
+    sheet.addRow({ uraian: 'Total Pengeluaran', nominal: totalKredit });
+    sheet.addRow({ uraian: 'Saldo', nominal: totalDebit - totalKredit });
+    
+    sheet.getColumn('nominal').numFmt = '#,##0';
+    
+    const tmpDir = '/tmp';
+    const fileName = `Laporan_${satkerNama.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30)}_${Date.now()}.xlsx`;
+    const filePath = path.join(tmpDir, fileName);
+    await workbook.xlsx.writeFile(filePath);
+    
+    const fileBuffer = fs.readFileSync(filePath);
+    await sock.sendMessage(jid, {
+      document: fileBuffer,
+      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      fileName: fileName,
+    });
+    
+    fs.unlinkSync(filePath);
+    
+    const rp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
+    await sock.sendMessage(jid, { text: `📊 *Laporan ${satkerNama}*\n\n📈 Total Pemasukan: ${rp(totalDebit)}\n📉 Total Pengeluaran: ${rp(totalKredit)}\n💰 Saldo: ${rp(totalDebit - totalKredit)}\n\n📎 File Excel sudah dikirim di atas.` });
+  } catch (err) {
+    console.error(err);
+    await sock.sendMessage(jid, { text: 'Terjadi kesalahan saat membuat laporan Excel.' });
+  }
+}
 
 async function initWhatsAppBot() {
   // Simpan auth WA di folder uploads biar persisten di Docker
@@ -86,9 +179,11 @@ async function initWhatsAppBot() {
       let menuMsg = `Halo! Selamat datang di Bot WhatsApp Pencatatan, *${state.nama}*.\n\nKetik perintah berikut:\n`;
       if (state.userRole === 1 || state.userRole === 2) {
         menuMsg += `*!tambah* - Untuk Tambah Transaksi\n`;
+        menuMsg += `*!upload* - Untuk Upload Transaksi via Excel\n`;
+        menuMsg += `*!laporan* - Untuk Unduh Laporan Satker Anda\n`;
       }
       if (state.userRole === 3) {
-        menuMsg += `*!laporan* - Untuk Melihat Ringkasan Data (Khusus Eselon 1)\n`;
+        menuMsg += `*!laporan* - Untuk Melihat Ringkasan Data Semua Satker\n`;
       }
       menuMsg += `*!logout* - Untuk Logout Akun`;
       return sendMessage(menuMsg);
@@ -99,30 +194,47 @@ async function initWhatsAppBot() {
       return sendMessage('🔑 Silakan balas pesan ini dengan *Username* akun Web Anda:');
     }
 
+    if (text.toLowerCase() === '!upload') {
+      if (!state.userId) return sendMessage('⚠️ Anda harus Login terlebih dahulu! Ketik *!login*.');
+      if (state.userRole !== 1 && state.userRole !== 2) return sendMessage('⛔ Maaf, fitur ini hanya untuk Staff dan Pimpinan.');
+      
+      state.step = 'ASK_UPLOAD_EXCEL';
+      return sendMessage('Silakan kirimkan file Excel (.xlsx) yang berisi data transaksi.\n\nJika butuh contoh formatnya, ketik *!template*');
+    }
+
     if (text.toLowerCase() === '!laporan') {
       if (!state.userId) return sendMessage('⚠️ Anda harus Login terlebih dahulu! Ketik *!login*.');
-      if (state.userRole !== 3) {
-        return sendMessage('⛔ Maaf, perintah ini hanya untuk Eselon 1.');
-      }
       
-      try {
-        const [satkers] = await pool.query('SELECT id, nama FROM satkers ORDER BY nama ASC');
-        if (satkers.length === 0) return sendMessage('Data Satker kosong di database.');
-        
-        let satkerMsg = 'Pilih Satuan Kerja (Balas dengan angkanya):\n*0. Semua Satker (Global)*\n';
-        state.data = {};
-        state.data.satker_map = {};
-        satkers.forEach((s, idx) => {
-          const num = idx + 1;
-          satkerMsg += `${num}. ${s.nama}\n`;
-          state.data.satker_map[num.toString()] = { id: s.id, nama: s.nama };
-        });
-        
-        state.step = 'ASK_SATKER_LAPORAN';
-        sendMessage(satkerMsg);
-      } catch (err) {
-        console.error(err);
-        sendMessage('Gagal mengambil list Satker.');
+      if (state.userRole === 3) {
+        try {
+          const [satkers] = await pool.query('SELECT id, nama FROM satkers ORDER BY nama ASC');
+          if (satkers.length === 0) return sendMessage('Data Satker kosong di database.');
+          
+          let satkerMsg = 'Pilih Satuan Kerja (Balas dengan angkanya):\n*0. Semua Satker (Global)*\n';
+          state.data = {};
+          state.data.satker_map = {};
+          satkers.forEach((s, idx) => {
+            const num = idx + 1;
+            satkerMsg += `${num}. ${s.nama}\n`;
+            state.data.satker_map[num.toString()] = { id: s.id, nama: s.nama };
+          });
+          
+          state.step = 'ASK_SATKER_LAPORAN';
+          sendMessage(satkerMsg);
+        } catch (err) {
+          console.error(err);
+          sendMessage('Gagal mengambil list Satker.');
+        }
+      } else {
+        // Role 1 and 2
+        try {
+          const [satkerData] = await pool.query('SELECT nama FROM satkers WHERE id = ?', [state.satkerId]);
+          const sNama = satkerData.length > 0 ? satkerData[0].nama : 'Satker Anda';
+          await generateLaporanExcelWA(state.satkerId, sNama, jid, sock, pool);
+        } catch (err) {
+          console.error(err);
+          sendMessage('Gagal membuat laporan untuk satker Anda.');
+        }
       }
       return;
     }
@@ -158,101 +270,7 @@ async function initWhatsAppBot() {
         }
         
         try {
-          sendMessage('⏳ Sedang memproses laporan Excel... Mohon tunggu.');
-          
-          let query = `
-            SELECT a.tanggal, a.uraian, a.jenis, k.nama_kategori, a.nominal, a.catatan_audit, u.nama as dibuat_oleh, s.nama as satker
-            FROM audit_akuntansi a
-            LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
-            LEFT JOIN users u ON a.created_by = u.id
-            LEFT JOIN satkers s ON u.satker_id = s.id
-          `;
-          const params = [];
-          if (satkerId) {
-            query += ' WHERE u.satker_id = ?';
-            params.push(satkerId);
-          }
-          query += ' ORDER BY a.tanggal DESC';
-          
-          const [rows] = await pool.query(query, params);
-          
-          if (rows.length === 0) {
-            state.step = 'IDLE';
-            return sendMessage(`📭 Tidak ada data transaksi untuk satker *${satkerNama}*.`);
-          }
-          
-          // Generate Excel
-          const workbook = new ExcelJS.Workbook();
-          const sheet = workbook.addWorksheet('Laporan Keuangan');
-          
-          // Header style
-          sheet.columns = [
-            { header: 'No', key: 'no', width: 5 },
-            { header: 'Tanggal', key: 'tanggal', width: 14 },
-            { header: 'Uraian', key: 'uraian', width: 30 },
-            { header: 'Jenis', key: 'jenis', width: 14 },
-            { header: 'Kategori', key: 'kategori', width: 25 },
-            { header: 'Nominal', key: 'nominal', width: 18 },
-            { header: 'Catatan', key: 'catatan', width: 25 },
-            { header: 'Dibuat Oleh', key: 'dibuat_oleh', width: 20 },
-            { header: 'Satker', key: 'satker', width: 30 },
-          ];
-          
-          // Style header row
-          sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-          sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E86C1' } };
-          sheet.getRow(1).alignment = { horizontal: 'center' };
-          
-          let totalDebit = 0;
-          let totalKredit = 0;
-          rows.forEach((r, idx) => {
-            const tgl = r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID') : '-';
-            const jns = r.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
-            if (r.jenis === 'debit') totalDebit += Number(r.nominal);
-            else totalKredit += Number(r.nominal);
-            
-            sheet.addRow({
-              no: idx + 1,
-              tanggal: tgl,
-              uraian: r.uraian,
-              jenis: jns,
-              kategori: r.nama_kategori || '-',
-              nominal: Number(r.nominal),
-              catatan: r.catatan_audit || '-',
-              dibuat_oleh: r.dibuat_oleh || '-',
-              satker: r.satker || '-',
-            });
-          });
-          
-          // Summary rows
-          const lastRow = rows.length + 2;
-          sheet.addRow({});
-          sheet.addRow({ uraian: 'Total Pemasukan', nominal: totalDebit });
-          sheet.addRow({ uraian: 'Total Pengeluaran', nominal: totalKredit });
-          sheet.addRow({ uraian: 'Saldo', nominal: totalDebit - totalKredit });
-          
-          // Format nominal column as number
-          sheet.getColumn('nominal').numFmt = '#,##0';
-          
-          // Write to temp file
-          const tmpDir = '/tmp';
-          const fileName = `Laporan_${satkerNama.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30)}_${Date.now()}.xlsx`;
-          const filePath = path.join(tmpDir, fileName);
-          await workbook.xlsx.writeFile(filePath);
-          
-          // Send file via WA
-          const fileBuffer = fs.readFileSync(filePath);
-          await sock.sendMessage(jid, {
-            document: fileBuffer,
-            mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            fileName: fileName,
-          });
-          
-          // Cleanup
-          fs.unlinkSync(filePath);
-          
-          const rp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
-          sendMessage(`📊 *Laporan ${satkerNama}*\n\n📈 Total Pemasukan: ${rp(totalDebit)}\n📉 Total Pengeluaran: ${rp(totalKredit)}\n💰 Saldo: ${rp(totalDebit - totalKredit)}\n\n📎 File Excel sudah dikirim di atas.`);
+          await generateLaporanExcelWA(satkerId, satkerNama, jid, sock, pool);
           state.step = 'IDLE';
         } catch (err) {
           console.error(err);
@@ -272,7 +290,7 @@ async function initWhatsAppBot() {
         if (!text) return;
         const password = text;
         try {
-          const [users] = await pool.query('SELECT id, password_hash, nama, role_id FROM users WHERE username = ?', [state.data.username]);
+          const [users] = await pool.query('SELECT id, password_hash, nama, role_id, satker_id FROM users WHERE username = ?', [state.data.username]);
           if (users.length === 0) {
             state.step = 'IDLE';
             return sendMessage('❌ Username tidak ditemukan! Ketik *!login* untuk mengulang.');
@@ -287,6 +305,7 @@ async function initWhatsAppBot() {
           state.userId = users[0].id;
           state.userRole = users[0].role_id;
           state.nama = users[0].nama;
+          state.satkerId = users[0].satker_id;
           state.step = 'IDLE';
           
           let successMsg = `✅ Login Berhasil! Selamat datang, *${users[0].nama}*.\n\n`;
@@ -394,13 +413,147 @@ async function initWhatsAppBot() {
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
           const jns = state.data.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
           
-          sendMessage(`✅ *Berhasil Disimpan ke Web!*\n\nJenis: ${jns}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}`);
-          
-          state.step = 'IDLE';
+          state.step = 'ASK_TAMBAH_LAGI';
+          sendMessage(`✅ *Berhasil Disimpan ke Web!*\n\nJenis: ${jns}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}\n\nMau tambah data lagi? Balas dengan *Ya* atau *Tidak*.`);
 
         } catch (err) {
           console.error(err);
           sendMessage('Terjadi kesalahan saat menyimpan ke database.');
+          state.step = 'IDLE';
+        }
+        break;
+
+      case 'ASK_TAMBAH_LAGI':
+        if (text.toLowerCase() === 'ya') {
+          state.step = 'ASK_JENIS';
+          state.data = {};
+          sendMessage('Silakan pilih Jenis Transaksi:\n1. Pemasukan\n2. Pengeluaran\n\n*(Balas dengan angka 1 atau 2)*');
+        } else {
+          state.step = 'IDLE';
+          let menuMsg = 'Oke, kembali ke menu utama.\n\n';
+          if (state.userRole === 1 || state.userRole === 2) {
+            menuMsg += 'Ketik *!tambah* untuk mencatat transaksi baru.\n';
+            menuMsg += 'Ketik *!upload* untuk input data banyak via Excel.\n';
+          } else if (state.userRole === 3) {
+            menuMsg += 'Ketik *!laporan* untuk mengunduh laporan keuangan.\n';
+          }
+          menuMsg += 'Ketik *!logout* untuk keluar.';
+          sendMessage(menuMsg);
+        }
+        break;
+
+      case 'ASK_UPLOAD_EXCEL':
+        if (text.toLowerCase() === '!template') {
+          try {
+            const workbook = new ExcelJS.Workbook();
+            const sheet = workbook.addWorksheet('Template');
+            sheet.columns = [
+              { header: 'Tanggal (YYYY-MM-DD)', key: 'tanggal', width: 22 },
+              { header: 'Uraian', key: 'uraian', width: 30 },
+              { header: 'Jenis (debit/kredit)', key: 'jenis', width: 20 },
+              { header: 'ID Kategori', key: 'id_kategori', width: 15 },
+              { header: 'Nominal', key: 'nominal', width: 20 },
+              { header: 'Catatan', key: 'catatan', width: 30 }
+            ];
+            
+            sheet.addRow({
+              tanggal: '2023-10-01',
+              uraian: 'Contoh Transaksi WA',
+              jenis: 'debit',
+              id_kategori: 1,
+              nominal: 150000,
+              catatan: 'Opsional'
+            });
+
+            const tmpPath = path.join('/tmp', `Template_Upload_${Date.now()}.xlsx`);
+            await workbook.xlsx.writeFile(tmpPath);
+            
+            await sock.sendMessage(remoteJid, {
+               document: fs.readFileSync(tmpPath),
+               mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+               fileName: 'Template_Upload.xlsx'
+            });
+            fs.unlinkSync(tmpPath);
+          } catch (e) {
+            console.error(e);
+            sendMessage('Gagal membuat template.');
+          }
+          return;
+        }
+
+        const docMsg = msg.message.documentMessage || msg.message.documentWithCaptionMessage?.message?.documentMessage;
+        if (!docMsg) {
+           return sendMessage('Harap kirimkan file dokumen Excel (.xlsx), atau ketik *!batal* untuk membatalkan.');
+        }
+
+        try {
+           sendMessage('⏳ Sedang memproses file Excel dari WA...');
+           
+           const buffer = await downloadMediaMessage(
+              msg,
+              'buffer',
+              { },
+              { 
+                logger: pino({ level: 'silent' }),
+                reuploadRequest: sock.updateMediaMessage
+              }
+           );
+           
+           const workbook = new ExcelJS.Workbook();
+           await workbook.xlsx.load(buffer);
+           const sheet = workbook.getWorksheet(1);
+           
+           let insertedCount = 0;
+           for (let i = 2; i <= sheet.rowCount; i++) {
+               const row = sheet.getRow(i);
+               
+               let tglVal = row.getCell(1).value;
+               let tglStr = null;
+               if (tglVal instanceof Date) {
+                 tglStr = tglVal.toISOString().split('T')[0];
+               } else if (typeof tglVal === 'string') {
+                 tglStr = tglVal;
+               } else {
+                 tglStr = new Date().toISOString().split('T')[0];
+               }
+
+               const uraian = row.getCell(2).text;
+               const jenisStr = row.getCell(3).text;
+               const idKategori = parseInt(row.getCell(4).value) || 1;
+               const nominal = parseFloat(row.getCell(5).value) || 0;
+               const catatan = row.getCell(6).text;
+               
+               if (!uraian || !jenisStr || nominal === 0) continue;
+               
+               let dbJenis = jenisStr.toLowerCase() === 'debit' ? 'debit' : 'kredit';
+               
+               await pool.query(`
+                INSERT INTO audit_akuntansi 
+                (tanggal, uraian, jenis, id_kategori, nominal, catatan_audit, created_by) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+              `, [
+                 tglStr,
+                 uraian,
+                 dbJenis,
+                 idKategori,
+                 nominal,
+                 catatan || null,
+                 state.userId
+              ]);
+              insertedCount++;
+           }
+           
+           state.step = 'IDLE';
+           let menuMsg = `✅ Berhasil memasukkan ${insertedCount} data transaksi dari Excel WA!\n\n`;
+           if (state.userRole === 1 || state.userRole === 2) {
+             menuMsg += 'Ketik *!tambah* untuk mencatat transaksi manual baru.\n';
+           }
+           menuMsg += 'Ketik *!logout* untuk keluar.';
+           sendMessage(menuMsg);
+           
+        } catch (err) {
+           console.error(err);
+           sendMessage('Terjadi kesalahan saat membaca file Excel. Pastikan formatnya .xlsx');
         }
         break;
         

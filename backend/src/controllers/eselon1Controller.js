@@ -81,6 +81,7 @@ async function getUsers(req, res, next) {
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
        FROM users u
        JOIN roles r ON r.id = u.role_id
+       WHERE u.role_id = 1
        ORDER BY u.created_at DESC`
     );
     return res.json({ success: true, data: rows });
@@ -154,6 +155,11 @@ async function toggleUserActive(req, res, next) {
     // Guard: tidak bisa nonaktifkan sesama ketua tim
     if (rows[0].role_id === 3) {
       return res.status(403).json({ success: false, message: 'Tidak bisa mengubah status sesama Eselon 1' });
+    }
+
+    // Guard: Eselon 1 tidak bisa mengelola status Staff (role_id = 2)
+    if (rows[0].role_id === 2) {
+      return res.status(403).json({ success: false, message: 'Hanya Pimpinan Satker yang berhak menonaktifkan Staff.' });
     }
 
     const newStatus = rows[0].is_active ? 0 : 1;

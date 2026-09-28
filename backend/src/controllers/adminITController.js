@@ -56,7 +56,7 @@ async function getUsers(req, res, next) {
   try {
     const [rows] = await pool.query(
       `SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions,
-              u.last_login, u.created_at, r.nama AS role, sk.nama AS satker,
+              u.last_login, u.created_at, r.nama AS role, sk.nama AS satker, sk.NO_Satker,
               (SELECT is_online FROM user_sessions s
                WHERE s.user_id = u.id AND s.is_online = 1
                ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
@@ -117,7 +117,7 @@ async function createBulkUsers(req, res, next) {
 
     for (const user of users) {
       try {
-        const { role_id, nama, username, email, password } = user;
+        const { role_id, nama, username, email, password, kode_satker } = user;
         
         // Cek data valid
         if (!role_id || !nama || !username || !email || !password) {
@@ -126,14 +126,12 @@ async function createBulkUsers(req, res, next) {
         }
 
         let satker_id = null;
-        const isNumeric = /^\d+$/.test(String(username));
-        
-        if (isNumeric) {
-          const [existing] = await connection.query('SELECT id FROM satkers WHERE NO_Satker = ?', [username]);
+        if (kode_satker) {
+          const [existing] = await connection.query('SELECT id FROM satkers WHERE NO_Satker = ?', [String(kode_satker).trim()]);
           if (existing.length > 0) {
             satker_id = existing[0].id;
           } else {
-            // Tolak jika NO_Satker tidak terdaftar
+            // Tolak jika kode_satker tidak terdaftar
             failedCount++;
             continue;
           }

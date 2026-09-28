@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
 import {
   Users, Loader2, RefreshCw, AlertCircle, KeyRound,
-  Power, Copy, CheckCircle, X
+  Power, Copy, CheckCircle, X, Search
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -55,6 +55,7 @@ export default function KetuaUsersPage() {
   const [resetting,  setResetting]  = useState<number | null>(null);
   const [resetResult, setResetResult] = useState<ResetResult | null>(null);
   const [copied,     setCopied]     = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -130,8 +131,17 @@ export default function KetuaUsersPage() {
     } catch { /* clipboard tidak tersedia */ }
   };
 
-  const totalPages = Math.ceil(users.length / itemsPerPage);
-  const currentUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const filteredUsers = users.filter(user =>
+    user.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const currentUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -148,6 +158,17 @@ export default function KetuaUsersPage() {
         >
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
+      </div>
+
+      <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm max-w-md">
+        <Search className="w-5 h-5 text-gray-400 mr-2" />
+        <input
+          type="text"
+          placeholder="Cari nama atau NIP/Kode Satker..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+        />
       </div>
 
       {error && (
@@ -220,8 +241,8 @@ export default function KetuaUsersPage() {
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <KeyRound className="w-4 h-4" />}
                         </button>
-                        {/* Eselon 1 tidak bisa mengubah sesama Eselon 1 */}
-                        {user.role !== 'eselon_1' && (
+                        {/* Eselon 1 HANYA bisa mengubah Pimpinan */}
+                        {user.role === 'pimpinan' && (
                           <button
                             onClick={() => handleToggle(user)}
                             disabled={processing === user.id}
@@ -242,17 +263,17 @@ export default function KetuaUsersPage() {
                 ))}
               </tbody>
             </table>
-            {!users.length && (
+            {!filteredUsers.length && (
               <div className="py-16 text-center text-gray-400">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
                 Belum ada user
               </div>
             )}
             
-            {users.length > 0 && (
+            {filteredUsers.length > 0 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
                 <div className="text-sm text-gray-500">
-                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, users.length)} dari {users.length}
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredUsers.length)} dari {filteredUsers.length}
                 </div>
                 <div className="flex gap-2">
                   <button 

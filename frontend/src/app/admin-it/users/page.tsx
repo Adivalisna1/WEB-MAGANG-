@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Trash2, Key, Edit, X, Upload, Download, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Key, Edit, X, Upload, Download, Eye, EyeOff, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
@@ -21,6 +21,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [satkers, setSatkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Form State
   const [showAddForm, setShowAddForm] = useState(false);
@@ -165,7 +166,8 @@ export default function UserManagementPage() {
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { role_id: 2, nama: 'Budi Santoso', username: '693439', email: 'budi@example.com', password: 'password123' }
+      { role_id: 2, nama: 'Budi Santoso', username: '693439_staff', email: 'budi@example.com', password: 'password123', kode_satker: '693439' },
+      { role_id: 1, nama: 'Pimpinan Budi', username: '693439_pimpinan', email: 'pimpinan@example.com', password: 'password123', kode_satker: '693439' }
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Users");
@@ -257,7 +259,7 @@ export default function UserManagementPage() {
           <input type="text" required value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Username (NIP / Kode Satker)</label>
           <input type="text" required value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
         </div>
         <div>
@@ -306,7 +308,9 @@ export default function UserManagementPage() {
             <select value={formData.satker_id} onChange={e => setFormData({ ...formData, satker_id: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
               <option value="">-- Pilih Satker --</option>
               {satkers.map(s => (
-                <option key={s.id} value={s.id}>{s.nama}</option>
+                <option key={s.id} value={s.id}>
+                  {s.NO_Satker ? `[${s.NO_Satker}] ${s.nama}` : s.nama}
+                </option>
               ))}
             </select>
           </div>
@@ -366,7 +370,7 @@ export default function UserManagementPage() {
     <div className="max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Management</h1>kok
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Management</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -389,6 +393,17 @@ export default function UserManagementPage() {
         </div>
       </div>
 
+      <div className="mb-6 flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm max-w-md">
+        <Search className="w-5 h-5 text-gray-400 mr-2" />
+        <input
+          type="text"
+          placeholder="Cari nama, NIP/Kode, atau email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
+        />
+      </div>
+
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -407,7 +422,11 @@ export default function UserManagementPage() {
               ) : users.length === 0 ? (
                 <tr><td colSpan={5} className="p-4 text-center text-gray-500">Belum ada data user.</td></tr>
               ) : (
-                users.map(u => (
+                users.filter(u =>
+                  u.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                ).map(u => (
                   <tr key={u.id} className="hover:bg-gray-50/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -426,6 +445,9 @@ export default function UserManagementPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 block font-medium">
+                        {u.NO_Satker ? `[${u.NO_Satker}]` : ''}
+                      </span>
                       <span className="text-sm text-gray-600">
                         {u.satker || '-'}
                       </span>
