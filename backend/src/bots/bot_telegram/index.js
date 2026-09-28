@@ -14,7 +14,7 @@ const userStates = {};
 async function generateLaporanExcelTelegram(satkerId, satkerNama, chatId, bot, pool) {
   try {
     bot.sendMessage(chatId, '⏳ Sedang memproses laporan Excel... Mohon tunggu.');
-    
+
     let query = `
       SELECT a.tanggal, a.uraian, a.jenis, k.nama_kategori, a.nominal, a.catatan_audit, u.nama as dibuat_oleh, s.nama as satker
       FROM audit_akuntansi a
@@ -28,16 +28,16 @@ async function generateLaporanExcelTelegram(satkerId, satkerNama, chatId, bot, p
       params.push(satkerId);
     }
     query += ' ORDER BY a.tanggal DESC';
-    
+
     const [rows] = await pool.query(query, params);
-    
+
     if (rows.length === 0) {
       return bot.sendMessage(chatId, `📭 Tidak ada data transaksi untuk satker *${satkerNama}*.`, { parse_mode: 'Markdown' });
     }
-    
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Laporan Keuangan');
-    
+
     sheet.columns = [
       { header: 'No', key: 'no', width: 5 },
       { header: 'Tanggal', key: 'tanggal', width: 14 },
@@ -49,11 +49,11 @@ async function generateLaporanExcelTelegram(satkerId, satkerNama, chatId, bot, p
       { header: 'Dibuat Oleh', key: 'dibuat_oleh', width: 20 },
       { header: 'Satker', key: 'satker', width: 30 },
     ];
-    
+
     sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E86C1' } };
     sheet.getRow(1).alignment = { horizontal: 'center' };
-    
+
     let totalDebit = 0;
     let totalKredit = 0;
     rows.forEach((r, idx) => {
@@ -61,7 +61,7 @@ async function generateLaporanExcelTelegram(satkerId, satkerNama, chatId, bot, p
       const jns = r.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
       if (r.jenis === 'debit') totalDebit += Number(r.nominal);
       else totalKredit += Number(r.nominal);
-      
+
       sheet.addRow({
         no: idx + 1,
         tanggal: tgl,
@@ -74,22 +74,22 @@ async function generateLaporanExcelTelegram(satkerId, satkerNama, chatId, bot, p
         satker: r.satker || '-',
       });
     });
-    
+
     sheet.addRow({});
     sheet.addRow({ uraian: 'Total Pemasukan', nominal: totalDebit });
     sheet.addRow({ uraian: 'Total Pengeluaran', nominal: totalKredit });
     sheet.addRow({ uraian: 'Saldo', nominal: totalDebit - totalKredit });
-    
+
     sheet.getColumn('nominal').numFmt = '#,##0';
-    
+
     const tmpDir = '/tmp';
     const fileName = `Laporan_${satkerNama.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30)}_${Date.now()}.xlsx`;
     const filePath = path.join(tmpDir, fileName);
     await workbook.xlsx.writeFile(filePath);
-    
+
     await bot.sendDocument(chatId, filePath);
     fs.unlinkSync(filePath);
-    
+
     const rp = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
     bot.sendMessage(chatId, `📊 *Laporan ${satkerNama}*\n\n📈 Total Pemasukan: ${rp(totalDebit)}\n📉 Total Pengeluaran: ${rp(totalKredit)}\n💰 Saldo: ${rp(totalDebit - totalKredit)}\n\n📎 File Excel sudah dikirim di atas.`, { parse_mode: 'Markdown' });
   } catch (err) {
@@ -115,7 +115,7 @@ function initTelegramBot() {
     if (!userStates[chatId]) {
       userStates[chatId] = { step: 'IDLE', data: {}, userId: null };
     }
-    
+
     // Reset step
     userStates[chatId].step = 'IDLE';
 
@@ -202,17 +202,17 @@ function initTelegramBot() {
         bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu! Ketik /start lalu klik 🔑 Login.');
         return;
       }
-      
+
       if (state.userRole === 3) {
         try {
           const [satkers] = await pool.query('SELECT id, nama FROM satkers ORDER BY nama ASC');
           if (satkers.length === 0) return bot.sendMessage(chatId, 'Data Satker kosong di database.');
-          
+
           let satkerMsg = 'Pilih Satuan Kerja:\n*0. Semua Satker (Global)*\n';
           state.data = {};
           state.data.satker_map = {};
           const chunks = [];
-          
+
           satkers.forEach((s, idx) => {
             const num = idx + 1;
             const line = `${num}. ${s.nama}\n`;
@@ -226,7 +226,7 @@ function initTelegramBot() {
           if (satkerMsg.length > 0) {
             chunks.push(satkerMsg);
           }
-          
+
           state.step = 'ASK_SATKER_LAPORAN';
           for (const chunk of chunks) {
             await bot.sendMessage(chatId, chunk, { parse_mode: 'Markdown' });
@@ -274,11 +274,22 @@ function initTelegramBot() {
       return;
     }
 
+    if (text === '➕ Rekening Koran') {
+      if (!state.userId) {
+        bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu!');
+        return;
+      }
+      state.step = 'ASK_RK_SATKER';
+      state.data = {};
+      bot.sendMessage(chatId, 'Masukkan **Nomor Satker** (sebagai kata kunci):', { parse_mode: 'Markdown', reply_markup: { remove_keyboard: true } });
+      return;
+    }
+
     switch (state.step) {
       case 'ASK_SATKER_LAPORAN': {
         let satkerId = null;
         let satkerNama = 'Semua Satker (Global)';
-        
+
         if (text === '0') {
           // All satkers
         } else {
@@ -289,7 +300,7 @@ function initTelegramBot() {
           satkerId = chosen.id;
           satkerNama = chosen.nama;
         }
-        
+
         try {
           await generateLaporanExcelTelegram(satkerId, satkerNama, chatId, bot, pool);
           state.step = 'IDLE';
@@ -315,7 +326,7 @@ function initTelegramBot() {
             state.step = 'IDLE';
             return bot.sendMessage(chatId, 'Username tidak ditemukan! Ketik /start untuk mengulang.');
           }
-          
+
           const validPass = await bcrypt.compare(password, users[0].password_hash);
           if (!validPass) {
             state.step = 'IDLE';
@@ -326,11 +337,11 @@ function initTelegramBot() {
           state.userRole = users[0].role_id;
           state.satkerId = users[0].satker_id;
           state.step = 'IDLE';
-          
+
           let keyboardMenu = [];
           if (state.userRole === 1 || state.userRole === 2) {
-            keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '📂 Upload Excel' }]);
-            keyboardMenu.push([{ text: '📊 Laporan' }]); // Give Staff/Pimpinan access to Laporan
+            keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '➕ Rekening Koran' }]);
+            keyboardMenu.push([{ text: '📂 Upload Excel' }, { text: '📊 Laporan' }]); 
           } else if (state.userRole === 3) {
             keyboardMenu.push([{ text: '📊 Laporan' }]);
           }
@@ -350,6 +361,135 @@ function initTelegramBot() {
         }
         break;
 
+      case 'ASK_RK_SATKER':
+        state.data.rk_satker = text;
+        state.step = 'ASK_RK_JENIS';
+        bot.sendMessage(chatId, 'Masukkan **Jenis** Rekening Koran (contoh: Pemasukan/Pengeluaran):', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_JENIS':
+        state.data.rk_jenis = text;
+        state.step = 'ASK_RK_KATEGORI';
+        bot.sendMessage(chatId, 'Masukkan **Kategori** (contoh: Rekening Koran):', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_KATEGORI':
+        state.data.rk_kategori = text;
+        state.step = 'ASK_RK_PERIODE';
+        bot.sendMessage(chatId, 'Masukkan **Periode** (1 atau 2):', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_PERIODE':
+        if (text !== '1' && text !== '2') return bot.sendMessage(chatId, 'Periode harus angka 1 atau 2!');
+        state.data.rk_periode = text;
+        state.step = 'ASK_RK_KETERANGAN';
+        bot.sendMessage(chatId, 'Masukkan **Keterangan/Uraian**:', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_KETERANGAN':
+        state.data.rk_keterangan = text;
+        state.step = 'ASK_RK_FILE';
+        bot.sendMessage(chatId, 'Silakan unggah **File/Foto Bukti Rekening Koran**:');
+        break;
+
+      case 'ASK_RK_FILE':
+        let rkFileId = null;
+        if (msg.photo && msg.photo.length > 0) {
+          rkFileId = msg.photo[msg.photo.length - 1].file_id;
+        } else if (msg.document) {
+          rkFileId = msg.document.file_id;
+        }
+        if (!rkFileId) return bot.sendMessage(chatId, 'Harap kirim Foto atau Dokumen!');
+        try {
+          bot.sendMessage(chatId, 'Sedang mengunduh bukti bank...');
+          const path = require('path');
+          const fs = require('fs');
+          const uploadDir = path.join(__dirname, '../../uploads/rekening_koran');
+          if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+          const downloadedPath = await bot.downloadFile(rkFileId, uploadDir);
+          state.data.rk_file = downloadedPath; // Local path to send to API
+        } catch (err) {
+          return bot.sendMessage(chatId, 'Gagal mengunduh file.');
+        }
+        state.step = 'ASK_RK_BANK';
+        bot.sendMessage(chatId, 'Masukkan **Nama Bank** (contoh: BRI, Mandiri):', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_BANK':
+        state.data.rk_bank = text;
+        state.step = 'ASK_RK_NOREK';
+        bot.sendMessage(chatId, 'Masukkan **Nomor Rekening Bank**:', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_NOREK':
+        state.data.rk_norek = text;
+        state.step = 'ASK_RK_TAHUN';
+        bot.sendMessage(chatId, 'Masukkan **Tahun** (contoh: 2026):', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_TAHUN':
+        if (isNaN(parseInt(text))) return bot.sendMessage(chatId, 'Tahun harus angka!');
+        state.data.rk_tahun = parseInt(text);
+        state.step = 'ASK_RK_SALDO_AKHIR';
+        bot.sendMessage(chatId, 'Terakhir, masukkan **Saldo Akhir Periode** (angka saja, contoh: 1500000):', { parse_mode: 'Markdown' });
+        break;
+
+      case 'ASK_RK_SALDO_AKHIR':
+        const saldoAkhir = parseInt(text.replace(/\D/g, ''));
+        if (isNaN(saldoAkhir)) return bot.sendMessage(chatId, 'Saldo harus angka!');
+        state.data.rk_saldo = saldoAkhir;
+        
+        // Simpan ke database via fungsi
+        bot.sendMessage(chatId, '⏳ Sedang menyimpan data Rekening Koran...');
+        try {
+          const fs = require('fs');
+          const FormData = require('form-data');
+          const axios = require('axios');
+          const form = new FormData();
+          // We need satker_id. Let's find it by NO_Satker (kata kunci)
+          const [sRes] = await pool.query('SELECT id FROM satkers WHERE NO_Satker = ?', [state.data.rk_satker]);
+          let sId = state.satkerId; // Default to user's satker
+          if (sRes.length > 0) sId = sRes[0].id;
+
+          form.append('satker_id', sId);
+          form.append('jenis', state.data.rk_jenis);
+          form.append('kategori', state.data.rk_kategori);
+          form.append('periode', state.data.rk_periode);
+          form.append('keterangan', state.data.rk_keterangan);
+          form.append('nama_bank', state.data.rk_bank);
+          form.append('nomor_rekening_bank', state.data.rk_norek);
+          form.append('tahun', state.data.rk_tahun);
+          form.append('saldo_akhir_periode', state.data.rk_saldo);
+          
+          if (state.data.rk_file) {
+            form.append('file', fs.createReadStream(state.data.rk_file));
+          }
+
+          // Use dummy token for bot internally or we can directly insert via DB pool
+          // Direct DB pool is much cleaner since we are already inside backend
+          // Wait, Rekening Koran has logic to save to R2 and Dokumen. We should use internal logic, OR call API via internal token?
+          // I'll call the API with a special header or just require the controller logic! But calling API via axios is easiest.
+          const token = require('jsonwebtoken').sign({ id: state.userId, role: 'staff', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          await axios.post(`http://localhost:${process.env.APP_PORT || 5000}/api/rekening-koran`, form, {
+            headers: { ...form.getHeaders(), Authorization: `Bearer ${token}` }
+          });
+          
+          bot.sendMessage(chatId, '✅ **Rekening Koran berhasil disimpan!**', { parse_mode: 'Markdown', reply_markup: {
+            keyboard: [
+              [{ text: '➕ Tambah Transaksi' }, { text: '➕ Rekening Koran' }],
+              [{ text: '📂 Upload Excel' }, { text: '📊 Laporan' }],
+              [{ text: '🚪 Logout' }]
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true
+          }});
+        } catch (err) {
+          console.error('Error save RK:', err);
+          bot.sendMessage(chatId, '❌ Gagal menyimpan Rekening Koran.');
+        }
+        state.step = 'IDLE';
+        break;
+
       case 'ASK_JENIS':
         if (text !== 'PEMASUKAN' && text !== 'PENGELUARAN') {
           return bot.sendMessage(chatId, 'Pilih PEMASUKAN atau PENGELUARAN ya!');
@@ -361,8 +501,8 @@ function initTelegramBot() {
         try {
           const [kategoris] = await pool.query("SELECT id, nama_kategori FROM kategori_akuntansi");
           if (kategoris.length === 0) {
-             bot.sendMessage(chatId, 'Kategori kosong di database.');
-             return;
+            bot.sendMessage(chatId, 'Kategori kosong di database.');
+            return;
           }
           const keyboard = kategoris.map(k => [{ text: `${k.id} - ${k.nama_kategori}` }]);
           keyboard.push([{ text: '❌ Batal' }]);
@@ -389,7 +529,7 @@ function initTelegramBot() {
         }
         state.data.id_kategori = parseInt(catIdMatch[1]);
         state.data.kategori_nama = text;
-        
+
         state.step = 'ASK_URAIAN';
         bot.sendMessage(chatId, 'Ketik Uraian/Deskripsi transaksi (Contoh: Pembayaran ATK):', {
           reply_markup: { remove_keyboard: true }
@@ -408,7 +548,7 @@ function initTelegramBot() {
           return bot.sendMessage(chatId, 'Nominal harus berupa angka! Coba masukkan lagi:');
         }
         state.data.nominal = nominal;
-        
+
         state.step = 'ASK_FILE';
         bot.sendMessage(chatId, 'Unggah Bukti File (Kirim Foto/Dokumen) atau ketik "Lewati" jika tidak ada:');
         break;
@@ -431,7 +571,7 @@ function initTelegramBot() {
             if (!fs.existsSync(uploadDir)) {
               fs.mkdirSync(uploadDir, { recursive: true });
             }
-            
+
             const downloadedPath = await bot.downloadFile(fileId, uploadDir);
             const filename = path.basename(downloadedPath);
             state.data.bukti_file = `/api/akuntansi/file/${filename}`;
@@ -457,7 +597,7 @@ function initTelegramBot() {
         // Finalize and save
         try {
           const tanggal = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-          
+
           const dbJenis = state.data.jenis === 'PEMASUKAN' ? 'debit' : 'kredit';
 
           await pool.query(`
@@ -465,11 +605,11 @@ function initTelegramBot() {
             (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `, [
-            tanggal, 
-            state.data.uraian, 
-            dbJenis, 
-            state.data.id_kategori, 
-            state.data.nominal, 
+            tanggal,
+            state.data.uraian,
+            dbJenis,
+            state.data.id_kategori,
+            state.data.nominal,
             state.data.bukti_file || null,
             state.data.catatan || null,
             state.userId
@@ -540,7 +680,7 @@ function initTelegramBot() {
               { header: 'Nominal', key: 'nominal', width: 20 },
               { header: 'Catatan', key: 'catatan', width: 30 }
             ];
-            
+
             // Example row
             sheet.addRow({
               tanggal: '2023-10-01',
@@ -563,78 +703,78 @@ function initTelegramBot() {
         }
 
         if (!msg.document) {
-           return bot.sendMessage(chatId, 'Harap unggah file dokumen Excel (.xlsx), atau ketik ❌ Batal.');
+          return bot.sendMessage(chatId, 'Harap unggah file dokumen Excel (.xlsx), atau ketik ❌ Batal.');
         }
 
         try {
-           bot.sendMessage(chatId, '⏳ Sedang memproses file Excel...');
-           const downloadDir = '/tmp';
-           const filePath = await bot.downloadFile(msg.document.file_id, downloadDir);
-           
-           const workbook = new ExcelJS.Workbook();
-           await workbook.xlsx.readFile(filePath);
-           const sheet = workbook.getWorksheet(1);
-           
-           let insertedCount = 0;
-           // Start reading from row 2 (skipping header)
-           for (let i = 2; i <= sheet.rowCount; i++) {
-               const row = sheet.getRow(i);
-               
-               let tglVal = row.getCell(1).value;
-               let tglStr = null;
-               if (tglVal instanceof Date) {
-                 tglStr = tglVal.toISOString().split('T')[0];
-               } else if (typeof tglVal === 'string') {
-                 tglStr = tglVal;
-               } else {
-                 tglStr = new Date().toISOString().split('T')[0];
-               }
+          bot.sendMessage(chatId, '⏳ Sedang memproses file Excel...');
+          const downloadDir = '/tmp';
+          const filePath = await bot.downloadFile(msg.document.file_id, downloadDir);
 
-               const uraian = row.getCell(2).text;
-               const jenisStr = row.getCell(3).text;
-               const idKategori = parseInt(row.getCell(4).value) || 1;
-               const nominal = parseFloat(row.getCell(5).value) || 0;
-               const catatan = row.getCell(6).text;
-               
-               if (!uraian || !jenisStr || nominal === 0) continue;
-               
-               let dbJenis = jenisStr.toLowerCase() === 'debit' ? 'debit' : 'kredit';
-               
-               await pool.query(`
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.readFile(filePath);
+          const sheet = workbook.getWorksheet(1);
+
+          let insertedCount = 0;
+          // Start reading from row 2 (skipping header)
+          for (let i = 2; i <= sheet.rowCount; i++) {
+            const row = sheet.getRow(i);
+
+            let tglVal = row.getCell(1).value;
+            let tglStr = null;
+            if (tglVal instanceof Date) {
+              tglStr = tglVal.toISOString().split('T')[0];
+            } else if (typeof tglVal === 'string') {
+              tglStr = tglVal;
+            } else {
+              tglStr = new Date().toISOString().split('T')[0];
+            }
+
+            const uraian = row.getCell(2).text;
+            const jenisStr = row.getCell(3).text;
+            const idKategori = parseInt(row.getCell(4).value) || 1;
+            const nominal = parseFloat(row.getCell(5).value) || 0;
+            const catatan = row.getCell(6).text;
+
+            if (!uraian || !jenisStr || nominal === 0) continue;
+
+            let dbJenis = jenisStr.toLowerCase() === 'debit' ? 'debit' : 'kredit';
+
+            await pool.query(`
                 INSERT INTO audit_akuntansi 
                 (tanggal, uraian, jenis, id_kategori, nominal, catatan_audit, created_by) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)
               `, [
-                 tglStr,
-                 uraian,
-                 dbJenis,
-                 idKategori,
-                 nominal,
-                 catatan || null,
-                 state.userId
-              ]);
-              insertedCount++;
-           }
-           fs.unlinkSync(filePath);
-           
-           state.step = 'IDLE';
-           let keyboardMenu = [];
-           if (state.userRole === 1 || state.userRole === 2) {
-             keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '📂 Upload Excel' }]);
-           } else if (state.userRole === 3) {
-             keyboardMenu.push([{ text: '📊 Laporan' }]);
-           }
-           keyboardMenu.push([{ text: '🚪 Logout' }]);
-           
-           bot.sendMessage(chatId, `✅ Berhasil memasukkan ${insertedCount} data transaksi dari Excel!`, {
-              reply_markup: { keyboard: keyboardMenu, resize_keyboard: true, one_time_keyboard: true }
-           });
+              tglStr,
+              uraian,
+              dbJenis,
+              idKategori,
+              nominal,
+              catatan || null,
+              state.userId
+            ]);
+            insertedCount++;
+          }
+          fs.unlinkSync(filePath);
+
+          state.step = 'IDLE';
+          let keyboardMenu = [];
+          if (state.userRole === 1 || state.userRole === 2) {
+            keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '📂 Upload Excel' }]);
+          } else if (state.userRole === 3) {
+            keyboardMenu.push([{ text: '📊 Laporan' }]);
+          }
+          keyboardMenu.push([{ text: '🚪 Logout' }]);
+
+          bot.sendMessage(chatId, `✅ Berhasil memasukkan ${insertedCount} data transaksi dari Excel!`, {
+            reply_markup: { keyboard: keyboardMenu, resize_keyboard: true, one_time_keyboard: true }
+          });
         } catch (err) {
-           console.error(err);
-           bot.sendMessage(chatId, 'Terjadi kesalahan saat membaca file Excel. Pastikan formatnya .xlsx');
+          console.error(err);
+          bot.sendMessage(chatId, 'Terjadi kesalahan saat membaca file Excel. Pastikan formatnya .xlsx');
         }
         break;
-        
+
       default:
         // Do nothing if step is IDLE and not a specific command
         break;

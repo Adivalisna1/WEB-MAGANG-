@@ -29,8 +29,32 @@ async function initKertasKerjaTable() {
   try {
     await pool.query(query);
     console.log('Tabel kertas_kerja sudah dipastikan ada.');
+    
+    // Tabel Rekening Koran (Khusus untuk Rekonsiliasi Bank vs Excel)
+    const qRk = `
+      CREATE TABLE IF NOT EXISTS rekening_koran (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        satker_id INT UNSIGNED NOT NULL,
+        uploaded_by INT UNSIGNED NOT NULL,
+        dokumen_id INT UNSIGNED NULL,
+        jenis VARCHAR(50),
+        kategori VARCHAR(100),
+        periode ENUM('1', '2'),
+        keterangan TEXT,
+        nama_bank VARCHAR(100),
+        nomor_rekening_bank VARCHAR(100),
+        tahun INT(4),
+        saldo_akhir_periode DECIMAL(18,2),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (satker_id) REFERENCES satkers(id) ON DELETE CASCADE,
+        FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (dokumen_id) REFERENCES dokumen(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB;
+    `;
+    await pool.query(qRk);
+    console.log('Tabel rekening_koran sudah dipastikan ada.');
   } catch (err) {
-    console.error('Error init kertas_kerja table:', err);
+    console.error('Error init tables:', err);
   }
 }
 

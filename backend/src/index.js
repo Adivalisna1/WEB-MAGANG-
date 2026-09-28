@@ -23,6 +23,7 @@ const satkerRoutes = require('./routes/satker');
 const akuntansiRoutes = require('./routes/akuntansi');
 const kertasKerjaRoutes = require('./routes/kertasKerjaRoutes');
 const statsRoutes = require('./routes/stats');
+const rekeningKoranRoutes = require('./routes/rekeningKoranRoutes');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
@@ -93,6 +94,7 @@ app.use('/api/satker', satkerRoutes);
 app.use('/api/akuntansi', akuntansiRoutes);
 app.use('/api/kertas-kerja', kertasKerjaRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/rekening-koran', rekeningKoranRoutes);
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({

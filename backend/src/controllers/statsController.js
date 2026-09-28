@@ -22,7 +22,7 @@ async function getDashboardStats(req, res, next) {
       nama: item.nama || 'Tidak Diketahui',
       value: parseFloat(item.value || 0)
     }));
-    
+
     // 4. Tren Saldo Per Tahun & Periode (Untuk Bar Chart)
     const [periodeRes] = await pool.query(`
       SELECT tahun, periode, SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total 
