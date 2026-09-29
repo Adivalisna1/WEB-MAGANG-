@@ -303,7 +303,6 @@ export default function PimpinanpencatatanPage() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  </td>
                 </tr>
               ))}
             </tbody>

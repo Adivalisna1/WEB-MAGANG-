@@ -301,7 +301,6 @@ export default function StaffpencatatanPage() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  </td>
                 </tr>
               ))}
             </tbody>
