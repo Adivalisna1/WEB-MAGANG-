@@ -116,7 +116,7 @@ export default function ChartDashboard() {
             <FileText className="w-7 h-7 text-purple-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">Total Data Kertas Kerja</p>
+            <p className="text-sm font-medium text-gray-500 mb-1">Total Data Rekening Koran</p>
             <h3 className="text-2xl font-bold text-gray-900">{data.saldo_per_satker.length} Satker</h3>
           </div>
         </div>

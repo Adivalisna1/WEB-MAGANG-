@@ -20,10 +20,9 @@ const eselon1Routes = require('./routes/eselon_1');
 const adminItRoutes = require('./routes/adminIT');
 const notifRoutes = require('./routes/notifikasi');
 const satkerRoutes = require('./routes/satker');
-const akuntansiRoutes = require('./routes/akuntansi');
-const kertasKerjaRoutes = require('./routes/kertasKerjaRoutes');
-const statsRoutes = require('./routes/stats');
+const pencatatanRoutes = require('./routes/pencatatan');
 const rekeningKoranRoutes = require('./routes/rekeningKoranRoutes');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
@@ -91,10 +90,9 @@ app.use('/api/eselon-1', eselon1Routes);
 app.use('/api/admin-it', adminItRoutes);
 app.use('/api/notifikasi', notifRoutes);
 app.use('/api/satker', satkerRoutes);
-app.use('/api/akuntansi', akuntansiRoutes);
-app.use('/api/kertas-kerja', kertasKerjaRoutes);
-app.use('/api/stats', statsRoutes);
+app.use('/api/pencatatan', pencatatanRoutes);
 app.use('/api/rekening-koran', rekeningKoranRoutes);
+app.use('/api/stats', statsRoutes);
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({

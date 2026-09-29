@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const ctrl = require('../controllers/akuntansiController');
+const ctrl = require('../controllers/pencatatanController');
 const { authenticate, authorize } = require('../middleware/auth');
 const upload = require('../config/multer');
 const activityLogger = require('../middleware/activityLogger');

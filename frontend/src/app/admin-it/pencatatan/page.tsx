@@ -9,7 +9,7 @@ import clsx from 'clsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-export default function AdminAkuntansiPage() {
+export default function AdminpencatatanPage() {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<'transaksi' | 'kategori'>('transaksi');
   
@@ -32,8 +32,8 @@ export default function AdminAkuntansiPage() {
     setLoading(true);
     try {
       const [resTx, resCat, resSatker] = await Promise.all([
-        fetch(`${API}/akuntansi`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/akuntansi/kategori`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/pencatatan`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/pencatatan/kategori`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/satker`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       const jTx = await resTx.json();
@@ -57,7 +57,7 @@ export default function AdminAkuntansiPage() {
   const handleCatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API}/akuntansi/kategori`, {
+      const res = await fetch(`${API}/pencatatan/kategori`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nama_kategori: catName })
@@ -80,7 +80,7 @@ export default function AdminAkuntansiPage() {
   const handleEditTxSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API}/akuntansi/${editTxId}/kategori`, {
+      const res = await fetch(`${API}/pencatatan/${editTxId}/kategori`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ id_kategori: Number(selectedCatId) })

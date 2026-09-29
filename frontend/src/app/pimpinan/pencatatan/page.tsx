@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-export default function StaffAkuntansiPage() {
+export default function PimpinanpencatatanPage() {
   const { token, user } = useAuth();
   const [transaksi, setTransaksi] = useState<any[]>([]);
   const [kategori, setKategori] = useState<any[]>([]);
@@ -42,8 +42,8 @@ export default function StaffAkuntansiPage() {
     setLoading(true);
     try {
       const [resTx, resCat] = await Promise.all([
-        fetch(`${API}/akuntansi`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/akuntansi/kategori`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API}/pencatatan`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/pencatatan/kategori`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       const jTx = await resTx.json();
       const jCat = await resCat.json();
@@ -84,7 +84,7 @@ export default function StaffAkuntansiPage() {
       data.append('catatan_audit', formData.catatan_audit);
       if (file) data.append('file', file);
 
-      const url = isEdit ? `${API}/akuntansi/${editId}` : `${API}/akuntansi`;
+      const url = isEdit ? `${API}/pencatatan/${editId}` : `${API}/pencatatan`;
       const method = isEdit ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -139,8 +139,9 @@ export default function StaffAkuntansiPage() {
       'Jenis': t.jenis === 'debit' ? 'PEMASUKAN' : 'PENGELUARAN',
       'Kategori': t.nama_kategori,
       'Nominal': Number(t.nominal),
-      'Catatan': t.catatan_audit || '-',
-      'Dibuat Oleh': t.pembuat || '-'
+      'Catatan Audit': t.catatan_audit || '-',
+      'Dibuat Oleh': t.pembuat || '-',
+      'Diedit Oleh': t.pengedit || '-'
     }));
 
     const ws = XLSX.utils.json_to_sheet(wsData);
@@ -159,8 +160,8 @@ export default function StaffAkuntansiPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Pencatatan</h1>
-          <p className="text-sm text-gray-500 mt-1">Pencatatan transaksi dan pelaporan keuangan.</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Pencatatan & Audit</h1>
+          <p className="text-sm text-gray-500 mt-1">Pemantauan dan pengelolaan transaksi pencatatan seluruh satker.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportToExcel} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
@@ -244,8 +245,8 @@ export default function StaffAkuntansiPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
-                <textarea rows={2} value={formData.catatan_audit} onChange={e => setFormData({...formData, catatan_audit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Audit (Opsional)</label>
+                <textarea rows={2} value={formData.catatan_audit} onChange={e => setFormData({...formData, catatan_audit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Catatan khusus dari Pimpinan..."></textarea>
               </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
@@ -281,7 +282,8 @@ export default function StaffAkuntansiPage() {
                   <td className="px-4 py-3 text-gray-600 font-medium">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
                   <td className="px-4 py-3">
                     <p className="text-gray-900 line-clamp-2">{t.uraian}</p>
-                    {t.catatan_audit && <p className="text-xs text-gray-500 mt-1 italic">Note: {t.catatan_audit}</p>}
+                    <p className="text-xs text-gray-400 mt-1">Oleh: {t.pembuat}</p>
+                    {t.catatan_audit && <p className="text-xs text-amber-600 mt-1 italic font-medium">Audit: {t.catatan_audit}</p>}
                   </td>
                   <td className="px-4 py-3">
                     <span className={clsx("px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider", t.jenis === 'debit' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>
@@ -302,7 +304,7 @@ export default function StaffAkuntansiPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleEditClick(t)} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
+                    <button onClick={() => handleEditClick(t)} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit Data & Audit">
                       <Edit className="w-4 h-4" />
                     </button>
                   </td>

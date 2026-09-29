@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 
 import { useEffect, useState, useRef } from 'react';
 import { getSession } from '@/lib/auth';
+import { useSearchParams } from 'next/navigation';
+import Pagination from '@/components/ui/Pagination';
 import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -55,7 +57,11 @@ export default function KertasKerjaPage() {
   const [searchQ, setSearchQ] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
-  
+
+  const searchParams = useSearchParams();
+  const currentPage = parseInt(searchParams.get('page') || '1') || 1;
+  const itemsPerPage = 40;
+
   const [userRole, setUserRole] = useState('');
 
   // Edit State
@@ -75,7 +81,7 @@ export default function KertasKerjaPage() {
       const session = getSession();
       setUserRole(session?.user?.role || '');
       
-      const res = await fetch(`${API}/kertas-kerja`, {
+      const res = await fetch(`${API}/rekening-koran`, {
         headers: session ? { Authorization: `Bearer ${session.token}` } : {},
       });
       if (res.ok) {
@@ -151,7 +157,7 @@ export default function KertasKerjaPage() {
     setIsSaving(true);
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja/bulk`, {
+      const res = await fetch(`${API}/rekening-koran/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
         body: JSON.stringify({ data: excelData, satker_id: selectedUploadSatker ? parseInt(selectedUploadSatker) : null })
@@ -171,7 +177,7 @@ export default function KertasKerjaPage() {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja/${id}`, {
+      const res = await fetch(`${API}/rekening-koran/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.token}` },
       });
@@ -189,7 +195,7 @@ export default function KertasKerjaPage() {
     setIsSavingRow('new');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja`, {
+      const res = await fetch(`${API}/rekening-koran`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
         body: JSON.stringify(newRow)
@@ -224,7 +230,7 @@ export default function KertasKerjaPage() {
     setIsSavingRow(id);
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja/${id}`, {
+      const res = await fetch(`${API}/rekening-koran/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
         body: JSON.stringify(editRowData)
@@ -265,6 +271,9 @@ export default function KertasKerjaPage() {
   });
 
   const isEselon1 = userRole === 'eselon_1';
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
     if (isEselon1 && activeTab === 'excel') setActiveTab('history');
@@ -393,8 +402,8 @@ export default function KertasKerjaPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? <tr><td colSpan={10} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
-                  filteredData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
-                  filteredData.map(d => {
+                  paginatedData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
+                  paginatedData.map(d => {
                     const isEditing = editingRowId === d.id;
                     return (
                       <tr key={d.id} className="hover:bg-gray-50 transition-colors group">
@@ -465,6 +474,7 @@ export default function KertasKerjaPage() {
               </tbody>
             </table>
           </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} basePath="/eselon-1/rekening-koran" />
         </div>
       )}
     </div>

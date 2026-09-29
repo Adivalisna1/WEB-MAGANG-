@@ -85,7 +85,7 @@ export default function KertasKerjaPage() {
       const session = getSession();
       setUserRole(session?.user?.role || '');
 
-      const res = await fetch(`${API}/kertas-kerja`, {
+      const res = await fetch(`${API}/rekening-koran`, {
         headers: session ? { Authorization: `Bearer ${session.token}` } : {},
       });
       if (res.ok) {
@@ -161,7 +161,7 @@ export default function KertasKerjaPage() {
     setIsSaving(true);
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja/bulk`, {
+      const res = await fetch(`${API}/rekening-koran/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
         body: JSON.stringify({
@@ -186,7 +186,7 @@ export default function KertasKerjaPage() {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja/${id}`, {
+      const res = await fetch(`${API}/rekening-koran/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.token}` },
       });
@@ -204,7 +204,7 @@ export default function KertasKerjaPage() {
     setIsSavingRow('new');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja`, {
+      const res = await fetch(`${API}/rekening-koran`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
         body: JSON.stringify(newRow)
@@ -239,7 +239,7 @@ export default function KertasKerjaPage() {
     setIsSavingRow(id);
     try {
       const session = getSession();
-      const res = await fetch(`${API}/kertas-kerja/${id}`, {
+      const res = await fetch(`${API}/rekening-koran/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
         body: JSON.stringify(editRowData)

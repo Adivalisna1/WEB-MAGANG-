@@ -13,7 +13,7 @@ const StaffMenu = [
   { href: '/staff/dokumen',        icon: LayoutDashboard, label: 'Dokumen Saya' },
   { href: '/staff/dokumen/upload', icon: Upload,          label: 'Upload Dokumen' },
   { href: '/staff/rekening-koran', icon: FileSpreadsheet, label: 'Rekening Koran' },
-  { href: '/staff/akuntansi',      icon: Calculator,      label: 'Pencatatan' },
+  { href: '/staff/pencatatan',      icon: Calculator,      label: 'Pencatatan' },
   { href: '/staff/profil',         icon: User,            label: 'Profil' },
 ];
 
