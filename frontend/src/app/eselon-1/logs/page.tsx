@@ -49,13 +49,58 @@ export default function KetuaLogsPage() {
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
-  const formatDetail = (detail: any): string => {
+  const formatAksi = (aksi: string): string => {
+    const kamus: Record<string, string> = {
+      upload_rekening_koran: 'Upload Rekening Koran',
+      upload_kertas_kerja: 'Upload Kertas Kerja',
+      update_kertas_kerja: 'Update Kertas Kerja',
+      delete_kertas_kerja: 'Hapus Kertas Kerja',
+      create_kategori_akuntansi: 'Buat Kategori',
+      create: 'Tambah Data',
+      edit: 'Ubah Data',
+      update_user: 'Update User',
+      buat_user_bulk: 'Buat User (Banyak)',
+      hapus_user: 'Hapus User',
+      buat_user: 'Buat User',
+      edit_kategori: 'Edit Kategori',
+      reset_password_manual: 'Reset Password',
+      kirim_notifikasi: 'Kirim Notifikasi',
+    };
+    return kamus[aksi] || aksi.replace(/_/g, ' ');
+  };
+
+  const formatDetail = (detail: any, aksi: string): string => {
     if (!detail) return '-';
     try {
       const obj = typeof detail === 'string' ? JSON.parse(detail) : detail;
+      
+      // Bahasa biasa berdasarkan tipe aksi
+      if (aksi === 'upload_rekening_koran' || aksi === 'upload_kertas_kerja') {
+        return `Mengunggah file dengan total ${obj.jumlah_baris || 0} baris data${obj.location ? ` dari ${obj.location}` : ''}.`;
+      }
+      if (aksi === 'update_user') {
+        return `Memperbarui profil / hak akses untuk user "${obj.username || '?'}" (Role ID: ${obj.role_id || '?'}).`;
+      }
+      if (aksi === 'buat_user' || aksi === 'buat_user_bulk') {
+        return `Mendaftarkan user baru "${obj.username || obj.file_name || '?'}".`;
+      }
+      if (aksi === 'reset_password_manual') {
+        return `Melakukan reset password secara manual.`;
+      }
+      if (aksi === 'create' || aksi === 'edit') {
+        if (obj.judul) return `Menyimpan data dengan judul "${obj.judul}".`;
+        return `Melakukan perubahan atau penambahan data pada sistem.`;
+      }
+      if (aksi === 'hapus_user') {
+        return `Menghapus akun user "${obj.username || '?'}" secara permanen.`;
+      }
+      if (aksi === 'kirim_notifikasi') {
+        return `Mengirim notifikasi sistem berjudul "${obj.judul || '?'}".`;
+      }
+      
       return Object.entries(obj)
-        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-        .join(' | ');
+        .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join(', ');
     } catch {
       return String(detail);
     }
@@ -110,12 +155,12 @@ export default function KetuaLogsPage() {
                       </td>
                       <td className="px-5 py-3 text-gray-800">{log.user_nama ?? 'System'}</td>
                       <td className="px-5 py-3">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
-                          {log.aksi}
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+                          {formatAksi(log.aksi)}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-gray-500 text-xs max-w-md truncate">
-                        {formatDetail(log.detail)}
+                        {formatDetail(log.detail, log.aksi)}
                       </td>
                       <td className="px-5 py-3 text-gray-400 text-xs">{log.ip_address ?? '-'}</td>
                     </tr>

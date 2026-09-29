@@ -310,9 +310,12 @@ async function getLogs(req, res, next) {
 
     const [rows] = await pool.query(
       `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail,
-              l.ip_address, l.created_at, u.nama AS user_nama, u.username
+              l.ip_address, l.created_at, 
+              CONCAT(u.nama, IFNULL(CONCAT(' (', s.nama, ')'), '')) AS user_nama, 
+              u.username
        FROM aktivitas_log l
        LEFT JOIN users u ON u.id = l.user_id
+       LEFT JOIN satkers s ON s.id = u.satker_id
        WHERE ${where}
        ORDER BY l.created_at DESC
        LIMIT ? OFFSET ?`,
@@ -334,3 +337,4 @@ async function getLogs(req, res, next) {
 module.exports = {
   getStats, getUsers, getDokumen, getDokumenMenungguKetua,
   toggleUserActive, resetPassword, exportZipRekeningKoran, getLogs
+};
