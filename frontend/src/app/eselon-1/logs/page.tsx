@@ -155,7 +155,7 @@ export default function KetuaLogsPage() {
                       </td>
                       <td className="px-5 py-3 text-gray-800">{log.user_nama ?? 'System'}</td>
                       <td className="px-5 py-3">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+                        <span className="inline-flex whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
                           {formatAksi(log.aksi)}
                         </span>
                       </td>
