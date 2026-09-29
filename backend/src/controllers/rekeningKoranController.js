@@ -24,9 +24,14 @@ async function getRekeningKoran(req, res, next) {
               u.nama AS uploader_nama, 
               s.nama AS nama_satker, 
               s.NO_Satker AS kode_satker,
-              (SELECT SUM(IFNULL(kk.saldo_akhir_bulan, 0)) 
-               FROM kertas_kerja kk 
-               WHERE kk.satker_id = rk.satker_id AND kk.tahun = rk.tahun AND kk.periode = rk.periode) AS saldo_excel
+              (SELECT SUM(IFNULL(aa.nominal, 0)) 
+               FROM audit_akuntansi aa
+               JOIN users ua ON aa.created_by = ua.id
+               JOIN kategori_akuntansi ka ON aa.id_kategori = ka.id
+               WHERE ua.satker_id = rk.satker_id 
+                 AND YEAR(aa.tanggal) = rk.tahun 
+                 AND MONTH(aa.tanggal) = rk.periode
+                 AND ka.nama_kategori = 'Rekening Koran') AS saldo_excel
        FROM rekening_koran rk
        LEFT JOIN users u ON u.id = rk.uploaded_by
        LEFT JOIN satkers s ON s.id = rk.satker_id

@@ -123,7 +123,7 @@ export default function RekeningKoranPage() {
                   <th className="p-4 font-semibold">Tahun/Periode</th>
                   <th className="p-4 font-semibold">Bank / Norek</th>
                   <th className="p-4 font-semibold text-right">Saldo Rekening Koran</th>
-                  <th className="p-4 font-semibold text-right">Saldo Catatan (Excel)</th>
+                  <th className="p-4 font-semibold text-right">Saldo Pencatatan</th>
                   <th className="p-4 font-semibold text-right">Selisih</th>
                   <th className="p-4 font-semibold text-center">Bukti File</th>
                 </tr>
