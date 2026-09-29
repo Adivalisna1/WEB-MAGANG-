@@ -15,9 +15,9 @@ async function generateLaporanExcelWA(satkerId, satkerNama, jid, sock, pool) {
     await sock.sendMessage(jid, { text: '⏳ Sedang memproses laporan Excel... Mohon tunggu.' });
 
     let query = `
-      SELECT a.tanggal, a.uraian, a.jenis, k.nama_kategori, a.nominal, a.catatan_audit, u.nama as dibuat_oleh, s.nama as satker
+      SELECT a.tanggal, a.uraian, a.jenis, k.nama as nama_kategori, a.nominal, a.catatan_audit, u.nama as dibuat_oleh, s.nama as satker
       FROM audit_akuntansi a
-      LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
+      LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id
       LEFT JOIN users u ON a.created_by = u.id
       LEFT JOIN satkers s ON u.satker_id = s.id
     `;
@@ -469,7 +469,7 @@ async function initWhatsAppBot() {
 
         state.step = 'ASK_KATEGORI';
         try {
-          const [kategoris] = await pool.query("SELECT id, nama_kategori FROM kategori_akuntansi");
+          const [kategoris] = await pool.query("SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1");
           if (kategoris.length === 0) {
             return sendMessage('Kategori kosong di database.');
           }

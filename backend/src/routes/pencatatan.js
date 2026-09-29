@@ -12,12 +12,7 @@ router.get('/kategori',
   ctrl.getKategoriAkuntansi
 );
 
-// POST Kategori: HANYA Admin IT
-router.post('/kategori',
-  authenticate, authorize('admin_it'),
-  activityLogger('create_kategori_akuntansi', 'akuntansi'),
-  ctrl.createKategoriAkuntansi
-);
+
 
 
 // ── Serve File Bukti ───────────────────────────────────
@@ -50,12 +45,4 @@ router.post('/',
   ctrl.createAkuntansi
 );
 
-// PATCH Akuntansi /kategori (Admin IT update metadata kategori saja)
-router.patch('/:id/kategori',
-  authenticate, authorize('admin_it'),
-  activityLogger('edit_kategori', 'akuntansi'),
-  ctrl.updateMetadata
-);
-
 module.exports = router;
-
