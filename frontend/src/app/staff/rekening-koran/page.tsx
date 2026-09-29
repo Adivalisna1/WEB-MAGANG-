@@ -417,15 +417,13 @@ export default function KertasKerjaPage() {
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[80px]">Periode</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Tgl Buka</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Akhir</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RK</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Rekening</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RPL/LPJ</th>
+                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Keterangan</th>
                   {!isEselon1 && <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right w-[100px]">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {loading ? <tr><td colSpan={10} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
-                  paginatedData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
+                {loading ? <tr><td colSpan={9} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
+                  paginatedData.length === 0 ? <tr><td colSpan={9} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
                   paginatedData.map(d => {
                     const isEditing = editingRowId === d.id;
                     return (
@@ -445,9 +443,7 @@ export default function KertasKerjaPage() {
                             </td>
                             <td className="px-1 py-1"><input type="date" value={editRowData.tanggal_pembukaan_rekening} onChange={e => setEditRowData({...editRowData, tanggal_pembukaan_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none"/></td>
                             <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rk} onChange={e => setEditRowData({...editRowData, saldo_rk: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rekening} onChange={e => setEditRowData({...editRowData, saldo_rekening: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rpl_lpj} onChange={e => setEditRowData({...editRowData, saldo_rpl_lpj: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none"/></td>
+                            <td className="px-1 py-1"><input type="text" value={editRowData.keterangan} onChange={e => setEditRowData({...editRowData, keterangan: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Keterangan..."/></td>
                             <td className="px-2 py-2 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button onClick={() => saveInlineEdit(d.id)} disabled={isSavingRow === d.id} className="p-1 text-white bg-green-500 hover:bg-green-600 rounded">
@@ -467,9 +463,7 @@ export default function KertasKerjaPage() {
                             <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 cursor-pointer">{d.periode || '1'}</td>
                             <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
                             <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rk || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rekening || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rpl_lpj || 0).toLocaleString('id-ID')}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs cursor-pointer">{d.keterangan || '-'}</td>
                             {!isEselon1 && (
                               <td className="px-4 py-3 text-right">
                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
