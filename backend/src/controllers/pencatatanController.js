@@ -155,37 +155,6 @@ const createAkuntansi = async (req, res) => {
   }
 };
 
-// PATCH /api/akuntansi/:id
-const updateAkuntansi = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tanggal, uraian, jenis, nominal, catatan_audit } = req.body;
-    
-    // Cek apakah data ada
-    const [existing] = await pool.query('SELECT * FROM audit_akuntansi WHERE id = ?', [id]);
-    if (existing.length === 0) return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
-
-    const updated_by = req.user.id;
-
-    const query = `
-      UPDATE audit_akuntansi 
-      SET catatan_audit = ?, updated_by = ?
-      WHERE id = ?
-    `;
-    const values = [
-      catatan_audit !== undefined ? catatan_audit : existing[0].catatan_audit, 
-      updated_by, 
-      id
-    ];
-
-    await pool.query(query, values);
-    res.json({ success: true, message: 'Data akuntansi berhasil diperbarui' });
-  } catch (error) {
-    console.error('Error updateAkuntansi:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
-  }
-};
-
 // PATCH /api/akuntansi/:id/kategori (Khusus Admin IT)
 const updateMetadata = async (req, res) => {
   try {
@@ -211,6 +180,5 @@ module.exports = {
   createKategoriAkuntansi,
   getAkuntansi,
   createAkuntansi,
-  updateAkuntansi,
   updateMetadata
 };

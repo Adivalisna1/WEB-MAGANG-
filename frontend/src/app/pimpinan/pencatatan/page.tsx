@@ -23,8 +23,6 @@ export default function PimpinanpencatatanPage() {
 
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [isEdit, setIsEdit] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
     tanggal: '',
@@ -89,8 +87,8 @@ export default function PimpinanpencatatanPage() {
       data.append('nama_bank', formData.nama_bank);
       if (file) data.append('file', file);
 
-      const url = isEdit ? `${API}/pencatatan/${editId}` : `${API}/pencatatan`;
-      const method = isEdit ? 'PATCH' : 'POST';
+      const url = `${API}/pencatatan`;
+      const method = 'POST';
 
       const res = await fetch(url, {
         method,
@@ -99,7 +97,7 @@ export default function PimpinanpencatatanPage() {
       });
       const j = await res.json();
       if (j.success) {
-        toast.success(`Data berhasil ${isEdit ? 'diperbarui' : 'ditambahkan'}`);
+        toast.success('Data berhasil ditambahkan');
         setShowForm(false);
         resetForm();
         fetchData();
@@ -113,27 +111,11 @@ export default function PimpinanpencatatanPage() {
     }
   };
 
-  const handleEditClick = (t: any) => {
-    setFormData({
-      tanggal: new Date(t.tanggal).toISOString().split('T')[0],
-      uraian: t.uraian,
-      jenis: t.jenis,
-      id_kategori: String(t.id_kategori),
-      nominal: t.nominal,
-      catatan_audit: t.catatan_audit || ''
-    });
-    setFile(null);
-    setEditId(t.id);
-    setIsEdit(true);
-    setShowForm(true);
-  };
 
   const resetForm = () => {
     setFormData({ tanggal: '', uraian: '', jenis: 'debit', id_kategori: '', nominal: '', catatan_audit: '', nomor_rekening_bank: '', nama_bank: '' });
     setFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    setIsEdit(false);
-    setEditId(null);
   };
 
   const exportToExcel = () => {
@@ -205,18 +187,18 @@ export default function PimpinanpencatatanPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden my-8">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg font-semibold text-gray-900">{isEdit ? 'Edit Transaksi' : 'Tambah Transaksi'}</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Tambah Transaksi</h2>
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                  <input type="date" required disabled={isEdit} value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" />
+                  <input type="date" required value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
-                  <select required disabled={isEdit} value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500">
+                  <select required value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="debit">Pemasukan</option>
                     <option value="kredit">Pengeluaran</option>
                   </select>
@@ -225,7 +207,7 @@ export default function PimpinanpencatatanPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Akun</label>
-                <select required disabled={isEdit} value={formData.id_kategori} onChange={e => setFormData({...formData, id_kategori: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500">
+                <select required value={formData.id_kategori} onChange={e => setFormData({...formData, id_kategori: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                   <option value="">Pilih Kategori...</option>
                   {kategori.map(k => (
                     <option key={k.id} value={k.id}>{k.nama_kategori}</option>
@@ -238,31 +220,29 @@ export default function PimpinanpencatatanPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Rekening Bank</label>
-                    <input type="text" required disabled={isEdit} value={formData.nomor_rekening_bank} onChange={e => setFormData({...formData, nomor_rekening_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: 1234567890" />
+                    <input type="text" required value={formData.nomor_rekening_bank} onChange={e => setFormData({...formData, nomor_rekening_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: 1234567890" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
-                    <input type="text" required disabled={isEdit} value={formData.nama_bank} onChange={e => setFormData({...formData, nama_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: BNI" />
+                    <input type="text" required value={formData.nama_bank} onChange={e => setFormData({...formData, nama_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: BNI" />
                   </div>
                 </div>
               )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Uraian / Deskripsi</label>
-                <textarea rows={2} required disabled={isEdit} value={formData.uraian} onChange={e => setFormData({...formData, uraian: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: Pembayaran tagihan listrik bulan Agustus"></textarea>
+                <textarea rows={2} required value={formData.uraian} onChange={e => setFormData({...formData, uraian: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: Pembayaran tagihan listrik bulan Agustus"></textarea>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
-                  <input type="number" min="0" required disabled={isEdit} value={formData.nominal} onChange={e => setFormData({...formData, nominal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: 1500000" />
+                  <input type="number" min="0" required value={formData.nominal} onChange={e => setFormData({...formData, nominal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: 1500000" />
                 </div>
-                {!isEdit && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bukti File (Wajib)</label>
-                    <input type="file" required ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bukti File (Wajib)</label>
+                  <input type="file" required ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
               </div>
 
               <div>
@@ -292,7 +272,6 @@ export default function PimpinanpencatatanPage() {
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Nominal</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-center">File</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
@@ -324,10 +303,6 @@ export default function PimpinanpencatatanPage() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => handleEditClick(t)} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit Data & Audit">
-                      <Edit className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
               ))}

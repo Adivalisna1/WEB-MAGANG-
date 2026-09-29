@@ -57,13 +57,5 @@ router.patch('/:id/kategori',
   ctrl.updateMetadata
 );
 
-// PATCH Akuntansi: Staff dan Pimpinan bisa update
-router.patch('/:id',
-  authenticate, authorize('pimpinan', 'staff'),
-  upload.single('file'),
-  activityLogger('edit', 'akuntansi'),
-  ctrl.updateAkuntansi
-);
-
 module.exports = router;
 
