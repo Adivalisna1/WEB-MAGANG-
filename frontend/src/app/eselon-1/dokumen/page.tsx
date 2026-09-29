@@ -32,14 +32,14 @@ interface Dokumen {
 const STATUS_BADGE: Record<string, string> = {
   terverifikasi:       'bg-green-100 text-green-700',
   menunggu_verifikasi: 'bg-amber-100 text-amber-700',
-  lolos_Pimpinan:         'bg-blue-100 text-blue-700',
+  lolos_admin:         'bg-blue-100 text-blue-700',
   revisi:              'bg-orange-100 text-orange-700',
   draft:               'bg-gray-100 text-gray-600',
 };
 const STATUS_LABEL: Record<string, string> = {
   terverifikasi:       'Terverifikasi',
   menunggu_verifikasi: 'Menunggu Verifikasi',
-  lolos_Pimpinan:         'Menunggu Eselon 1',
+  lolos_admin:         'Menunggu Eselon 1',
   revisi:              'Revisi',
   draft:               'Draft',
 };
@@ -242,7 +242,7 @@ export default function KetuaDokumenPage() {
           >
             <option value="">Semua Status</option>
             <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
-            <option value="lolos_Pimpinan">Menunggu Eselon 1</option>
+            <option value="lolos_admin">Menunggu Eselon 1</option>
             <option value="terverifikasi">Terverifikasi</option>
             <option value="revisi">Revisi</option>
             <option value="draft">Draft</option>

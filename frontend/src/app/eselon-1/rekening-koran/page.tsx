@@ -242,6 +242,36 @@ export default function KertasKerjaPage() {
     finally { setIsSavingRow(null); }
   };
 
+  const downloadZip = async () => {
+    try {
+      const toastId = toast.loading('Memproses file ZIP, mohon tunggu...');
+      const session = getSession();
+      const res = await fetch(`${API}/eselon-1/dokumen/export-zip?satker_id=${filterSatker}`, {
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.message || 'Gagal mendownload ZIP', { id: toastId });
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Ambil nama satker terpilih
+      const satkerName = satkerList.find(s => s.id === Number(filterSatker))?.nama || 'Satker';
+      a.download = `Rekening_Koran_${satkerName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('File ZIP berhasil didownload', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memproses ZIP');
+    }
+  };
+
   const exportToExcel = () => {
     const exportData = filteredData.map(d => ({
       'Kode Satker': d.kode_satker || '-',
@@ -378,10 +408,27 @@ export default function KertasKerjaPage() {
                 </select>
               )}
             </div>
-            
-            <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
-              <Download className="w-4 h-4" /> Export Excel
-            </button>
+            <div className="flex items-center gap-2">
+              {isEselon1 && (
+                <button 
+                  onClick={() => {
+                    if (!filterSatker) return toast.error('Pilih Satker terlebih dahulu untuk mendownload ZIP Bukti File Rekening Koran.');
+                    // Because it's a direct file download, we can use window.open or an anchor click.
+                    const session = getSession();
+                    // Need to pass token if the API needs authentication, but typically file downloads via GET 
+                    // either use query params for token, or rely on cookies. Wait, our API uses Bearer token.
+                    // If we can't send Bearer via window.location.href, we have to fetch as blob.
+                    downloadZip();
+                  }} 
+                  className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                >
+                  <Download className="w-4 h-4" /> Export ZIP Bukti
+                </button>
+              )}
+              <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                <Download className="w-4 h-4" /> Export Excel
+              </button>
+            </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">

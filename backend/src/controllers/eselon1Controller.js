@@ -4,6 +4,8 @@ const { body }  = require('express-validator');
 const { pool }  = require('../config/db');
 const { catatLog } = require('./authController');
 const { buatNotifikasi } = require('./notifikasiController');
+const archiver = require('archiver');
+const { downloadFromR2 } = require('../config/r2');
 
 // ── GET /api/eselon-1/stats — statistik + data grafik dashboard ──
 async function getStats(req, res, next) {
@@ -237,9 +239,98 @@ async function resetPassword(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ── GET /api/eselon-1/dokumen/export-zip ───────────────────────
+async function exportZipRekeningKoran(req, res, next) {
+  try {
+    const { satker_id } = req.query;
+    if (!satker_id) {
+      return res.status(400).json({ success: false, message: 'satker_id diperlukan' });
+    }
 
+    const [rows] = await pool.query(
+      `SELECT d.id, d.judul, d.file_nama, d.file_path, d.file_mime, u.nama AS satker_nama
+       FROM dokumen d
+       JOIN kategori_dokumen k ON k.id = d.kategori_id
+       JOIN users u ON u.id = d.uploaded_by
+       WHERE LOWER(k.nama) LIKE '%rekening koran%'
+         AND u.satker_id = ?
+         AND d.status = 'terverifikasi'`,
+      [satker_id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Tidak ada dokumen Rekening Koran ditemukan untuk satker tersebut' });
+    }
+
+    const satkerName = rows[0].satker_nama.replace(/[^a-zA-Z0-9]/g, '_');
+    const zipName = `Rekening_Koran_${satkerName}_${new Date().toISOString().split('T')[0]}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+
+    const archive = archiver('zip', {
+      zlib: { level: 9 }
+    });
+
+    archive.on('error', function(err) {
+      console.error('Error saat membuat ZIP:', err);
+      res.status(500).end();
+    });
+
+    archive.pipe(res);
+
+    for (const doc of rows) {
+      if (doc.file_path) {
+        try {
+          const buffer = await downloadFromR2(doc.file_path);
+          archive.append(buffer, { name: doc.file_nama || `dokumen_${doc.id}.pdf` });
+        } catch (e) {
+          console.warn('Gagal mendapatkan file untuk dokumen:', doc.id, e.message);
+        }
+      }
+    }
+
+    await archive.finalize();
+
+  } catch (err) { next(err); }
+}
+
+// ── GET /api/eselon-1/logs — log aktivitas (exclude login/logout) ──
+async function getLogs(req, res, next) {
+  try {
+    const { user_id, aksi, page = 1, limit = 50 } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    // Eselon 1 melihat aktivitas SEMUA user TAPI KECUALI login/logout
+    let where = "l.aksi NOT IN ('login', 'logout')";
+    const params = [];
+
+    if (user_id) { where += ' AND l.user_id = ?'; params.push(user_id); }
+    if (aksi)    { where += ' AND l.aksi = ?';    params.push(aksi); }
+
+    const [rows] = await pool.query(
+      `SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail,
+              l.ip_address, l.created_at, u.nama AS user_nama, u.username
+       FROM aktivitas_log l
+       LEFT JOIN users u ON u.id = l.user_id
+       WHERE ${where}
+       ORDER BY l.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, Number(limit), offset]
+    );
+
+    const [[{ total }]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE ${where}`, params
+    );
+
+    return res.json({
+      success: true,
+      data: rows,
+      meta: { total, page: Number(page), limit: Number(limit), totalPages: Math.ceil(total / limit) },
+    });
+  } catch (err) { next(err); }
+}
 
 module.exports = {
   getStats, getUsers, getDokumen, getDokumenMenungguKetua,
-  toggleUserActive, resetPassword,
-};
+  toggleUserActive, resetPassword, exportZipRekeningKoran, getLogs

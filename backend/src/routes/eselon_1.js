@@ -29,8 +29,11 @@ router.get('/dokumen', ctrl.getDokumen);
 // GET /api/eselon-1/dokumen/menunggu — dokumen yang sudah lolos pimpinan, menunggu persetujuan ketua
 router.get('/dokumen/menunggu', ctrl.getDokumenMenungguKetua);
 
-// GET /api/eselon-1/logs — log aktivitas (reuse admin)
-router.get('/logs', adminCtrl.getLogs);
+// GET /api/eselon-1/dokumen/export-zip — export dokumen rekening koran berdasarkan satker
+router.get('/dokumen/export-zip', ctrl.exportZipRekeningKoran);
+
+// GET /api/eselon-1/logs — log aktivitas (exclude login/logout)
+router.get('/logs', ctrl.getLogs);
 
 
 

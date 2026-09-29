@@ -283,7 +283,7 @@ export default function PimpinanDokumenPage() {
   const statusBadge = (status: string) => {
     const map: Record<string, { label: string; cls: string }> = {
       menunggu_verifikasi: { label: 'Menunggu', cls: 'bg-yellow-100 text-yellow-800' },
-      lolos_Pimpinan:         { label: 'Menunggu Ketua', cls: 'bg-blue-100 text-blue-800' },
+      lolos_admin:         { label: 'Menunggu Ketua', cls: 'bg-blue-100 text-blue-800' },
       terverifikasi:       { label: 'Disetujui', cls: 'bg-green-100 text-green-800' },
       revisi:              { label: 'Revisi', cls: 'bg-orange-100 text-orange-800' },
       draft:               { label: 'Draft', cls: 'bg-gray-100 text-gray-600' },
@@ -294,7 +294,7 @@ export default function PimpinanDokumenPage() {
 
   const filterTabs = [
     { value: 'menunggu_verifikasi', label: 'Menunggu Tinjauan', icon: Clock },
-    { value: 'lolos_Pimpinan',         label: 'Menunggu Ketua',    icon: Send },
+    { value: 'lolos_admin',         label: 'Menunggu Ketua',    icon: Send },
     { value: 'terverifikasi',       label: 'Disetujui',         icon: CheckCircle },
     { value: 'revisi',              label: 'Revisi',            icon: XCircle },
     { value: '',                    label: 'Semua',             icon: FileText },
@@ -397,13 +397,7 @@ export default function PimpinanDokumenPage() {
                     <td className="px-4 py-3">{statusBadge(dok.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => openEditModal(dok)}
-                          className="inline-flex items-center gap-1 text-xs text-orange-500 hover:text-orange-700 font-medium"
-                          title="Edit Metadata"
-                        >
-                          <Edit className="w-3.5 h-3.5" /> Edit
-                        </button>
+
                         {dok.status === 'menunggu_verifikasi' ? (
                           <button
                             onClick={() => { 

@@ -32,7 +32,10 @@ export default function StaffpencatatanPage() {
     jenis: 'debit',
     id_kategori: '',
     nominal: '',
-    catatan_audit: ''
+    catatan_audit: '',
+    catatan_audit: '',
+    nomor_rekening_bank: '',
+    nama_bank: ''
   });
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +85,8 @@ export default function StaffpencatatanPage() {
       data.append('id_kategori', formData.id_kategori);
       data.append('nominal', formData.nominal);
       data.append('catatan_audit', formData.catatan_audit);
+      data.append('nomor_rekening_bank', formData.nomor_rekening_bank);
+      data.append('nama_bank', formData.nama_bank);
       if (file) data.append('file', file);
 
       const url = isEdit ? `${API}/pencatatan/${editId}` : `${API}/pencatatan`;
@@ -124,7 +129,7 @@ export default function StaffpencatatanPage() {
   };
 
   const resetForm = () => {
-    setFormData({ tanggal: '', uraian: '', jenis: 'debit', id_kategori: '', nominal: '', catatan_audit: '' });
+    setFormData({ tanggal: '', uraian: '', jenis: 'debit', id_kategori: '', nominal: '', catatan_audit: '', nomor_rekening_bank: '', nama_bank: '' });
     setFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setIsEdit(false);
@@ -206,11 +211,11 @@ export default function StaffpencatatanPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                  <input type="date" required value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <input type="date" required disabled={isEdit} value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
-                  <select required value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                  <select required disabled={isEdit} value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500">
                     <option value="debit">Pemasukan</option>
                     <option value="kredit">Pengeluaran</option>
                   </select>
@@ -219,7 +224,7 @@ export default function StaffpencatatanPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Akun</label>
-                <select required value={formData.id_kategori} onChange={e => setFormData({...formData, id_kategori: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <select required disabled={isEdit} value={formData.id_kategori} onChange={e => setFormData({...formData, id_kategori: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500">
                   <option value="">Pilih Kategori...</option>
                   {kategori.map(k => (
                     <option key={k.id} value={k.id}>{k.nama_kategori}</option>
@@ -227,20 +232,36 @@ export default function StaffpencatatanPage() {
                 </select>
               </div>
 
+              {/* Tampilkan kolom tambahan jika Kategori = Rekening Koran */}
+              {kategori.find(k => String(k.id) === formData.id_kategori)?.nama_kategori?.toLowerCase().includes('rekening koran') && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Rekening Bank</label>
+                    <input type="text" required disabled={isEdit} value={formData.nomor_rekening_bank} onChange={e => setFormData({...formData, nomor_rekening_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: 1234567890" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
+                    <input type="text" required disabled={isEdit} value={formData.nama_bank} onChange={e => setFormData({...formData, nama_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: BNI" />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Uraian / Deskripsi</label>
-                <textarea rows={2} required value={formData.uraian} onChange={e => setFormData({...formData, uraian: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: Pembayaran tagihan listrik bulan Agustus"></textarea>
+                <textarea rows={2} required disabled={isEdit} value={formData.uraian} onChange={e => setFormData({...formData, uraian: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: Pembayaran tagihan listrik bulan Agustus"></textarea>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
-                  <input type="number" min="0" required value={formData.nominal} onChange={e => setFormData({...formData, nominal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: 1500000" />
+                  <input type="number" min="0" required disabled={isEdit} value={formData.nominal} onChange={e => setFormData({...formData, nominal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100 disabled:text-gray-500" placeholder="Contoh: 1500000" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bukti File (Opsional)</label>
-                  <input type="file" ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                </div>
+                {!isEdit && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bukti File (Wajib)</label>
+                    <input type="file" required ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                  </div>
+                )}
               </div>
 
               <div>
