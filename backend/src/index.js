@@ -19,8 +19,6 @@ const pimpinanRoutes = require('./routes/pimpinan');
 const eselon1Routes = require('./routes/eselon_1');
 const adminItRoutes = require('./routes/adminIT');
 const notifRoutes = require('./routes/notifikasi');
-const pencatatanRoutes = require('./routes/pencatatan');
-const rekeningKoranRoutes = require('./routes/rekeningKoranRoutes');
 const statsRoutes = require('./routes/stats');
 
 const app = express();
@@ -84,7 +82,7 @@ app.use('/uploads', (req, res) => {
 const fastApiProxy = createProxyMiddleware({ 
   target: process.env.FASTAPI_URL || 'http://localhost:8000', 
   changeOrigin: true,
-  pathFilter: ['/api/auth', '/api/satker'],
+  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran'],
   on: {
     proxyReq: fixRequestBody,
   }
@@ -96,8 +94,6 @@ app.use('/api/pimpinan', pimpinanRoutes);
 app.use('/api/eselon-1', eselon1Routes);
 app.use('/api/admin-it', adminItRoutes);
 app.use('/api/notifikasi', notifRoutes);
-app.use('/api/pencatatan', pencatatanRoutes);
-app.use('/api/rekening-koran', rekeningKoranRoutes);
 app.use('/api/stats', statsRoutes);
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

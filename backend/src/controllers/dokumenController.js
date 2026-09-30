@@ -247,7 +247,7 @@ async function uploadDokumen(req, res, next) {
          (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
           file_nama, file_path, file_size, file_mime, status, is_public,
           nilai_rekening_koran, nilai_excel)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'terverifikasi', 1, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, ?, ?)`,
       [kategori_id, req.user.id, judul, deskripsi || null,
        tahun, bulanFinal, semesterFinal,
        fileName, r2Key, req.file.size, req.file.mimetype,

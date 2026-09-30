@@ -110,6 +110,19 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
             </div>
           )}
         </Link>
+        
+        <Link
+          href="/laporan"
+          className={clsx(
+            "py-2.5 px-4 rounded-xl border border-[#334155] text-slate-300 hover:bg-[#10b981] hover:text-white hover:border-[#10b981] transition-all font-medium text-sm flex items-center group mb-2",
+            isCollapsed ? 'justify-center' : 'justify-center gap-2 w-full'
+          )}
+          title={isCollapsed ? "Dashboard Laporan" : undefined}
+        >
+          <Home className="w-4 h-4 shrink-0 group-hover:text-white" />
+          {!isCollapsed && <span>Dashboard Laporan</span>}
+        </Link>
+
         <button
           onClick={logoutFn}
           className={clsx(

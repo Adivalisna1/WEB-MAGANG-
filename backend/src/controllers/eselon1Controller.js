@@ -80,9 +80,11 @@ async function getUsers(req, res, next) {
               u.last_login, u.password_reset_at, u.created_at, r.nama AS role,
               (SELECT is_online FROM user_sessions s
                WHERE s.user_id = u.id AND s.is_online = 1
-               ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
+               ORDER BY s.last_active_at DESC LIMIT 1) AS is_online,
+              st.nama AS satker_nama
        FROM users u
        JOIN roles r ON r.id = u.role_id
+       LEFT JOIN satkers st ON st.id = u.satker_id
        WHERE u.role_id = 1
        ORDER BY u.created_at DESC`
     );
@@ -338,3 +340,4 @@ module.exports = {
   getStats, getUsers, getDokumen, getDokumenMenungguKetua,
   toggleUserActive, resetPassword, exportZipRekeningKoran, getLogs
 };
+

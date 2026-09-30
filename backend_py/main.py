@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import satker, auth
+from routers import satker, auth, pencatatan, kertas_kerja
 
 app = FastAPI(title="Pencatatan Keuangan API", version="1.0.0")
 
@@ -15,6 +15,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(satker.router)
+app.include_router(pencatatan.router)
+app.include_router(kertas_kerja.router)
 
 @app.get("/")
 def read_root():

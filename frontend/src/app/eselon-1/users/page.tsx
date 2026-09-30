@@ -22,6 +22,7 @@ interface UserRow {
   is_online: number | null;
   last_login: string | null;
   password_reset_at: string | null;
+  satker_nama: string | null;
 }
 
 interface ResetResult {
@@ -137,7 +138,8 @@ export default function KetuaUsersPage() {
 
   const filteredUsers = users.filter(user =>
     user.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+    user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.satker_nama?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
@@ -147,7 +149,7 @@ export default function KetuaUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen User</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Manajemen Pengguna</h1>
           <p className="text-sm text-gray-500 mt-1">
             Kelola status akun dan reset password Pimpinan & Satker
           </p>
@@ -164,7 +166,7 @@ export default function KetuaUsersPage() {
         <Search className="w-5 h-5 text-gray-400 mr-2" />
         <input
           type="text"
-          placeholder="Cari nama atau NIP/Kode Satker..."
+          placeholder="Cari nama atau pengguna atau satker..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 outline-none text-sm text-gray-700 bg-transparent"
@@ -187,8 +189,9 @@ export default function KetuaUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
-                  <th className="px-5 py-3">User</th>
+                  <th className="px-5 py-3">Pengguna</th>
                   <th className="px-5 py-3">Role</th>
+                  <th className="px-5 py-3">Satker</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Login Terakhir</th>
                   <th className="px-5 py-3">Reset Password Terakhir</th>
@@ -218,6 +221,9 @@ export default function KetuaUsersPage() {
                       <span className={clsx('px-2.5 py-1 rounded-full text-xs font-medium', ROLE_BADGE[user.role] || 'bg-gray-100')}>
                         {ROLE_LABEL[user.role] ?? user.role}
                       </span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-600 font-medium">
+                      {user.satker_nama || '-'}
                     </td>
                     <td className="px-5 py-3">
                       <span className={clsx(
@@ -266,7 +272,7 @@ export default function KetuaUsersPage() {
             {!filteredUsers.length && (
               <div className="py-16 text-center text-gray-400">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                Belum ada user
+                Belum ada pengguna
               </div>
             )}
             
