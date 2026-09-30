@@ -35,6 +35,24 @@ async function getDashboardStats(req, res, next) {
     const [userRes] = await pool.query(`SELECT COUNT(id) AS total FROM users ${userFilter}`, params);
     const total_user = userRes[0].total;
 
+    // 1.5 Total Dokumen
+    let docFilter = '';
+    const docParams = [];
+    if (currentUser.role_id === 1 || currentUser.role_id === 2) {
+      if (currentUser.satker_id) {
+        docFilter = `JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = ?`;
+        docParams.push(currentUser.satker_id);
+      } else {
+        docFilter = `JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = 0`;
+      }
+    } else if (req.query.satker) {
+      docFilter = `JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = ?`;
+      docParams.push(req.query.satker);
+    }
+    
+    const [docRes] = await pool.query(`SELECT COUNT(d.id) AS total FROM dokumen d ${docFilter}`, docParams);
+    const total_dokumen = docRes[0].total;
+
     // 2. Total Saldo
     const [saldoRes] = await pool.query(`SELECT SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total_saldo FROM kertas_kerja ${kkFilter}`, kkParams);
     const total_saldo = parseFloat(saldoRes[0].total_saldo || 0);
@@ -111,6 +129,7 @@ async function getDashboardStats(req, res, next) {
       success: true,
       data: {
         total_user,
+        total_dokumen,
         total_saldo,
         saldo_per_satker: formattedSatker,
         saldo_per_periode: formattedTren

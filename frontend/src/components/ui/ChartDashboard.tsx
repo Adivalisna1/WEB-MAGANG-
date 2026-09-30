@@ -13,6 +13,7 @@ const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
 
 interface StatsData {
   total_user: number;
+  total_dokumen: number;
   total_saldo: number;
   saldo_per_satker: { nama: string; value: number }[];
   saldo_per_periode: { tahun: string; periode_1: number; periode_2: number }[];
@@ -137,7 +138,7 @@ export default function ChartDashboard() {
             <Users className="w-7 h-7 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">Total User Satker/Pimpinan</p>
+            <p className="text-sm font-medium text-gray-500 mb-1">Total Anggota</p>
             <h3 className="text-2xl font-bold text-gray-900">{data.total_user}</h3>
           </div>
         </div>
@@ -157,8 +158,8 @@ export default function ChartDashboard() {
             <FileText className="w-7 h-7 text-purple-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">Total Data Rekening Koran</p>
-            <h3 className="text-2xl font-bold text-gray-900">{data.saldo_per_satker.length} Satker</h3>
+            <p className="text-sm font-medium text-gray-500 mb-1">Total Data Dokumen</p>
+            <h3 className="text-2xl font-bold text-gray-900">{data.total_dokumen} Dokumen</h3>
           </div>
         </div>
       </div>
