@@ -81,9 +81,8 @@ app.use('/uploads', (req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────
-const fastApiProxy = createProxyMiddleware({ target: process.env.FASTAPI_URL || 'http://localhost:8000', changeOrigin: true });
-app.use('/api/auth', fastApiProxy);
-app.use('/api/satker', fastApiProxy);
+const fastApiProxy = createProxyMiddleware(['/api/auth', '/api/satker'], { target: process.env.FASTAPI_URL || 'http://localhost:8000', changeOrigin: true });
+app.use(fastApiProxy);
 app.use('/api/dokumen', dokumenRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/pimpinan', pimpinanRoutes);
