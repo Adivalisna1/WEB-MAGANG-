@@ -13,7 +13,6 @@ const errorHandler = require('./middleware/errorHandler');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // Routes
-const authRoutes = require('./routes/auth');
 const dokumenRoutes = require('./routes/dokumen');
 const userRoutes = require('./routes/user');
 const pimpinanRoutes = require('./routes/pimpinan');
@@ -82,15 +81,15 @@ app.use('/uploads', (req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
+const fastApiProxy = createProxyMiddleware({ target: process.env.FASTAPI_URL || 'http://localhost:8000', changeOrigin: true });
+app.use('/api/auth', fastApiProxy);
+app.use('/api/satker', fastApiProxy);
 app.use('/api/dokumen', dokumenRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/pimpinan', pimpinanRoutes);
 app.use('/api/eselon-1', eselon1Routes);
 app.use('/api/admin-it', adminItRoutes);
 app.use('/api/notifikasi', notifRoutes);
-// Proxy API Satker ke FastAPI Python (Port 8000)
-app.use('/api/satker', createProxyMiddleware({ target: process.env.FASTAPI_URL || 'http://localhost:8000', changeOrigin: true }));
 app.use('/api/pencatatan', pencatatanRoutes);
 app.use('/api/rekening-koran', rekeningKoranRoutes);
 app.use('/api/stats', statsRoutes);

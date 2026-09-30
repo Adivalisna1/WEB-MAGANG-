@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import satker
+from routers import satker, auth
 
 app = FastAPI(title="Pencatatan Keuangan API", version="1.0.0")
 
@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(satker.router)
 
 @app.get("/")
