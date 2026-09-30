@@ -10,7 +10,7 @@ const path = require('path');
 
 const { testConnection } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 
 // Routes
 const dokumenRoutes = require('./routes/dokumen');
@@ -84,7 +84,10 @@ app.use('/uploads', (req, res) => {
 const fastApiProxy = createProxyMiddleware({ 
   target: process.env.FASTAPI_URL || 'http://localhost:8000', 
   changeOrigin: true,
-  pathFilter: ['/api/auth', '/api/satker']
+  pathFilter: ['/api/auth', '/api/satker'],
+  on: {
+    proxyReq: fixRequestBody,
+  }
 });
 app.use(fastApiProxy);
 app.use('/api/dokumen', dokumenRoutes);
