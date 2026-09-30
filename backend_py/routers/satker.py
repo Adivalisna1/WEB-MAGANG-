@@ -18,7 +18,7 @@ class SatkerCreate(BaseModel):
 class BulkSatkerCreate(BaseModel):
     satkers: List[str]
 
-@router.get("/")
+@router.get("")
 def get_satkers(db = Depends(get_db)):
     cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT id, NO_Satker, nama, created_at FROM satkers ORDER BY nama ASC")
@@ -26,7 +26,7 @@ def get_satkers(db = Depends(get_db)):
     cursor.close()
     return {"success": True, "data": rows}
 
-@router.post("/")
+@router.post("")
 def create_satker(satker: SatkerCreate, db = Depends(get_db), user: dict = Depends(require_admin_it)):
     cursor = db.cursor()
     try:
