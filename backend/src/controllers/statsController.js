@@ -35,6 +35,17 @@ async function getDashboardStats(req, res, next) {
     const [userRes] = await pool.query(`SELECT COUNT(id) AS total FROM users ${userFilter}`, params);
     const total_user = userRes[0].total;
 
+    // 1.2 Total Satker (Khusus Eselon 1)
+    let total_satker = 0;
+    if (currentUser.role_id === 3 || currentUser.role_id === 4) {
+      if (req.query.satker) {
+        total_satker = 1;
+      } else {
+        const [satkerRes] = await pool.query(`SELECT COUNT(id) AS total FROM satkers`);
+        total_satker = satkerRes[0].total;
+      }
+    }
+
     // 1.5 Total Dokumen
     let docFilter = '';
     const docParams = [];
@@ -129,6 +140,7 @@ async function getDashboardStats(req, res, next) {
       success: true,
       data: {
         total_user,
+        total_satker,
         total_dokumen,
         total_saldo,
         saldo_per_satker: formattedSatker,

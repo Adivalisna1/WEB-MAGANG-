@@ -13,6 +13,7 @@ const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
 
 interface StatsData {
   total_user: number;
+  total_satker: number;
   total_dokumen: number;
   total_saldo: number;
   saldo_per_satker: { nama: string; value: number }[];
@@ -135,11 +136,19 @@ export default function ChartDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow">
           <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <Users className="w-7 h-7 text-blue-600" />
+            {isEselon1 && !selectedSatker ? (
+              <FileText className="w-7 h-7 text-blue-600" />
+            ) : (
+              <Users className="w-7 h-7 text-blue-600" />
+            )}
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">Total Anggota</p>
-            <h3 className="text-2xl font-bold text-gray-900">{data.total_user}</h3>
+            <p className="text-sm font-medium text-gray-500 mb-1">
+              {isEselon1 ? (selectedSatker ? 'Total Satker' : 'Total Satker') : 'Total Anggota'}
+            </p>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {isEselon1 ? `${data.total_satker} Satker` : data.total_user}
+            </h3>
           </div>
         </div>
 
