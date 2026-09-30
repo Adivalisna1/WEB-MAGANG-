@@ -727,6 +727,26 @@ async function initWhatsAppBot() {
   });
 }
 
-module.exports = { initWhatsAppBot };
 
-module.exports = { initWhatsAppBot };
+function broadcastWhatsAppNotification(satkerId, message) {
+  if (!sock) return;
+  for (const jid in userStates) {
+    if (userStates[jid].satkerId === satkerId && userStates[jid].userId) {
+      sock.sendMessage(jid, { text: message }).catch(e => console.error('WhatsApp broadcast error:', e));
+    }
+  }
+}
+
+module.exports = { initWhatsAppBot, broadcastWhatsAppNotification };
+
+
+function broadcastWhatsAppNotification(satkerId, message) {
+  if (!sock) return;
+  for (const jid in userStates) {
+    if (userStates[jid].satkerId === satkerId && userStates[jid].userId) {
+      sock.sendMessage(jid, { text: message }).catch(e => console.error('WhatsApp broadcast error:', e));
+    }
+  }
+}
+
+module.exports = { initWhatsAppBot, broadcastWhatsAppNotification };

@@ -785,4 +785,14 @@ function initTelegramBot() {
   console.log('[Telegram Bot] Started Polling for Interactive Input...');
 }
 
-module.exports = { initTelegramBot };
+
+function broadcastTelegramNotification(satkerId, message) {
+  if (!bot) return;
+  for (const chatId in userStates) {
+    if (userStates[chatId].satkerId === satkerId && userStates[chatId].userId) {
+      bot.sendMessage(chatId, message, { parse_mode: 'HTML' }).catch(e => console.error('Telegram broadcast error:', e));
+    }
+  }
+}
+
+module.exports = { initTelegramBot, broadcastTelegramNotification };

@@ -1,5 +1,7 @@
 const { pool } = require('../config/db');
 const { sendTelegramNotification } = require('../services/telegramService');
+const { broadcastTelegramNotification } = require('../bots/bot_telegram');
+const { broadcastWhatsAppNotification } = require('../bots/bot_whatsapp');
 
 // Middleware factory untuk log aktivitas ke tabel aktivitas_log
 // Contoh: activityLogger('upload', 'dokumen')
@@ -53,7 +55,17 @@ function activityLogger(aksi, entitas = null) {
 
           const tgMessage = `🚨 <b>Notifikasi Sistem</b>\n\n👤 <b>User:</b> ${username} (${role})\n📝 <b>Aktivitas:</b> ${username} ${actionText}.\n⏰ <b>Waktu:</b> ${new Date().toLocaleString('id-ID')}`;
           
-          sendTelegramNotification(tgMessage);
+          
+          const targetSatkerId = req.user?.satker_id;
+          if (targetSatkerId) {
+            // Only broadcast to users of that satker
+            broadcastTelegramNotification(targetSatkerId, tgMessage);
+            broadcastWhatsAppNotification(targetSatkerId, tgMessage.replace(/<[^>]+>/g, '*')); // simple markdown for WA
+          } else {
+            // If admin (no satker_id), maybe fallback to default admin group?
+            sendTelegramNotification(tgMessage);
+          }
+
           // =======================================
 
         } catch (e) {
