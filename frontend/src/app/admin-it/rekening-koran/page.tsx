@@ -120,7 +120,7 @@ export default function KertasKerjaPage() {
       const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
       if (jsonData.length > 0) {
-        setExcelHeaders(Object.keys(jsonData[0]));
+        setExcelHeaders(Object.keys(jsonData[0] as object));
         setExcelData(jsonData);
         setExcelFileName(file.name);
       }
@@ -228,7 +228,9 @@ export default function KertasKerjaPage() {
       saldo_rk: d.saldo_rk || 0,
       saldo_rekening: d.saldo_rekening || 0,
       saldo_rpl_lpj: d.saldo_rpl_lpj || 0,
-      keterangan: d.keterangan || ''
+      keterangan: d.keterangan || '',
+      tahun: d.tahun || 2026,
+      periode: d.periode || '1'
     });
   };
 

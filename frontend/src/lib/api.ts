@@ -124,8 +124,9 @@ export interface StatsPublik {
 }
 
 // Ambil statistik publik yang akurat dari seluruh database (bukan dari paginasi)
-export async function getStatsPublik(): Promise<ApiResponse<StatsPublik>> {
-  const res = await fetch(`${SERVER_API_URL}/dokumen/stats`, {
+export async function getStatsPublik(satker?: string): Promise<ApiResponse<StatsPublik>> {
+  const url = satker ? `${SERVER_API_URL}/dokumen/stats?satker=${satker}` : `${SERVER_API_URL}/dokumen/stats`;
+  const res = await fetch(url, {
     cache: 'no-store', // selalu fresh — supaya stats dokumen baru langsung update
   });
   if (!res.ok) throw new Error('Gagal mengambil statistik');

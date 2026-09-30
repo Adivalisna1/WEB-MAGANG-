@@ -23,7 +23,7 @@ export default function LoginPage() {
       if (user.role === 'pimpinan') router.replace('/pimpinan');
       else if (user.role === 'eselon_1') router.replace('/eselon-1');
       else if (user.role === 'admin_it') router.replace('/admin-it');
-      else if (user.role === 'satker') router.replace('/staff/dokumen');
+      
       else router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);

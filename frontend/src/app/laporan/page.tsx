@@ -6,13 +6,13 @@ import Pagination from '@/components/ui/Pagination';
 import EmptyState from '@/components/ui/EmptyState';
 import HeroSearchInput from '@/components/ui/HeroSearchInput';
 import ChartDashboard from '@/components/ui/ChartDashboard';
+import AutoFilterSatker from '@/components/ui/AutoFilterSatker';
 import Link from 'next/link';
 
 interface SearchParams {
   q?: string;
   kategori?: string;
   tahun?: string;
-  satker?: string;
   satker?: string;
   page?: string;
   view?: string;
@@ -57,6 +57,9 @@ export default async function LaporanPage({
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
+      <Suspense fallback={null}>
+        <AutoFilterSatker />
+      </Suspense>
 
       {/* ── HERO BANNER ── */}
       <section

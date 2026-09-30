@@ -591,14 +591,23 @@ async function deleteDokumen(req, res, next) {
 // ── GET /api/dokumen/stats (publik) ───────────────────────────
 async function getStatsPublik(req, res, next) {
   try {
+    const { satker } = req.query;
+    let where = 'status = "terverifikasi" AND is_public = 1';
+    const params = [];
+    
+    if (satker) {
+      where += ' AND uploaded_by IN (SELECT id FROM users WHERE satker_id = ?)';
+      params.push(satker);
+    }
+
     const [[{ totalDokumen }]]  = await pool.query(
-      'SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE status = "terverifikasi" AND is_public = 1'
+      `SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE ${where}`, params
     );
     const [[{ totalKategori }]] = await pool.query(
       'SELECT COUNT(*) AS totalKategori FROM kategori_dokumen WHERE is_active = 1'
     );
     const [[{ totalDownload }]] = await pool.query(
-      'SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen WHERE status = "terverifikasi" AND is_public = 1'
+      `SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen WHERE ${where}`, params
     );
 
     return res.json({

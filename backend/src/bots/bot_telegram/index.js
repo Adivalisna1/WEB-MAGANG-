@@ -135,7 +135,8 @@ function initTelegramBot() {
 
     let keyboardMenu = [];
     if (userStates[chatId].userRole === 1 || userStates[chatId].userRole === 2) {
-      keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '📂 Upload Excel' }]);
+      keyboardMenu.push([{ text: '➕ Pencatatan' }, { text: '➕ Rekening Koran' }]);
+            keyboardMenu.push([{ text: '📂 Upload Bukti' }]);
     } else if (userStates[chatId].userRole === 3) {
       keyboardMenu.push([{ text: '📊 Laporan' }]);
     }
@@ -179,21 +180,29 @@ function initTelegramBot() {
 
     if (text === '🔑 Login') {
       state.step = 'ASK_USERNAME';
-      bot.sendMessage(chatId, 'Masukkan Username akun Web Anda:', { reply_markup: { remove_keyboard: true } });
+      bot.sendMessage(chatId, '🔑 Silakan balas pesan ini dengan Username/Kode Satker akun Web Anda:', { reply_markup: { remove_keyboard: true } });
       return;
     }
 
-    if (text === '📂 Upload Excel') {
+    if (text === '📂 Upload Bukti') {
       if (!state.userId) {
-        bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu! Ketik /start lalu klik 🔑 Login.');
+        bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu!');
         return;
       }
-      if (state.userRole !== 1 && state.userRole !== 2) {
-        bot.sendMessage(chatId, '⛔ Maaf, fitur ini hanya untuk Staff dan Pimpinan.');
-        return;
+      try {
+        const [kats] = await pool.query("SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1");
+        let msgStr = 'Pilih Kategori Dokumen (Balas dengan angka):\n';
+        state.data = { doc_kategori_map: {} };
+        kats.forEach((k, idx) => {
+          const num = idx + 1;
+          msgStr += `${num}. ${k.nama_kategori}\n`;
+          state.data.doc_kategori_map[num.toString()] = { id: k.id, nama: k.nama_kategori };
+        });
+        state.step = 'ASK_DOK_KATEGORI';
+        bot.sendMessage(chatId, msgStr);
+      } catch (e) {
+        bot.sendMessage(chatId, 'Gagal load kategori dokumen.');
       }
-      state.step = 'ASK_UPLOAD_EXCEL';
-      bot.sendMessage(chatId, 'Silakan unggah file Excel (.xlsx) yang berisi data transaksi Anda.\n\nJika butuh contoh formatnya, ketik *📄 Template*', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -249,7 +258,7 @@ function initTelegramBot() {
       return;
     }
 
-    if (text === '➕ Tambah Transaksi') {
+    if (text === '➕ Pencatatan') {
       if (!state.userId) {
         bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu! Ketik /start lalu klik 🔑 Login.');
         return;
@@ -340,8 +349,8 @@ function initTelegramBot() {
 
           let keyboardMenu = [];
           if (state.userRole === 1 || state.userRole === 2) {
-            keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '➕ Rekening Koran' }]);
-            keyboardMenu.push([{ text: '📂 Upload Excel' }, { text: '📊 Laporan' }]); 
+            keyboardMenu.push([{ text: '➕ Pencatatan' }, { text: '➕ Rekening Koran' }]);
+            keyboardMenu.push([{ text: '📂 Upload Bukti' }, { text: '📊 Laporan' }]); 
           } else if (state.userRole === 3) {
             keyboardMenu.push([{ text: '📊 Laporan' }]);
           }
@@ -476,7 +485,7 @@ function initTelegramBot() {
           
           bot.sendMessage(chatId, '✅ **Rekening Koran berhasil disimpan!**', { parse_mode: 'Markdown', reply_markup: {
             keyboard: [
-              [{ text: '➕ Tambah Transaksi' }, { text: '➕ Rekening Koran' }],
+              [{ text: '➕ Pencatatan Akuntansi' }],
               [{ text: '📂 Upload Excel' }, { text: '📊 Laporan' }],
               [{ text: '🚪 Logout' }]
             ],
@@ -499,7 +508,7 @@ function initTelegramBot() {
 
         // Ambil kategori dari DB
         try {
-          const [kategoris] = await pool.query("SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1");
+          const [kategoris] = await pool.query("SELECT id, nama_kategori FROM kategori_akuntansi WHERE LOWER(nama_kategori) NOT LIKE '%rekening koran%'");
           if (kategoris.length === 0) {
             bot.sendMessage(chatId, 'Kategori kosong di database.');
             return;
@@ -549,6 +558,23 @@ function initTelegramBot() {
         }
         state.data.nominal = nominal;
 
+        if (state.data.kategori_nama && state.data.kategori_nama.toLowerCase().includes('rekening koran')) {
+          state.step = 'ASK_BANK';
+          bot.sendMessage(chatId, 'Masukkan Nama Bank (contoh: BRI, Mandiri):');
+        } else {
+          state.step = 'ASK_FILE';
+          bot.sendMessage(chatId, 'Unggah Bukti File (Kirim Foto/Dokumen) atau ketik "Lewati" jika tidak ada:');
+        }
+        break;
+
+      case 'ASK_BANK':
+        state.data.nama_bank = text;
+        state.step = 'ASK_NOREK';
+        bot.sendMessage(chatId, 'Masukkan Nomor Rekening Bank:');
+        break;
+
+      case 'ASK_NOREK':
+        state.data.nomor_rekening_bank = text;
         state.step = 'ASK_FILE';
         bot.sendMessage(chatId, 'Unggah Bukti File (Kirim Foto/Dokumen) atau ketik "Lewati" jika tidak ada:');
         break;
@@ -600,7 +626,7 @@ function initTelegramBot() {
 
           const dbJenis = state.data.jenis === 'PEMASUKAN' ? 'debit' : 'kredit';
 
-          await pool.query(`
+          const [resAkuntansi] = await pool.query(`
             INSERT INTO audit_akuntansi 
             (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -614,6 +640,22 @@ function initTelegramBot() {
             state.data.catatan || null,
             state.userId
           ]);
+
+          if (state.data.kategori_nama && state.data.kategori_nama.toLowerCase().includes('rekening koran')) {
+            await pool.query(`
+               INSERT INTO kertas_kerja (satker_id, uploaded_by, nomor_rekening_bank, saldo_akhir_bulan, keterangan, nama_bank, tahun, tanggal_pembukaan_rekening)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             `, [
+               state.satkerId || null,
+               state.userId,
+               state.data.nomor_rekening_bank || null,
+               state.data.nominal,
+               state.data.uraian,
+               state.data.nama_bank || null,
+               new Date().getFullYear(),
+               tanggal
+             ]);
+          }
 
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
 
@@ -655,8 +697,8 @@ function initTelegramBot() {
           state.step = 'IDLE';
           let keyboardMenu = [];
           if (state.userRole === 1 || state.userRole === 2) {
-            keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '📂 Upload Excel' }]);
-            keyboardMenu.push([{ text: '📊 Laporan' }]);
+            keyboardMenu.push([{ text: '➕ Pencatatan' }, { text: '➕ Rekening Koran' }]);
+            keyboardMenu.push([{ text: '📂 Upload Bukti' }, { text: '📊 Laporan' }]);
           } else if (state.userRole === 3) {
             keyboardMenu.push([{ text: '📊 Laporan' }]);
           }
@@ -667,114 +709,73 @@ function initTelegramBot() {
         }
         break;
 
-      case 'ASK_UPLOAD_EXCEL':
-        if (text && (text.toLowerCase() === 'template' || text === '📄 Template' || text.toLowerCase() === '!template')) {
-          try {
-            const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet('Template');
-            sheet.columns = [
-              { header: 'Tanggal (YYYY-MM-DD)', key: 'tanggal', width: 22 },
-              { header: 'Uraian', key: 'uraian', width: 30 },
-              { header: 'Jenis (debit/kredit)', key: 'jenis', width: 20 },
-              { header: 'ID Kategori', key: 'id_kategori', width: 15 },
-              { header: 'Nominal', key: 'nominal', width: 20 },
-              { header: 'Catatan', key: 'catatan', width: 30 }
-            ];
-
-            // Example row
-            sheet.addRow({
-              tanggal: '2023-10-01',
-              uraian: 'Contoh Transaksi',
-              jenis: 'debit',
-              id_kategori: 1,
-              nominal: 150000,
-              catatan: 'Opsional'
-            });
-
-            const tmpPath = path.join('/tmp', `Template_Upload_${Date.now()}.xlsx`);
-            await workbook.xlsx.writeFile(tmpPath);
-            await bot.sendDocument(chatId, tmpPath);
-            fs.unlinkSync(tmpPath);
-          } catch (e) {
-            console.error(e);
-            bot.sendMessage(chatId, 'Gagal membuat template.');
-          }
-          return;
+      case 'ASK_DOK_KATEGORI': {
+        const kat = state.data.doc_kategori_map[text];
+        if (!kat) return bot.sendMessage(chatId, 'Angka kategori tidak valid!');
+        state.data.doc_kategori_id = kat.id;
+        state.step = 'ASK_DOK_JUDUL';
+        bot.sendMessage(chatId, 'Masukkan Judul Dokumen:');
+        break;
+      }
+      case 'ASK_DOK_JUDUL': {
+        state.data.doc_judul = text;
+        state.step = 'ASK_DOK_TAHUN';
+        bot.sendMessage(chatId, 'Masukkan Tahun Dokumen (contoh: 2026):');
+        break;
+      }
+      case 'ASK_DOK_TAHUN': {
+        state.data.doc_tahun = parseInt(text);
+        if (isNaN(state.data.doc_tahun)) return bot.sendMessage(chatId, 'Tahun harus angka!');
+        state.step = 'ASK_DOK_FILE';
+        bot.sendMessage(chatId, 'Silakan unggah File Dokumen (PDF/Word/Excel dll):');
+        break;
+      }
+      case 'ASK_DOK_FILE': {
+        if (!msg.document && !msg.photo) {
+          return bot.sendMessage(chatId, 'Harap unggah file dokumen!');
         }
-
-        if (!msg.document) {
-          return bot.sendMessage(chatId, 'Harap unggah file dokumen Excel (.xlsx), atau ketik ❌ Batal.');
-        }
-
         try {
-          bot.sendMessage(chatId, '⏳ Sedang memproses file Excel...');
+          bot.sendMessage(chatId, '⏳ Sedang mengunggah dokumen...');
+          const fileId = msg.document ? msg.document.file_id : msg.photo[msg.photo.length - 1].file_id;
+          const fileNameOrig = msg.document ? msg.document.file_name : 'photo.jpg';
           const downloadDir = '/tmp';
-          const filePath = await bot.downloadFile(msg.document.file_id, downloadDir);
-
-          const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.readFile(filePath);
-          const sheet = workbook.getWorksheet(1);
-
-          let insertedCount = 0;
-          // Start reading from row 2 (skipping header)
-          for (let i = 2; i <= sheet.rowCount; i++) {
-            const row = sheet.getRow(i);
-
-            let tglVal = row.getCell(1).value;
-            let tglStr = null;
-            if (tglVal instanceof Date) {
-              tglStr = tglVal.toISOString().split('T')[0];
-            } else if (typeof tglVal === 'string') {
-              tglStr = tglVal;
-            } else {
-              tglStr = new Date().toISOString().split('T')[0];
-            }
-
-            const uraian = row.getCell(2).text;
-            const jenisStr = row.getCell(3).text;
-            const idKategori = parseInt(row.getCell(4).value) || 1;
-            const nominal = parseFloat(row.getCell(5).value) || 0;
-            const catatan = row.getCell(6).text;
-
-            if (!uraian || !jenisStr || nominal === 0) continue;
-
-            let dbJenis = jenisStr.toLowerCase() === 'debit' ? 'debit' : 'kredit';
-
-            await pool.query(`
-                INSERT INTO audit_akuntansi 
-                (tanggal, uraian, jenis, id_kategori, nominal, catatan_audit, created_by) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-              `, [
-              tglStr,
-              uraian,
-              dbJenis,
-              idKategori,
-              nominal,
-              catatan || null,
-              state.userId
-            ]);
-            insertedCount++;
-          }
+          const filePath = await bot.downloadFile(fileId, downloadDir);
+          
+          const FormData = require('form-data');
+          const axios = require('axios');
+          const form = new FormData();
+          form.append('kategori_id', state.data.doc_kategori_id);
+          form.append('judul', state.data.doc_judul);
+          form.append('tahun', state.data.doc_tahun);
+          form.append('file', fs.createReadStream(filePath), fileNameOrig);
+          
+          const jwt = require('jsonwebtoken');
+          const token = jwt.sign({ id: state.userId, role: 'staff', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          
+          await axios.post('http://localhost:' + (process.env.APP_PORT || 5000) + '/api/dokumen/upload', form, {
+            headers: { ...form.getHeaders(), Authorization: 'Bearer ' + token }
+          });
           fs.unlinkSync(filePath);
-
+          
           state.step = 'IDLE';
           let keyboardMenu = [];
           if (state.userRole === 1 || state.userRole === 2) {
-            keyboardMenu.push([{ text: '➕ Tambah Transaksi' }, { text: '📂 Upload Excel' }]);
+            keyboardMenu.push([{ text: '➕ Pencatatan' }, { text: '➕ Rekening Koran' }]);
+            keyboardMenu.push([{ text: '📂 Upload Bukti' }, { text: '📊 Laporan' }]); 
           } else if (state.userRole === 3) {
             keyboardMenu.push([{ text: '📊 Laporan' }]);
           }
           keyboardMenu.push([{ text: '🚪 Logout' }]);
-
-          bot.sendMessage(chatId, `✅ Berhasil memasukkan ${insertedCount} data transaksi dari Excel!`, {
+          
+          bot.sendMessage(chatId, '✅ Berhasil mengunggah dokumen ke Dashboard!', {
             reply_markup: { keyboard: keyboardMenu, resize_keyboard: true, one_time_keyboard: true }
           });
-        } catch (err) {
-          console.error(err);
-          bot.sendMessage(chatId, 'Terjadi kesalahan saat membaca file Excel. Pastikan formatnya .xlsx');
+        } catch (e) {
+          console.error(e);
+          bot.sendMessage(chatId, '❌ Gagal mengunggah dokumen.');
         }
         break;
-
+      }
       default:
         // Do nothing if step is IDLE and not a specific command
         break;

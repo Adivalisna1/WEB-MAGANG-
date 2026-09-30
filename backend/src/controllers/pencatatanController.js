@@ -17,10 +17,51 @@ initPencatatanAlter();
 // GET /api/akuntansi/kategori
 const getKategoriAkuntansi = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1 ORDER BY urutan ASC');
+    const [rows] = await pool.query('SELECT * FROM kategori_akuntansi ORDER BY nama_kategori ASC');
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error getKategoriAkuntansi:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// POST /api/akuntansi/kategori
+const createKategoriAkuntansi = async (req, res) => {
+  try {
+    const { nama_kategori } = req.body;
+    if (!nama_kategori) {
+      return res.status(400).json({ success: false, message: 'nama_kategori wajib diisi' });
+    }
+    const [result] = await pool.query('INSERT INTO kategori_akuntansi (nama_kategori) VALUES (?)', [nama_kategori]);
+    res.status(201).json({ success: true, message: 'Kategori berhasil dibuat', insertId: result.insertId });
+  } catch (error) {
+    console.error('Error createKategoriAkuntansi:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// PUT /api/akuntansi/kategori/:id
+const updateKategoriAkuntansi = async (req, res) => {
+  try {
+    const { nama_kategori } = req.body;
+    if (!nama_kategori) {
+      return res.status(400).json({ success: false, message: 'nama_kategori wajib diisi' });
+    }
+    await pool.query('UPDATE kategori_akuntansi SET nama_kategori = ? WHERE id = ?', [nama_kategori, req.params.id]);
+    res.json({ success: true, message: 'Kategori berhasil diupdate' });
+  } catch (error) {
+    console.error('Error updateKategoriAkuntansi:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// DELETE /api/akuntansi/kategori/:id
+const deleteKategoriAkuntansi = async (req, res) => {
+  try {
+    await pool.query('DELETE FROM kategori_akuntansi WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Kategori berhasil dihapus' });
+  } catch (error) {
+    console.error('Error deleteKategoriAkuntansi:', error);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
@@ -34,10 +75,10 @@ const getAkuntansi = async (req, res) => {
   try {
     // Join dengan kategori dan user untuk mendapatkan nama
     const query = `
-      SELECT a.*, k.nama as nama_kategori, u.nama as pembuat, u2.nama as pengedit,
+      SELECT a.*, k.nama_kategori, u.nama as pembuat, u2.nama as pengedit,
              u.satker_id, s.nama as satker_nama
       FROM audit_akuntansi a
-      LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id
+      LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
       LEFT JOIN users u ON a.created_by = u.id
       LEFT JOIN users u2 ON a.updated_by = u2.id
       LEFT JOIN satkers s ON u.satker_id = s.id
@@ -76,23 +117,27 @@ const createAkuntansi = async (req, res) => {
     const satker_id = req.user.satker_id || null;
 
     // Cek nama kategori
-    const [catRes] = await conn.query('SELECT nama FROM kategori_dokumen WHERE id = ?', [id_kategori]);
-    const nama_kategori = catRes[0]?.nama?.toLowerCase() || '';
+    const [catRes] = await conn.query('SELECT nama_kategori FROM kategori_akuntansi WHERE id = ?', [id_kategori]);
+    const nama_kategori = catRes[0]?.nama_kategori?.toLowerCase() || '';
 
     let dokumen_id = null;
 
     if (nama_kategori.includes('rekening koran')) {
       if (req.file) {
+        // Cari ID Kategori Dokumen untuk 'Rekening Koran'
+        const [katDokRes] = await conn.query('SELECT id FROM kategori_dokumen WHERE LOWER(nama) = ? LIMIT 1', ['rekening koran']);
+        let kat_dok_id = katDokRes.length > 0 ? katDokRes[0].id : 1; // Fallback ke 1 jika tidak ada
+
         const [docRes] = await conn.query(`
           INSERT INTO dokumen (judul, kategori_id, tahun, file_path, file_nama, uploaded_by, status, is_public) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-          `Bukti Rekening Koran - ${uraian}`, 
-          id_kategori, 
-          new Date(tanggal).getFullYear(), 
-          bukti_file, 
+          `Bukti Rekening Koran - ${uraian}`,
+          kat_dok_id,
+          new Date(tanggal).getFullYear(),
+          bukti_file,
           req.file.originalname,
-          created_by, 
+          created_by,
           'terverifikasi',
           1
         ]);
@@ -105,12 +150,12 @@ const createAkuntansi = async (req, res) => {
           keterangan, nama_bank, tahun, tanggal_pembukaan_rekening, dokumen_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        satker_id, 
-        created_by, 
-        nomor_rekening_bank || null, 
+        satker_id,
+        created_by,
+        nomor_rekening_bank || null,
         nominal,
-        uraian, 
-        nama_bank || null, 
+        uraian,
+        nama_bank || null,
         new Date(tanggal).getFullYear(),
         tanggal,
         dokumen_id
@@ -137,8 +182,31 @@ const createAkuntansi = async (req, res) => {
 };
 
 // PATCH /api/akuntansi/:id/kategori (Khusus Admin IT)
+const updateMetadata = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id_kategori } = req.body;
+
+    if (!id_kategori) return res.status(400).json({ success: false, message: 'id_kategori wajib dikirim' });
+
+    const updated_by = req.user.id;
+
+    const query = `UPDATE audit_akuntansi SET id_kategori = ?, updated_by = ? WHERE id = ?`;
+    await pool.query(query, [id_kategori, updated_by, id]);
+    Place
+    res.json({ success: true, message: 'Kategori akuntansi berhasil diubah oleh Admin IT' });
+  } catch (error) {
+    console.error('Error updateMetadata:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   getKategoriAkuntansi,
+  createKategoriAkuntansi,
+  updateKategoriAkuntansi,
+  deleteKategoriAkuntansi,
   getAkuntansi,
-  createAkuntansi
+  createAkuntansi,
+  updateMetadata
 };

@@ -110,7 +110,7 @@ export default function KertasKerjaPage() {
       const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '' });
       
       if (jsonData.length > 0) {
-        setExcelHeaders(Object.keys(jsonData[0]));
+        setExcelHeaders(Object.keys(jsonData[0] as object));
         setExcelData(jsonData);
         setExcelFileName(file.name);
       }

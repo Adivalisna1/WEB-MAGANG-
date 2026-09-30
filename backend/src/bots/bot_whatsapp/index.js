@@ -178,9 +178,9 @@ async function initWhatsAppBot() {
 
       let menuMsg = `Halo! Selamat datang di Bot WhatsApp Pencatatan, *${state.nama}*.\n\nKetik perintah berikut:\n`;
       if (state.userRole === 1 || state.userRole === 2) {
-        menuMsg += `*!tambah* - Untuk Tambah Transaksi\n`;
+        menuMsg += `*!pencatatan* - Untuk Pencatatan Akuntansi\n`;
         menuMsg += `*!rekeningkoran* - Untuk Tambah Rekening Koran\n`;
-        menuMsg += `*!upload* - Untuk Upload Transaksi via Excel\n`;
+        menuMsg += `*!uploadbukti* - Untuk Upload Dokumen\n`; //\n`;
         menuMsg += `*!laporan* - Untuk Unduh Laporan Satker Anda\n`;
       }
       if (state.userRole === 3) {
@@ -192,10 +192,10 @@ async function initWhatsAppBot() {
 
     if (text.toLowerCase() === '!login') {
       state.step = 'ASK_USERNAME';
-      return sendMessage('🔑 Silakan balas pesan ini dengan *Username* akun Web Anda:');
+      return sendMessage('🔑 Silakan balas pesan ini dengan *Username/Kode Satker* akun Web Anda:');
     }
 
-    if (text.toLowerCase() === '!upload') {
+    if (text.toLowerCase() === '!uploadbukti') {
       if (!state.userId) return sendMessage('⚠️ Anda harus Login terlebih dahulu! Ketik *!login*.');
       if (state.userRole !== 1 && state.userRole !== 2) return sendMessage('⛔ Maaf, fitur ini hanya untuk Staff dan Pimpinan.');
 
@@ -240,7 +240,14 @@ async function initWhatsAppBot() {
       return;
     }
 
-    if (text.toLowerCase() === '!tambah') {
+    if (text.toLowerCase() === '!rekeningkoran') {
+      if (!state.userId) return sendMessage('⚠️ Anda harus Login terlebih dahulu! Ketik *!login*.');
+      state.step = 'ASK_RK_SATKER';
+      state.data = {};
+      return sendMessage('Masukkan *Nomor Satker* (sebagai kata kunci):');
+    }
+
+    if (text.toLowerCase() === '!pencatatan' || text.toLowerCase() === '!tambah') {
       if (!state.userId) {
         return sendMessage('⚠️ Anda harus Login terlebih dahulu! Ketik *!login*.');
       }
@@ -253,12 +260,7 @@ async function initWhatsAppBot() {
       return sendMessage('Silakan pilih Jenis Transaksi (Balas dengan angka):\n1. Pemasukan\n2. Pengeluaran');
     }
 
-    if (text.toLowerCase() === '!rekeningkoran') {
-      if (!state.userId) return sendMessage('⚠️ Anda harus Login terlebih dahulu!');
-      state.step = 'ASK_RK_SATKER';
-      state.data = {};
-      return sendMessage('Masukkan *Nomor Satker* (sebagai kata kunci):');
-    }
+
 
     // STATE MACHINE
     switch (state.step) {
@@ -288,7 +290,7 @@ async function initWhatsAppBot() {
         break;
       }
       case 'ASK_USERNAME':
-        if (!text) return sendMessage('Username tidak boleh kosong. Masukkan Username:');
+        if (!text) return sendMessage('Username/Kode Satker tidak boleh kosong. Masukkan Username/Kode Satker:');
         state.data.username = text;
         state.step = 'ASK_PASSWORD';
         sendMessage('Ketik *Password* Anda:');
@@ -316,14 +318,18 @@ async function initWhatsAppBot() {
           state.satkerId = users[0].satker_id;
           state.step = 'IDLE';
 
-          let successMsg = `✅ Login Berhasil! Selamat datang, *${users[0].nama}*.\n\n`;
+          let successMsg = `✅ Login Berhasil! Selamat datang, *${users[0].nama}*.\n\nKetik perintah berikut untuk menggunakan bot:\n`;
           if (state.userRole === 1 || state.userRole === 2) {
-            successMsg += 'Ketik *!tambah* untuk mencatat transaksi.';
+            successMsg += '*!pencatatan* - Untuk Pencatatan Akuntansi\n';
+            successMsg += '*!rekeningkoran* - Untuk Tambah Rekening Koran\n';
+            successMsg += '*!uploadbukti* - Untuk Upload Dokumen\n';
+            successMsg += '*!laporan* - Untuk Unduh Laporan Satker Anda\n';
           } else if (state.userRole === 3) {
-            successMsg += 'Ketik *!laporan* untuk melihat ringkasan keuangan.';
+            successMsg += '*!laporan* - Untuk Unduh Laporan Keuangan\n';
           } else {
-            successMsg += 'Ketik *!menu* untuk melihat opsi Anda.';
+            successMsg += 'Ketik *!menu* untuk melihat opsi Anda.\n';
           }
+          successMsg += '\nKetik *!logout* untuk keluar.';
           sendMessage(successMsg);
         } catch (err) {
           console.error(err);
@@ -331,6 +337,262 @@ async function initWhatsAppBot() {
         }
         break;
 
+
+      case 'ASK_JENIS':
+        if (text === '1') {
+          state.data.jenis = 'debit';
+        } else if (text === '2') {
+          state.data.jenis = 'kredit';
+        } else {
+          return sendMessage('Pilih angka *1* (Pemasukan) atau *2* (Pengeluaran)!');
+        }
+
+        state.step = 'ASK_KATEGORI';
+        try {
+          const [kategoris] = await pool.query("SELECT id, nama_kategori FROM kategori_akuntansi WHERE LOWER(nama_kategori) NOT LIKE '%rekening koran%'");
+          if (kategoris.length === 0) {
+            return sendMessage('Kategori kosong di database.');
+          }
+
+          let catMsg = 'Pilih Kategori Akun (Balas dengan angkanya):\n';
+          state.data.kategori_map = {};
+          kategoris.forEach((k, idx) => {
+            const num = idx + 1;
+            catMsg += `${num}. ${k.nama_kategori}\n`;
+            state.data.kategori_map[num.toString()] = { id: k.id, nama: k.nama_kategori };
+          });
+          sendMessage(catMsg);
+        } catch (err) {
+          console.error(err);
+          sendMessage('Gagal mengambil list kategori.');
+        }
+        break;
+
+      case 'ASK_KATEGORI':
+        const kat = state.data.kategori_map[text];
+        if (!kat) {
+          return sendMessage('Nomor kategori tidak valid! Silakan balas dengan angka yang ada di list atas.');
+        }
+        state.data.id_kategori = kat.id;
+        state.data.kategori_nama = kat.nama;
+
+        state.step = 'ASK_URAIAN';
+        sendMessage('Ketik Uraian/Deskripsi transaksi (Contoh: Pembayaran ATK):');
+        break;
+
+      case 'ASK_URAIAN':
+        if (!text) return sendMessage('Uraian tidak boleh kosong!');
+        state.data.uraian = text;
+        state.step = 'ASK_NOMINAL';
+        sendMessage('Masukkan Nominal (Angka saja, tanpa titik/koma. Contoh: 1500000):');
+        break;
+
+      case 'ASK_NOMINAL':
+        if (!text) return;
+        const nominal = parseInt(text.replace(/\D/g, ''));
+        if (isNaN(nominal)) {
+          return sendMessage('Nominal harus berupa angka! Coba masukkan lagi:');
+        }
+        state.data.nominal = nominal;
+
+        if (state.data.kategori_nama && state.data.kategori_nama.toLowerCase().includes('rekening koran')) {
+          state.step = 'ASK_BANK';
+          sendMessage('Masukkan *Nama Bank* (contoh: BRI, Mandiri):');
+        } else {
+          state.step = 'ASK_FILE';
+          sendMessage('Unggah *Bukti File* (Kirim Foto/Dokumen) atau ketik "Lewati" jika tidak ada:');
+        }
+        break;
+
+      case 'ASK_BANK':
+        state.data.nama_bank = text;
+        state.step = 'ASK_NOREK';
+        sendMessage('Masukkan *Nomor Rekening Bank*:');
+        break;
+
+      case 'ASK_NOREK':
+        state.data.nomor_rekening_bank = text;
+        state.step = 'ASK_FILE';
+        sendMessage('Unggah *Bukti File* (Kirim Foto/Dokumen) atau ketik "Lewati" jika tidak ada:');
+        break;
+
+      case 'ASK_FILE':
+        const messageType = Object.keys(msg.message || {})[0];
+        if (messageType === 'imageMessage' || messageType === 'documentMessage') {
+          try {
+            sendMessage('⏳ Sedang mengunduh file...');
+            const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+            const buffer = await downloadMediaMessage(msg, 'buffer', {}, { reuploadRequest: sock.updateMediaMessage });
+            const path = require('path');
+            const fs = require('fs');
+            const uploadDir = path.join(__dirname, '../../uploads/akuntansi');
+            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+            
+            let ext = '.bin';
+            if (messageType === 'imageMessage') ext = '.jpeg';
+            else if (msg.message.documentMessage.fileName) ext = path.extname(msg.message.documentMessage.fileName);
+            
+            const fileName = `wa-bukti-${Date.now()}${ext}`;
+            const filePath = path.join(uploadDir, fileName);
+            fs.writeFileSync(filePath, buffer);
+            state.data.bukti_file = `/api/akuntansi/file/${fileName}`;
+          } catch (err) {
+            console.error('Error download WA file:', err);
+            sendMessage('❌ Gagal mengunduh file, file dilewati.');
+          }
+        } else if (text && text.toLowerCase() !== 'lewati') {
+          return sendMessage('⚠️ Harap kirimkan foto atau dokumen, atau ketik "Lewati"');
+        }
+
+        state.step = 'ASK_CATATAN';
+        sendMessage('Masukkan Catatan Tambahan (Opsional), atau ketik "Lewati" :');
+        break;
+
+      case 'ASK_CATATAN':
+        if (text && text.toLowerCase() !== 'lewati') {
+          state.data.catatan = text;
+        } else {
+          state.data.catatan = null;
+        }
+
+        // Finalize and save
+        try {
+          const tanggal = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+          const [resAkuntansi] = await pool.query(`
+            INSERT INTO audit_akuntansi 
+            (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            tanggal,
+            state.data.uraian,
+            state.data.jenis,
+            state.data.id_kategori,
+            state.data.nominal,
+            state.data.bukti_file || null,
+            state.data.catatan,
+            state.userId
+          ]);
+
+          if (state.data.kategori_nama && state.data.kategori_nama.toLowerCase().includes('rekening koran')) {
+            await pool.query(`
+               INSERT INTO kertas_kerja (satker_id, uploaded_by, nomor_rekening_bank, saldo_akhir_bulan, keterangan, nama_bank, tahun, tanggal_pembukaan_rekening)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             `, [
+               state.satkerId || null,
+               state.userId,
+               state.data.nomor_rekening_bank || null,
+               state.data.nominal,
+               state.data.uraian,
+               state.data.nama_bank || null,
+               new Date().getFullYear(),
+               tanggal
+             ]);
+          }
+
+          const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
+          const jns = state.data.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
+
+          state.step = 'ASK_TAMBAH_LAGI';
+          sendMessage(`✅ *Berhasil Disimpan ke Web!*\n\nJenis: ${jns}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}\n\nMau tambah data lagi? Balas dengan *Ya* atau *Tidak*.`);
+
+        } catch (err) {
+          console.error(err);
+          sendMessage('Terjadi kesalahan saat menyimpan ke database.');
+          state.step = 'IDLE';
+        }
+        break;
+
+      case 'ASK_TAMBAH_LAGI':
+        if (text.toLowerCase() === 'ya') {
+          state.step = 'ASK_JENIS';
+          state.data = {};
+          sendMessage('Silakan pilih Jenis Transaksi:\n1. Pemasukan\n2. Pengeluaran\n\n*(Balas dengan angka 1 atau 2)*');
+        } else {
+          state.step = 'IDLE';
+          let menuMsg = 'Oke, kembali ke menu utama.\n\n';
+          if (state.userRole === 1 || state.userRole === 2) {
+            menuMsg += 'Ketik *!pencatatan* untuk mencatat transaksi baru.\n';
+            menuMsg += 'Ketik *!rekeningkoran* untuk Rekening Koran.\n';
+            menuMsg += 'Ketik *!uploadbukti* untuk Upload Dokumen.\n';
+          } else if (state.userRole === 3) {
+            menuMsg += 'Ketik *!laporan* untuk mengunduh laporan keuangan.\n';
+          }
+          menuMsg += 'Ketik *!logout* untuk keluar.';
+          sendMessage(menuMsg);
+        }
+        break;
+
+      case 'ASK_DOK_KATEGORI': {
+        const kat = state.data.doc_kategori_map[text];
+        if (!kat) return sendMessage('Angka kategori tidak valid!');
+        state.data.doc_kategori_id = kat.id;
+        state.step = 'ASK_DOK_JUDUL';
+        sendMessage('Masukkan Judul Dokumen:');
+        break;
+      }
+      case 'ASK_DOK_JUDUL': {
+        state.data.doc_judul = text;
+        state.step = 'ASK_DOK_TAHUN';
+        sendMessage('Masukkan Tahun Dokumen (contoh: 2026):');
+        break;
+      }
+      case 'ASK_DOK_TAHUN': {
+        state.data.doc_tahun = parseInt(text);
+        if (isNaN(state.data.doc_tahun)) return sendMessage('Tahun harus angka!');
+        state.step = 'ASK_DOK_FILE';
+        sendMessage('Silakan unggah File Dokumen (PDF/Word/Excel dll):');
+        break;
+      }
+      case 'ASK_DOK_FILE': {
+        const docMsg = msg.message.documentMessage || msg.message.documentWithCaptionMessage?.message?.documentMessage || msg.message.imageMessage;
+        if (!docMsg) {
+          return sendMessage('Harap kirimkan file dokumen!');
+        }
+        try {
+          sendMessage('⏳ Sedang mengunggah dokumen...');
+          const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+          const pino = require('pino');
+          const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+          
+          const path = require('path');
+          const tmpPath = path.join('/tmp', `wa-dok-${Date.now()}.tmp`);
+          const fs = require('fs');
+          fs.writeFileSync(tmpPath, buffer);
+          
+          let fileNameOrig = 'document.pdf';
+          if (msg.message.documentMessage?.fileName) {
+            fileNameOrig = msg.message.documentMessage.fileName;
+          } else if (msg.message.imageMessage) {
+            fileNameOrig = 'image.jpg';
+          }
+          
+          const FormData = require('form-data');
+          const axios = require('axios');
+          const form = new FormData();
+          form.append('kategori_id', state.data.doc_kategori_id);
+          form.append('judul', state.data.doc_judul);
+          form.append('tahun', state.data.doc_tahun);
+          form.append('file', fs.createReadStream(tmpPath), { filename: fileNameOrig });
+          
+          const jwt = require('jsonwebtoken');
+          const token = jwt.sign({ id: state.userId, role: 'staff', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          
+          await axios.post('http://localhost:' + (process.env.APP_PORT || 5000) + '/api/dokumen/upload', form, {
+            headers: { ...form.getHeaders(), Authorization: 'Bearer ' + token }
+          });
+          fs.unlinkSync(tmpPath);
+          
+          state.step = 'IDLE';
+          let menuMsg = '✅ Berhasil mengunggah dokumen ke Dashboard!\n\nKetik *!menu* untuk opsi lain.';
+          sendMessage(menuMsg);
+        } catch (e) {
+          console.error(e);
+          sendMessage('❌ Gagal mengunggah dokumen.');
+        }
+        break;
+      }
+      
       case 'ASK_RK_SATKER':
         state.data.rk_satker = text;
         state.step = 'ASK_RK_JENIS';
@@ -362,9 +624,9 @@ async function initWhatsAppBot() {
         sendMessage('Silakan unggah *File/Foto Bukti Rekening Koran*:');
         break;
 
-      case 'ASK_RK_FILE':
-        const messageType = Object.keys(msg.message || {})[0];
-        if (messageType === 'imageMessage' || messageType === 'documentMessage') {
+      case 'ASK_RK_FILE': {
+        const rkMessageType = Object.keys(msg.message || {})[0];
+        if (rkMessageType === 'imageMessage' || rkMessageType === 'documentMessage') {
           try {
             sendMessage('⏳ Sedang mengunduh file...');
             const { downloadMediaMessage } = require('@whiskeysockets/baileys');
@@ -375,8 +637,8 @@ async function initWhatsAppBot() {
             if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
             
             let ext = '.bin';
-            if (messageType === 'imageMessage') ext = '.jpeg';
-            else if (msg.message.documentMessage.fileName) ext = path.extname(msg.message.documentMessage.fileName);
+            if (rkMessageType === 'imageMessage') ext = '.jpeg';
+            else if (msg.message.documentMessage?.fileName) ext = path.extname(msg.message.documentMessage.fileName);
             
             const fileName = `wa-rk-${Date.now()}${ext}`;
             const filePath = path.join(uploadDir, fileName);
@@ -393,6 +655,7 @@ async function initWhatsAppBot() {
           return sendMessage('⚠️ Harap kirimkan foto atau dokumen!');
         }
         break;
+      }
 
       case 'ASK_RK_BANK':
         state.data.rk_bank = text;
@@ -446,8 +709,8 @@ async function initWhatsAppBot() {
           const jwt = require('jsonwebtoken');
           const token = jwt.sign({ id: state.userId, role: 'staff', satker_id: state.satkerId }, process.env.JWT_SECRET);
           
-          await axios.post(`http://localhost:${process.env.APP_PORT || 5000}/api/rekening-koran`, form, {
-            headers: { ...form.getHeaders(), Authorization: `Bearer ${token}` }
+          await axios.post('http://localhost:' + (process.env.APP_PORT || 5000) + '/api/rekening-koran', form, {
+            headers: { ...form.getHeaders(), Authorization: 'Bearer ' + token }
           });
           
           sendMessage('✅ *Rekening Koran berhasil disimpan!*\nKetik *!menu* untuk opsi lain.');
@@ -457,241 +720,6 @@ async function initWhatsAppBot() {
         }
         state.step = 'IDLE';
         break;
-
-      case 'ASK_JENIS':
-        if (text === '1') {
-          state.data.jenis = 'debit';
-        } else if (text === '2') {
-          state.data.jenis = 'kredit';
-        } else {
-          return sendMessage('Pilih angka *1* (Pemasukan) atau *2* (Pengeluaran)!');
-        }
-
-        state.step = 'ASK_KATEGORI';
-        try {
-          const [kategoris] = await pool.query("SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1");
-          if (kategoris.length === 0) {
-            return sendMessage('Kategori kosong di database.');
-          }
-
-          let catMsg = 'Pilih Kategori Akun (Balas dengan angkanya):\n';
-          state.data.kategori_map = {};
-          kategoris.forEach((k, idx) => {
-            const num = idx + 1;
-            catMsg += `${num}. ${k.nama_kategori}\n`;
-            state.data.kategori_map[num.toString()] = { id: k.id, nama: k.nama_kategori };
-          });
-          sendMessage(catMsg);
-        } catch (err) {
-          console.error(err);
-          sendMessage('Gagal mengambil list kategori.');
-        }
-        break;
-
-      case 'ASK_KATEGORI':
-        const kat = state.data.kategori_map[text];
-        if (!kat) {
-          return sendMessage('Nomor kategori tidak valid! Silakan balas dengan angka yang ada di list atas.');
-        }
-        state.data.id_kategori = kat.id;
-        state.data.kategori_nama = kat.nama;
-
-        state.step = 'ASK_URAIAN';
-        sendMessage('Ketik Uraian/Deskripsi transaksi (Contoh: Pembayaran ATK):');
-        break;
-
-      case 'ASK_URAIAN':
-        if (!text) return sendMessage('Uraian tidak boleh kosong!');
-        state.data.uraian = text;
-        state.step = 'ASK_NOMINAL';
-        sendMessage('Masukkan Nominal (Angka saja, tanpa titik/koma. Contoh: 1500000):');
-        break;
-
-      case 'ASK_NOMINAL':
-        if (!text) return;
-        const nominal = parseInt(text.replace(/\D/g, ''));
-        if (isNaN(nominal)) {
-          return sendMessage('Nominal harus berupa angka! Coba masukkan lagi:');
-        }
-        state.data.nominal = nominal;
-
-        // Lewati fitur upload file dulu untuk WA karena butuh download media (Buffer) -> fs.writeFile
-        state.step = 'ASK_CATATAN';
-        sendMessage('Masukkan Catatan Tambahan (Opsional), atau ketik "Lewati" :');
-        break;
-
-      case 'ASK_CATATAN':
-        if (text && text.toLowerCase() !== 'lewati') {
-          state.data.catatan = text;
-        } else {
-          state.data.catatan = null;
-        }
-
-        // Finalize and save
-        try {
-          const tanggal = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-          await pool.query(`
-            INSERT INTO audit_akuntansi 
-            (tanggal, uraian, jenis, id_kategori, nominal, catatan_audit, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `, [
-            tanggal,
-            state.data.uraian,
-            state.data.jenis,
-            state.data.id_kategori,
-            state.data.nominal,
-            state.data.catatan,
-            state.userId
-          ]);
-
-          const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
-          const jns = state.data.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
-
-          state.step = 'ASK_TAMBAH_LAGI';
-          sendMessage(`✅ *Berhasil Disimpan ke Web!*\n\nJenis: ${jns}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}\n\nMau tambah data lagi? Balas dengan *Ya* atau *Tidak*.`);
-
-        } catch (err) {
-          console.error(err);
-          sendMessage('Terjadi kesalahan saat menyimpan ke database.');
-          state.step = 'IDLE';
-        }
-        break;
-
-      case 'ASK_TAMBAH_LAGI':
-        if (text.toLowerCase() === 'ya') {
-          state.step = 'ASK_JENIS';
-          state.data = {};
-          sendMessage('Silakan pilih Jenis Transaksi:\n1. Pemasukan\n2. Pengeluaran\n\n*(Balas dengan angka 1 atau 2)*');
-        } else {
-          state.step = 'IDLE';
-          let menuMsg = 'Oke, kembali ke menu utama.\n\n';
-          if (state.userRole === 1 || state.userRole === 2) {
-            menuMsg += 'Ketik *!tambah* untuk mencatat transaksi baru.\n';
-            menuMsg += 'Ketik *!upload* untuk input data banyak via Excel.\n';
-          } else if (state.userRole === 3) {
-            menuMsg += 'Ketik *!laporan* untuk mengunduh laporan keuangan.\n';
-          }
-          menuMsg += 'Ketik *!logout* untuk keluar.';
-          sendMessage(menuMsg);
-        }
-        break;
-
-      case 'ASK_UPLOAD_EXCEL':
-        if (text.toLowerCase() === '!template') {
-          try {
-            const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet('Template');
-            sheet.columns = [
-              { header: 'Tanggal (YYYY-MM-DD)', key: 'tanggal', width: 22 },
-              { header: 'Uraian', key: 'uraian', width: 30 },
-              { header: 'Jenis (debit/kredit)', key: 'jenis', width: 20 },
-              { header: 'ID Kategori', key: 'id_kategori', width: 15 },
-              { header: 'Nominal', key: 'nominal', width: 20 },
-              { header: 'Catatan', key: 'catatan', width: 30 }
-            ];
-
-            sheet.addRow({
-              tanggal: '2023-10-01',
-              uraian: 'Contoh Transaksi WA',
-              jenis: 'debit',
-              id_kategori: 1,
-              nominal: 150000,
-              catatan: 'Opsional'
-            });
-
-            const tmpPath = path.join('/tmp', `Template_Upload_${Date.now()}.xlsx`);
-            await workbook.xlsx.writeFile(tmpPath);
-
-            await sock.sendMessage(remoteJid, {
-              document: fs.readFileSync(tmpPath),
-              mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              fileName: 'Template_Upload.xlsx'
-            });
-            fs.unlinkSync(tmpPath);
-          } catch (e) {
-            console.error(e);
-            sendMessage('Gagal membuat template.');
-          }
-          return;
-        }
-
-        const docMsg = msg.message.documentMessage || msg.message.documentWithCaptionMessage?.message?.documentMessage;
-        if (!docMsg) {
-          return sendMessage('Harap kirimkan file dokumen Excel (.xlsx), atau ketik *!batal* untuk membatalkan.');
-        }
-
-        try {
-          sendMessage('⏳ Sedang memproses file Excel dari WA...');
-
-          const buffer = await downloadMediaMessage(
-            msg,
-            'buffer',
-            {},
-            {
-              logger: pino({ level: 'silent' }),
-              reuploadRequest: sock.updateMediaMessage
-            }
-          );
-
-          const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.load(buffer);
-          const sheet = workbook.getWorksheet(1);
-
-          let insertedCount = 0;
-          for (let i = 2; i <= sheet.rowCount; i++) {
-            const row = sheet.getRow(i);
-
-            let tglVal = row.getCell(1).value;
-            let tglStr = null;
-            if (tglVal instanceof Date) {
-              tglStr = tglVal.toISOString().split('T')[0];
-            } else if (typeof tglVal === 'string') {
-              tglStr = tglVal;
-            } else {
-              tglStr = new Date().toISOString().split('T')[0];
-            }
-
-            const uraian = row.getCell(2).text;
-            const jenisStr = row.getCell(3).text;
-            const idKategori = parseInt(row.getCell(4).value) || 1;
-            const nominal = parseFloat(row.getCell(5).value) || 0;
-            const catatan = row.getCell(6).text;
-
-            if (!uraian || !jenisStr || nominal === 0) continue;
-
-            let dbJenis = jenisStr.toLowerCase() === 'debit' ? 'debit' : 'kredit';
-
-            await pool.query(`
-                INSERT INTO audit_akuntansi 
-                (tanggal, uraian, jenis, id_kategori, nominal, catatan_audit, created_by) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-              `, [
-              tglStr,
-              uraian,
-              dbJenis,
-              idKategori,
-              nominal,
-              catatan || null,
-              state.userId
-            ]);
-            insertedCount++;
-          }
-
-          state.step = 'IDLE';
-          let menuMsg = `✅ Berhasil memasukkan ${insertedCount} data transaksi dari Excel WA!\n\n`;
-          if (state.userRole === 1 || state.userRole === 2) {
-            menuMsg += 'Ketik *!tambah* untuk mencatat transaksi manual baru.\n';
-          }
-          menuMsg += 'Ketik *!logout* untuk keluar.';
-          sendMessage(menuMsg);
-
-        } catch (err) {
-          console.error(err);
-          sendMessage('Terjadi kesalahan saat membaca file Excel. Pastikan formatnya .xlsx');
-        }
-        break;
-
       default:
         // Do nothing if step is IDLE and not a specific command
         break;

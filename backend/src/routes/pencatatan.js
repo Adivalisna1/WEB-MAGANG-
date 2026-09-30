@@ -12,6 +12,22 @@ router.get('/kategori',
   ctrl.getKategoriAkuntansi
 );
 
+// CRUD Kategori: Hanya Admin IT yang bisa create, update, delete
+router.post('/kategori', 
+  authenticate, authorize('admin_it'),
+  ctrl.createKategoriAkuntansi
+);
+
+router.put('/kategori/:id', 
+  authenticate, authorize('admin_it'),
+  ctrl.updateKategoriAkuntansi
+);
+
+router.delete('/kategori/:id', 
+  authenticate, authorize('admin_it'),
+  ctrl.deleteKategoriAkuntansi
+);
+
 
 
 

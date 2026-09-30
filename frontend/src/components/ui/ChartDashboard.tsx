@@ -23,12 +23,38 @@ export default function ChartDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [yearFilter, setYearFilter] = useState<number>(5); // Default 5 tahun terakhir
+  const [satkers, setSatkers] = useState<{ id: number, nama: string }[]>([]);
+  const [selectedSatker, setSelectedSatker] = useState<string>('');
+  const session = getSession();
+  const isEselon1 = session?.user?.role === 'eselon_1';
+
+  // Fetch satker list if eselon 1
+  useEffect(() => {
+    if (isEselon1) {
+      const fetchSatkers = async () => {
+        try {
+          const res = await fetch(`${API}/satker`, {
+            headers: { Authorization: `Bearer ${session?.token}` }
+          });
+          const json = await res.json();
+          if (json.success) setSatkers(json.data);
+        } catch (err) {
+          console.error("Gagal load satker", err);
+        }
+      };
+      fetchSatkers();
+    }
+  }, [isEselon1, session?.token]);
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true);
       try {
-        const session = getSession();
-        const res = await fetch(`${API}/stats/dashboard`, {
+        const url = selectedSatker 
+          ? `${API}/stats/dashboard?satker=${selectedSatker}`
+          : `${API}/stats/dashboard`;
+          
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${session?.token}` }
         });
         const json = await res.json();
@@ -40,8 +66,8 @@ export default function ChartDashboard() {
         setLoading(false);
       }
     };
-    fetchStats();
-  }, []);
+    if (session?.token) fetchStats();
+  }, [selectedSatker, session?.token]);
 
   if (loading) {
     return (
@@ -89,6 +115,21 @@ export default function ChartDashboard() {
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
 
+      {isEselon1 && (
+        <div className="flex justify-end">
+          <select 
+            value={selectedSatker}
+            onChange={(e) => setSelectedSatker(e.target.value)}
+            className="w-full md:w-64 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Semua Satker (Nasional)</option>
+            {satkers.map(s => (
+              <option key={s.id} value={s.id}>{s.nama}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow">
@@ -129,7 +170,11 @@ export default function ChartDashboard() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
             <PieChartIcon className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-gray-900">Proporsi Saldo per Satker</h3>
+            <h3 className="font-bold text-gray-900">
+              {(session?.user?.role === 'staff' || session?.user?.role === 'pimpinan' || (isEselon1 && selectedSatker)) 
+                ? 'Proporsi Kategori Pencatatan' 
+                : 'Proporsi Saldo per Satker'}
+            </h3>
           </div>
           <div className="h-[350px]">
             {pieData.length > 0 ? (

@@ -31,7 +31,6 @@ export default function StaffpencatatanPage() {
     id_kategori: '',
     nominal: '',
     catatan_audit: '',
-    catatan_audit: '',
     nomor_rekening_bank: '',
     nama_bank: ''
   });

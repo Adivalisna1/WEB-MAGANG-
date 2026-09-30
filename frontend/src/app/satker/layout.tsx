@@ -15,7 +15,7 @@ import { SearchContext } from '@/context/SearchContext';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function SatkerLayout({ children }: { children: React.ReactNode }) {
-  const { loading } = useRequireAuth('satker');
+  const { loading } = useRequireAuth('staff');
   const { user } = useAuth();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,6 +80,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden">
+      {/* @ts-ignore */}
       <SatkerSidebar />
       <div className="flex-1 flex flex-col h-screen relative">
         <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-8 z-20 sticky top-0 w-full">
