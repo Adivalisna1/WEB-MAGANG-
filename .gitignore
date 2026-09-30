@@ -80,3 +80,11 @@ Data_User_Siap_Upload.xlsx
 
 # Ignore Dummy Data
 dummy-data/
+
+# ============================================================
+# Python & Migration
+# ============================================================
+MIGRATION_TASK_FASTAPI.md
+backend_py/venv/
+backend_py/__pycache__/
+backend_py/.pytest_cache/

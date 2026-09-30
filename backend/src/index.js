@@ -10,6 +10,7 @@ const path = require('path');
 
 const { testConnection } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -19,7 +20,6 @@ const pimpinanRoutes = require('./routes/pimpinan');
 const eselon1Routes = require('./routes/eselon_1');
 const adminItRoutes = require('./routes/adminIT');
 const notifRoutes = require('./routes/notifikasi');
-const satkerRoutes = require('./routes/satker');
 const pencatatanRoutes = require('./routes/pencatatan');
 const rekeningKoranRoutes = require('./routes/rekeningKoranRoutes');
 const statsRoutes = require('./routes/stats');
@@ -89,7 +89,8 @@ app.use('/api/pimpinan', pimpinanRoutes);
 app.use('/api/eselon-1', eselon1Routes);
 app.use('/api/admin-it', adminItRoutes);
 app.use('/api/notifikasi', notifRoutes);
-app.use('/api/satker', satkerRoutes);
+// Proxy API Satker ke FastAPI Python (Port 8000)
+app.use('/api/satker', createProxyMiddleware({ target: process.env.FASTAPI_URL || 'http://localhost:8000', changeOrigin: true }));
 app.use('/api/pencatatan', pencatatanRoutes);
 app.use('/api/rekening-koran', rekeningKoranRoutes);
 app.use('/api/stats', statsRoutes);

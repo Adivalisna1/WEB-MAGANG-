@@ -62,6 +62,31 @@ services:
       - web_laporan_net
 
   # ============================================================
+  # Backend API - Python FastAPI (NEW)
+  # ============================================================
+  backend_py:
+    build:
+      context: ./backend_py
+      dockerfile: Dockerfile
+    container_name: web_laporan_backend_py
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Koneksi database akan mengarah ke service 'db'
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Jakarta
+    ports:
+      - "8000:8000"
+    networks:
+      - web_laporan_net
+
+  # ============================================================
   # Frontend - Next.js Dashboard Publik
   # ============================================================
   frontend:
