@@ -53,6 +53,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      FASTAPI_URL: http://backend_py:8000
       TZ: Asia/Jakarta
     ports:
       - "${APP_PORT:-5000}:5000"
@@ -80,6 +81,10 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       TZ: Asia/Jakarta
     ports:
       - "8000:8000"
