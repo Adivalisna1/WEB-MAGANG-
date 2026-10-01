@@ -504,33 +504,23 @@ async function initWhatsAppBot() {
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
           const jns = state.data.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
 
-          state.step = 'ASK_TAMBAH_LAGI';
-          sendMessage(`✅ *Berhasil Disimpan ke Web!*\n\nJenis: ${jns}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}\n\nMau tambah data lagi? Balas dengan *Ya* atau *Tidak*.`);
+          state.step = 'IDLE';
+          let menuMsg = `✅ *Berhasil Disimpan ke Web!*\n\nJenis: ${jns}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}\n\nMenu Utama:\n`;
+          if (state.userRole === 1 || state.userRole === 2) {
+            menuMsg += 'Ketik *!pencatatan* untuk mencatat transaksi baru.\n';
+            menuMsg += 'Ketik *!rekeningkoran* untuk Rekening Koran.\n';
+            menuMsg += 'Ketik *!uploadbukti* untuk Upload Dokumen.\n';
+            menuMsg += 'Ketik *!laporan* untuk Unduh Laporan Satker Anda.\n';
+          } else if (state.userRole === 3) {
+            menuMsg += 'Ketik *!laporan* untuk Melihat Ringkasan Data Semua Satker.\n';
+          }
+          menuMsg += 'Ketik *!logout* untuk keluar.';
+          sendMessage(menuMsg);
 
         } catch (err) {
           console.error(err);
           sendMessage('Terjadi kesalahan saat menyimpan ke database.');
           state.step = 'IDLE';
-        }
-        break;
-
-      case 'ASK_TAMBAH_LAGI':
-        if (text.toLowerCase() === 'ya') {
-          state.step = 'ASK_JENIS';
-          state.data = {};
-          sendMessage('Silakan pilih Jenis Transaksi:\n1. Pemasukan\n2. Pengeluaran\n\n*(Balas dengan angka 1 atau 2)*');
-        } else {
-          state.step = 'IDLE';
-          let menuMsg = 'Oke, kembali ke menu utama.\n\n';
-          if (state.userRole === 1 || state.userRole === 2) {
-            menuMsg += 'Ketik *!pencatatan* untuk mencatat transaksi baru.\n';
-            menuMsg += 'Ketik *!rekeningkoran* untuk Rekening Koran.\n';
-            menuMsg += 'Ketik *!uploadbukti* untuk Upload Dokumen.\n';
-          } else if (state.userRole === 3) {
-            menuMsg += 'Ketik *!laporan* untuk mengunduh laporan keuangan.\n';
-          }
-          menuMsg += 'Ketik *!logout* untuk keluar.';
-          sendMessage(menuMsg);
         }
         break;
 
@@ -595,7 +585,16 @@ async function initWhatsAppBot() {
           fs.unlinkSync(tmpPath);
           
           state.step = 'IDLE';
-          let menuMsg = '✅ Berhasil mengunggah dokumen ke Dashboard!\n\nKetik *!menu* untuk opsi lain.';
+          let menuMsg = '✅ Berhasil mengunggah dokumen ke Dashboard!\n\nMenu Utama:\n';
+          if (state.userRole === 1 || state.userRole === 2) {
+            menuMsg += 'Ketik *!pencatatan* untuk mencatat transaksi baru.\n';
+            menuMsg += 'Ketik *!rekeningkoran* untuk Rekening Koran.\n';
+            menuMsg += 'Ketik *!uploadbukti* untuk Upload Dokumen.\n';
+            menuMsg += 'Ketik *!laporan* untuk Unduh Laporan Satker Anda.\n';
+          } else if (state.userRole === 3) {
+            menuMsg += 'Ketik *!laporan* untuk Melihat Ringkasan Data Semua Satker.\n';
+          }
+          menuMsg += 'Ketik *!logout* untuk keluar.';
           sendMessage(menuMsg);
         } catch (e) {
           console.error(e);
@@ -711,7 +710,17 @@ async function initWhatsAppBot() {
             headers: { ...form.getHeaders(), Authorization: 'Bearer ' + token }
           });
           
-          sendMessage('✅ *Rekening Koran berhasil disimpan!*\nKetik *!menu* untuk opsi lain.');
+          let menuMsg = '✅ *Rekening Koran berhasil disimpan!*\n\nMenu Utama:\n';
+          if (state.userRole === 1 || state.userRole === 2) {
+            menuMsg += 'Ketik *!pencatatan* untuk mencatat transaksi baru.\n';
+            menuMsg += 'Ketik *!rekeningkoran* untuk Rekening Koran.\n';
+            menuMsg += 'Ketik *!uploadbukti* untuk Upload Dokumen.\n';
+            menuMsg += 'Ketik *!laporan* untuk Unduh Laporan Satker Anda.\n';
+          } else if (state.userRole === 3) {
+            menuMsg += 'Ketik *!laporan* untuk Melihat Ringkasan Data Semua Satker.\n';
+          }
+          menuMsg += 'Ketik *!logout* untuk keluar.';
+          sendMessage(menuMsg);
         } catch (err) {
           console.error('Error save RK WA:', err);
           sendMessage('❌ Gagal menyimpan Rekening Koran.');

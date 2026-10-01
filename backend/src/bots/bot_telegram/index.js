@@ -484,12 +484,18 @@ function initTelegramBot() {
             headers: { ...form.getHeaders(), Authorization: `Bearer ${token}` }
           });
           
+          let keyboardMenu = [];
+          const role = state.userRole;
+          if (role === 1 || role === 2) {
+            keyboardMenu.push([{ text: '➕ Pencatatan' }, { text: '➕ Rekening Koran' }]);
+            keyboardMenu.push([{ text: '📂 Upload Bukti' }, { text: '📊 Laporan' }]); 
+          } else if (role === 3) {
+            keyboardMenu.push([{ text: '📊 Laporan' }]);
+          }
+          keyboardMenu.push([{ text: '🚪 Logout' }]);
+
           bot.sendMessage(chatId, '✅ **Rekening Koran berhasil disimpan!**', { parse_mode: 'Markdown', reply_markup: {
-            keyboard: [
-              [{ text: '➕ Pencatatan Akuntansi' }],
-              [{ text: '📂 Upload Excel' }, { text: '📊 Laporan' }],
-              [{ text: '🚪 Logout' }]
-            ],
+            keyboard: keyboardMenu,
             resize_keyboard: true,
             one_time_keyboard: true
           }});
@@ -653,42 +659,7 @@ function initTelegramBot() {
           });
 
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
-
-          state.step = 'ASK_TAMBAH_LAGI';
-          const opts = {
-            reply_markup: {
-              keyboard: [
-                [{ text: 'Ya' }, { text: 'Tidak' }]
-              ],
-              resize_keyboard: true,
-              one_time_keyboard: true
-            }
-          };
-          bot.sendMessage(chatId, `✅ <b>Berhasil Disimpan ke Web!</b>\n\nJenis: ${state.data.jenis}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}\n\nMau tambah data lagi?`, { parse_mode: 'HTML', ...opts });
-
-        } catch (err) {
-          console.error(err);
-          bot.sendMessage(chatId, 'Terjadi kesalahan saat menyimpan ke database.');
-          state.step = 'IDLE';
-        }
-        break;
-
-      case 'ASK_TAMBAH_LAGI':
-        if (text.toLowerCase() === 'ya') {
-          state.step = 'ASK_JENIS';
-          state.data = {};
-          const opts = {
-            reply_markup: {
-              keyboard: [
-                [{ text: 'PEMASUKAN' }, { text: 'PENGELUARAN' }],
-                [{ text: '❌ Batal' }]
-              ],
-              resize_keyboard: true,
-              one_time_keyboard: true
-            }
-          };
-          bot.sendMessage(chatId, 'Silakan pilih Jenis Transaksi:', opts);
-        } else {
+          
           state.step = 'IDLE';
           let keyboardMenu = [];
           if (state.userRole === 1 || state.userRole === 2) {
@@ -698,9 +669,20 @@ function initTelegramBot() {
             keyboardMenu.push([{ text: '📊 Laporan' }]);
           }
           keyboardMenu.push([{ text: '🚪 Logout' }]);
-          bot.sendMessage(chatId, 'Oke, kembali ke menu utama.', {
-            reply_markup: { keyboard: keyboardMenu, resize_keyboard: true, one_time_keyboard: true }
-          });
+
+          const opts = {
+            reply_markup: {
+              keyboard: keyboardMenu,
+              resize_keyboard: true,
+              one_time_keyboard: true
+            }
+          };
+          bot.sendMessage(chatId, `✅ <b>Berhasil Disimpan ke Web!</b>\n\nJenis: ${state.data.jenis}\nKategori: ${state.data.kategori_nama}\nUraian: ${state.data.uraian}\nNominal: ${rp}`, { parse_mode: 'HTML', ...opts });
+
+        } catch (err) {
+          console.error(err);
+          bot.sendMessage(chatId, 'Terjadi kesalahan saat menyimpan ke database.');
+          state.step = 'IDLE';
         }
         break;
 
