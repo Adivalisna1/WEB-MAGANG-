@@ -166,7 +166,24 @@ function initTelegramBot() {
 
     if (text === '❌ Batal' || text === '/batal' || text === '!batal') {
       userStates[chatId].step = 'IDLE';
-      bot.sendMessage(chatId, 'Aksi dibatalkan. Ketik /start kalau mau mulai lagi.', { reply_markup: { remove_keyboard: true } });
+      if (userStates[chatId].userId) {
+        let keyboardMenu = [];
+        const role = userStates[chatId].userRole;
+        if (role === 1 || role === 2) {
+          keyboardMenu.push([{ text: '➕ Pencatatan' }, { text: '➕ Rekening Koran' }]);
+          keyboardMenu.push([{ text: '📂 Upload Bukti' }, { text: '📊 Laporan' }]); 
+        } else if (role === 3) {
+          keyboardMenu.push([{ text: '📊 Laporan' }]);
+        }
+        keyboardMenu.push([{ text: '🚪 Logout' }]);
+        bot.sendMessage(chatId, '❌ Aksi dibatalkan. Kembali ke menu utama.', {
+          reply_markup: { keyboard: keyboardMenu, resize_keyboard: true, one_time_keyboard: true }
+        });
+      } else {
+        bot.sendMessage(chatId, '❌ Aksi dibatalkan. Silakan login kembali.', {
+          reply_markup: { keyboard: [[{ text: '🔑 Login' }]], resize_keyboard: true, one_time_keyboard: true }
+        });
+      }
       return;
     }
 
@@ -180,7 +197,7 @@ function initTelegramBot() {
 
     if (text === '🔑 Login') {
       state.step = 'ASK_USERNAME';
-      bot.sendMessage(chatId, '🔑 Silakan balas pesan ini dengan Username/Kode Satker akun Web Anda:', { reply_markup: { remove_keyboard: true } });
+      bot.sendMessage(chatId, '🔑 Silakan balas pesan ini dengan Username/Kode Satker akun Web Anda:', { reply_markup: { keyboard: [[{ text: '❌ Batal' }]], resize_keyboard: true } });
       return;
     }
 
@@ -290,7 +307,7 @@ function initTelegramBot() {
       }
       state.step = 'ASK_RK_JENIS';
       state.data = {};
-      bot.sendMessage(chatId, 'Masukkan **Jenis** Rekening Koran (contoh: Pemasukan/Pengeluaran):', { parse_mode: 'Markdown', reply_markup: { remove_keyboard: true } });
+      bot.sendMessage(chatId, 'Masukkan **Jenis** Rekening Koran (contoh: Pemasukan/Pengeluaran):', { parse_mode: 'Markdown', reply_markup: { keyboard: [[{ text: '❌ Batal' }]], resize_keyboard: true } });
       return;
     }
 
@@ -525,7 +542,7 @@ function initTelegramBot() {
 
         state.step = 'ASK_URAIAN';
         bot.sendMessage(chatId, 'Ketik Uraian/Deskripsi transaksi (Contoh: Pembayaran ATK):', {
-          reply_markup: { remove_keyboard: true }
+          reply_markup: { keyboard: [[{ text: '❌ Batal' }]], resize_keyboard: true }
         });
         break;
 

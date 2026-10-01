@@ -162,7 +162,22 @@ async function initWhatsAppBot() {
 
     if (text.toLowerCase() === '!batal') {
       userStates[jid].step = 'IDLE';
-      return sendMessage('❌ Aksi dibatalkan. Ketik *!menu* untuk melihat opsi.');
+      if (state.userId) {
+        let menuMsg = `❌ Aksi dibatalkan.\n\nMenu Utama:\n`;
+        if (state.userRole === 1 || state.userRole === 2) {
+          menuMsg += `*!pencatatan* - Untuk Pencatatan Akuntansi\n`;
+          menuMsg += `*!rekeningkoran* - Untuk Tambah Rekening Koran\n`;
+          menuMsg += `*!uploadbukti* - Untuk Upload Dokumen\n`;
+          menuMsg += `*!laporan* - Untuk Unduh Laporan Satker Anda\n`;
+        }
+        if (state.userRole === 3) {
+          menuMsg += `*!laporan* - Untuk Melihat Ringkasan Data Semua Satker\n`;
+        }
+        menuMsg += `*!logout* - Untuk Logout Akun`;
+        return sendMessage(menuMsg);
+      } else {
+        return sendMessage('❌ Aksi dibatalkan. Ketik *!login* untuk login.');
+      }
     }
 
     if (text.toLowerCase() === '!logout') {
