@@ -151,8 +151,16 @@ async function initWhatsAppBot() {
     console.log('[WhatsApp Incoming]', jid, ':', text, JSON.stringify(msg.message));
 
     if (!userStates[jid]) {
-      userStates[jid] = { step: 'IDLE', data: {}, userId: null };
+      userStates[jid] = { step: 'IDLE', data: {}, userId: null, lastActivity: Date.now() };
     }
+
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    if (userStates[jid].userId && (Date.now() - userStates[jid].lastActivity > SIX_HOURS)) {
+      userStates[jid] = { step: 'IDLE', data: {}, userId: null, lastActivity: Date.now() };
+      await sock.sendMessage(jid, { text: '⏱️ Sesi Anda telah berakhir karena tidak aktif selama 6 jam. Silakan ketik *!login* untuk masuk kembali.' });
+      return;
+    }
+    userStates[jid].lastActivity = Date.now();
 
     let state = userStates[jid];
 
@@ -181,7 +189,7 @@ async function initWhatsAppBot() {
     }
 
     if (text.toLowerCase() === '!logout') {
-      userStates[jid] = { step: 'IDLE', data: {}, userId: null };
+      userStates[jid] = { step: 'IDLE', data: {}, userId: null, lastActivity: Date.now() };
       return sendMessage('🚪 Berhasil Logout dari sistem. Ketik *!login* untuk login ulang.');
     }
 
@@ -332,6 +340,7 @@ async function initWhatsAppBot() {
           state.nama = users[0].nama;
           state.satkerId = users[0].satker_id;
           state.step = 'IDLE';
+          state.lastActivity = Date.now();
 
           let successMsg = `✅ Login Berhasil! Selamat datang, *${users[0].nama}*.\n\nKetik perintah berikut untuk menggunakan bot:\n`;
           if (state.userRole === 1 || state.userRole === 2) {

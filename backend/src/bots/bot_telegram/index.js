@@ -161,8 +161,18 @@ function initTelegramBot() {
     if (text === '/start') return;
 
     if (!userStates[chatId]) {
-      userStates[chatId] = { step: 'IDLE', data: {}, userId: null };
+      userStates[chatId] = { step: 'IDLE', data: {}, userId: null, lastActivity: Date.now() };
     }
+
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    if (userStates[chatId].userId && (Date.now() - userStates[chatId].lastActivity > SIX_HOURS)) {
+      userStates[chatId] = { step: 'IDLE', data: {}, userId: null, lastActivity: Date.now() };
+      bot.sendMessage(chatId, '⏱️ Sesi Anda telah berakhir karena tidak aktif selama 6 jam. Silakan login kembali.', {
+        reply_markup: { keyboard: [[{ text: '🔑 Login' }]], resize_keyboard: true, one_time_keyboard: true }
+      });
+      return;
+    }
+    userStates[chatId].lastActivity = Date.now();
 
     if (text === '❌ Batal' || text === '/batal' || text === '!batal') {
       userStates[chatId].step = 'IDLE';
@@ -188,7 +198,7 @@ function initTelegramBot() {
     }
 
     if (text === '🚪 Logout' || text === '/logout' || text === '!logout') {
-      userStates[chatId] = { step: 'IDLE', data: {}, userId: null };
+      userStates[chatId] = { step: 'IDLE', data: {}, userId: null, lastActivity: Date.now() };
       bot.sendMessage(chatId, 'Berhasil Logout dari Telegram. Ketik /start untuk login kembali.', { reply_markup: { remove_keyboard: true } });
       return;
     }
@@ -363,6 +373,7 @@ function initTelegramBot() {
           state.userRole = users[0].role_id;
           state.satkerId = users[0].satker_id;
           state.step = 'IDLE';
+          state.lastActivity = Date.now();
 
           let keyboardMenu = [];
           if (state.userRole === 1 || state.userRole === 2) {
