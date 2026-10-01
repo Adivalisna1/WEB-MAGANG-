@@ -24,7 +24,7 @@ export default function LandingPage() {
   // Kalau sudah login, langsung redirect ke dashboard role-nya
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'pimpinan')          router.replace('/pimpinan');
+      if (user.role === 'pimpinan_satker')          router.replace('/pimpinan');
       else if (user.role === 'eselon_1') router.replace('/eselon-1');
       else if (user.role === 'admin_it') router.replace('/admin-it');
       else                                router.replace('/staff/dokumen');
@@ -106,7 +106,7 @@ export default function LandingPage() {
             /* Sudah login → 1 tombol ke dashboard role-nya */
             <Link
               href={
-                user.role === 'pimpinan' ? '/pimpinan' :
+                user.role === 'pimpinan_satker' ? '/pimpinan' :
                 user.role === 'eselon_1' ? '/eselon-1' :
                 user.role === 'admin_it' ? '/admin-it' :
                 '/staff/dokumen'

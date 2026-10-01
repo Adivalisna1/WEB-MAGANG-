@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(res.data.token);
 
     // Redirect sesuai role
-    if (res.data.user.role === 'pimpinan') {
+    if (res.data.user.role === 'pimpinan_satker') {
       router.push('/pimpinan');
     } else if (res.data.user.role === 'eselon_1') {
       router.push('/eselon-1');
@@ -68,8 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, token, loading,
       loginFn, logoutFn,
-      isPimpinan: user?.role === 'pimpinan',
-      isStaff: user?.role === 'staff',
+      isPimpinan: user?.role === 'pimpinan_satker',
+      isStaff: user?.role === 'staff_satker',
       isKetuaTim: user?.role === 'eselon_1',
     }}>
       {children}

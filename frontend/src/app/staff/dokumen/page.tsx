@@ -33,7 +33,7 @@ interface Dokumen {
 }
 
 const CATATAN_LABEL: Record<string, string> = {
-  Pimpinan: 'pimpinan',
+  Pimpinan: 'pimpinan_satker',
   ketua_tim: 'Eselon 1',
 };
 

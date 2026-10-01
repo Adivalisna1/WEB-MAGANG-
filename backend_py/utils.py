@@ -35,13 +35,54 @@ async def catat_log(db, user_id: int, aksi: str, entitas: str = None, entitas_id
 
 async def buat_notifikasi(db, user_id: int, aksi: str, judul: str, pesan: str, dokumen_id: int = None):
     try:
-        cursor = db.cursor()
+        cursor = db.cursor(dictionary=True)
         cursor.execute(
             """INSERT INTO notifikasi (user_id, aksi, dokumen_id, judul, pesan)
                VALUES (%s, %s, %s, %s, %s)""",
             (user_id, aksi, dokumen_id, judul, pesan)
         )
         db.commit()
+        
+        # Email notification via Brevo API
+        brevo_api_key = os.getenv("BREVO_API_KEY")
+        if brevo_api_key:
+            cursor.execute("SELECT nama, email FROM users WHERE id = %s", (user_id,))
+            user_row = cursor.fetchone()
+            if user_row and user_row.get("email"):
+                sender_email = os.getenv("EMAIL_FROM", "no-reply@laporan.go.id")
+                target_email = os.getenv("TEST_EMAIL_RECIPIENT", user_row["email"])
+                
+                payload = {
+                    "sender": {"name": "Dashboard Laporan", "email": sender_email},
+                    "to": [{"email": target_email, "name": user_row["nama"]}],
+                    "subject": f"Notifikasi: {judul or 'Pemberitahuan Sistem'}",
+                    "htmlContent": f'''<div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                                      <h3 style="color: #2563eb;">Halo {user_row["nama"]},</h3>
+                                      <p style="font-size: 16px; color: #333;">Ada notifikasi baru untuk Anda:</p>
+                                      <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0;">
+                                        {pesan}
+                                      </div>
+                                      <p style="font-size: 14px; color: #666;">Silakan akses Dashboard Laporan untuk melihat detailnya.</p>
+                                      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                                      <small style="color: #999;">Email otomatis dari sistem.</small>
+                                    </div>'''
+                }
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        "https://api.brevo.com/v3/smtp/email",
+                        headers={
+                            "api-key": brevo_api_key,
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        },
+                        json=payload
+                    )
+                    if response.status_code >= 400:
+                        print(f"[NOTIFIKASI EMAIL] Brevo API Error: {response.status_code} {response.text}")
+                    else:
+                        print(f"[NOTIFIKASI EMAIL] Terkirim ke {target_email} (Aksi: {aksi})")
+        
         cursor.close()
     except Exception as e:
         print(f"Error buat notifikasi: {e}")

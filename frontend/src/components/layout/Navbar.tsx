@@ -58,7 +58,7 @@ export default function Navbar() {
   const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1');
   if (isDashboard) return null;
 
-  const dashboardHref = user?.role === 'pimpinan'
+  const dashboardHref = user?.role === 'pimpinan_satker'
     ? '/pimpinan'
     : user?.role === 'eselon_1'
       ? '/eselon-1'

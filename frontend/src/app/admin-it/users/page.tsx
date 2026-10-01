@@ -230,7 +230,7 @@ export default function UserManagementPage() {
       } catch (e) { }
     }
     setFormData({
-      role_id: u.role === 'pimpinan' ? 1 : u.role === 'staff' ? 2 : u.role === 'satker' ? 2 : u.role === 'eselon_1' ? 3 : u.role === 'admin_it' ? 4 : u.role === 'administrasi' ? 5 : 2,
+      role_id: u.role === 'pimpinan_satker' ? 1 : u.role === 'staff_satker' ? 2 : u.role === 'satker' ? 2 : u.role === 'eselon_1' ? 3 : u.role === 'admin_it' ? 4 : u.role === 'administrasi' ? 5 : 2,
       nama: u.nama,
       username: u.username,
       email: u.email,

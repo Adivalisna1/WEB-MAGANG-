@@ -12,7 +12,7 @@ import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
 import { Loader2, Menu } from 'lucide-react';
 
 export default function PimpinanLayout({ children }: { children: React.ReactNode }) {
-  const { loading } = useRequireAuth(['pimpinan']);
+  const { loading } = useRequireAuth(['pimpinan_satker']);
   const { user } = useAuth();
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);

@@ -39,7 +39,7 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  const dashboardHref = user.role === 'pimpinan'
+  const dashboardHref = user.role === 'pimpinan_satker'
     ? '/pimpinan'
     : user.role === 'eselon_1'
       ? '/eselon-1'

@@ -7,24 +7,24 @@ import datetime
 router = APIRouter(prefix="/api/rekening-koran", tags=["rekening_koran"])
 
 @router.get("")
-async def get_kertas_kerja(user: dict = Depends(get_current_user), db=Depends(get_db)):
+async def get_rekening_koran(user: dict = Depends(get_current_user), db=Depends(get_db)):
     role = user.get("role_id")
     satker_id = user.get("satker_id")
     
     where = "1=1"
     params = []
     
-    if role == 2:  # Staff
+    if str(role) in ['1', '2']:  # Pimpinan & Staff
         if satker_id is None:
             where += " AND k.satker_id IS NULL"
         else:
             where += " AND k.satker_id = %s"
             params.append(satker_id)
             
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         query = f"""
             SELECT k.*, u.nama AS uploader_nama, s.nama AS nama_satker, s.NO_Satker AS kode_satker 
-            FROM kertas_kerja k
+            FROM rekening_koran k
             LEFT JOIN users u ON u.id = k.uploaded_by
             LEFT JOIN satkers s ON s.id = k.satker_id
             WHERE {where}
@@ -35,7 +35,7 @@ async def get_kertas_kerja(user: dict = Depends(get_current_user), db=Depends(ge
     return {"success": True, "data": rows}
 
 @router.post("/bulk")
-async def bulk_insert_kertas_kerja(request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
+async def bulk_insert_rekening_koran(request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
     data = request.get("data")
     payload_satker_id = request.get("satker_id")
     tahun_req = request.get("tahun")
@@ -48,7 +48,7 @@ async def bulk_insert_kertas_kerja(request: dict, user: dict = Depends(get_curre
     uploaded_by = user.get("id")
     values = []
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, NO_Satker FROM satkers WHERE NO_Satker IS NOT NULL")
         satkers_data = cursor.fetchall()
         satker_map = {str(s["NO_Satker"]): s["id"] for s in satkers_data}
@@ -112,7 +112,7 @@ async def bulk_insert_kertas_kerja(request: dict, user: dict = Depends(get_curre
             
         if values:
             query = """
-                INSERT INTO kertas_kerja (
+                INSERT INTO rekening_koran (
                     satker_id, uploaded_by, nama_bank, nomor_rekening_bank, nama_rekening,
                     nomor_pembukaan_rekening, tanggal_pembukaan_rekening,
                     saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan, tahun, periode
@@ -124,13 +124,13 @@ async def bulk_insert_kertas_kerja(request: dict, user: dict = Depends(get_curre
     return {"success": True, "message": f"Berhasil menyimpan {len(values)} baris data."}
 
 @router.post("")
-async def create_kertas_kerja(request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
+async def create_rekening_koran(request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
     satker_id = user.get("satker_id")
     uploaded_by = user.get("id")
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         query = """
-            INSERT INTO kertas_kerja (
+            INSERT INTO rekening_koran (
                 satker_id, uploaded_by, nama_bank, nomor_rekening_bank, nama_rekening,
                 nomor_pembukaan_rekening, tanggal_pembukaan_rekening,
                 saldo_akhir_bulan, saldo_rk, saldo_rekening, saldo_rpl_lpj, keterangan, tahun, periode
@@ -146,10 +146,10 @@ async def create_kertas_kerja(request: dict, user: dict = Depends(get_current_us
         return {"success": True, "message": "Data berhasil ditambahkan", "data": {"id": cursor.lastrowid}}
 
 @router.put("/{id}")
-async def update_kertas_kerja(id: int, request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    with db.cursor() as cursor:
+async def update_rekening_koran(id: int, request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    with db.cursor(dictionary=True) as cursor:
         query = """
-            UPDATE kertas_kerja SET 
+            UPDATE rekening_koran SET 
                 nama_bank = %s, nomor_rekening_bank = %s, nama_rekening = %s, 
                 nomor_pembukaan_rekening = %s, tanggal_pembukaan_rekening = %s, 
                 saldo_akhir_bulan = %s, saldo_rk = %s, saldo_rekening = %s, saldo_rpl_lpj = %s, keterangan = %s,
@@ -169,9 +169,9 @@ async def update_kertas_kerja(id: int, request: dict, user: dict = Depends(get_c
         return {"success": True, "message": "Data berhasil diupdate"}
 
 @router.delete("/{id}")
-async def delete_kertas_kerja(id: int, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    with db.cursor() as cursor:
-        cursor.execute("DELETE FROM kertas_kerja WHERE id = %s", (id,))
+async def delete_rekening_koran(id: int, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("DELETE FROM rekening_koran WHERE id = %s", (id,))
         if cursor.rowcount == 0:
             raise HTTPException(404, "Data tidak ditemukan")
         db.commit()

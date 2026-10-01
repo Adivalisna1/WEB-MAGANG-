@@ -19,7 +19,7 @@ def buat_nomor_laporan(slug: str, tahun: int, doc_id: int) -> str:
 
 @router.get("/kategori")
 async def get_kategori(db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, nama, slug, deskripsi, perlu_nominal FROM kategori_dokumen WHERE is_active = 1 ORDER BY urutan ASC")
         rows = cursor.fetchall()
     return {"success": True, "data": rows}
@@ -33,7 +33,7 @@ async def get_stats(satker: Optional[int] = None, db=Depends(get_db)):
         where += ' AND uploaded_by IN (SELECT id FROM users WHERE satker_id = %s)'
         params.append(satker)
         
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute(f"SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE {where}", tuple(params))
         total_dokumen = cursor.fetchone()["totalDokumen"]
         
@@ -77,7 +77,7 @@ async def get_dokumen_publik(
         where += ' AND (d.judul LIKE %s OR d.nomor_laporan LIKE %s)'
         params.extend([f"%{escaped}%", f"%{escaped}%"])
         
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         query = f"""
             SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.semester,
                    d.nomor_laporan, d.file_nama, d.file_size, d.file_mime,
@@ -135,7 +135,7 @@ async def get_all_dokumen(
         where += ' AND d.tahun = %s'
         params.append(tahun)
         
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         query = f"""
             SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
                    d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size,
@@ -185,7 +185,7 @@ async def upload_dokumen(
         
     if not judul: raise HTTPException(400, "Judul wajib diisi")
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT id, status FROM dokumen
             WHERE LOWER(judul) = LOWER(%s) AND kategori_id = %s AND tahun = %s AND status NOT IN ('diarsipkan')
@@ -208,7 +208,7 @@ async def upload_dokumen(
     file.file.seek(0, 2)
     file_size = file.file.tell()
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             INSERT INTO dokumen
              (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
@@ -232,7 +232,7 @@ async def upload_dokumen(
 
 @router.get("/{id}/download")
 async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, judul, file_nama, file_path, file_mime, status, is_public, uploaded_by FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         
@@ -245,7 +245,7 @@ async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_
             import os
             secret = os.getenv("JWT_SECRET")
             decoded = jwt.decode(token, secret, algorithms=["HS256"])
-            if decoded.get("role") in ["pimpinan", "eselon_1"] or (decoded.get("role") == "staff" and dok["uploaded_by"] == decoded.get("id")):
+            if decoded.get("role") in ["pimpinan_satker", "eselon_1"] or (decoded.get("role") == "staff_satker" and dok["uploaded_by"] == decoded.get("id")):
                 has_access = True
         except:
             pass
@@ -256,7 +256,7 @@ async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_
     if not dok["file_path"]:
         raise HTTPException(404, "File tidak tersedia di database")
         
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("UPDATE dokumen SET download_count = download_count + 1 WHERE id = %s", (id,))
         db.commit()
         
@@ -268,10 +268,10 @@ async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_
 
 @router.get("/{id}/preview")
 async def preview_dokumen(id: int, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    if user.get("role") not in ["pimpinan", "eselon_1"]:
+    if user.get("role") not in ["pimpinan_satker", "eselon_1"]:
         raise HTTPException(403, "Akses ditolak")
         
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT file_nama, file_path, file_mime FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         
@@ -322,7 +322,7 @@ async def preview_dokumen(id: int, user: dict = Depends(get_current_user), db=De
 
 @router.get("/{id}")
 async def get_dokumen_detail(id: int, db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.semester,
                    d.nomor_laporan, d.file_nama, d.file_size, d.file_mime,
@@ -344,7 +344,7 @@ async def edit_dokumen(
     db=Depends(get_db)
 ):
     body = await request.json()
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         
@@ -379,7 +379,7 @@ async def edit_dokumen(
     t_final = tahun or dok["tahun"]
     k_final = kategori_id or dok["kategori_id"]
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT id FROM dokumen WHERE LOWER(judul) = LOWER(%s) AND kategori_id = %s AND tahun = %s AND id != %s AND status NOT IN ('diarsipkan')
         """, (str(j_final).strip(), k_final, t_final, id))
@@ -408,7 +408,7 @@ async def edit_dokumen(
 
 @router.patch("/{id}/submit")
 async def submit_verifikasi(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM dokumen WHERE id = %s AND uploaded_by = %s", (id, user["id"]))
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
@@ -432,14 +432,14 @@ async def submit_verifikasi(id: int, request: Request, user: dict = Depends(get_
 
 @router.patch("/{id}/verify")
 async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    if user.get("role") != "pimpinan": raise HTTPException(403, "Akses ditolak")
+    if user.get("role") != "pimpinan_satker": raise HTTPException(403, "Akses ditolak")
     body = await request.json()
     aksi = body.get("aksi")
     catatan = body.get("catatan")
     
     if aksi not in ['lolos', 'reject']: raise HTTPException(400, "Aksi harus lolos atau reject")
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
@@ -475,7 +475,7 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
     
     if aksi not in ['approve', 'reject']: raise HTTPException(400, "Aksi salah")
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         if dok["status"] != 'lolos_admin': raise HTTPException(400, "Belum diloloskan admin")
@@ -497,8 +497,8 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
 
 @router.delete("/{id}")
 async def delete_dokumen(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    if user.get("role") != "pimpinan": raise HTTPException(403, "Akses ditolak")
-    with db.cursor() as cursor:
+    if user.get("role") != "pimpinan_satker": raise HTTPException(403, "Akses ditolak")
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT file_path, judul FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Not found")
@@ -527,7 +527,7 @@ async def bot_upload(
     if x_bot_api_key != os.getenv("BOT_API_KEY", "N8N_SECRET_BOT_KEY_2026"):
         raise HTTPException(401, "Unauthorized")
         
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, nama FROM users WHERE email = %s", (userEmail,))
         usr = cursor.fetchone()
         if not usr: raise HTTPException(404, "User not found")
@@ -549,7 +549,7 @@ async def bot_upload(
     file.file.seek(0, 2)
     file_size = file.file.tell()
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             INSERT INTO dokumen
              (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
@@ -566,7 +566,7 @@ async def bot_upload(
 
 @router.patch("/{id}/file")
 async def ganti_file(id: int, file: UploadFile = File(...), user: dict = Depends(get_current_user), db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         

@@ -28,7 +28,7 @@ def get_satkers(db = Depends(get_db)):
 
 @router.post("")
 def create_satker(satker: SatkerCreate, db = Depends(get_db), user: dict = Depends(require_admin_it)):
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
     try:
         cursor.execute("INSERT INTO satkers (NO_Satker, nama) VALUES (%s, %s)", (satker.NO_Satker, satker.nama))
         db.commit()
@@ -44,7 +44,7 @@ def create_bulk_satker(bulk: BulkSatkerCreate, db = Depends(get_db), user: dict 
     if not bulk.satkers:
         raise HTTPException(status_code=400, detail="Data satker kosong atau format tidak valid")
     
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
     try:
         values = [(s,) for s in bulk.satkers]
         cursor.executemany("INSERT INTO satkers (nama) VALUES (%s)", values)
@@ -58,7 +58,7 @@ def create_bulk_satker(bulk: BulkSatkerCreate, db = Depends(get_db), user: dict 
 
 @router.put("/{satker_id}")
 def update_satker(satker_id: int, satker: SatkerCreate, db = Depends(get_db), user: dict = Depends(require_admin_it)):
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
     try:
         cursor.execute("UPDATE satkers SET NO_Satker = %s, nama = %s WHERE id = %s", (satker.NO_Satker, satker.nama, satker_id))
         db.commit()

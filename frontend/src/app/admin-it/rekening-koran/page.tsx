@@ -93,7 +93,7 @@ export default function KertasKerjaPage() {
         setDataList(d.data ?? []);
       }
 
-      if (['eselon_1', 'pimpinan', 'admin_it'].includes(session?.user?.role || '')) {
+      if (['eselon_1', 'pimpinan_satker', 'admin_it'].includes(session?.user?.role || '')) {
         const resSatker = await fetch(`${API}/satker`, {
           headers: session ? { Authorization: `Bearer ${session.token}` } : {},
         });
@@ -358,7 +358,7 @@ export default function KertasKerjaPage() {
                     <option value="2">Periode 2 (Jul - Des)</option>
                   </select>
 
-                  {['admin_it', 'pimpinan'].includes(userRole) && satkerList.length > 0 && (
+                  {['admin_it', 'pimpinan_satker'].includes(userRole) && satkerList.length > 0 && (
                     <select value={selectedUploadSatker} onChange={e => setSelectedUploadSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white max-w-[200px]">
                       <option value="">-- Otomatis (atau pilih Satker) --</option>
                       {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
@@ -397,7 +397,7 @@ export default function KertasKerjaPage() {
                 <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Cari Bank / No Rek..." className="flex-1 text-sm outline-none" />
               </div>
 
-              {['eselon_1', 'pimpinan', 'admin_it'].includes(userRole) && (
+              {['eselon_1', 'pimpinan_satker', 'admin_it'].includes(userRole) && (
                 <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white min-w-[150px]">
                   <option value="">Semua Satker</option>
                   {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}

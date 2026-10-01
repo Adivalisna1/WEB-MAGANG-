@@ -15,7 +15,7 @@ import { SearchContext } from '@/context/SearchContext';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function SatkerLayout({ children }: { children: React.ReactNode }) {
-  const { loading } = useRequireAuth('staff');
+  const { loading } = useRequireAuth('staff_satker');
   const { user } = useAuth();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');

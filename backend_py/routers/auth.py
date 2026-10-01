@@ -38,7 +38,7 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     cursor = db.cursor(dictionary=True)
     
     cursor.execute("""
-        SELECT u.id, u.role_id, u.nama, u.username, u.email,
+        SELECT u.id, u.role_id, u.satker_id, u.nama, u.username, u.email,
                u.password_hash, u.is_active, u.permissions, r.nama AS role
         FROM users u
         JOIN roles r ON r.id = u.role_id
@@ -93,7 +93,9 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     token = jwt.encode(
         {
             "id": user['id'], 
+            "role_id": user['role_id'],
             "role": user['role'], 
+            "satker_id": user.get('satker_id'),
             "sessionId": session_id, 
             "permissions": user['permissions'],
             "exp": datetime.utcnow() + timedelta(hours=8)
@@ -130,7 +132,7 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
 
 @router.post("/logout")
 async def logout(req: Request, db = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
     cursor.execute("UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE id = %s", (current_user['sessionId'],))
     db.commit()
     

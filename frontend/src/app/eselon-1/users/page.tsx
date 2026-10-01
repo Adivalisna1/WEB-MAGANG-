@@ -37,7 +37,7 @@ const ROLE_BADGE: Record<string, string> = {
   ketua_tim: 'bg-indigo-100 text-indigo-700',
 };
 const ROLE_LABEL: Record<string, string> = {
-  Pimpinan: 'pimpinan', satker: 'Satker', ketua_tim: 'Eselon 1',
+  Pimpinan: 'pimpinan_satker', satker: 'Satker', ketua_tim: 'Eselon 1',
 };
 
 function formatTanggal(dt: string | null): string {
@@ -248,7 +248,7 @@ export default function KetuaUsersPage() {
                             : <KeyRound className="w-4 h-4" />}
                         </button>
                         {/* Eselon 1 HANYA bisa mengubah Pimpinan */}
-                        {user.role === 'pimpinan' && (
+                        {user.role === 'pimpinan_satker' && (
                           <button
                             onClick={() => handleToggle(user)}
                             disabled={processing === user.id}

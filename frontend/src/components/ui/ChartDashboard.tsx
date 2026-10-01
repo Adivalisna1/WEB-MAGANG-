@@ -181,7 +181,7 @@ export default function ChartDashboard() {
           <div className="flex items-center gap-2 mb-6">
             <PieChartIcon className="w-5 h-5 text-indigo-500" />
             <h3 className="font-bold text-gray-900">
-              {(session?.user?.role === 'staff' || session?.user?.role === 'pimpinan' || (isEselon1 && selectedSatker)) 
+              {(session?.user?.role === 'staff_satker' || session?.user?.role === 'pimpinan_satker' || (isEselon1 && selectedSatker)) 
                 ? 'Proporsi Kategori Pencatatan' 
                 : 'Proporsi Saldo per Satker'}
             </h3>

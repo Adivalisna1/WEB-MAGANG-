@@ -32,6 +32,7 @@ export default function StaffpencatatanPage() {
     nominal: '',
     catatan_audit: '',
     nomor_rekening_bank: '',
+    nama_rekening: '',
     nama_bank: ''
   });
   const [file, setFile] = useState<File | null>(null);
@@ -83,6 +84,7 @@ export default function StaffpencatatanPage() {
       data.append('nominal', formData.nominal);
       data.append('catatan_audit', formData.catatan_audit);
       data.append('nomor_rekening_bank', formData.nomor_rekening_bank);
+      data.append('nama_rekening', formData.nama_rekening);
       data.append('nama_bank', formData.nama_bank);
       if (file) data.append('file', file);
 
@@ -112,7 +114,7 @@ export default function StaffpencatatanPage() {
 
 
   const resetForm = () => {
-    setFormData({ tanggal: '', uraian: '', jenis: 'debit', id_kategori: '', nominal: '', catatan_audit: '', nomor_rekening_bank: '', nama_bank: '' });
+    setFormData({ tanggal: '', uraian: '', jenis: 'debit', id_kategori: '', nominal: '', catatan_audit: '', nomor_rekening_bank: '', nama_rekening: '', nama_bank: '' });
     setFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -215,10 +217,14 @@ export default function StaffpencatatanPage() {
 
               {/* Tampilkan kolom tambahan jika Kategori = Rekening Koran */}
               {kategori.find(k => String(k.id) === formData.id_kategori)?.nama_kategori?.toLowerCase().includes('rekening koran') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Rekening Bank</label>
                     <input type="text" required value={formData.nomor_rekening_bank} onChange={e => setFormData({...formData, nomor_rekening_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: 1234567890" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Rekening</label>
+                    <input type="text" required value={formData.nama_rekening} onChange={e => setFormData({...formData, nama_rekening: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: RPL 123" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>

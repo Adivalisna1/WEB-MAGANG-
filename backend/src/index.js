@@ -12,13 +12,6 @@ const { testConnection } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 
-// Routes
-const userRoutes = require('./routes/user');
-const pimpinanRoutes = require('./routes/pimpinan');
-const eselon1Routes = require('./routes/eselon_1');
-const adminItRoutes = require('./routes/adminIT');
-const notifRoutes = require('./routes/notifikasi');
-const statsRoutes = require('./routes/stats');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 5000;
@@ -81,18 +74,12 @@ app.use('/uploads', (req, res) => {
 const fastApiProxy = createProxyMiddleware({ 
   target: process.env.FASTAPI_URL || 'http://localhost:8000', 
   changeOrigin: true,
-  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran', '/api/dokumen'],
+  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran', '/api/dokumen', '/api/pimpinan', '/api/eselon-1', '/api/admin-it', '/api/stats', '/api/notifikasi', '/api/user'],
   on: {
     proxyReq: fixRequestBody,
   }
 });
 app.use(fastApiProxy);
-app.use('/api/user', userRoutes);
-app.use('/api/pimpinan', pimpinanRoutes);
-app.use('/api/eselon-1', eselon1Routes);
-app.use('/api/admin-it', adminItRoutes);
-app.use('/api/notifikasi', notifRoutes);
-app.use('/api/stats', statsRoutes);
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({

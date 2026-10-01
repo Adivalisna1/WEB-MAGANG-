@@ -13,7 +13,7 @@ UPLOAD_DIR = "/app/uploads/akuntansi"
 
 @router.get("/kategori")
 async def get_kategori(user: dict = Depends(get_current_user), db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM kategori_akuntansi ORDER BY nama_kategori ASC")
         rows = cursor.fetchall()
     return {"success": True, "data": rows}
@@ -23,7 +23,7 @@ async def create_kategori(request: dict, user: dict = Depends(require_admin_it),
     nama_kategori = request.get("nama_kategori")
     if not nama_kategori:
         raise HTTPException(400, "nama_kategori wajib diisi")
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("INSERT INTO kategori_akuntansi (nama_kategori) VALUES (%s)", (nama_kategori,))
         db.commit()
         return {"success": True, "message": "Kategori berhasil dibuat", "insertId": cursor.lastrowid}
@@ -33,14 +33,14 @@ async def update_kategori(id: int, request: dict, user: dict = Depends(require_a
     nama_kategori = request.get("nama_kategori")
     if not nama_kategori:
         raise HTTPException(400, "nama_kategori wajib diisi")
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("UPDATE kategori_akuntansi SET nama_kategori = %s WHERE id = %s", (nama_kategori, id))
         db.commit()
         return {"success": True, "message": "Kategori berhasil diupdate"}
 
 @router.delete("/kategori/{id}")
 async def delete_kategori(id: int, user: dict = Depends(require_admin_it), db=Depends(get_db)):
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("DELETE FROM kategori_akuntansi WHERE id = %s", (id,))
         db.commit()
         return {"success": True, "message": "Kategori berhasil dihapus"}
@@ -57,8 +57,21 @@ async def serve_file(filename: str, user: dict = Depends(get_current_user)):
 
 @router.get("")
 async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_db)):
-    with db.cursor() as cursor:
-        query = """
+    role = user.get("role_id")
+    satker_id = user.get("satker_id")
+    
+    where = "1=1"
+    params = []
+    
+    if str(role) in ["1", "2"]:
+        if satker_id is None:
+            where += " AND u.satker_id IS NULL"
+        else:
+            where += " AND u.satker_id = %s"
+            params.append(satker_id)
+            
+    with db.cursor(dictionary=True) as cursor:
+        query = f"""
             SELECT a.*, k.nama_kategori, u.nama as pembuat, u2.nama as pengedit,
                    u.satker_id, s.nama as satker_nama
             FROM audit_akuntansi a
@@ -66,9 +79,10 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
             LEFT JOIN users u ON a.created_by = u.id
             LEFT JOIN users u2 ON a.updated_by = u2.id
             LEFT JOIN satkers s ON u.satker_id = s.id
+            WHERE {where}
             ORDER BY a.tanggal DESC, a.created_at DESC
         """
-        cursor.execute(query)
+        cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
     return {"success": True, "data": rows}
 
@@ -81,12 +95,13 @@ async def create_akuntansi(
     nominal: float = Form(...),
     catatan_audit: Optional[str] = Form(None),
     nomor_rekening_bank: Optional[str] = Form(None),
+    nama_rekening: Optional[str] = Form(None),
     nama_bank: Optional[str] = Form(None),
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    if user.get("role") not in ["pimpinan", "staff"]:
+    if user.get("role") not in ["pimpinan_satker", "staff_satker"]:
         raise HTTPException(403, "Forbidden")
         
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -99,9 +114,10 @@ async def create_akuntansi(
     bukti_file = f"/api/pencatatan/file/{filename}"
     
     try:
-        with db.cursor() as cursor:
+        with db.cursor(dictionary=True) as cursor:
             created_by = user["id"]
             satker_id = user.get("satker_id")
+            print(f"DEBUG: user payload: {user}", flush=True)
             
             cursor.execute("SELECT nama_kategori FROM kategori_akuntansi WHERE id = %s", (id_kategori,))
             cat_res = cursor.fetchone()
@@ -131,20 +147,20 @@ async def create_akuntansi(
                 dokumen_id = cursor.lastrowid
                 
                 cursor.execute("""
-                    INSERT INTO kertas_kerja (
-                        satker_id, uploaded_by, nomor_rekening_bank, saldo_akhir_bulan, 
+                    INSERT INTO rekening_koran (
+                        satker_id, uploaded_by, nomor_rekening_bank, nama_rekening, saldo_akhir_bulan, 
                         keterangan, nama_bank, tahun, tanggal_pembukaan_rekening, dokumen_id
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    satker_id, created_by, nomor_rekening_bank, nominal, uraian,
+                    satker_id, created_by, nomor_rekening_bank, nama_rekening, nominal, uraian,
                     nama_bank, tahun, tanggal, dokumen_id
                 ))
             
             cursor.execute("""
                 INSERT INTO audit_akuntansi 
-                (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by))
+                (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, nama_rekening) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by, nomor_rekening_bank, nama_bank, nama_rekening))
             insert_id = cursor.lastrowid
             
         db.commit()
@@ -159,7 +175,7 @@ async def update_metadata(id: int, request: dict, user: dict = Depends(require_a
     if not id_kategori:
         raise HTTPException(400, "id_kategori wajib dikirim")
     
-    with db.cursor() as cursor:
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("UPDATE audit_akuntansi SET id_kategori = %s, updated_by = %s WHERE id = %s", (id_kategori, user["id"], id))
         db.commit()
         return {"success": True, "message": "Kategori akuntansi berhasil diubah oleh Admin IT"}
