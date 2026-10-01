@@ -32,3 +32,44 @@ async def catat_log(db, user_id: int, aksi: str, entitas: str = None, entitas_id
     except Exception as e:
         # Log gagal tidak boleh ganggu response utama
         print(f"Error catat log: {e}")
+
+async def buat_notifikasi(db, user_id: int, aksi: str, judul: str, pesan: str, dokumen_id: int = None):
+    try:
+        cursor = db.cursor()
+        cursor.execute(
+            """INSERT INTO notifikasi (user_id, aksi, dokumen_id, judul, pesan)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (user_id, aksi, dokumen_id, judul, pesan)
+        )
+        db.commit()
+        cursor.close()
+    except Exception as e:
+        print(f"Error buat notifikasi: {e}")
+
+import os
+import shutil
+import aiofiles
+
+UPLOAD_DIR = "/app/uploads"
+
+async def save_file(file_obj, filename: str, tahun: str | int) -> str:
+    key = f"{tahun}/{filename}"
+    file_path = os.path.join(UPLOAD_DIR, key)
+    
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    # Reset cursor just in case
+    file_obj.seek(0)
+    async with aiofiles.open(file_path, 'wb') as f:
+        while chunk := file_obj.read(1024 * 1024):
+            await f.write(chunk)
+            
+    return key
+
+def delete_file(key: str):
+    file_path = os.path.join(UPLOAD_DIR, key)
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        print(f"Gagal hapus file {key}: {e}")

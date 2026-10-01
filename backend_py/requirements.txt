@@ -5,3 +5,4 @@ PyJWT
 bcrypt
 httpx
 python-dotenv
+aiofiles

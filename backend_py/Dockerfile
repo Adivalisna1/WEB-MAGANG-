@@ -2,6 +2,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install LibreOffice and dependencies for PDF conversion
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libreoffice \
+    libreoffice-writer \
+    libreoffice-calc \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy requirements file first for caching
 COPY requirements.txt .
 

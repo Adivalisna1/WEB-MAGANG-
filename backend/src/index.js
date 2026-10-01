@@ -13,7 +13,6 @@ const errorHandler = require('./middleware/errorHandler');
 const { createProxyMiddleware, fixRequestBody } = require('http-proxy-middleware');
 
 // Routes
-const dokumenRoutes = require('./routes/dokumen');
 const userRoutes = require('./routes/user');
 const pimpinanRoutes = require('./routes/pimpinan');
 const eselon1Routes = require('./routes/eselon_1');
@@ -82,13 +81,12 @@ app.use('/uploads', (req, res) => {
 const fastApiProxy = createProxyMiddleware({ 
   target: process.env.FASTAPI_URL || 'http://localhost:8000', 
   changeOrigin: true,
-  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran'],
+  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran', '/api/dokumen'],
   on: {
     proxyReq: fixRequestBody,
   }
 });
 app.use(fastApiProxy);
-app.use('/api/dokumen', dokumenRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/pimpinan', pimpinanRoutes);
 app.use('/api/eselon-1', eselon1Routes);
