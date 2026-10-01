@@ -119,7 +119,7 @@ export default function KetuaDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Welcome, {user?.nama || 'Pejabat Eselon 1'}
+            Selamat Datang, {user?.nama || 'Pejabat Eselon 1'}
           </h1>
           <p className="text-sm text-gray-500 mt-1">Monitoring sistem secara realtime (refresh otomatis 30 detik)</p>
         </div>

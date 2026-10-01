@@ -168,7 +168,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
           <div className="flex items-center gap-6 ml-auto">
             <div className="text-right flex items-center gap-2">
-              <span className="font-bold text-slate-800 tracking-tight hidden lg:inline">Staff Dashboard</span>
+              <span className="font-bold text-slate-800 tracking-tight hidden lg:inline">Dashboard Staff</span>
               <span className="text-slate-300 hidden lg:inline">|</span>
               <span className="text-slate-600 font-medium">Selamat Datang, {user?.nama || 'Staff'}</span>
             </div>

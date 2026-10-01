@@ -10,6 +10,28 @@ import * as XLSX from 'xlsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+// Helper buka file: PDF/DOCX → preview tab baru, Excel → auto download
+const openFile = async (bukti_file: string, token: string) => {
+  const url = bukti_file.startsWith('http')
+    ? bukti_file
+    : `${API}${bukti_file.startsWith('/api') ? bukti_file.replace('/api', '') : bukti_file}`;
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || '';
+  const isExcel = ['xlsx', 'xls', 'csv'].includes(ext);
+  if (isExcel) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = url.split('/').pop()?.split('?')[0] || 'file.xlsx';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } else {
+    window.open(`${url}?token=${token}`, '_blank');
+  }
+};
+
+
+
 export default function PimpinanpencatatanPage() {
   const { token, user } = useAuth();
   const [transaksi, setTransaksi] = useState<any[]>([]);
@@ -301,9 +323,13 @@ export default function PimpinanpencatatanPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     {t.bukti_file ? (
-                      <a href={`${t.bukti_file.startsWith('http') ? t.bukti_file : `${API.replace('/api', '')}${t.bukti_file}`}?token=${token}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition-colors" title="Lihat Bukti">
+                      <button
+                        onClick={() => openFile(t.bukti_file, token || '')}
+                        className="inline-flex items-center justify-center p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                        title="Lihat Bukti"
+                      >
                         <Paperclip className="w-4 h-4" />
-                      </a>
+                      </button>
                     ) : (
                       <span className="text-gray-400">-</span>
                     )}

@@ -418,7 +418,7 @@ export default function UserManagementPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
               {loading ? (
-                <tr><td colSpan={5} className="p-4 text-center text-gray-500">Loading users...</td></tr>
+                <tr><td colSpan={5} className="p-4 text-center text-gray-500">Memuat pengguna...</td></tr>
               ) : users.length === 0 ? (
                 <tr><td colSpan={5} className="p-4 text-center text-gray-500">Belum ada data user.</td></tr>
               ) : (
@@ -533,7 +533,7 @@ export default function UserManagementPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4 border-b pb-4">
-              <h3 className="font-bold text-gray-900 text-lg">Bulk Upload Users</h3>
+              <h3 className="font-bold text-gray-900 text-lg">Upload Pengguna Massal</h3>
               <button onClick={() => setShowBulkUpload(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>

@@ -70,7 +70,7 @@ export default function PimpinanLayout({ children }: { children: React.ReactNode
             </button>
             <div className="flex flex-col justify-center">
               <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight leading-none truncate max-w-[200px] md:max-w-none">
-                Welcome Back, {user?.nama || 'Pimpinan'}!
+                Selamat Datang Kembali, {user?.nama || 'Pimpinan'}!
               </h1>
               <p className="text-[11px] md:text-sm text-slate-500 font-medium mt-1 truncate max-w-[200px] md:max-w-none">
                 Sistem Informasi Manajemen Dokumen Terpadu

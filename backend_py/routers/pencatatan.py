@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Security
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from auth import get_current_user, require_admin_it
 from db import get_db
@@ -46,14 +47,34 @@ async def delete_kategori(id: int, user: dict = Depends(require_admin_it), db=De
         return {"success": True, "message": "Kategori berhasil dihapus"}
 
 @router.get("/file/{filename}")
-async def serve_file(filename: str, user: dict = Depends(get_current_user)):
+async def serve_file(
+    filename: str,
+    token: Optional[str] = None,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(HTTPBearer(auto_error=False)),
+    db=Depends(get_db)
+):
+    import jwt as pyjwt
+    import os as _os
+
+    # Ambil token dari query param atau header
+    raw_token = token or (credentials.credentials if credentials else None)
+    if not raw_token:
+        raise HTTPException(401, "Token diperlukan")
+
+    try:
+        payload = pyjwt.decode(raw_token, _os.getenv("JWT_SECRET"), algorithms=["HS256"])
+    except Exception:
+        raise HTTPException(401, "Token tidak valid")
+
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "Invalid filename")
-    
+
     file_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(404, "File tidak ditemukan")
+
     return FileResponse(file_path)
+
 
 @router.get("")
 async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_db)):
