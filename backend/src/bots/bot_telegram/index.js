@@ -373,13 +373,9 @@ function initTelegramBot() {
 
 
       case 'ASK_RK_JENIS':
-        state.data.rk_jenis = text;
-        state.step = 'ASK_RK_KATEGORI';
-        bot.sendMessage(chatId, 'Masukkan **Kategori** (contoh: Rekening Koran):', { parse_mode: 'Markdown' });
-        break;
-
-      case 'ASK_RK_KATEGORI':
-        state.data.rk_kategori = text;
+        state.data.rk_jenis = text.toLowerCase().includes('pemasukan') ? 'debit' : 'kredit';
+        state.data.rk_kategori = 'Rekening Koran';
+        state.data.id_kategori = 7;
         state.step = 'ASK_RK_PERIODE';
         bot.sendMessage(chatId, 'Masukkan **Periode** (1 atau 2):', { parse_mode: 'Markdown' });
         break;
@@ -455,26 +451,19 @@ function initTelegramBot() {
           // But we will send it just in case, using the user's satkerId directly.
           let sId = state.satkerId; 
 
-          form.append('satker_id', sId);
           form.append('jenis', state.data.rk_jenis);
-          form.append('kategori', state.data.rk_kategori);
-          form.append('periode', state.data.rk_periode);
-          form.append('keterangan', state.data.rk_keterangan);
+          form.append('id_kategori', state.data.id_kategori);
+          form.append('uraian', state.data.rk_keterangan);
+          form.append('nominal', state.data.rk_saldo);
           form.append('nama_bank', state.data.rk_bank);
           form.append('nomor_rekening_bank', state.data.rk_norek);
-          form.append('tahun', state.data.rk_tahun);
-          form.append('saldo_akhir_periode', state.data.rk_saldo);
           
           if (state.data.rk_file) {
             form.append('file', fs.createReadStream(state.data.rk_file));
           }
 
-          // Use dummy token for bot internally or we can directly insert via DB pool
-          // Direct DB pool is much cleaner since we are already inside backend
-          // Wait, Rekening Koran has logic to save to R2 and Dokumen. We should use internal logic, OR call API via internal token?
-          // I'll call the API with a special header or just require the controller logic! But calling API via axios is easiest.
-          const token = require('jsonwebtoken').sign({ id: state.userId, role: 'staff', satker_id: state.satkerId }, process.env.JWT_SECRET);
-          await axios.post(`http://localhost:${process.env.APP_PORT || 5000}/api/rekening-koran`, form, {
+          const token = require('jsonwebtoken').sign({ id: state.userId, role: state.userRole === 1 ? 'pimpinan_satker' : 'staff_satker', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          await axios.post(`http://localhost:${process.env.APP_PORT || 5000}/api/pencatatan`, form, {
             headers: { ...form.getHeaders(), Authorization: `Bearer ${token}` }
           });
           

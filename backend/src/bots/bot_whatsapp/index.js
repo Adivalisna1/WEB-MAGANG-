@@ -592,13 +592,9 @@ async function initWhatsAppBot() {
 
 
       case 'ASK_RK_JENIS':
-        state.data.rk_jenis = text;
-        state.step = 'ASK_RK_KATEGORI';
-        sendMessage('Masukkan *Kategori* (contoh: Rekening Koran):');
-        break;
-
-      case 'ASK_RK_KATEGORI':
-        state.data.rk_kategori = text;
+        state.data.rk_jenis = text.toLowerCase().includes('pemasukan') ? 'debit' : 'kredit';
+        state.data.rk_kategori = 'Rekening Koran';
+        state.data.id_kategori = 7;
         state.step = 'ASK_RK_PERIODE';
         sendMessage('Masukkan *Periode* (1 atau 2):');
         break;
@@ -682,24 +678,21 @@ async function initWhatsAppBot() {
           
           let sId = state.satkerId;
 
-          form.append('satker_id', sId);
           form.append('jenis', state.data.rk_jenis);
-          form.append('kategori', state.data.rk_kategori);
-          form.append('periode', state.data.rk_periode);
-          form.append('keterangan', state.data.rk_keterangan);
+          form.append('id_kategori', state.data.id_kategori);
+          form.append('uraian', state.data.rk_keterangan);
+          form.append('nominal', state.data.rk_saldo);
           form.append('nama_bank', state.data.rk_bank);
           form.append('nomor_rekening_bank', state.data.rk_norek);
-          form.append('tahun', state.data.rk_tahun);
-          form.append('saldo_akhir_periode', state.data.rk_saldo);
           
           if (state.data.rk_file) {
             form.append('file', fs.createReadStream(state.data.rk_file));
           }
 
           const jwt = require('jsonwebtoken');
-          const token = jwt.sign({ id: state.userId, role: 'staff', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          const token = jwt.sign({ id: state.userId, role: state.userRole === 1 ? 'pimpinan_satker' : 'staff_satker', satker_id: state.satkerId }, process.env.JWT_SECRET);
           
-          await axios.post('http://localhost:' + (process.env.APP_PORT || 5000) + '/api/rekening-koran', form, {
+          await axios.post('http://localhost:' + (process.env.APP_PORT || 5000) + '/api/pencatatan', form, {
             headers: { ...form.getHeaders(), Authorization: 'Bearer ' + token }
           });
           
