@@ -6,7 +6,7 @@ import { getSession } from '@/lib/auth';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
 import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X } from 'lucide-react';
-import * as XLSX from 'xlsx';
+
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -253,26 +253,27 @@ export default function KertasKerjaPage() {
     finally { setIsSavingRow(null); }
   };
 
-  const exportToExcel = () => {
-    const exportData = filteredData.map(d => ({
-      'Kode Satker': d.kode_satker || '-',
-      'Nama Satker': d.nama_satker || '-',
-      'Nama Bank': d.nama_bank || '-',
-      'Nomor Rekening Bank': d.nomor_rekening_bank || '-',
-      'Nama Rekening': d.nama_rekening || '-',
-      'Nomor Pembukaan Rekening': d.nomor_pembukaan_rekening || '-',
-      'Tanggal Pembukaan Rekening': d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-',
-      'SALDO PER AKHIR BULAN': d.saldo_akhir_bulan || 0,
-      'SALDO PER AKHIR BULAN (RK)': d.saldo_rk || 0,
-      'LAPORAN SALDO PER AKHIR BULAN (SALDO REKENING)': d.saldo_rekening || 0,
-      'SALDO PER AKHIR BULAN (RPL/LPJ)': d.saldo_rpl_lpj || 0,
-      'KETERANGAN': d.keterangan || '-'
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data Rekening Koran');
-    XLSX.writeFile(wb, 'Laporan_Rekening_Koran.xlsx');
+  const exportToExcel = async () => {
+    try {
+      const session = await getSession();
+      const params = new URLSearchParams();
+      if (filterSatker) params.set('satker', filterSatker);
+      if (filterTahun) params.set('tahun', filterTahun);
+      if (filterPeriode) params.set('periode', filterPeriode);
+      const res = await fetch(`${API}/export/rekening-koran?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      if (!res.ok) throw new Error('Gagal export');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Rekening_Koran_${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error('Gagal export Excel. Coba lagi.');
+    }
   };
 
   const filteredData = dataList.filter(d => {

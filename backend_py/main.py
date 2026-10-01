@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import satker, auth, pencatatan, rekening_koran, dokumen, pimpinan, eselon_1, admin_it, stats
+from routers import satker, auth, pencatatan, rekening_koran, dokumen, pimpinan, eselon_1, admin_it, stats, export
 
 app = FastAPI(title="Pencatatan Keuangan API", version="1.0.0")
 
@@ -22,6 +22,7 @@ app.include_router(pimpinan.router, prefix="/api/pimpinan", tags=["pimpinan"])
 app.include_router(eselon_1.router, prefix="/api/eselon-1", tags=["eselon_1"])
 app.include_router(admin_it.router, prefix="/api/admin-it", tags=["admin_it"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
+app.include_router(export.router)
 from routers import notifikasi, user
 app.include_router(notifikasi.router, prefix="/api/notifikasi", tags=["notifikasi"])
 app.include_router(user.router, prefix="/api/user", tags=["user"])
