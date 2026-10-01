@@ -242,9 +242,9 @@ async function initWhatsAppBot() {
 
     if (text.toLowerCase() === '!rekeningkoran') {
       if (!state.userId) return sendMessage('⚠️ Anda harus Login terlebih dahulu! Ketik *!login*.');
-      state.step = 'ASK_RK_SATKER';
+      state.step = 'ASK_RK_JENIS';
       state.data = {};
-      return sendMessage('Masukkan *Nomor Satker* (sebagai kata kunci):');
+      return sendMessage('Masukkan *Jenis* Rekening Koran (contoh: Pemasukan/Pengeluaran):');
     }
 
     if (text.toLowerCase() === '!pencatatan' || text.toLowerCase() === '!tambah') {
@@ -435,7 +435,7 @@ async function initWhatsAppBot() {
             const fileName = `wa-bukti-${Date.now()}${ext}`;
             const filePath = path.join(uploadDir, fileName);
             fs.writeFileSync(filePath, buffer);
-            state.data.bukti_file = `/api/akuntansi/file/${fileName}`;
+            state.data.local_file_path = filePath;
           } catch (err) {
             console.error('Error download WA file:', err);
             sendMessage('❌ Gagal mengunduh file, file dilewati.');
@@ -459,36 +459,32 @@ async function initWhatsAppBot() {
         try {
           const tanggal = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-          const [resAkuntansi] = await pool.query(`
-            INSERT INTO audit_akuntansi 
-            (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            tanggal,
-            state.data.uraian,
-            state.data.jenis,
-            state.data.id_kategori,
-            state.data.nominal,
-            state.data.bukti_file || null,
-            state.data.catatan,
-            state.userId
-          ]);
-
+          const fs = require('fs');
+          const FormData = require('form-data');
+          const axios = require('axios');
+          const form = new FormData();
+          
+          form.append('jenis', state.data.jenis);
+          form.append('id_kategori', state.data.id_kategori);
+          form.append('uraian', state.data.uraian);
+          form.append('nominal', state.data.nominal);
+          if (state.data.catatan) form.append('catatan_audit', state.data.catatan);
+          
           if (state.data.kategori_nama && state.data.kategori_nama.toLowerCase().includes('rekening koran')) {
-            await pool.query(`
-               INSERT INTO kertas_kerja (satker_id, uploaded_by, nomor_rekening_bank, saldo_akhir_bulan, keterangan, nama_bank, tahun, tanggal_pembukaan_rekening)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             `, [
-               state.satkerId || null,
-               state.userId,
-               state.data.nomor_rekening_bank || null,
-               state.data.nominal,
-               state.data.uraian,
-               state.data.nama_bank || null,
-               new Date().getFullYear(),
-               tanggal
-             ]);
+            if (state.data.nama_bank) form.append('nama_bank', state.data.nama_bank);
+            if (state.data.nomor_rekening_bank) form.append('nomor_rekening_bank', state.data.nomor_rekening_bank);
           }
+          
+          if (state.data.local_file_path) {
+            form.append('file', fs.createReadStream(state.data.local_file_path));
+          }
+
+          const jwt = require('jsonwebtoken');
+          const token = jwt.sign({ id: state.userId, role: state.userRole === 1 ? 'pimpinan_satker' : 'staff_satker', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          
+          await axios.post('http://localhost:' + (process.env.APP_PORT || 5000) + '/api/pencatatan', form, {
+            headers: { ...form.getHeaders(), Authorization: 'Bearer ' + token }
+          });
 
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
           const jns = state.data.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran';
@@ -593,11 +589,7 @@ async function initWhatsAppBot() {
         break;
       }
       
-      case 'ASK_RK_SATKER':
-        state.data.rk_satker = text;
-        state.step = 'ASK_RK_JENIS';
-        sendMessage('Masukkan *Jenis* Rekening Koran (contoh: Pemasukan/Pengeluaran):');
-        break;
+
 
       case 'ASK_RK_JENIS':
         state.data.rk_jenis = text;
@@ -688,9 +680,7 @@ async function initWhatsAppBot() {
           const axios = require('axios');
           const form = new FormData();
           
-          const [sRes] = await pool.query('SELECT id FROM satkers WHERE NO_Satker = ?', [state.data.rk_satker]);
-          let sId = state.satkerId; 
-          if (sRes.length > 0) sId = sRes[0].id;
+          let sId = state.satkerId;
 
           form.append('satker_id', sId);
           form.append('jenis', state.data.rk_jenis);

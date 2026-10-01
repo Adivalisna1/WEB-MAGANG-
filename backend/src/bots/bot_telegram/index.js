@@ -288,9 +288,9 @@ function initTelegramBot() {
         bot.sendMessage(chatId, 'Anda harus Login terlebih dahulu!');
         return;
       }
-      state.step = 'ASK_RK_SATKER';
+      state.step = 'ASK_RK_JENIS';
       state.data = {};
-      bot.sendMessage(chatId, 'Masukkan **Nomor Satker** (sebagai kata kunci):', { parse_mode: 'Markdown', reply_markup: { remove_keyboard: true } });
+      bot.sendMessage(chatId, 'Masukkan **Jenis** Rekening Koran (contoh: Pemasukan/Pengeluaran):', { parse_mode: 'Markdown', reply_markup: { remove_keyboard: true } });
       return;
     }
 
@@ -370,11 +370,7 @@ function initTelegramBot() {
         }
         break;
 
-      case 'ASK_RK_SATKER':
-        state.data.rk_satker = text;
-        state.step = 'ASK_RK_JENIS';
-        bot.sendMessage(chatId, 'Masukkan **Jenis** Rekening Koran (contoh: Pemasukan/Pengeluaran):', { parse_mode: 'Markdown' });
-        break;
+
 
       case 'ASK_RK_JENIS':
         state.data.rk_jenis = text;
@@ -455,10 +451,9 @@ function initTelegramBot() {
           const FormData = require('form-data');
           const axios = require('axios');
           const form = new FormData();
-          // We need satker_id. Let's find it by NO_Satker (kata kunci)
-          const [sRes] = await pool.query('SELECT id FROM satkers WHERE NO_Satker = ?', [state.data.rk_satker]);
-          let sId = state.satkerId; // Default to user's satker
-          if (sRes.length > 0) sId = sRes[0].id;
+          // We don't need to append satker_id, FastAPI automatically reads it from JWT token!
+          // But we will send it just in case, using the user's satkerId directly.
+          let sId = state.satkerId; 
 
           form.append('satker_id', sId);
           form.append('jenis', state.data.rk_jenis);
@@ -599,8 +594,7 @@ function initTelegramBot() {
             }
 
             const downloadedPath = await bot.downloadFile(fileId, uploadDir);
-            const filename = path.basename(downloadedPath);
-            state.data.bukti_file = `/api/akuntansi/file/${filename}`;
+            state.data.local_file_path = downloadedPath;
           } catch (err) {
             console.error('Error download file:', err);
             bot.sendMessage(chatId, 'Gagal mengunduh file, file akan dilewati.');
@@ -626,36 +620,31 @@ function initTelegramBot() {
 
           const dbJenis = state.data.jenis === 'PEMASUKAN' ? 'debit' : 'kredit';
 
-          const [resAkuntansi] = await pool.query(`
-            INSERT INTO audit_akuntansi 
-            (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            tanggal,
-            state.data.uraian,
-            dbJenis,
-            state.data.id_kategori,
-            state.data.nominal,
-            state.data.bukti_file || null,
-            state.data.catatan || null,
-            state.userId
-          ]);
-
+          const fs = require('fs');
+          const FormData = require('form-data');
+          const axios = require('axios');
+          const form = new FormData();
+          
+          form.append('jenis', dbJenis);
+          form.append('id_kategori', state.data.id_kategori);
+          form.append('uraian', state.data.uraian);
+          form.append('nominal', state.data.nominal);
+          if (state.data.catatan) form.append('catatan_audit', state.data.catatan);
+          
           if (state.data.kategori_nama && state.data.kategori_nama.toLowerCase().includes('rekening koran')) {
-            await pool.query(`
-               INSERT INTO kertas_kerja (satker_id, uploaded_by, nomor_rekening_bank, saldo_akhir_bulan, keterangan, nama_bank, tahun, tanggal_pembukaan_rekening)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             `, [
-               state.satkerId || null,
-               state.userId,
-               state.data.nomor_rekening_bank || null,
-               state.data.nominal,
-               state.data.uraian,
-               state.data.nama_bank || null,
-               new Date().getFullYear(),
-               tanggal
-             ]);
+            if (state.data.nama_bank) form.append('nama_bank', state.data.nama_bank);
+            if (state.data.nomor_rekening_bank) form.append('nomor_rekening_bank', state.data.nomor_rekening_bank);
           }
+          
+          if (state.data.local_file_path) {
+            form.append('file', fs.createReadStream(state.data.local_file_path));
+          }
+
+          const token = require('jsonwebtoken').sign({ id: state.userId, role: state.userRole === 1 ? 'pimpinan_satker' : 'staff_satker', satker_id: state.satkerId }, process.env.JWT_SECRET);
+          
+          await axios.post(`http://localhost:${process.env.APP_PORT || 5000}/api/pencatatan`, form, {
+            headers: { ...form.getHeaders(), Authorization: `Bearer ${token}` }
+          });
 
           const rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(state.data.nominal);
 
