@@ -168,7 +168,7 @@ async def export_pencatatan(
             SELECT
                 a.tanggal,
                 s.nama AS satker,
-                k.nama_kategori AS kategori,
+                k.nama AS kategori,
                 a.jenis,
                 a.uraian,
                 a.nominal,
@@ -179,7 +179,7 @@ async def export_pencatatan(
                 u.nama AS diinput_oleh,
                 a.created_at
             FROM audit_akuntansi a
-            LEFT JOIN kategori_akuntansi k ON k.id = a.id_kategori
+            LEFT JOIN kategori_dokumen k ON k.id = a.id_kategori
             LEFT JOIN users u ON u.id = a.created_by
             LEFT JOIN satkers s ON s.id = u.satker_id
             WHERE {where}

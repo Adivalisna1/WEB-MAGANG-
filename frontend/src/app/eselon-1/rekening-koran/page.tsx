@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
 import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -251,7 +252,7 @@ export default function KertasKerjaPage() {
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        toast.error(errorData.message || 'Gagal mendownload ZIP', { id: toastId });
+        toast.error(errorData.detail || errorData.message || 'Gagal mendownload ZIP', { id: toastId });
         return;
       }
       const blob = await res.blob();
@@ -280,7 +281,10 @@ export default function KertasKerjaPage() {
       const res = await fetch(`${API}/export/rekening-koran?${params.toString()}`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
-      if (!res.ok) throw new Error('Gagal export');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.detail || errData?.message || 'Gagal export Excel');
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -288,8 +292,8 @@ export default function KertasKerjaPage() {
       a.download = `Rekening_Koran_${new Date().toISOString().slice(0,10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      toast.error('Gagal export Excel. Coba lagi.');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal export Excel. Coba lagi.');
     }
   };
 

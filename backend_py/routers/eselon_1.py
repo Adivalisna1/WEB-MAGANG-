@@ -52,6 +52,14 @@ async def get_stats(
         cursor.execute("SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1")
         online_now = cursor.fetchone()["onlineNow"]
         
+        cursor.execute("SELECT SUM(nilai_rekening_koran) AS totalBudget, SUM(nilai_excel) AS totalExpenditure FROM dokumen WHERE status = 'terverifikasi'")
+        fin_res = cursor.fetchone()
+        total_budget = fin_res["totalBudget"] if fin_res and fin_res["totalBudget"] else 0
+        total_expenditure = fin_res["totalExpenditure"] if fin_res and fin_res["totalExpenditure"] else 0
+        
+        cursor.execute("SELECT COUNT(DISTINCT satker_id) AS activeBranches FROM users WHERE is_active = 1 AND role_id = 2")
+        active_branches = cursor.fetchone()["activeBranches"]
+        
         cursor.execute("""
             SELECT u.nama,
                    COUNT(d.id) AS total,
@@ -66,9 +74,12 @@ async def get_stats(
         per_staff = cursor.fetchall()
         
         cursor.execute("""
-            SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS tanggal, COUNT(*) AS total
+            SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS tanggal, 
+                   COALESCE(SUM(nilai_rekening_koran), 0) AS budget, 
+                   COALESCE(SUM(nilai_excel), 0) AS expenditure
             FROM dokumen
             WHERE created_at >= CURDATE() - INTERVAL 13 DAY
+              AND status = 'terverifikasi'
             GROUP BY tanggal
             ORDER BY tanggal ASC
         """)
@@ -99,6 +110,9 @@ async def get_stats(
                 "lolosPimpinan": int(lolos_pimpinan),
                 "revisi": revisi,
                 "onlineNow": online_now,
+                "totalBudget": float(total_budget),
+                "totalExpenditure": float(total_expenditure),
+                "activeBranches": active_branches,
                 "perSatker": per_staff,
                 "perHari": per_hari,
                 "statusDist": status_dist,

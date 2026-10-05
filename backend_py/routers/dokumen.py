@@ -283,7 +283,8 @@ async def preview_dokumen(id: int, user: dict = Depends(get_current_user), db=De
         raise HTTPException(404, "File tidak ditemukan")
         
     mime = dok["file_mime"] or ""
-    if "pdf" in mime.lower():
+    filename_lower = dok["file_nama"].lower() if dok["file_nama"] else ""
+    if "pdf" in mime.lower() or filename_lower.endswith(".pdf"):
         return FileResponse(file_path, filename=dok["file_nama"], media_type="application/pdf", content_disposition_type="inline")
         
     # Libreoffice conversion

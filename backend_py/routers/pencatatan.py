@@ -15,7 +15,7 @@ UPLOAD_DIR = "/app/uploads/akuntansi"
 @router.get("/kategori")
 async def get_kategori(user: dict = Depends(get_current_user), db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT * FROM kategori_akuntansi ORDER BY nama_kategori ASC")
+        cursor.execute("SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1 ORDER BY nama ASC")
         rows = cursor.fetchall()
     return {"success": True, "data": rows}
 
@@ -24,8 +24,9 @@ async def create_kategori(request: dict, user: dict = Depends(require_admin_it),
     nama_kategori = request.get("nama_kategori")
     if not nama_kategori:
         raise HTTPException(400, "nama_kategori wajib diisi")
+    slug = nama_kategori.lower().replace(" ", "-")
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("INSERT INTO kategori_akuntansi (nama_kategori) VALUES (%s)", (nama_kategori,))
+        cursor.execute("INSERT INTO kategori_dokumen (nama, slug, perlu_nominal, is_active) VALUES (%s, %s, 0, 1)", (nama_kategori, slug))
         db.commit()
         return {"success": True, "message": "Kategori berhasil dibuat", "insertId": cursor.lastrowid}
 
@@ -34,15 +35,16 @@ async def update_kategori(id: int, request: dict, user: dict = Depends(require_a
     nama_kategori = request.get("nama_kategori")
     if not nama_kategori:
         raise HTTPException(400, "nama_kategori wajib diisi")
+    slug = nama_kategori.lower().replace(" ", "-")
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("UPDATE kategori_akuntansi SET nama_kategori = %s WHERE id = %s", (nama_kategori, id))
+        cursor.execute("UPDATE kategori_dokumen SET nama = %s, slug = %s WHERE id = %s", (nama_kategori, slug, id))
         db.commit()
         return {"success": True, "message": "Kategori berhasil diupdate"}
 
 @router.delete("/kategori/{id}")
 async def delete_kategori(id: int, user: dict = Depends(require_admin_it), db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("DELETE FROM kategori_akuntansi WHERE id = %s", (id,))
+        cursor.execute("DELETE FROM kategori_dokumen WHERE id = %s", (id,))
         db.commit()
         return {"success": True, "message": "Kategori berhasil dihapus"}
 
@@ -93,10 +95,10 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
             
     with db.cursor(dictionary=True) as cursor:
         query = f"""
-            SELECT a.*, k.nama_kategori, u.nama as pembuat, u2.nama as pengedit,
+            SELECT a.*, k.nama as nama_kategori, u.nama as pembuat, u2.nama as pengedit,
                    u.satker_id, s.nama as satker_nama
             FROM audit_akuntansi a
-            LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
+            LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id
             LEFT JOIN users u ON a.created_by = u.id
             LEFT JOIN users u2 ON a.updated_by = u2.id
             LEFT JOIN satkers s ON u.satker_id = s.id
@@ -140,30 +142,32 @@ async def create_akuntansi(
             satker_id = user.get("satker_id")
             print(f"DEBUG: user payload: {user}", flush=True)
             
-            cursor.execute("SELECT nama_kategori FROM kategori_akuntansi WHERE id = %s", (id_kategori,))
+            cursor.execute("SELECT nama FROM kategori_dokumen WHERE id = %s", (id_kategori,))
             cat_res = cursor.fetchone()
-            nama_kategori = cat_res["nama_kategori"].lower() if cat_res else ""
+            nama_kategori = cat_res["nama"].lower() if cat_res else ""
             
             dokumen_id = None
-            if "rekening koran" in nama_kategori:
-                cursor.execute("SELECT id FROM kategori_dokumen WHERE LOWER(nama) = %s LIMIT 1", ("rekening koran",))
+            if "rekening koran" in nama_kategori.replace("_", " "):
+                cursor.execute("SELECT id FROM kategori_dokumen WHERE LOWER(REPLACE(nama, '_', ' ')) = %s LIMIT 1", ("rekening koran",))
                 kat_dok_res = cursor.fetchone()
                 kat_dok_id = kat_dok_res["id"] if kat_dok_res else 1
                 
                 tahun = int(tanggal.split("-")[0]) if "-" in tanggal else datetime.datetime.now().year
                 
                 cursor.execute("""
-                    INSERT INTO dokumen (judul, kategori_id, tahun, file_path, file_nama, uploaded_by, status, is_public) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO dokumen (judul, kategori_id, tahun, file_path, file_nama, uploaded_by, status, is_public, nilai_excel, file_mime) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     f"Bukti Rekening Koran - {uraian}",
                     kat_dok_id,
                     tahun,
-                    bukti_file,
+                    f"akuntansi/{filename}",
                     file.filename,
                     created_by,
-                    'terverifikasi',
-                    1
+                    'menunggu_verifikasi',
+                    0,
+                    nominal,
+                    file.content_type
                 ))
                 dokumen_id = cursor.lastrowid
                 
