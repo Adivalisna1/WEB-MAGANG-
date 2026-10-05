@@ -37,30 +37,32 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-[#0f172a]/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-white border-r border-slate-200/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       <aside className={`
-        fixed left-0 top-0 md:relative h-screen bg-[#0f172a] text-slate-300 flex flex-col shrink-0 z-50 transition-all duration-300
+        fixed left-0 top-0 md:relative h-screen bg-white border-r border-slate-200 text-slate-600 flex flex-col shrink-0 z-50 transition-all duration-300
         ${isMobileOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
         ${isCollapsed ? 'md:w-20' : 'md:w-[260px]'}
       `}>
-        {/* Padding top for alignment with header */}
-        <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-[#1e293b]">
+        <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded bg-[#10b981]/20 flex items-center justify-center ${isCollapsed ? 'mx-auto' : ''}`}>
-              <ShieldCheck className="w-5 h-5 text-[#10b981] shrink-0" />
+            <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
+              <span className="text-sm">FS</span>
             </div>
             {!isCollapsed && (
-              <span className="font-bold tracking-widest text-sm text-[#10b981] uppercase">Pimpinan</span>
+              <div className="flex flex-col">
+                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">FinSight</h1>
+                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">REPORTING SUITE</p>
+              </div>
             )}
           </div>
           {/* Close button (Mobile only) */}
           <button 
             onClick={() => setIsMobileOpen(false)}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg"
+            className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -76,35 +78,35 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
               className={clsx(
                 'flex items-center px-4 py-3 rounded-xl font-medium transition-all group',
                 active
-                  ? 'bg-[#10b981] text-white shadow-lg shadow-[#10b981]/20'
-                  : 'text-slate-400 hover:text-white hover:bg-[#1e293b]',
+                  ? 'bg-[#1E90FF] text-white shadow-lg shadow-[#1E90FF]/30'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50',
                 isCollapsed ? 'justify-center' : 'gap-3 w-full'
               )}
               title={isCollapsed ? label : undefined}
             >
-              <Icon className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "group-hover:text-white")} />
+              <Icon className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-slate-900")} />
               {!isCollapsed && <span className="truncate">{label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-[#1e293b] flex flex-col gap-2">
+      <div className="p-4 border-t border-slate-200 flex flex-col gap-2">
         <Link
           href="/pimpinan/profil"
           className={clsx(
-            "flex items-center mb-2 cursor-pointer hover:bg-[#1e293b] p-2 rounded-xl transition-colors",
+            "flex items-center mb-2 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors",
             isCollapsed ? 'justify-center' : 'gap-3'
           )}
           title={isCollapsed ? "Profil" : undefined}
         >
-          <div className="w-10 h-10 rounded-full bg-[#10b981] flex items-center justify-center font-bold text-white shadow-inner shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#1E90FF] flex items-center justify-center font-bold text-white shadow-inner shrink-0">
             {user?.nama?.charAt(0).toUpperCase() ?? 'A'}
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-white truncate">{user?.nama ?? '-'}</p>
-              <p className="text-xs text-[#10b981] truncate capitalize">
+              <p className="text-sm font-semibold text-slate-900 truncate">{user?.nama ?? '-'}</p>
+              <p className="text-xs text-slate-500 truncate capitalize">
                 {user?.role?.replace('_', ' ') ?? 'Ketua Pimpinan'}
               </p>
             </div>
@@ -114,7 +116,7 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
         <Link
           href="/laporan"
           className={clsx(
-            "py-2.5 px-4 rounded-xl border border-[#334155] text-slate-300 hover:bg-[#10b981] hover:text-white hover:border-[#10b981] transition-all font-medium text-sm flex items-center group mb-2",
+            "py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-[#1E90FF] hover:text-white hover:border-[#1E90FF] transition-all font-medium text-sm flex items-center group mb-2",
             isCollapsed ? 'justify-center' : 'justify-center gap-2 w-full'
           )}
           title={isCollapsed ? "Dashboard Laporan" : undefined}
@@ -126,7 +128,7 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
         <button
           onClick={logoutFn}
           className={clsx(
-            "py-2.5 px-4 rounded-xl border border-[#334155] text-slate-300 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all font-medium text-sm flex items-center group",
+            "py-2.5 px-4 rounded-xl border border-[#334155] text-slate-600 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all font-medium text-sm flex items-center group",
             isCollapsed ? 'justify-center' : 'justify-center gap-2 w-full'
           )}
           title={isCollapsed ? "Keluar" : undefined}
@@ -138,7 +140,7 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
         {/* Collapse Toggle (Desktop only) */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex items-center justify-center p-2 mt-2 text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-lg transition-colors border border-[#1e293b]"
+          className="hidden md:flex items-center justify-center p-2 mt-2 text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors border border-[#1e293b]"
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>

@@ -33,26 +33,32 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, se
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-[#334155]/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-white border-r border-slate-200/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       <aside className={`
-        fixed left-0 top-0 md:relative h-screen bg-[#334155] text-slate-300 flex flex-col shrink-0 z-50 transition-all duration-300
+        fixed left-0 top-0 md:relative h-screen bg-white border-r border-slate-200 text-slate-600 flex flex-col shrink-0 z-50 transition-all duration-300
         ${isMobileOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
         ${isCollapsed ? 'md:w-20' : 'md:w-[260px]'}
       `}>
-        {/* Padding top for alignment with header */}
-        <div className="h-20 border-b border-[#475569]/30 flex items-center justify-between px-4 md:px-6">
-          <div className={`flex items-center ${isCollapsed ? 'mx-auto' : 'gap-2'}`}>
-            <FileText className="w-6 h-6 text-indigo-400 shrink-0" />
-            {!isCollapsed && <span className="font-bold text-sm tracking-wide text-white">STAFF DASHBOARD</span>}
+        <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
+              <span className="text-sm">FS</span>
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">FinSight</h1>
+                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">REPORTING SUITE</p>
+              </div>
+            )}
           </div>
           {/* Close button (Mobile only) */}
           <button 
             onClick={() => setIsMobileOpen(false)}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg"
+            className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -75,7 +81,7 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, se
               )}
               title={isCollapsed ? label : undefined}
             >
-              <Icon className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "group-hover:text-white")} />
+              <Icon className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-slate-900")} />
               {!isCollapsed && <span className="truncate">{label}</span>}
             </Link>
           );
@@ -86,18 +92,18 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, se
         <Link
           href="/laporan"
           className={clsx(
-            "flex items-center text-slate-300 hover:text-white bg-[#1e293b]/50 hover:bg-[#475569]/80 rounded-xl font-medium transition-all",
+            "flex items-center text-slate-600 hover:text-white bg-slate-100 hover:bg-[#1E90FF] rounded-xl font-medium transition-all group",
             isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3 w-full'
           )}
           title={isCollapsed ? "Dashboard Laporan" : undefined}
         >
-          <Home className="w-5 h-5 text-indigo-400 shrink-0" />
+          <Home className="w-5 h-5 text-slate-500 shrink-0 group-hover:text-white" />
           {!isCollapsed && <span>Dashboard Laporan</span>}
         </Link>
         <button
           onClick={logoutFn}
           className={clsx(
-            "flex items-center text-slate-300 hover:text-white bg-[#1e293b]/50 hover:bg-rose-500 rounded-xl font-medium transition-all group",
+            "flex items-center text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl font-medium transition-all group",
             isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3 w-full'
           )}
           title={isCollapsed ? "Logout" : undefined}
