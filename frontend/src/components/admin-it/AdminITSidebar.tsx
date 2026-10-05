@@ -44,22 +44,22 @@ export default function AdminITSidebar({ isMobileOpen, setIsMobileOpen, isCollap
         ${isCollapsed ? 'md:w-20' : 'md:w-64'}
       `}>
         {/* Header */}
-        <div className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
-          <div className="flex items-center">
-            <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white ${!isCollapsed ? 'mr-3' : 'mx-auto'}`}>
-              IT
+        <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${!isCollapsed ? '' : 'mx-auto'}`}>
+              <span className="text-sm">FS</span>
             </div>
             {!isCollapsed && (
-              <div>
-                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px]">CoreSphere IT</h1>
-                <p className="text-[11px] text-slate-500 font-medium">Administration</p>
+              <div className="flex flex-col">
+                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">FinSight</h1>
+                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">REPORTING SUITE</p>
               </div>
             )}
           </div>
           {/* Close button (Mobile only) */}
           <button 
             onClick={() => setIsMobileOpen(false)}
-            className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 hover:bg-gray-50 rounded-lg"
+            className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
