@@ -98,7 +98,7 @@ async def get_dashboard_stats(
             if target_satker_id:
                 cursor.execute("""
                     SELECT k.nama AS nama, SUM(a.nominal) AS value
-                    FROM audit_akuntansi a
+                    FROM pencatatan a
                     JOIN kategori_dokumen k ON a.id_kategori = k.id
                     JOIN users u ON a.created_by = u.id
                     WHERE u.satker_id = %s

@@ -41,24 +41,24 @@ function periodLabel(dok: Dokumen) {
 
 export default function PimpinanDokumenPage() {
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState('');
-  const [search,      setSearch]      = useState('');
-  const [processing,  setProcessing]  = useState<number | null>(null);
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [processing, setProcessing] = useState<number | null>(null);
+
   const [selectedDok, setSelectedDok] = useState<Dokumen | null>(null);
-  const [catatan,     setCatatan]     = useState('');
+  const [catatan, setCatatan] = useState('');
   const [editNilaiRek, setEditNilaiRek] = useState('');
   const [editNilaiExcel, setEditNilaiExcel] = useState('');
-  
-  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
-  const [previewError,    setPreviewError]    = useState('');
+  const [previewError, setPreviewError] = useState('');
   const [pageNumber, setPageNumber] = useState(1);
 
-  const isPdf   = selectedDok ? /\.pdf$/i.test(selectedDok.file_nama) : false;
+  const isPdf = selectedDok ? /\.pdf$/i.test(selectedDok.file_nama) : false;
   const isExcel = selectedDok ? /\.(xls|xlsx)$/i.test(selectedDok.file_nama) : false;
-  const isPreviewable = isPdf || (!isExcel); 
+  const isPreviewable = isPdf || (!isExcel);
 
   useEffect(() => {
     if (!selectedDok) {
@@ -107,7 +107,7 @@ export default function PimpinanDokumenPage() {
             }
           }
         }
-        
+
         const finalBlob = new Blob(chunks as unknown as BlobPart[], { type: res.headers.get('Content-Type') || 'application/pdf' });
         if (!cancelled) {
           setPreviewProgress({ loaded, total: contentLength || loaded });
@@ -127,7 +127,7 @@ export default function PimpinanDokumenPage() {
     }
     loadPreview();
     return () => { cancelled = true; controller.abort(); };
-  }, [selectedDok]); 
+  }, [selectedDok]);
 
   const handleDownload = () => {
     if (!selectedDok) return;
@@ -158,12 +158,12 @@ export default function PimpinanDokumenPage() {
     }
   }, [selectedDok]);
 
-  useEffect(() => { fetchDokumen(); }, []); 
+  useEffect(() => { fetchDokumen(); }, []);
 
   const filteredDocs = useMemo(() => {
     if (!search) return dokumenList;
-    return dokumenList.filter(d => 
-      d.judul.toLowerCase().includes(search.toLowerCase()) || 
+    return dokumenList.filter(d =>
+      d.judul.toLowerCase().includes(search.toLowerCase()) ||
       d.kategori.toLowerCase().includes(search.toLowerCase()) ||
       d.file_nama.toLowerCase().includes(search.toLowerCase())
     );
@@ -189,7 +189,7 @@ export default function PimpinanDokumenPage() {
       const numExcel = editNilaiExcel ? Number(editNilaiExcel.replace(/\./g, '').replace(/,/g, '.')) : null;
 
       const bodyData: any = {
-        aksi: action, 
+        aksi: action,
         catatan,
         nilai_rekening_koran: isNaN(numRek as any) ? null : numRek,
         nilai_excel: isNaN(numExcel as any) ? null : numExcel,
@@ -205,7 +205,7 @@ export default function PimpinanDokumenPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
-      
+
       toast.success(action === 'lolos' ? 'Berhasil lolos ke Eselon 1' : 'Dikembalikan ke Staff untuk direvisi');
       setSelectedDok(null);
       fetchDokumen();
@@ -218,11 +218,10 @@ export default function PimpinanDokumenPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden">
-      
+
       {/* Header Halaman */}
       <div className="flex justify-between items-end mb-6 shrink-0 mt-2">
         <div>
-          <p className="text-[10px] font-bold text-primary-600 uppercase tracking-widest mb-1">Workspace Validasi</p>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Verifikasi Dokumen</h1>
           <p className="text-slate-500 mt-1">Tinjau pengajuan dokumen dari Staff sebelum diteruskan ke Eselon 1.</p>
         </div>
@@ -233,7 +232,7 @@ export default function PimpinanDokumenPage() {
       </div>
 
       <div className="flex flex-1 gap-6 min-h-0">
-        
+
         {/* Panel Kiri: List Dokumen */}
         <div className="w-[380px] bg-white border border-slate-200 rounded-2xl flex flex-col shadow-sm shrink-0">
           <div className="p-4 border-b border-slate-100 shrink-0">
@@ -246,7 +245,7 @@ export default function PimpinanDokumenPage() {
                 <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} onClick={fetchDokumen} />
               </button>
             </div>
-            
+
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -273,8 +272,8 @@ export default function PimpinanDokumenPage() {
                     onClick={() => handleSelect(dok)}
                     className={clsx(
                       "w-full text-left p-4 rounded-xl border-2 transition-all flex flex-col gap-2 relative overflow-hidden",
-                      isActive 
-                        ? "border-primary-200 bg-primary-50 shadow-sm" 
+                      isActive
+                        ? "border-primary-200 bg-primary-50 shadow-sm"
                         : "border-transparent hover:bg-slate-50 hover:border-slate-100"
                     )}
                   >
@@ -303,12 +302,12 @@ export default function PimpinanDokumenPage() {
 
         {/* Panel Kanan: Preview & Form (Hanya render jika ada selectedDok) */}
         <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-2xl gap-4 overflow-y-auto pb-4 pr-1">
-          
+
           {selectedDok ? (
             <>
               {/* Box Preview */}
               <div className="flex-1 min-h-[400px] bg-white border border-slate-200 rounded-2xl flex flex-col overflow-hidden shadow-sm relative">
-                
+
                 {/* Header Preview */}
                 <div className="h-14 border-b border-slate-100 flex items-center justify-between px-4 shrink-0 bg-white">
                   <div className="flex items-center gap-3">
@@ -316,13 +315,13 @@ export default function PimpinanDokumenPage() {
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">Live Preview</p>
+                      <p className="text-sm font-bold text-slate-800">Preview</p>
                       <p className="text-[11px] text-slate-500 truncate max-w-[300px]">
-                        {selectedDok.file_nama} &bull; {(selectedDok.file_size / 1024 / 1024).toFixed(1)} MB
+                        {selectedDok.file_nama} &bull; {(selectedDok.file_size / 1024 / 1024).toFixed(1)} MB/kb
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-slate-400">
                     <div className="flex items-center gap-2 mr-2">
                       <button className="hover:text-slate-700"><ChevronLeft className="w-4 h-4" /></button>
@@ -342,17 +341,17 @@ export default function PimpinanDokumenPage() {
                 {/* Konten Preview */}
                 <div className="flex-1 bg-slate-100/50 relative overflow-hidden flex items-center justify-center p-6">
                   {isExcel ? (
-                     <div className="flex flex-col items-center justify-center h-full text-slate-500 bg-white p-8 rounded-xl border border-slate-200 shadow-sm w-full max-w-md text-center">
-                       <FileSpreadsheet className="w-16 h-16 mb-4 text-emerald-400" />
-                       <p className="font-bold text-slate-700 text-lg">Format Excel Tidak Mendukung Live Preview</p>
-                       <p className="text-sm text-slate-500 mt-2 mb-6">Silakan unduh file untuk melihat data di dalamnya.</p>
-                       <button
-                         onClick={handleDownload}
-                         className="flex items-center gap-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 font-medium px-6 py-3 rounded-xl transition-colors shadow-sm mx-auto"
-                       >
-                         <Download className="w-4 h-4" /> Unduh File Excel
-                       </button>
-                     </div>
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500 bg-white p-8 rounded-xl border border-slate-200 shadow-sm w-full max-w-md text-center">
+                      <FileSpreadsheet className="w-16 h-16 mb-4 text-emerald-400" />
+                      <p className="font-bold text-slate-700 text-lg">Format Excel Tidak Mendukung Live Preview</p>
+                      <p className="text-sm text-slate-500 mt-2 mb-6">Silakan unduh file untuk melihat data di dalamnya.</p>
+                      <button
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 font-medium px-6 py-3 rounded-xl transition-colors shadow-sm mx-auto"
+                      >
+                        <Download className="w-4 h-4" /> Unduh File Excel
+                      </button>
+                    </div>
                   ) : previewUrl ? (
                     <object data={previewUrl} type="application/pdf" className="w-full h-full bg-white shadow-sm border border-slate-200 rounded-sm">
                       <div className="flex flex-col items-center justify-center h-full text-slate-500">
@@ -398,13 +397,12 @@ export default function PimpinanDokumenPage() {
                   <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                     <FileCheck className="w-5 h-5 text-primary-600" /> Evaluation
                   </h3>
-                  <span className="text-xs text-slate-400">Confirm figures against the attached report</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Approved Budget Nominal
+                      Nilai Anggaran yang Disetujui
                     </label>
                     <div className="relative flex items-center">
                       <span className="absolute left-4 text-slate-500 font-medium">Rp</span>
@@ -426,23 +424,17 @@ export default function PimpinanDokumenPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Reported Realization Nominal
+                      Nilai Nominal Realisasi yang Dilaporkan
                     </label>
                     <div className="relative flex items-center">
-                      <span className="absolute left-4 text-slate-500 font-medium">Rp</span>
+                      <span className="absolute left-4 text-slate-400 font-medium">Rp</span>
                       <input
                         type="text"
                         value={editNilaiExcel}
-                        onChange={e => {
-                          const val = e.target.value.replace(/[^0-9,]/g, '');
-                          const parts = val.split(',');
-                          if (parts.length > 2) return;
-                          const ribuan = parts[0].replace(/\./g, '');
-                          const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
-                          setEditNilaiExcel(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
-                        }}
+                        readOnly
+                        tabIndex={-1}
                         placeholder="0"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-left"
+                        className="w-full bg-slate-100/80 border border-slate-200 text-slate-600 font-semibold rounded-xl pl-12 pr-4 py-3 cursor-not-allowed select-none focus:outline-none text-left"
                       />
                     </div>
                   </div>
@@ -450,8 +442,8 @@ export default function PimpinanDokumenPage() {
 
                 <div className="mb-6">
                   <div className="flex justify-between items-end mb-2">
-                    <label className="block text-sm font-bold text-slate-700">Revision Notes</label>
-                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">Required when rejecting</span>
+                    <label className="block text-sm font-bold text-slate-700">Catatan </label>
+                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">Wajib diisi saat revisi </span>
                   </div>
                   <textarea
                     value={catatan}

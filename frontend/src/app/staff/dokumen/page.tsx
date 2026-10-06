@@ -22,7 +22,7 @@ interface Dokumen {
   id: number;
   judul: string;
   tahun: number;
-  status: 'draft' | 'menunggu_verifikasi' | 'lolos_pimpinan' | 'terverifikasi' | 'revisi' | 'diarsipkan';
+  status: 'draft' | 'menunggu_verifikasi' | 'lolos_pimpinan' | 'lolos_admin' | 'terverifikasi' | 'revisi' | 'diarsipkan';
   kategori: string;
   file_nama: string;
   file_size: number;
@@ -41,6 +41,7 @@ const statusConfig = {
   draft: { label: 'Draft', color: 'bg-gray-100 text-gray-700', icon: FileText },
   menunggu_verifikasi: { label: 'Menunggu Pimpinan', color: 'bg-indigo-100 text-indigo-700', icon: Clock },
   lolos_pimpinan: { label: 'Menunggu Eselon 1', color: 'bg-blue-100 text-blue-700', icon: Clock },
+  lolos_admin: { label: 'Menunggu Eselon 1', color: 'bg-blue-100 text-blue-700', icon: Clock },
   terverifikasi: { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
   revisi: { label: 'Perlu Perbaikan', color: 'bg-amber-100 text-amber-700', icon: MessageSquareWarning },
   diarsipkan: { label: 'Diarsipkan', color: 'bg-purple-100 text-purple-700', icon: Archive },
@@ -252,7 +253,7 @@ export default function StaffDokumenPage() {
                     </tr>
                   ) : (
                     filteredDokumenList.map((dok) => {
-                      const cfg = statusConfig[dok.status];
+                      const cfg = statusConfig[dok.status] || { label: String(dok.status), color: 'bg-gray-100 text-gray-700', icon: FileText };
                       const canEdit = dok.status === 'draft' || dok.status === 'revisi';
                       const canSubmit = dok.status === 'draft' || dok.status === 'revisi';
 

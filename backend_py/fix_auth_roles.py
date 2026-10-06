@@ -23,7 +23,7 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
         query = \"\"\"
             SELECT a.*, k.nama_kategori, u.nama as pembuat, u2.nama as pengedit,
                    u.satker_id, s.nama as satker_nama
-            FROM audit_akuntansi a
+            FROM pencatatan a
             LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
             LEFT JOIN users u ON a.created_by = u.id
             LEFT JOIN users u2 ON a.updated_by = u2.id
@@ -53,7 +53,7 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
         query = f\"\"\"
             SELECT a.*, k.nama_kategori, u.nama as pembuat, u2.nama as pengedit,
                    u.satker_id, s.nama as satker_nama
-            FROM audit_akuntansi a
+            FROM pencatatan a
             LEFT JOIN kategori_akuntansi k ON a.id_kategori = k.id
             LEFT JOIN users u ON a.created_by = u.id
             LEFT JOIN users u2 ON a.updated_by = u2.id

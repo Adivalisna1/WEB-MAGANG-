@@ -97,7 +97,7 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
         query = f"""
             SELECT a.*, k.nama as nama_kategori, u.nama as pembuat, u2.nama as pengedit,
                    u.satker_id, s.nama as satker_nama
-            FROM audit_akuntansi a
+            FROM pencatatan a
             LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id
             LEFT JOIN users u ON a.created_by = u.id
             LEFT JOIN users u2 ON a.updated_by = u2.id
@@ -182,7 +182,7 @@ async def create_akuntansi(
                 ))
             
             cursor.execute("""
-                INSERT INTO audit_akuntansi 
+                INSERT INTO pencatatan 
                 (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, nama_rekening) 
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by, nomor_rekening_bank, nama_bank, nama_rekening))
@@ -201,6 +201,6 @@ async def update_metadata(id: int, request: dict, user: dict = Depends(require_a
         raise HTTPException(400, "id_kategori wajib dikirim")
     
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("UPDATE audit_akuntansi SET id_kategori = %s, updated_by = %s WHERE id = %s", (id_kategori, user["id"], id))
+        cursor.execute("UPDATE pencatatan SET id_kategori = %s, updated_by = %s WHERE id = %s", (id_kategori, user["id"], id))
         db.commit()
         return {"success": True, "message": "Kategori akuntansi berhasil diubah oleh Admin IT"}

@@ -87,4 +87,7 @@ dummy-data/
 MIGRATION_TASK_FASTAPI.md
 backend_py/venv/
 backend_py/__pycache__/
+**/__pycache__/
+*.pyc
 backend_py/.pytest_cache/
+*.make

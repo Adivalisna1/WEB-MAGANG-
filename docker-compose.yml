@@ -29,41 +29,7 @@ services:
       start_period: 30s
 
   # ============================================================
-  # Backend API - Node.js/Express
-  # ============================================================
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: web_laporan_backend
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      APP_PORT: ${APP_PORT:-5000}
-      MYSQL_HOST: db
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
-      FASTAPI_URL: http://backend_py:8000
-      TZ: Asia/Jakarta
-    ports:
-      - "${APP_PORT:-5000}:5000"
-    volumes:
-      - uploads_data:/app/uploads   # persistent storage untuk file upload
-    networks:
-      - web_laporan_net
-
-  # ============================================================
-  # Backend API - Python FastAPI (NEW)
+  # Backend API - Python FastAPI (Utama)
   # ============================================================
   backend_py:
     build:
@@ -87,7 +53,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       TZ: Asia/Jakarta
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-5000}:5000"
     volumes:
       - uploads_data:/app/uploads
     networks:
@@ -106,13 +72,13 @@ services:
     container_name: web_laporan_frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      - backend_py
     environment:
       NODE_ENV: production
       # Browser mengakses backend lewat localhost (dari luar Docker)
       NEXT_PUBLIC_API_URL: http://localhost:5000/api
       # Server Next.js mengakses backend lewat nama service Docker (antar container)
-      API_URL_INTERNAL: http://backend:5000/api
+      API_URL_INTERNAL: http://backend_py:5000/api
       # Webhook n8n untuk AI (diakses antar container)
       NEXT_PUBLIC_N8N_AI_WEBHOOK: http://n8n:5678/webhook/baca-dokumen
     ports:
