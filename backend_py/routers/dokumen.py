@@ -125,11 +125,15 @@ async def get_all_dokumen(
     if user.get("role_id") == 2:
         where += ' AND d.uploaded_by = %s'
         params.append(user["id"])
+    elif user.get("role_id") == 1:
+        if user.get("satker_id"):
+            where += ' AND u.satker_id = %s'
+            params.append(user["satker_id"])
         
-    if status:
+    if status and status != 'all':
         where += ' AND d.status = %s'
         params.append(status)
-    if kategori:
+    if kategori and kategori != 'all':
         where += ' AND k.slug = %s'
         params.append(kategori)
     if tahun:
@@ -156,6 +160,7 @@ async def get_all_dokumen(
         cursor.execute(f"""
             SELECT COUNT(*) AS total FROM dokumen d
             JOIN kategori_dokumen k ON k.id = d.kategori_id
+            JOIN users u ON u.id = d.uploaded_by
             WHERE {where}
         """, tuple(params))
         total = cursor.fetchone()["total"]

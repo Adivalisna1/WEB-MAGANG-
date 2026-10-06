@@ -1,15 +1,18 @@
 'use client';
 
+import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSession } from '@/lib/auth';
 import {
   FileText, CheckCircle, XCircle, Clock,
-  Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Trash2, Download,
+  Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Download,
   Send, X, Search, FileCheck, FileSpreadsheet,
-  ChevronLeft, ChevronRight, Minimize2, Maximize2, Printer
+  ChevronLeft, ChevronRight, Maximize2, Printer,
+  Filter, Check, AlertTriangle, ShieldCheck, UserCheck, Layers
 } from 'lucide-react';
 import clsx from 'clsx';
+import '@/app/staff/staff.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -27,8 +30,15 @@ interface Dokumen {
   uploaded_by: string;
   created_at: string;
   catatan: string | null;
+  catatan_oleh?: string | null;
   nilai_rekening_koran?: number | null;
   nilai_excel?: number | null;
+}
+
+interface Kategori {
+  id: number;
+  nama: string;
+  slug: string;
 }
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -39,11 +49,26 @@ function periodLabel(dok: Dokumen) {
   return String(dok.tahun);
 }
 
-export default function PimpinanDokumenPage() {
+const statusConfig: Record<string, { label: string; badgeClass: string; dot: string; bg: string; text: string }> = {
+  menunggu_verifikasi: { label: 'Menunggu Pimpinan', badgeClass: 'staff-badge-pimpinan', dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-800' },
+  lolos_pimpinan: { label: 'Menunggu Eselon 1', badgeClass: 'staff-badge-eselon', dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-800' },
+  lolos_admin: { label: 'Menunggu Eselon 1', badgeClass: 'staff-badge-eselon', dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-800' },
+  terverifikasi: { label: 'Terverifikasi (Selesai)', badgeClass: 'staff-badge-selesai', dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-800' },
+  revisi: { label: 'Perlu Revisi', badgeClass: 'staff-badge-revisi', dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-800' },
+  draft: { label: 'Draft Staff', badgeClass: 'staff-badge-draft', dot: 'bg-slate-400', bg: 'bg-slate-50', text: 'text-slate-700' },
+};
+
+function DokumenContent() {
+  const searchParams = useSearchParams();
+  const initialId = searchParams.get('id');
+
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
+  const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'menunggu' | 'eselon' | 'selesai' | 'revisi'>('all');
+  const [selectedKategori, setSelectedKategori] = useState<string>('all');
   const [processing, setProcessing] = useState<number | null>(null);
 
   const [selectedDok, setSelectedDok] = useState<Dokumen | null>(null);
@@ -52,15 +77,31 @@ export default function PimpinanDokumenPage() {
   const [editNilaiExcel, setEditNilaiExcel] = useState('');
   const [rescanning, setRescanning] = useState(false);
 
+  // Preview States
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [previewError, setPreviewError] = useState('');
-  const [pageNumber, setPageNumber] = useState(1);
 
   const isPdf = selectedDok ? /\.pdf$/i.test(selectedDok.file_nama) : false;
   const isExcel = selectedDok ? /\.(xls|xlsx)$/i.test(selectedDok.file_nama) : false;
-  const isPreviewable = isPdf || (!isExcel);
 
+  // Load Kategori options
+  useEffect(() => {
+    async function loadKategori() {
+      try {
+        const res = await fetch(`${API}/dokumen/kategori`);
+        const data = await res.json();
+        if (data.success && data.data) {
+          setKategoriList(data.data);
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    loadKategori();
+  }, []);
+
+  // PDF Preview streaming loader
   useEffect(() => {
     if (!selectedDok) {
       if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
@@ -120,7 +161,7 @@ export default function PimpinanDokumenPage() {
               });
               setPreviewProgress(null);
             }
-          }, 500);
+          }, 400);
         }
       } catch (err: any) {
         if (!cancelled && !controller.signal.aborted) setPreviewError(`Error koneksi: ${err.message}`);
@@ -128,7 +169,7 @@ export default function PimpinanDokumenPage() {
     }
     loadPreview();
     return () => { cancelled = true; controller.abort(); };
-  }, [selectedDok]);
+  }, [selectedDok, isExcel]);
 
   const handleDownload = () => {
     if (!selectedDok) return;
@@ -136,48 +177,91 @@ export default function PimpinanDokumenPage() {
     window.open(`${API}/dokumen/${selectedDok.id}/download?token=${session?.token}`, '_blank');
   };
 
-  const fetchDokumen = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
-      const session = getSession();
-      // Hanya ambil dokumen yang berstatus menunggu_verifikasi
-      const res = await fetch(`${API}/dokumen/all?status=menunggu_verifikasi&limit=100`, {
-        headers: { Authorization: `Bearer ${session?.token}` }
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || 'Gagal memuat data');
-      setDokumenList(json.data);
-      if (json.data.length > 0 && !selectedDok) {
-        handleSelect(json.data[0]);
-      } else if (json.data.length === 0) {
-        setSelectedDok(null);
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDok]);
-
-  useEffect(() => { fetchDokumen(); }, []);
-
-  const filteredDocs = useMemo(() => {
-    if (!search) return dokumenList;
-    return dokumenList.filter(d =>
-      d.judul.toLowerCase().includes(search.toLowerCase()) ||
-      d.kategori.toLowerCase().includes(search.toLowerCase()) ||
-      d.file_nama.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [dokumenList, search]);
-
-  const handleSelect = (dok: Dokumen) => {
+  const handleSelect = useCallback((dok: Dokumen) => {
     setSelectedDok(dok);
-    setCatatan('');
-    // Auto-populate: gunakan nilai_rekening_koran jika ada, atau fallback ke nilai_excel jika kosong
+    setCatatan(dok.catatan || '');
     const valRek = dok.nilai_rekening_koran != null ? dok.nilai_rekening_koran : dok.nilai_excel;
     setEditNilaiRek(valRek != null ? Number(valRek).toLocaleString('id-ID') : '');
     setEditNilaiExcel(dok.nilai_excel != null ? Number(dok.nilai_excel).toLocaleString('id-ID') : '');
-  };
+  }, []);
+
+  const fetchDokumen = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const session = getSession();
+      // Mengambil SELURUH dokumen milik satker pimpinan
+      const res = await fetch(`${API}/dokumen/all?limit=250`, {
+        headers: { Authorization: `Bearer ${session?.token}` }
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Gagal memuat dokumen');
+
+      const docs: Dokumen[] = json.data || [];
+      setDokumenList(docs);
+
+      // Auto-select logic
+      if (docs.length > 0) {
+        if (initialId) {
+          const targeted = docs.find(d => String(d.id) === String(initialId));
+          if (targeted) {
+            handleSelect(targeted);
+            return;
+          }
+        }
+        // Prioritaskan pilih dokumen yang sedang menunggu verifikasi jika ada
+        const pendingDoc = docs.find(d => d.status === 'menunggu_verifikasi');
+        if (pendingDoc) {
+          handleSelect(pendingDoc);
+        } else {
+          handleSelect(docs[0]);
+        }
+      } else {
+        setSelectedDok(null);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan sistem saat mengambil data');
+    } finally {
+      setLoading(false);
+    }
+  }, [initialId, handleSelect]);
+
+  useEffect(() => {
+    fetchDokumen();
+  }, [fetchDokumen]);
+
+  // Status Counters
+  const countMenunggu = useMemo(() => dokumenList.filter(d => d.status === 'menunggu_verifikasi').length, [dokumenList]);
+  const countLolos = useMemo(() => dokumenList.filter(d => d.status === 'lolos_pimpinan' || d.status === 'lolos_admin').length, [dokumenList]);
+  const countSelesai = useMemo(() => dokumenList.filter(d => d.status === 'terverifikasi').length, [dokumenList]);
+  const countRevisi = useMemo(() => dokumenList.filter(d => d.status === 'revisi').length, [dokumenList]);
+
+  // Filtered List
+  const filteredDocs = useMemo(() => {
+    return dokumenList.filter(d => {
+      // Filter Status Tab
+      if (activeTab === 'menunggu' && d.status !== 'menunggu_verifikasi') return false;
+      if (activeTab === 'eselon' && d.status !== 'lolos_pimpinan' && d.status !== 'lolos_admin') return false;
+      if (activeTab === 'selesai' && d.status !== 'terverifikasi') return false;
+      if (activeTab === 'revisi' && d.status !== 'revisi') return false;
+
+      // Filter Kategori
+      if (selectedKategori !== 'all' && d.kategori !== selectedKategori) return false;
+
+      // Search Query
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchTitle = d.judul.toLowerCase().includes(q);
+        const matchKategori = d.kategori?.toLowerCase().includes(q);
+        const matchFile = d.file_nama?.toLowerCase().includes(q);
+        const matchUploader = d.uploaded_by?.toLowerCase().includes(q);
+        const matchNomor = d.nomor_laporan?.toLowerCase().includes(q);
+        if (!matchTitle && !matchKategori && !matchFile && !matchUploader && !matchNomor) return false;
+      }
+
+      return true;
+    });
+  }, [dokumenList, activeTab, selectedKategori, search]);
 
   const handleRescan = async (id: number) => {
     setRescanning(true);
@@ -188,14 +272,14 @@ export default function PimpinanDokumenPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || data.message || 'Gagal audit ulang');
+      if (!res.ok) throw new Error(data.detail || data.message || 'Gagal audit ulang berkas');
 
       if (data.data?.scan?.nominal != null) {
         const nomFormatted = Number(data.data.scan.nominal).toLocaleString('id-ID');
         if (!editNilaiRek) setEditNilaiRek(nomFormatted);
         if (!editNilaiExcel) setEditNilaiExcel(nomFormatted);
       }
-      toast.success(data.message || 'Audit ulang berkas selesai');
+      toast.success(data.message || 'Audit ulang berkas rekonsiliasi selesai');
       fetchDokumen();
     } catch (err: any) {
       toast.error(err.message || 'Gagal audit ulang berkas');
@@ -206,7 +290,7 @@ export default function PimpinanDokumenPage() {
 
   const handleVerifikasi = async (id: number, action: 'lolos' | 'reject') => {
     if (action === 'reject' && !catatan.trim()) {
-      toast.error('Catatan wajib diisi jika revisi');
+      toast.error('Catatan wajib diisi jika dokumen dikembalikan untuk revisi');
       return;
     }
 
@@ -232,159 +316,359 @@ export default function PimpinanDokumenPage() {
         body: JSON.stringify(bodyData)
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+      if (!res.ok) throw new Error(json.message || 'Gagal memproses verifikasi');
 
-      toast.success(action === 'lolos' ? 'Berhasil lolos ke Eselon 1' : 'Dikembalikan ke Staff untuk direvisi');
-      setSelectedDok(null);
-      fetchDokumen();
+      toast.success(action === 'lolos' ? 'Dokumen disetujui & diteruskan ke Eselon 1' : 'Dokumen dikembalikan ke Staff untuk direvisi');
+      await fetchDokumen();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || 'Terjadi kesalahan sistem');
     } finally {
       setProcessing(null);
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-130px)] overflow-hidden">
 
-      {/* Header Halaman */}
-      <div className="flex justify-between items-end mb-6 shrink-0 mt-2">
+      {/* HEADER UTAMA HALAMAN */}
+      <div className="flex flex-wrap justify-between items-center mb-5 shrink-0 gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Verifikasi Dokumen</h1>
-          <p className="text-slate-500 mt-1">Tinjau pengajuan dokumen dari Staff sebelum diteruskan ke Eselon 1.</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Layers className="w-7 h-7 text-[#1E90FF]" />
+            Dokumen Satker
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+            Kelola seluruh arsip dokumen satker, pantau status penelaahan, dan validasi pengajuan staf.
+          </p>
         </div>
-        <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-full font-medium text-sm border border-amber-200 flex items-center gap-2 shadow-sm">
-          <Clock className="w-4 h-4" />
-          {dokumenList.length} dokumen menunggu
+
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-xl shadow-xs">
+            {dokumenList.length} Total Berkas
+          </span>
+
+          {countMenunggu > 0 ? (
+            <span className="staff-status-badge staff-badge-pimpinan shadow-xs">
+              <span className="dot" />
+              {countMenunggu} Menunggu Verifikasi
+            </span>
+          ) : (
+            <span className="staff-status-badge staff-badge-selesai shadow-xs">
+              <span className="dot" />
+              Semua Berkas Selesai Ditelaah
+            </span>
+          )}
+
+          <button
+            onClick={fetchDokumen}
+            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200"
+            title="Muat Ulang Data"
+          >
+            <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
+          </button>
         </div>
       </div>
 
-      <div className="flex flex-1 gap-6 min-h-0">
+      {/* WORKSPACE 2 KOLOM (KIRI: LIST ARSIP DOKUMEN, KANAN: PREVIEW & DETAIL/EVALUASI) */}
+      <div className="flex flex-1 gap-5 min-h-0">
 
-        {/* Panel Kiri: List Dokumen */}
-        <div className="w-[380px] bg-white border border-slate-200 rounded-2xl flex flex-col shadow-sm shrink-0">
-          <div className="p-4 border-b border-slate-100 shrink-0">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                Antrean Staff
-                <span className="bg-primary-100 text-primary-700 text-xs py-0.5 px-2 rounded-full">{filteredDocs.length}</span>
-              </h2>
-              <button className="text-slate-400 hover:text-slate-700 p-1">
-                <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} onClick={fetchDokumen} />
+        {/* ========================================================= */}
+        {/* PANEL KIRI: DAFTAR DOKUMEN & FILTER MULTI-STATUS */}
+        {/* ========================================================= */}
+        <div className="w-[410px] bg-white border border-slate-200/90 rounded-2xl flex flex-col shadow-xs shrink-0 overflow-hidden">
+          
+          {/* Header Panel Kiri: Tabs Status */}
+          <div className="p-3.5 border-b border-slate-100 bg-slate-50/60 shrink-0 space-y-2.5">
+            {/* Tab Pill Selector */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 custom-scrollbar">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={clsx(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5",
+                  activeTab === 'all'
+                    ? "bg-slate-800 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-200/60"
+                )}
+              >
+                Semua
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full", activeTab === 'all' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700")}>
+                  {dokumenList.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('menunggu')}
+                className={clsx(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5",
+                  activeTab === 'menunggu'
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "text-amber-800 hover:bg-amber-100/70 bg-amber-50"
+                )}
+              >
+                Menunggu
+                {countMenunggu > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full", activeTab === 'menunggu' ? "bg-white/20 text-white" : "bg-amber-200/80 text-amber-900")}>
+                  {countMenunggu}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('eselon')}
+                className={clsx(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5",
+                  activeTab === 'eselon'
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-200/60"
+                )}
+              >
+                Di Eselon 1
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full", activeTab === 'eselon' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700")}>
+                  {countLolos}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('selesai')}
+                className={clsx(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5",
+                  activeTab === 'selesai'
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-200/60"
+                )}
+              >
+                Selesai
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full", activeTab === 'selesai' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700")}>
+                  {countSelesai}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('revisi')}
+                className={clsx(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5",
+                  activeTab === 'revisi'
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-200/60"
+                )}
+              >
+                Revisi
+                <span className={clsx("text-[10px] px-1.5 py-0.2 rounded-full", activeTab === 'revisi' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700")}>
+                  {countRevisi}
+                </span>
               </button>
             </div>
 
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari dokumen..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 text-sm rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-              />
+            {/* Kotak Pencarian & Filter Kategori */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari judul, nomor, file..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-xs rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs"
+                />
+              </div>
+
+              {kategoriList.length > 0 && (
+                <select
+                  value={selectedKategori}
+                  onChange={e => setSelectedKategori(e.target.value)}
+                  className="bg-white border border-slate-200 text-xs rounded-xl px-2.5 py-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium max-w-[125px] shadow-2xs"
+                >
+                  <option value="all">Semua Jenis</option>
+                  {kategoriList.map(k => (
+                    <option key={k.id} value={k.nama}>{k.nama}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {/* List Kartu Dokumen */}
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-2 custom-scrollbar bg-slate-50/30">
             {loading ? (
-              <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-300" /></div>
+              <div className="py-16 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                <span className="text-xs text-slate-400 font-medium">Memuat dokumen satker...</span>
+              </div>
             ) : filteredDocs.length === 0 ? (
-              <div className="py-10 text-center text-sm text-slate-400">Tidak ada dokumen menunggu verifikasi</div>
+              <div className="py-16 px-4 text-center">
+                <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                <p className="text-sm font-bold text-slate-700">Tidak ada dokumen ditemukan</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {search ? 'Coba kata kunci pencarian yang lain.' : 'Belum ada dokumen pada kategori atau tab ini.'}
+                </p>
+              </div>
             ) : (
               filteredDocs.map(dok => {
                 const isActive = selectedDok?.id === dok.id;
+                const cfg = statusConfig[dok.status] || statusConfig.draft;
+                const isPending = dok.status === 'menunggu_verifikasi';
+
+                // Rekonsiliasi badge preview
+                const hasNomRek = dok.nilai_rekening_koran != null;
+                const hasNomExc = dok.nilai_excel != null;
+                const isMatch = hasNomRek && hasNomExc && Math.abs(Number(dok.nilai_rekening_koran) - Number(dok.nilai_excel)) === 0;
+                const hasDiff = hasNomRek && hasNomExc && Math.abs(Number(dok.nilai_rekening_koran) - Number(dok.nilai_excel)) > 0;
+
                 return (
                   <button
                     key={dok.id}
                     onClick={() => handleSelect(dok)}
                     className={clsx(
-                      "w-full text-left p-4 rounded-xl border-2 transition-all flex flex-col gap-2 relative overflow-hidden",
+                      "w-full text-left p-3.5 rounded-xl border transition-all flex flex-col gap-2 relative overflow-hidden group",
                       isActive
-                        ? "border-primary-200 bg-primary-50 shadow-sm"
-                        : "border-transparent hover:bg-slate-50 hover:border-slate-100"
+                        ? "border-[#1E90FF] bg-blue-50/70 shadow-sm"
+                        : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/80 shadow-2xs"
                     )}
                   >
-                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600"></div>}
-                    <div className="flex justify-between items-start w-full">
-                      <p className={clsx("font-bold truncate pr-2 text-sm", isActive ? "text-primary-900" : "text-slate-700")}>
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#1E90FF]" />
+                    )}
+
+                    {/* Judul & Status Badge */}
+                    <div className="flex justify-between items-start gap-2 w-full">
+                      <p className={clsx(
+                        "font-bold text-xs leading-snug line-clamp-2",
+                        isActive ? "text-blue-950 font-extrabold" : "text-slate-800 group-hover:text-slate-900"
+                      )}>
                         {dok.judul}
                       </p>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-100 px-2 py-0.5 rounded flex items-center shrink-0">
-                        Menunggu
+
+                      <span className={clsx(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0 uppercase tracking-wider",
+                        cfg.bg, cfg.text
+                      )}>
+                        <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
+                        {cfg.label.replace(' (Selesai)', '')}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center w-full text-xs">
-                      <p className="text-slate-500 truncate">{dok.kategori}</p>
-                      <div className="flex items-center gap-1 text-slate-400 shrink-0">
-                        <Clock className="w-3 h-3" />
-                        {new Date(dok.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </div>
+
+                    {/* Metadata Kategori & Periode */}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="font-semibold text-slate-600 truncate max-w-[190px]">
+                        {dok.kategori} &bull; {periodLabel(dok)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 shrink-0">
+                        {new Date(dok.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+
+                    {/* Rekonsiliasi Pill & Pengunggah */}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px]">
+                      <span className="text-slate-400 truncate max-w-[170px]">
+                        Oleh: <strong className="text-slate-600 font-medium">{dok.uploaded_by || 'Staff'}</strong>
+                      </span>
+
+                      {isMatch && (
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200/80">
+                          ✓ Cocok (Rp 0)
+                        </span>
+                      )}
+
+                      {hasDiff && (
+                        <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded text-[10px] border border-rose-200/80">
+                          ⚠ Selisih
+                        </span>
+                      )}
+
+                      {!hasNomRek && !hasNomExc && (
+                        <span className="text-slate-400">
+                          {dok.nomor_laporan || '-'}
+                        </span>
+                      )}
                     </div>
                   </button>
-                )
+                );
               })
             )}
           </div>
         </div>
 
-        {/* Panel Kanan: Preview & Form (Hanya render jika ada selectedDok) */}
-        <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-2xl gap-4 overflow-y-auto pb-4 pr-1">
+        {/* ========================================================= */}
+        {/* PANEL KANAN: PREVIEW DOKUMEN & KONTROL TINJAUAN */}
+        {/* ========================================================= */}
+        <div className="flex-1 flex flex-col min-w-0 bg-transparent rounded-2xl gap-4 overflow-y-auto pb-4 pr-1 custom-scrollbar">
 
           {selectedDok ? (
             <>
-              {/* Box Preview */}
-              <div className="flex-1 min-h-[400px] bg-white border border-slate-200 rounded-2xl flex flex-col overflow-hidden shadow-sm relative">
+              {/* BOX PREVIEW DOKUMEN */}
+              <div className="min-h-[460px] flex-1 bg-white border border-slate-200/90 rounded-2xl flex flex-col overflow-hidden shadow-xs relative">
 
-                {/* Header Preview */}
+                {/* Toolbar Preview */}
                 <div className="h-14 border-b border-slate-100 flex items-center justify-between px-4 shrink-0 bg-white">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={clsx(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                      isExcel ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                    )}>
+                      {isExcel ? <FileSpreadsheet className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">Preview</p>
-                      <p className="text-[11px] text-slate-500 truncate max-w-[300px]">
-                        {selectedDok.file_nama} &bull; {(selectedDok.file_size / 1024 / 1024).toFixed(1)} MB/kb
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 truncate max-w-[280px] md:max-w-md">
+                        {selectedDok.file_nama}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {(selectedDok.file_size / 1024 / 1024).toFixed(2)} MB &bull; Diunggah oleh {selectedDok.uploaded_by}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-slate-400">
-                    <div className="flex items-center gap-2 mr-2">
-                      <button className="hover:text-slate-700"><ChevronLeft className="w-4 h-4" /></button>
-                      <span className="text-xs font-medium">1 / 1</span>
-                      <button className="hover:text-slate-700"><ChevronRight className="w-4 h-4" /></button>
-                    </div>
-                    <button className="hover:text-slate-700"><Search className="w-4 h-4" /></button>
-                    <span className="text-xs font-medium">100%</span>
-                    <button onClick={handleDownload} className="hover:text-slate-700" title="Unduh">
-                      <Download className="w-4 h-4" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleDownload}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shadow-2xs"
+                      title="Unduh Berkas Asli"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Unduh</span>
                     </button>
-                    <button className="hover:text-slate-700"><Printer className="w-4 h-4" /></button>
-                    <button onClick={() => previewUrl && window.open(previewUrl, '_blank')} className="hover:text-slate-700" title="Perbesar / Tab Baru"><Maximize2 className="w-4 h-4" /></button>
+
+                    {previewUrl && (
+                      <button
+                        onClick={() => window.open(previewUrl, '_blank')}
+                        className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all border border-slate-200"
+                        title="Buka di Tab Baru"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Konten Preview */}
-                <div className="flex-1 bg-slate-100/50 relative overflow-hidden flex items-center justify-center p-6">
+                {/* Container Tampilan Preview */}
+                <div className="flex-1 bg-slate-100/50 relative overflow-hidden flex items-center justify-center p-4">
                   {isExcel ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-500 bg-white p-8 rounded-xl border border-slate-200 shadow-sm w-full max-w-md text-center">
-                      <FileSpreadsheet className="w-16 h-16 mb-4 text-emerald-400" />
-                      <p className="font-bold text-slate-700 text-lg">Format Excel Tidak Mendukung Live Preview</p>
-                      <p className="text-sm text-slate-500 mt-2 mb-6">Silakan unduh file untuk melihat data di dalamnya.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm w-full max-w-md text-center">
+                      <FileSpreadsheet className="w-16 h-16 mb-4 text-emerald-500" />
+                      <p className="font-bold text-slate-800 text-base">Format Spreadsheet (Excel)</p>
+                      <p className="text-xs text-slate-500 mt-1 mb-5 leading-relaxed">
+                        Dokumen LPJ / Rekap dalam format Excel dapat langsung diunduh dan dibuka dengan aplikasi spreadsheet lokal.
+                      </p>
                       <button
                         onClick={handleDownload}
-                        className="flex items-center gap-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 font-medium px-6 py-3 rounded-xl transition-colors shadow-sm mx-auto"
+                        className="flex items-center gap-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-5 py-2.5 rounded-xl transition-all shadow-sm"
                       >
-                        <Download className="w-4 h-4" /> Unduh File Excel
+                        <Download className="w-4 h-4" /> Unduh File Excel Sekarang
                       </button>
                     </div>
                   ) : previewUrl ? (
-                    <object data={previewUrl} type="application/pdf" className="w-full h-full bg-white shadow-sm border border-slate-200 rounded-sm">
-                      <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                        <FileText className="w-12 h-12 mb-2 text-slate-300" />
-                        <button onClick={() => window.open(previewUrl, '_blank')} className="mt-2 text-sm text-primary-600 hover:underline font-medium">
+                    <object
+                      data={previewUrl}
+                      type="application/pdf"
+                      className="w-full h-full bg-white shadow-xs border border-slate-200 rounded-lg min-h-[380px]"
+                    >
+                      <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2">
+                        <FileText className="w-10 h-10 text-slate-300" />
+                        <p className="text-xs">Browser tidak dapat menampilkan embedded PDF langsung.</p>
+                        <button
+                          onClick={() => window.open(previewUrl, '_blank')}
+                          className="text-xs text-blue-600 hover:underline font-bold"
+                        >
                           Buka di Tab Baru
                         </button>
                       </div>
@@ -392,22 +676,29 @@ export default function PimpinanDokumenPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
                       {previewError ? (
-                        <>
-                          <AlertCircle className="w-8 h-8 text-rose-400" />
-                          <p className="text-sm font-medium text-slate-700">{previewError}</p>
-                        </>
+                        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-center max-w-sm">
+                          <AlertCircle className="w-6 h-6 text-rose-500 mx-auto mb-1.5" />
+                          <p className="text-xs font-bold text-rose-800">Preview Gagal Dimuat</p>
+                          <p className="text-[11px] text-rose-600 mt-0.5">{previewError}</p>
+                          <button
+                            onClick={handleDownload}
+                            className="mt-3 text-xs font-bold text-white bg-rose-600 px-3 py-1.5 rounded-lg"
+                          >
+                            Unduh File
+                          </button>
+                        </div>
                       ) : (
                         <>
-                          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
-                          <p className="text-sm font-medium">
+                          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                          <p className="text-xs font-medium text-slate-600">
                             {previewProgress?.total
                               ? `Memuat preview... ${(previewProgress.loaded / 1048576).toFixed(1)} / ${(previewProgress.total / 1048576).toFixed(1)} MB`
-                              : 'Memuat preview...'}
+                              : 'Menyiapkan berkas preview...'}
                           </p>
                           {previewProgress?.total ? (
-                            <div className="w-64 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
+                            <div className="w-56 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
                               <div
-                                className="h-full bg-primary-500 rounded-full transition-all"
+                                className="h-full bg-blue-600 rounded-full transition-all"
                                 style={{ width: `${Math.min(100, (previewProgress.loaded / previewProgress.total) * 100)}%` }}
                               />
                             </div>
@@ -419,156 +710,322 @@ export default function PimpinanDokumenPage() {
                 </div>
               </div>
 
-              {/* Box Form Evaluasi */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm shrink-0">
-                {(() => {
-                  const numRek = editNilaiRek ? Number(editNilaiRek.replace(/\./g, '').replace(/,/g, '.')) : null;
-                  const numExcel = editNilaiExcel ? Number(editNilaiExcel.replace(/\./g, '').replace(/,/g, '.')) : null;
-                  const hasBoth = numRek !== null && !isNaN(numRek) && numExcel !== null && !isNaN(numExcel);
-                  const selisih = hasBoth ? Math.round(Math.abs(numRek - numExcel) * 100) / 100 : 0;
-                  const isCocok = hasBoth && selisih === 0;
+              {/* ========================================================= */}
+              {/* BOX KONTROL: FORM EVALUASI (JIKA MENUNGGU) / INFO STATUS */}
+              {/* ========================================================= */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-5 md:p-6 shadow-xs shrink-0">
 
-                  return (
-                    <>
-                      <div className="flex justify-between items-center mb-5 flex-wrap gap-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                            <FileCheck className="w-5 h-5 text-primary-600" /> Evaluation
+                {selectedDok.status === 'menunggu_verifikasi' ? (
+                  /* ======================================= */
+                  /* MODE 1: VERIFIKASI PIMPINAN (AKTIF)     */
+                  /* ======================================= */
+                  <>
+                    <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 flex-wrap gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                          <Clock className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900 leading-none">
+                            Formulir Penelaahan & Verifikasi Pimpinan
                           </h3>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Lakukan validasi data nominal dan tentukan persetujuan sebelum diteruskan ke Eselon 1.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRescan(selectedDok.id)}
+                        disabled={rescanning}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 rounded-xl transition-all disabled:opacity-50 shadow-2xs"
+                        title="Audit ulang berkas rekonsiliasi otomatis"
+                      >
+                        <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
+                        {rescanning ? 'Memindai...' : 'Audit Ulang Berkas'}
+                      </button>
+                    </div>
+
+                    {/* Data Rekonsiliasi Otomatis */}
+                    {(() => {
+                      const numRek = editNilaiRek ? Number(editNilaiRek.replace(/\./g, '').replace(/,/g, '.')) : null;
+                      const numExcel = editNilaiExcel ? Number(editNilaiExcel.replace(/\./g, '').replace(/,/g, '.')) : null;
+                      const hasBoth = numRek !== null && !isNaN(numRek) && numExcel !== null && !isNaN(numExcel);
+                      const selisih = hasBoth ? Math.round(Math.abs(numRek - numExcel) * 100) / 100 : 0;
+                      const isCocok = hasBoth && selisih === 0;
+
+                      return (
+                        <div className="space-y-4 mb-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                Nilai Rekening Koran (Hasil Ekstraksi / Bank)
+                              </label>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-3.5 text-xs text-slate-400 font-bold">Rp</span>
+                                <input
+                                  type="text"
+                                  value={editNilaiRek}
+                                  onChange={e => {
+                                    const val = e.target.value.replace(/[^0-9,]/g, '');
+                                    const parts = val.split(',');
+                                    if (parts.length > 2) return;
+                                    const ribuan = parts[0].replace(/\./g, '');
+                                    const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                                    setEditNilaiRek(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
+                                  }}
+                                  placeholder="0"
+                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold text-xs rounded-xl pl-10 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                Nilai Realisasi LPJ yang Dilaporkan
+                              </label>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-3.5 text-xs text-slate-400 font-bold">Rp</span>
+                                <input
+                                  type="text"
+                                  value={editNilaiExcel}
+                                  readOnly
+                                  tabIndex={-1}
+                                  placeholder="0"
+                                  className="w-full bg-slate-100/90 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl pl-10 pr-3.5 py-2.5 cursor-not-allowed select-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Alert Status Rekonsiliasi */}
                           {hasBoth && isCocok && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Cocok (Rp 0 Selisih)
-                            </span>
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2.5">
+                              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <p className="font-semibold">
+                                ✓ Nilai Rekening Koran dan Realisasi LPJ telah <strong>Sesuai (Selisih Rp 0)</strong>. Berkas memenuhi syarat persetujuan.
+                              </p>
+                            </div>
                           )}
+
                           {hasBoth && !isCocok && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                              <AlertCircle className="w-3.5 h-3.5 text-rose-600" /> Selisih Rp {selisih.toLocaleString('id-ID')}
-                            </span>
-                          )}
-                          {!hasBoth && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                              Menunggu Kelengkapan
-                            </span>
+                            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5">
+                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-bold text-rose-900">Peringatan: Ditemukan Selisih Angka Rekonsiliasi</p>
+                                <p className="mt-0.5 text-rose-700 leading-relaxed">
+                                  Terdapat perbedaan sebesar <strong>Rp {selisih.toLocaleString('id-ID')}</strong> antara catatan mutasi bank dan nilai pertanggungjawaban staff. Silakan periksa kembali atau instruksikan perbaikan melalui catatan revisi.
+                                </p>
+                              </div>
+                            </div>
                           )}
                         </div>
+                      );
+                    })()}
 
-                        <button
-                          type="button"
-                          onClick={() => handleRescan(selectedDok.id)}
-                          disabled={rescanning}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all disabled:opacity-50 shadow-xs"
-                          title="Audit ulang berkas menggunakan scanner ekstraksi lokal"
-                        >
-                          <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
-                          {rescanning ? 'Memindai Ulang...' : 'Audit Ulang Berkas'}
-                        </button>
+                    {/* Input Catatan */}
+                    <div className="mb-5">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-bold text-slate-700">Catatan Pimpinan</label>
+                        <span className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">
+                          Wajib diisi jika dikembalikan untuk revisi
+                        </span>
+                      </div>
+                      <textarea
+                        value={catatan}
+                        onChange={e => setCatatan(e.target.value)}
+                        rows={2}
+                        placeholder="Tuliskan arahan persetujuan atau poin catatan perbaikan untuk staff satker..."
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                      />
+                    </div>
+
+                    {/* Tombol Aksi */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVerifikasi(selectedDok.id, 'reject')}
+                        disabled={processing === selectedDok.id || !catatan.trim()}
+                        className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed border border-rose-200 text-xs"
+                      >
+                        {processing === selectedDok.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                        Tolak & Kembalikan (Revisi)
+                      </button>
+
+                      <button
+                        onClick={() => handleVerifikasi(selectedDok.id, 'lolos')}
+                        disabled={processing === selectedDok.id}
+                        className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-xs shadow-sm shadow-emerald-600/20"
+                      >
+                        {processing === selectedDok.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                        Setujui & Teruskan ke Eselon 1
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* ======================================= */
+                  /* MODE 2: ARSIP / STATUS DOKUMEN LAINNYA */
+                  /* ======================================= */
+                  <>
+                    <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 flex-wrap gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className={clsx(
+                          "w-7 h-7 rounded-lg flex items-center justify-center",
+                          statusConfig[selectedDok.status]?.bg || "bg-slate-100",
+                          statusConfig[selectedDok.status]?.text || "text-slate-700"
+                        )}>
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900 leading-none">
+                            Status & Informasi Riwayat Dokumen
+                          </h3>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Dokumen ini telah selesai diproses di tahap pimpinan.
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                      <span className={clsx(
+                        "staff-status-badge text-xs font-bold",
+                        statusConfig[selectedDok.status]?.badgeClass || "staff-badge-draft"
+                      )}>
+                        <span className="dot" />
+                        {statusConfig[selectedDok.status]?.label || selectedDok.status}
+                      </span>
+                    </div>
+
+                    {/* Alert Penjelasan Status */}
+                    {selectedDok.status === 'terverifikasi' && (
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-200/90 rounded-xl text-xs text-emerald-800 flex items-start gap-2.5 mb-4">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                         <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-2">
-                            Nilai Anggaran yang Disetujui
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute left-4 text-slate-500 font-medium">Rp</span>
-                            <input
-                              type="text"
-                              value={editNilaiRek}
-                              onChange={e => {
-                                const val = e.target.value.replace(/[^0-9,]/g, '');
-                                const parts = val.split(',');
-                                if (parts.length > 2) return;
-                                const ribuan = parts[0].replace(/\./g, '');
-                                const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
-                                setEditNilaiRek(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
-                              }}
-                              placeholder="0"
-                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-left"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-2">
-                            Nilai Nominal Realisasi yang Dilaporkan
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute left-4 text-slate-400 font-medium">Rp</span>
-                            <input
-                              type="text"
-                              value={editNilaiExcel}
-                              readOnly
-                              tabIndex={-1}
-                              placeholder="0"
-                              className="w-full bg-slate-100/80 border border-slate-200 text-slate-600 font-semibold rounded-xl pl-12 pr-4 py-3 cursor-not-allowed select-none focus:outline-none text-left"
-                            />
-                          </div>
+                          <p className="font-bold text-emerald-950">Dokumen Telah Disahkan Sepenuhnya (Selesai)</p>
+                          <p className="mt-0.5 text-emerald-700">
+                            Pengajuan berkas telah lolos verifikasi Pimpinan Satker dan telah disetujui secara resmi oleh verifikator Eselon 1. Berkas tersimpan sebagai arsip aktif yang sah.
+                          </p>
                         </div>
                       </div>
+                    )}
 
-                      {hasBoth && !isCocok && (
-                        <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5 shadow-xs">
-                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-bold text-rose-900">Perhatian: Ditemukan Selisih Nominal</p>
-                            <p className="mt-0.5 text-rose-700">
-                              Terdapat perbedaan sebesar <strong>Rp {selisih.toLocaleString('id-ID')}</strong> antara Nilai Rekening Koran (Rp {numRek?.toLocaleString('id-ID')}) dan Nilai Realisasi yang dilaporkan (Rp {numExcel?.toLocaleString('id-ID')}). Silakan tinjau bukti fisik atau minta Staff melakukan revisi.
-                            </p>
-                          </div>
+                    {(selectedDok.status === 'lolos_pimpinan' || selectedDok.status === 'lolos_admin') && (
+                      <div className="p-3.5 bg-blue-50 border border-blue-200/90 rounded-xl text-xs text-blue-800 flex items-start gap-2.5 mb-4">
+                        <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-blue-950">Dalam Antrean Verifikasi Eselon 1</p>
+                          <p className="mt-0.5 text-blue-700">
+                            Anda telah menyetujui dokumen ini. Saat ini dokumen sedang dalam proses validasi akhir oleh tim pemeriksa di level Eselon 1.
+                          </p>
                         </div>
-                      )}
-                    </>
-                  );
-                })()}
+                      </div>
+                    )}
 
-                <div className="mb-6">
-                  <div className="flex justify-between items-end mb-2">
-                    <label className="block text-sm font-bold text-slate-700">Catatan </label>
-                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">Wajib diisi saat revisi </span>
-                  </div>
-                  <textarea
-                    value={catatan}
-                    onChange={e => setCatatan(e.target.value)}
-                    rows={2}
-                    placeholder="Tambahkan catatan revisi yang jelas untuk Staff, sebutkan halaman atau perbedaan nominal..."
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none"
-                  />
-                </div>
+                    {selectedDok.status === 'revisi' && (
+                      <div className="p-3.5 bg-rose-50 border border-rose-200/90 rounded-xl text-xs text-rose-800 flex items-start gap-2.5 mb-4">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-rose-950">Dalam Tahap Perbaikan (Revisi) oleh Staff</p>
+                          <p className="mt-0.5 text-rose-700">
+                            Dokumen ini dikembalikan ke Staff Satker untuk dilengkapi atau disesuaikan nominalnya sesuai catatan evaluasi.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => handleVerifikasi(selectedDok.id, 'reject')}
-                    disabled={processing === selectedDok.id || !catatan.trim()}
-                    className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-rose-200"
-                  >
-                    {processing === selectedDok.id
-                      ? <Loader2 className="w-5 h-5 animate-spin" />
-                      : <X className="w-5 h-5" />}
-                    Tolak & Kembalikan
-                  </button>
-                  <button
-                    onClick={() => handleVerifikasi(selectedDok.id, 'lolos')}
-                    disabled={processing === selectedDok.id}
-                    className="flex-[2] bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-60"
-                  >
-                    {processing === selectedDok.id
-                      ? <Loader2 className="w-5 h-5 animate-spin" />
-                      : <CheckCircle className="w-5 h-5" />}
-                    Setujui & Kirim ke Eselon 1
-                  </button>
-                </div>
+                    {/* Ringkasan Nilai Keuangan */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Nilai Rekening Koran
+                        </span>
+                        <span className="text-sm font-black text-slate-800 mt-1 block">
+                          {selectedDok.nilai_rekening_koran != null
+                            ? `Rp ${Number(selectedDok.nilai_rekening_koran).toLocaleString('id-ID')}`
+                            : '-'}
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Nilai Realisasi LPJ
+                        </span>
+                        <span className="text-sm font-black text-slate-800 mt-1 block">
+                          {selectedDok.nilai_excel != null
+                            ? `Rp ${Number(selectedDok.nilai_excel).toLocaleString('id-ID')}`
+                            : '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Catatan Riwayat jika ada */}
+                    {selectedDok.catatan && (
+                      <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs mb-4">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
+                          <UserCheck className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Catatan Riwayat Verifikasi:</span>
+                        </div>
+                        <p className="text-amber-800 font-medium whitespace-pre-wrap leading-relaxed">
+                          "{selectedDok.catatan}"
+                        </p>
+                        {selectedDok.catatan_oleh && (
+                          <span className="text-[10px] text-amber-600 mt-1.5 block font-semibold">
+                            &mdash; Oleh: {selectedDok.catatan_oleh}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Aksi Tambahan */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={handleDownload}
+                        className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Unduh Berkas
+                      </button>
+
+                      <button
+                        onClick={() => handleRescan(selectedDok.id)}
+                        disabled={rescanning}
+                        className="px-4 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5"
+                      >
+                        <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
+                        {rescanning ? 'Memindai...' : 'Audit Ulang Rekonsiliasi'}
+                      </button>
+                    </div>
+                  </>
+                )}
 
               </div>
             </>
           ) : (
-            <div className="flex-1 bg-slate-50/50 border border-slate-200 border-dashed rounded-2xl flex flex-col items-center justify-center text-slate-400 p-6">
+            /* EMPTY STATE JIKA TIDAK ADA DOKUMEN */
+            <div className="flex-1 bg-white border border-slate-200/90 border-dashed rounded-2xl flex flex-col items-center justify-center text-slate-400 p-8 min-h-[450px]">
               <FileCheck className="w-16 h-16 mb-4 text-slate-300" />
-              <p className="font-bold text-slate-600 text-lg">Tidak Ada Dokumen yang Dipilih</p>
-              <p className="text-sm mt-1 max-w-sm text-center">Pilih dokumen dari antrean di sebelah kiri untuk melihat preview dan mengevaluasi data.</p>
+              <p className="font-extrabold text-slate-700 text-lg">Pilih Dokumen dari Daftar</p>
+              <p className="text-xs text-slate-500 mt-1.5 max-w-sm text-center leading-relaxed">
+                Pilih salah satu berkas dokumen satker di sebelah kiri untuk melihat preview dokumen PDF, memvalidasi bukti transaksi, dan mengevaluasi status pengajuan.
+              </p>
             </div>
           )}
 
         </div>
+
       </div>
+
     </div>
+  );
+}
+
+export default function PimpinanDokumenPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <DokumenContent />
+    </Suspense>
   );
 }

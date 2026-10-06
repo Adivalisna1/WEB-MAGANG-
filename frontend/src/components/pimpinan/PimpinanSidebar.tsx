@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
-  LayoutDashboard, FileCheck, Users,
+  LayoutDashboard, FileCheck, FileText, Users,
   Activity, LogOut, ChevronRight, Home, User, FileSpreadsheet, Calculator, X, ChevronLeft
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const PimpinanMenu = [
   { href: '/pimpinan',                icon: LayoutDashboard, label: 'Dashboard',          exact: true },
-  { href: '/pimpinan/dokumen',        icon: FileCheck,       label: 'Verifikasi Dokumen' },
+  { href: '/pimpinan/dokumen',        icon: FileText,        label: 'Dokumen' },
   { href: '/pimpinan/rekening-koran', icon: FileSpreadsheet, label: 'Rekening Koran' },
   { href: '/pimpinan/pencatatan',     icon: Calculator,      label: 'Pencatatan' },
   { href: '/pimpinan/users',          icon: Users,           label: 'Manajemen User' },
