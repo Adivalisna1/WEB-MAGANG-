@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth';
 import {
   FileSearch, Loader2, RefreshCw, AlertCircle,
   CheckCircle, Undo2, Stamp, Hash, Eye, ExternalLink,
-  FileText, Download
+  FileText, Download, X
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -487,192 +487,220 @@ export default function KetuaDokumenPage() {
         )}
       </div>
 
-      {/* ── Modal tinjau file ── */}
+      {/* ── Modal tinjau file (DIPERBESAR & LEBAR MAKSIMAL) ── */}
       {modalDok && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Header modal — shrink-0 */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[92vh] max-h-[94vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header modal */}
+            <div className="px-6 py-3.5 border-b border-slate-200 flex items-center justify-between gap-4 shrink-0 bg-white">
               <div className="min-w-0">
-                <h3 className="font-bold text-gray-900 text-lg">Tinjau Dokumen</h3>
-                <p className="text-sm text-gray-500 mt-0.5 truncate">{modalDok.judul}</p>
-                {modalDok.nomor_laporan && (
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">#{modalDok.nomor_laporan}</p>
-                )}
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-extrabold text-slate-900 text-lg">Tinjau Dokumen</h3>
+                  {modalDok.nomor_laporan && (
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-medium">
+                      #{modalDok.nomor_laporan}
+                    </span>
+                  )}
+                  <span className={clsx("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase", STATUS_BADGE[modalDok.status] || "bg-slate-100 text-slate-600")}>
+                    {STATUS_LABEL[modalDok.status] || modalDok.status}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5 truncate max-w-xl font-medium">
+                  {modalDok.judul}
+                </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 font-bold bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors border border-slate-200"
+                  title="Unduh Berkas Asli"
+                >
+                  <Download className="w-3.5 h-3.5" /> Unduh
+                </button>
                 {previewUrl && (
                   <button
                     onClick={() => window.open(previewUrl, '_blank')}
-                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-colors border border-blue-200"
                   >
-                    <ExternalLink className="w-4 h-4" /> Tab Baru
+                    <ExternalLink className="w-3.5 h-3.5" /> Tab Baru
                   </button>
                 )}
                 <button
                   onClick={() => setModalDok(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-2"
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
                   aria-label="Tutup"
                 >
-                  ×
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Preview — flex-1 agar isi ruang sisa, min-h-0 agar bisa menyusut */}
-            <div className="bg-gray-100 border-b border-gray-200 flex-1 min-h-0 overflow-hidden">
-              {isExcel ? (
-                // Excel: langsung tampilkan tombol download — tidak di-preview
-                <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                  <FileText className="w-14 h-14 mb-3 text-gray-300" />
-                  <p className="font-medium text-gray-700">Preview tidak tersedia untuk Excel</p>
-                  <p className="text-sm text-gray-400 mt-1">Format spreadsheet harus diunduh untuk dilihat</p>
-                  <button
-                    onClick={handleDownload}
-                    className="mt-4 flex items-center gap-1.5 text-sm text-white bg-indigo-600 hover:bg-indigo-700 font-medium px-5 py-2.5 rounded-lg transition-colors"
-                  >
-                    <Download className="w-4 h-4" /> Download File Excel
-                  </button>
-                </div>
-              ) : previewUrl ? (
-                <object data={previewUrl} type="application/pdf" className="w-full h-full">
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <p>Browser tidak bisa menampilkan PDF.</p>
-                    <button onClick={handleDownload} className="mt-3 text-indigo-600 underline">Download file</button>
+            {/* Body modal: 2 Kolom (Kiri: Preview PDF Luas, Kanan: Hasil Rekonsiliasi & Aksi) */}
+            <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+              {/* Kolom Kiri: Preview File Gede & Luas */}
+              <div className="w-full lg:w-[65%] xl:w-[68%] h-full bg-slate-100 relative overflow-hidden flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
+                {isExcel ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 text-center bg-white m-6 rounded-2xl border border-slate-200 shadow-xs">
+                    <FileText className="w-16 h-16 mb-3 text-emerald-400" />
+                    <p className="font-bold text-slate-800 text-lg">Format Spreadsheet Excel</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                      File spreadsheet tidak dapat ditampilkan via in-browser PDF reader. Silakan unduh untuk menelaah data rincian secara lengkap.
+                    </p>
+                    <button
+                      onClick={handleDownload}
+                      className="mt-5 flex items-center gap-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+                    >
+                      <Download className="w-4 h-4" /> Download File Excel
+                    </button>
                   </div>
-                </object>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-500">
-                  {previewError ? (
-                    <>
-                      <AlertCircle className="w-8 h-8 text-red-400" />
-                      <p className="text-sm">{previewError}</p>
-                    </>
-                  ) : (
-                    <>
-                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                      <p className="text-sm">
-                        {previewProgress?.total
-                          ? `Mengunduh preview... ${(previewProgress.loaded / 1048576).toFixed(1)} / ${(previewProgress.total / 1048576).toFixed(1)} MB`
-                          : 'Mengunduh preview...'}
-                      </p>
-                      {previewProgress?.total ? (
-                        <div className="w-56 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-indigo-500 rounded-full transition-all"
-                            style={{ width: `${Math.min(100, (previewProgress.loaded / previewProgress.total) * 100)}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                ) : previewUrl ? (
+                  <object data={previewUrl} type="application/pdf" className="w-full h-full bg-slate-100">
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2 p-6">
+                      <p className="text-sm">Browser tidak mendukung preview PDF langsung.</p>
+                      <button onClick={handleDownload} className="text-xs text-blue-600 underline font-bold">
+                        Download file untuk membaca
+                      </button>
+                    </div>
+                  </object>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500 p-6">
+                    {previewError ? (
+                      <>
+                        <AlertCircle className="w-8 h-8 text-rose-500" />
+                        <p className="text-xs text-slate-700 font-medium text-center">{previewError}</p>
+                        <button onClick={handleDownload} className="mt-2 text-xs font-bold text-blue-600 underline">
+                          Unduh Dokumen Secara Manual
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        <p className="text-xs font-medium text-slate-600">
+                          {previewProgress?.total
+                            ? `Memuat berkas preview... ${(previewProgress.loaded / 1048576).toFixed(1)} / ${(previewProgress.total / 1048576).toFixed(1)} MB`
+                            : 'Memuat berkas dokumen...'}
+                        </p>
+                        {previewProgress?.total ? (
+                          <div className="w-56 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
+                            <div
+                              className="h-full bg-blue-600 rounded-full transition-all"
+                              style={{ width: `${Math.min(100, (previewProgress.loaded / previewProgress.total) * 100)}%` }}
+                            />
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {/* Info + aksi keputusan dari modal tinjau */}
-            <div className="px-6 py-4 space-y-3 shrink-0 overflow-y-auto max-h-[280px]">
-              {/* Info grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400">Kategori</p>
-                  <p className="font-medium mt-0.5">{modalDok.kategori}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400">Periode</p>
-                  <p className="font-medium mt-0.5">{periodeLabel(modalDok)}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400">Diupload oleh</p>
-                  <p className="font-medium mt-0.5">{modalDok.uploaded_by}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400">File</p>
-                  <p className="font-medium mt-0.5 truncate">{modalDok.file_nama ?? '—'}</p>
-                </div>
-                {(() => {
-                  const valRek = modalDok.nilai_rekening_koran != null ? Number(modalDok.nilai_rekening_koran) : null;
-                  const valExc = modalDok.nilai_excel != null ? Number(modalDok.nilai_excel) : null;
-                  const hasBoth = valRek !== null && valExc !== null;
-                  const selisih = hasBoth ? Math.round(Math.abs(valRek - valExc) * 100) / 100 : null;
-                  const isCocok = hasBoth && selisih === 0;
+              {/* Kolom Kanan: Evaluasi, Rekonsiliasi & Keputusan */}
+              <div className="w-full lg:w-[35%] xl:w-[32%] flex flex-col justify-between bg-white overflow-y-auto p-5 custom-scrollbar">
+                <div className="space-y-4">
+                  {/* Grid Metadata Dokumen */}
+                  <div className="grid grid-cols-2 gap-2.5 text-xs">
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Kategori</p>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate">{modalDok.kategori}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Periode</p>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate">{periodeLabel(modalDok)}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Diupload Oleh</p>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate">{modalDok.uploaded_by}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Berkas</p>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate">{modalDok.file_nama ?? '—'}</p>
+                    </div>
+                  </div>
 
-                  if (valRek != null || valExc != null) {
+                  {/* Box Rekonsiliasi Otomatis */}
+                  {(() => {
+                    const valRek = modalDok.nilai_rekening_koran != null ? Number(modalDok.nilai_rekening_koran) : null;
+                    const valExc = modalDok.nilai_excel != null ? Number(modalDok.nilai_excel) : null;
+                    const hasBoth = valRek !== null && valExc !== null;
+                    const selisih = hasBoth ? Math.round(Math.abs(valRek - valExc) * 100) / 100 : null;
+                    const isCocok = hasBoth && selisih === 0;
+
                     return (
                       <div className={clsx(
-                        "rounded-xl border p-4 col-span-2 sm:col-span-4 shadow-xs",
-                        isCocok ? "bg-emerald-50/70 border-emerald-200" : "bg-rose-50/70 border-rose-200"
+                        "rounded-xl border p-4 shadow-xs",
+                        hasBoth && isCocok ? "bg-emerald-50/70 border-emerald-200" : "bg-amber-50/70 border-amber-200"
                       )}>
-                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                            <Stamp className="w-4 h-4 text-indigo-600" /> Hasil Rekonsiliasi Otomatis
+                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                            <Stamp className="w-4 h-4 text-indigo-600" /> Hasil Rekonsiliasi
                           </span>
                           {hasBoth && (
                             isCocok ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-200/80 text-emerald-900">
-                                <CheckCircle className="w-3.5 h-3.5" /> Rekonsiliasi Cocok (Rp 0 Selisih)
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <CheckCircle className="w-3 h-3 text-emerald-600" /> Cocok (Rp 0)
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-200/80 text-rose-900">
-                                <AlertCircle className="w-3.5 h-3.5" /> Terdapat Selisih Rp {selisih?.toLocaleString('id-ID')}
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                <AlertCircle className="w-3 h-3 text-rose-600" /> Selisih Rp {selisih?.toLocaleString('id-ID')}
                               </span>
                             )
                           )}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-2">
-                          <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
-                            <p className="text-slate-500 font-medium">Saldo Rekening Koran:</p>
-                            <p className="text-sm font-bold text-slate-900 mt-0.5">{formatRupiah(valRek)}</p>
+
+                        <div className="space-y-2 text-xs">
+                          <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 flex justify-between items-center">
+                            <span className="text-slate-500 font-medium">Nilai Rekening Koran:</span>
+                            <span className="font-extrabold text-slate-900">{formatRupiah(valRek)}</span>
                           </div>
-                          <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
-                            <p className="text-slate-500 font-medium">Saldo Realisasi LPJ / Excel:</p>
-                            <p className="text-sm font-bold text-slate-900 mt-0.5">{formatRupiah(valExc)}</p>
+                          <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 flex justify-between items-center">
+                            <span className="text-slate-500 font-medium">Realisasi LPJ / Excel:</span>
+                            <span className="font-extrabold text-slate-900">{formatRupiah(valExc)}</span>
                           </div>
-                          <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
-                            <p className="text-slate-500 font-medium">Selisih Nominal:</p>
-                            <p className={clsx("text-sm font-bold mt-0.5", selisih === 0 ? "text-emerald-700" : "text-rose-700")}>
-                              {selisih !== null ? `Rp ${selisih.toLocaleString('id-ID')}` : '—'}
-                            </p>
+                          <div className={clsx(
+                            "p-2.5 rounded-lg border flex justify-between items-center font-bold",
+                            selisih === 0 ? "bg-emerald-100/60 border-emerald-200 text-emerald-900" : "bg-rose-100/60 border-rose-200 text-rose-900"
+                          )}>
+                            <span>Selisih Nominal:</span>
+                            <span>{selisih !== null ? `Rp ${selisih.toLocaleString('id-ID')}` : '—'}</span>
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAuditUlang(modalDok.id)}
+                          disabled={auditingId === modalDok.id}
+                          className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
+                        >
+                          <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === modalDok.id && "animate-spin")} />
+                          {auditingId === modalDok.id ? 'Memindai Ulang...' : 'Audit Ulang Berkas (Re-check)'}
+                        </button>
                       </div>
                     );
-                  }
-                  return null;
-                })()}
-              </div>
+                  })()}
 
-              {/* Catatan Pimpinan */}
-              {modalDok.catatan && (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  Catatan Pimpinan: {modalDok.catatan}
-                </p>
-              )}
+                  {/* Catatan Pimpinan Satker */}
+                  {modalDok.catatan && (
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                      <p className="font-bold text-amber-900 mb-0.5">Catatan Pimpinan Satker:</p>
+                      <p className="leading-relaxed whitespace-pre-wrap">{modalDok.catatan}</p>
+                    </div>
+                  )}
+                </div>
 
-              {/* Tombol aksi */}
-              <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleAuditUlang(modalDok.id)}
-                  disabled={auditingId === modalDok.id}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50"
-                  title="Audit ulang berkas secara otomatis"
-                >
-                  <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === modalDok.id && "animate-spin")} />
-                  {auditingId === modalDok.id ? 'Mengaudit Ulang...' : 'Audit Ulang Berkas (Re-check)'}
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
-                  >
-                    <Undo2 className="w-4 h-4" /> Kembalikan Revisi
-                  </button>
+                {/* Tombol Keputusan Pinned di Bawah */}
+                <div className="border-t border-slate-200 pt-4 mt-4 space-y-2 shrink-0">
                   <button
                     onClick={() => { setTarget({ dok: modalDok, aksi: 'approve' }); setCatatan(''); }}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-600/20"
                   >
-                    <CheckCircle className="w-4 h-4" /> Setujui & Publish
+                    <CheckCircle className="w-4 h-4" /> Setujui & Publish Dokumen
+                  </button>
+
+                  <button
+                    onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all"
+                  >
+                    <Undo2 className="w-4 h-4" /> Kembalikan untuk Revisi
                   </button>
                 </div>
               </div>
