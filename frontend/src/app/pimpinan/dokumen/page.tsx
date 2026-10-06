@@ -50,6 +50,7 @@ export default function PimpinanDokumenPage() {
   const [catatan, setCatatan] = useState('');
   const [editNilaiRek, setEditNilaiRek] = useState('');
   const [editNilaiExcel, setEditNilaiExcel] = useState('');
+  const [rescanning, setRescanning] = useState(false);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
@@ -172,8 +173,35 @@ export default function PimpinanDokumenPage() {
   const handleSelect = (dok: Dokumen) => {
     setSelectedDok(dok);
     setCatatan('');
-    setEditNilaiRek(dok.nilai_rekening_koran != null ? Number(dok.nilai_rekening_koran).toLocaleString('id-ID') : '');
+    // Auto-populate: gunakan nilai_rekening_koran jika ada, atau fallback ke nilai_excel jika kosong
+    const valRek = dok.nilai_rekening_koran != null ? dok.nilai_rekening_koran : dok.nilai_excel;
+    setEditNilaiRek(valRek != null ? Number(valRek).toLocaleString('id-ID') : '');
     setEditNilaiExcel(dok.nilai_excel != null ? Number(dok.nilai_excel).toLocaleString('id-ID') : '');
+  };
+
+  const handleRescan = async (id: number) => {
+    setRescanning(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/${id}/rescan`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.message || 'Gagal audit ulang');
+
+      if (data.data?.scan?.nominal != null) {
+        const nomFormatted = Number(data.data.scan.nominal).toLocaleString('id-ID');
+        if (!editNilaiRek) setEditNilaiRek(nomFormatted);
+        if (!editNilaiExcel) setEditNilaiExcel(nomFormatted);
+      }
+      toast.success(data.message || 'Audit ulang berkas selesai');
+      fetchDokumen();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal audit ulang berkas');
+    } finally {
+      setRescanning(false);
+    }
   };
 
   const handleVerifikasi = async (id: number, action: 'lolos' | 'reject') => {
@@ -393,52 +421,104 @@ export default function PimpinanDokumenPage() {
 
               {/* Box Form Evaluasi */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm shrink-0">
-                <div className="flex justify-between items-center mb-5">
-                  <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                    <FileCheck className="w-5 h-5 text-primary-600" /> Evaluation
-                  </h3>
-                </div>
+                {(() => {
+                  const numRek = editNilaiRek ? Number(editNilaiRek.replace(/\./g, '').replace(/,/g, '.')) : null;
+                  const numExcel = editNilaiExcel ? Number(editNilaiExcel.replace(/\./g, '').replace(/,/g, '.')) : null;
+                  const hasBoth = numRek !== null && !isNaN(numRek) && numExcel !== null && !isNaN(numExcel);
+                  const selisih = hasBoth ? Math.round(Math.abs(numRek - numExcel) * 100) / 100 : 0;
+                  const isCocok = hasBoth && selisih === 0;
 
-                <div className="grid grid-cols-2 gap-4 mb-5">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Nilai Anggaran yang Disetujui
-                    </label>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-4 text-slate-500 font-medium">Rp</span>
-                      <input
-                        type="text"
-                        value={editNilaiRek}
-                        onChange={e => {
-                          const val = e.target.value.replace(/[^0-9,]/g, '');
-                          const parts = val.split(',');
-                          if (parts.length > 2) return;
-                          const ribuan = parts[0].replace(/\./g, '');
-                          const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
-                          setEditNilaiRek(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
-                        }}
-                        placeholder="0"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-left"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                      Nilai Nominal Realisasi yang Dilaporkan
-                    </label>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-4 text-slate-400 font-medium">Rp</span>
-                      <input
-                        type="text"
-                        value={editNilaiExcel}
-                        readOnly
-                        tabIndex={-1}
-                        placeholder="0"
-                        className="w-full bg-slate-100/80 border border-slate-200 text-slate-600 font-semibold rounded-xl pl-12 pr-4 py-3 cursor-not-allowed select-none focus:outline-none text-left"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  return (
+                    <>
+                      <div className="flex justify-between items-center mb-5 flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                            <FileCheck className="w-5 h-5 text-primary-600" /> Evaluation
+                          </h3>
+                          {hasBoth && isCocok && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Cocok (Rp 0 Selisih)
+                            </span>
+                          )}
+                          {hasBoth && !isCocok && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-600" /> Selisih Rp {selisih.toLocaleString('id-ID')}
+                            </span>
+                          )}
+                          {!hasBoth && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                              Menunggu Kelengkapan
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRescan(selectedDok.id)}
+                          disabled={rescanning}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all disabled:opacity-50 shadow-xs"
+                          title="Audit ulang berkas menggunakan scanner ekstraksi lokal"
+                        >
+                          <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
+                          {rescanning ? 'Memindai Ulang...' : 'Audit Ulang Berkas'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
+                            Nilai Anggaran yang Disetujui
+                          </label>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-500 font-medium">Rp</span>
+                            <input
+                              type="text"
+                              value={editNilaiRek}
+                              onChange={e => {
+                                const val = e.target.value.replace(/[^0-9,]/g, '');
+                                const parts = val.split(',');
+                                if (parts.length > 2) return;
+                                const ribuan = parts[0].replace(/\./g, '');
+                                const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                                setEditNilaiRek(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
+                              }}
+                              placeholder="0"
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-left"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
+                            Nilai Nominal Realisasi yang Dilaporkan
+                          </label>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-4 text-slate-400 font-medium">Rp</span>
+                            <input
+                              type="text"
+                              value={editNilaiExcel}
+                              readOnly
+                              tabIndex={-1}
+                              placeholder="0"
+                              className="w-full bg-slate-100/80 border border-slate-200 text-slate-600 font-semibold rounded-xl pl-12 pr-4 py-3 cursor-not-allowed select-none focus:outline-none text-left"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {hasBoth && !isCocok && (
+                        <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5 shadow-xs">
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-rose-900">Perhatian: Ditemukan Selisih Nominal</p>
+                            <p className="mt-0.5 text-rose-700">
+                              Terdapat perbedaan sebesar <strong>Rp {selisih.toLocaleString('id-ID')}</strong> antara Nilai Rekening Koran (Rp {numRek?.toLocaleString('id-ID')}) dan Nilai Realisasi yang dilaporkan (Rp {numExcel?.toLocaleString('id-ID')}). Silakan tinjau bukti fisik atau minta Staff melakukan revisi.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 <div className="mb-6">
                   <div className="flex justify-between items-end mb-2">

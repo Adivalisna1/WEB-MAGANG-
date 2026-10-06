@@ -1,32 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const N8N_AI_WEBHOOK = process.env.NEXT_PUBLIC_N8N_AI_WEBHOOK || 'http://localhost:5678/webhook/baca-dokumen';
+// Gunakan URL internal container atau public API backend FastAPI
+const BACKEND_API = process.env.API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     
-    // Teruskan request persis sama ke n8n
-    const n8nRes = await fetch(N8N_AI_WEBHOOK, {
+    // Teruskan request langsung ke Python FastAPI (/api/dokumen/scan-ekstrak)
+    // Menghilangkan ketergantungan pada webhook n8n port 5678
+    const pyRes = await fetch(`${BACKEND_API}/dokumen/scan-ekstrak`, {
       method: 'POST',
       body: formData,
     });
 
-    if (!n8nRes.ok) {
+    if (!pyRes.ok) {
+      const errText = await pyRes.text();
       return NextResponse.json(
-        { error: `n8n Webhook Error: ${n8nRes.status}` },
-        { status: n8nRes.status }
+        { error: `Backend Extraction Error: ${pyRes.status} - ${errText}` },
+        { status: pyRes.status }
       );
     }
 
-    const data = await n8nRes.json();
-    
-    // Balikin JSON dari n8n ke frontend
+    const data = await pyRes.json();
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Error proxying to n8n:', error);
+    console.error('Error in scan extraction proxy:', error);
     return NextResponse.json(
-      { error: error.message || 'Gagal menyambung ke server AI' },
+      { error: error.message || 'Gagal memproses ekstraksi berkas' },
       { status: 500 }
     );
   }

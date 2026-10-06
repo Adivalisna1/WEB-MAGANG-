@@ -422,6 +422,20 @@ export default function UploadPage() {
                   Rp {totalSaldo}
                 </p>
               )}
+              {(() => {
+                const parsed = totalSaldo ? Number(totalSaldo.replace(/\./g, '').replace(',', '.')) : null;
+                if (aiResult?.nominal != null && parsed !== null && !isNaN(parsed) && Math.abs(parsed - Number(aiResult.nominal)) > 0.01) {
+                  return (
+                    <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-900 text-xs rounded-xl p-3">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold">Peringatan Dini:</span> Nilai Saldo Akhir input (Rp {parsed.toLocaleString('id-ID')}) berbeda dari saldo hasil baca berkas (Rp {Number(aiResult.nominal).toLocaleString('id-ID')}). Mohon periksa kembali bukti fisik sebelum mengunggah.
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             <div>

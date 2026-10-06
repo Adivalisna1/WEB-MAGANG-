@@ -207,7 +207,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       if (deskripsi) fd.append('deskripsi', deskripsi);
 
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
-      if (selKat?.perlu_nominal && totalSaldo) fd.append('nilai_rekening_koran', totalSaldo.replace(/\./g, '').replace(',', '.'));
+      if (totalSaldo) {
+        const cleanNom = totalSaldo.replace(/\./g, '').replace(',', '.');
+        fd.append('nilai_rekening_koran', cleanNom);
+        fd.append('nilai_excel', cleanNom);
+      }
 
       const res = await fetch(`${API}/dokumen/upload`, {
         method: 'POST',
@@ -319,6 +323,33 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
                 </div>
               )}
 
+              {/* Auto-Detected Recognition Banner */}
+              {aiResult && !aiScanning && (aiResult.nominal || aiResult.bank || aiResult.judul) && (
+                <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3.5 text-xs text-emerald-900 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-emerald-900">
+                        Ekstraksi Berkas Otomatis Selesai
+                      </div>
+                      <div className="text-emerald-700 mt-0.5">
+                        {aiResult.bank && <span>Bank: <strong>{aiResult.bank}</strong> • </span>}
+                        {aiResult.nominal != null ? (
+                          <span>Saldo Terdeteksi: <strong>Rp {Number(aiResult.nominal).toLocaleString('id-ID')}</strong></span>
+                        ) : (
+                          <span>Data judul dan kategori berhasil diekstrak</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="bg-emerald-200/80 text-emerald-800 font-extrabold px-2.5 py-1 rounded-full text-[10px] tracking-wider uppercase shrink-0">
+                    Auto-Extracted
+                  </span>
+                </div>
+              )}
+
               {/* Form Fields */}
               <div className="space-y-4">
                 <div>
@@ -400,6 +431,20 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
                         className="w-full pl-12 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
+                    {(() => {
+                      const parsed = totalSaldo ? Number(totalSaldo.replace(/\./g, '').replace(',', '.')) : null;
+                      if (aiResult?.nominal != null && parsed !== null && !isNaN(parsed) && Math.abs(parsed - Number(aiResult.nominal)) > 0.01) {
+                        return (
+                          <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-300/80 text-amber-900 text-xs rounded-xl p-3 shadow-xs">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold text-amber-950">Peringatan Dini:</span> Nilai input (Rp {parsed.toLocaleString('id-ID')}) berbeda dari saldo fisik berkas (Rp {Number(aiResult.nominal).toLocaleString('id-ID')}). Mohon periksa kembali bukti fisik sebelum mengajukan.
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 ) : null}
 

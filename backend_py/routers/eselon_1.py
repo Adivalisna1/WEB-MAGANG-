@@ -160,7 +160,7 @@ async def get_dokumen(
     with db.cursor(dictionary=True) as cursor:
         cursor.execute(f"""
             SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan,
-                   d.nilai_rekening_koran, d.created_at, d.updated_at,
+                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
                    k.nama AS kategori, u.nama AS uploaded_by
             FROM dokumen d
             JOIN kategori_dokumen k ON k.id = d.kategori_id
@@ -181,7 +181,7 @@ async def get_dokumen_menunggu(
         cursor.execute("""
             SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
                    d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
-                   d.nilai_rekening_koran, d.created_at, d.updated_at,
+                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
                    k.nama AS kategori, k.slug AS kategori_slug,
                    u.nama AS uploaded_by
             FROM dokumen d

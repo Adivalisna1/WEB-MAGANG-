@@ -27,6 +27,7 @@ interface Dokumen {
   created_at: string;
   file_nama?: string;
   nilai_rekening_koran?: number | null;
+  nilai_excel?: number | null;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -66,6 +67,7 @@ export default function KetuaDokumenPage() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
   const [filter,   setFilter]   = useState('lolos_admin');
+  const [auditingId, setAuditingId] = useState<number | null>(null);
 
   // Modal keputusan approve / reject
   const [target,   setTarget]   = useState<{ dok: Dokumen; aksi: 'approve' | 'reject' } | null>(null);
@@ -195,6 +197,33 @@ export default function KetuaDokumenPage() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const handleAuditUlang = async (id: number) => {
+    setAuditingId(id);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/${id}/rescan`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.message || 'Gagal audit ulang berkas');
+      
+      toast.success(data.message || 'Audit ulang berkas selesai');
+      await refresh();
+      if (modalDok && modalDok.id === id) {
+        setModalDok(prev => prev ? {
+          ...prev,
+          nilai_rekening_koran: data.data?.nilai_rekening_koran ?? prev.nilai_rekening_koran,
+          nilai_excel: data.data?.nilai_excel ?? prev.nilai_excel
+        } : null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Terjadi kesalahan saat audit ulang');
+    } finally {
+      setAuditingId(null);
+    }
+  };
+
   const kirimKeputusan = async () => {
     if (!target) return;
     if (target.aksi === 'reject' && !catatan.trim()) {
@@ -283,46 +312,89 @@ export default function KetuaDokumenPage() {
           </p>
         ) : (
           <div className="divide-y divide-gray-100">
-            {menunggu.map((dok) => (
-              <div key={dok.id} className="px-5 py-4 flex flex-col md:flex-row md:items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 truncate">{dok.judul}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {dok.kategori} · {periodeLabel(dok)} · oleh {dok.uploaded_by}
-                    {dok.nomor_laporan && (
-                      <span className="inline-flex items-center gap-1 ml-2 text-indigo-600">
-                        <Hash className="w-3 h-3" />{dok.nomor_laporan}
-                      </span>
-                    )}
-                  </p>
-                  {dok.catatan && (
-                    <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1.5 inline-block">
-                      Catatan Pimpinan: {dok.catatan}
+            {menunggu.map((dok) => {
+              const valRek = dok.nilai_rekening_koran != null ? Number(dok.nilai_rekening_koran) : null;
+              const valExc = dok.nilai_excel != null ? Number(dok.nilai_excel) : null;
+              const hasBoth = valRek !== null && valExc !== null;
+              const selisih = hasBoth ? Math.round(Math.abs(valRek - valExc) * 100) / 100 : null;
+              const isCocok = hasBoth && selisih === 0;
+
+              return (
+                <div key={dok.id} className="px-5 py-4 flex flex-col md:flex-row md:items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-gray-900 truncate">{dok.judul}</p>
+                      {hasBoth && isCocok && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" /> Cocok (Rp 0)
+                        </span>
+                      )}
+                      {hasBoth && !isCocok && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                          <AlertCircle className="w-3 h-3 text-rose-600" /> Selisih Rp {selisih?.toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {dok.kategori} · {periodeLabel(dok)} · oleh {dok.uploaded_by}
+                      {dok.nomor_laporan && (
+                        <span className="inline-flex items-center gap-1 ml-2 text-indigo-600">
+                          <Hash className="w-3 h-3" />{dok.nomor_laporan}
+                        </span>
+                      )}
                     </p>
-                  )}
+                    {(valRek != null || valExc != null) && (
+                      <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 flex-wrap">
+                        {valRek != null && (
+                          <span className="bg-slate-100 px-2 py-0.5 rounded">
+                            Bank: <strong className="text-slate-800">{formatRupiah(valRek)}</strong>
+                          </span>
+                        )}
+                        {valExc != null && (
+                          <span className="bg-slate-100 px-2 py-0.5 rounded">
+                            LPJ: <strong className="text-slate-800">{formatRupiah(valExc)}</strong>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {dok.catatan && (
+                      <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1.5 inline-block">
+                        Catatan Pimpinan: {dok.catatan}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <button
+                      onClick={() => handleAuditUlang(dok.id)}
+                      disabled={auditingId === dok.id}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50"
+                      title="Audit ulang berkas rekonsiliasi"
+                    >
+                      <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === dok.id && "animate-spin")} />
+                      {auditingId === dok.id ? 'Audit...' : 'Audit Ulang'}
+                    </button>
+                    <button
+                      onClick={() => setModalDok(dok)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Tinjau
+                    </button>
+                    <button
+                      onClick={() => { setTarget({ dok, aksi: 'approve' }); setCatatan(''); }}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" /> Setujui & Publish
+                    </button>
+                    <button
+                      onClick={() => { setTarget({ dok, aksi: 'reject' }); setCatatan(''); }}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" /> Kembalikan Revisi
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setModalDok(dok)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" /> Tinjau
-                  </button>
-                  <button
-                    onClick={() => { setTarget({ dok, aksi: 'approve' }); setCatatan(''); }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" /> Setujui & Publish
-                  </button>
-                  <button
-                    onClick={() => { setTarget({ dok, aksi: 'reject' }); setCatatan(''); }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
-                  >
-                    <Undo2 className="w-3.5 h-3.5" /> Kembalikan Revisi
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -358,11 +430,32 @@ export default function KetuaDokumenPage() {
                     <td className="px-5 py-3 text-gray-600">{dok.kategori}</td>
                     <td className="px-5 py-3 text-gray-600">{periodeLabel(dok)}</td>
                     <td className="px-5 py-3 text-gray-600">{dok.uploaded_by}</td>
-                    <td className="px-5 py-3 text-xs font-medium whitespace-nowrap">
-                      {dok.nilai_rekening_koran != null
-                        ? <span className="text-emerald-700 font-semibold">{formatRupiah(dok.nilai_rekening_koran)}</span>
-                        : <span className="text-gray-300">—</span>
-                      }
+                    <td className="px-5 py-3 text-xs whitespace-nowrap">
+                      {dok.nilai_rekening_koran != null || dok.nilai_excel != null ? (
+                        <div className="space-y-1">
+                          {dok.nilai_rekening_koran != null && (
+                            <div className="text-emerald-700 font-semibold flex items-center gap-1">
+                              <span className="text-[10px] text-gray-400 font-normal">Rek:</span> {formatRupiah(dok.nilai_rekening_koran)}
+                            </div>
+                          )}
+                          {dok.nilai_excel != null && (
+                            <div className="text-slate-600 flex items-center gap-1">
+                              <span className="text-[10px] text-gray-400 font-normal">LPJ:</span> {formatRupiah(dok.nilai_excel)}
+                            </div>
+                          )}
+                          {dok.nilai_rekening_koran != null && dok.nilai_excel != null && (
+                            Math.abs(Number(dok.nilai_rekening_koran) - Number(dok.nilai_excel)) === 0 ? (
+                              <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-100 rounded">✓ Cocok</span>
+                            ) : (
+                              <span className="inline-block px-1.5 py-0.5 text-[10px] font-bold text-rose-800 bg-rose-100 rounded">
+                                ⚠ Selisih Rp {Math.abs(Number(dok.nilai_rekening_koran) - Number(dok.nilai_excel)).toLocaleString('id-ID')}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-3">
                       <span className={clsx('px-2.5 py-1 rounded-full text-xs font-medium', STATUS_BADGE[dok.status] || 'bg-gray-100')}>
@@ -497,12 +590,56 @@ export default function KetuaDokumenPage() {
                   <p className="text-xs text-gray-400">File</p>
                   <p className="font-medium mt-0.5 truncate">{modalDok.file_nama ?? '—'}</p>
                 </div>
-                {modalDok.nilai_rekening_koran != null && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 col-span-2 sm:col-span-4">
-                    <p className="text-xs text-emerald-600 font-medium">Saldo Akhir</p>
-                    <p className="font-bold text-emerald-800 mt-0.5 text-base">{formatRupiah(modalDok.nilai_rekening_koran)}</p>
-                  </div>
-                )}
+                {(() => {
+                  const valRek = modalDok.nilai_rekening_koran != null ? Number(modalDok.nilai_rekening_koran) : null;
+                  const valExc = modalDok.nilai_excel != null ? Number(modalDok.nilai_excel) : null;
+                  const hasBoth = valRek !== null && valExc !== null;
+                  const selisih = hasBoth ? Math.round(Math.abs(valRek - valExc) * 100) / 100 : null;
+                  const isCocok = hasBoth && selisih === 0;
+
+                  if (valRek != null || valExc != null) {
+                    return (
+                      <div className={clsx(
+                        "rounded-xl border p-4 col-span-2 sm:col-span-4 shadow-xs",
+                        isCocok ? "bg-emerald-50/70 border-emerald-200" : "bg-rose-50/70 border-rose-200"
+                      )}>
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <Stamp className="w-4 h-4 text-indigo-600" /> Hasil Rekonsiliasi Otomatis
+                          </span>
+                          {hasBoth && (
+                            isCocok ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-200/80 text-emerald-900">
+                                <CheckCircle className="w-3.5 h-3.5" /> Rekonsiliasi Cocok (Rp 0 Selisih)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-200/80 text-rose-900">
+                                <AlertCircle className="w-3.5 h-3.5" /> Terdapat Selisih Rp {selisih?.toLocaleString('id-ID')}
+                              </span>
+                            )
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-2">
+                          <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
+                            <p className="text-slate-500 font-medium">Saldo Rekening Koran:</p>
+                            <p className="text-sm font-bold text-slate-900 mt-0.5">{formatRupiah(valRek)}</p>
+                          </div>
+                          <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
+                            <p className="text-slate-500 font-medium">Saldo Realisasi LPJ / Excel:</p>
+                            <p className="text-sm font-bold text-slate-900 mt-0.5">{formatRupiah(valExc)}</p>
+                          </div>
+                          <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
+                            <p className="text-slate-500 font-medium">Selisih Nominal:</p>
+                            <p className={clsx("text-sm font-bold mt-0.5", selisih === 0 ? "text-emerald-700" : "text-rose-700")}>
+                              {selisih !== null ? `Rp ${selisih.toLocaleString('id-ID')}` : '—'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Catatan Pimpinan */}
@@ -513,19 +650,31 @@ export default function KetuaDokumenPage() {
               )}
 
               {/* Tombol aksi */}
-              <div className="flex items-center justify-end gap-2 flex-wrap pt-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
                 <button
-                  onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
+                  type="button"
+                  onClick={() => handleAuditUlang(modalDok.id)}
+                  disabled={auditingId === modalDok.id}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50"
+                  title="Audit ulang berkas secara otomatis"
                 >
-                  <Undo2 className="w-4 h-4" /> Kembalikan Revisi
+                  <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === modalDok.id && "animate-spin")} />
+                  {auditingId === modalDok.id ? 'Mengaudit Ulang...' : 'Audit Ulang Berkas (Re-check)'}
                 </button>
-                <button
-                  onClick={() => { setTarget({ dok: modalDok, aksi: 'approve' }); setCatatan(''); }}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                >
-                  <CheckCircle className="w-4 h-4" /> Setujui & Publish
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
+                  >
+                    <Undo2 className="w-4 h-4" /> Kembalikan Revisi
+                  </button>
+                  <button
+                    onClick={() => { setTarget({ dok: modalDok, aksi: 'approve' }); setCatatan(''); }}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Setujui & Publish
+                  </button>
+                </div>
               </div>
             </div>
           </div>

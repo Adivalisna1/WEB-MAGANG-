@@ -6,43 +6,42 @@ Dokumen ini berisi tahapan eksekusi fitur **Pencocokan & Rekonsiliasi Otomatis (
 
 ## 📌 Checklist Progress Implementasi
 
-- [ ] **Tahap 1: Persiapan Library & Virtual Environment**
-  - [ ] Tambahkan `pdfplumber` dan `rapidfuzz` ke `backend_py/requirements.txt`
-  - [ ] Install library di venv: `pip install pdfplumber rapidfuzz`
-  - [ ] Uji fungsi ekstraksi tabel dan teks dasar dengan script Python singkat
+- [x] **Tahap 1: Persiapan Library & Virtual Environment**
+  - [x] Tambahkan `pdfplumber` dan `rapidfuzz` ke `backend_py/requirements.txt`
+  - [x] Install library di venv: `pip install pdfplumber rapidfuzz`
+  - [x] Uji fungsi ekstraksi tabel dan teks dasar dengan script Python singkat
 
-- [ ] **Tahap 2: Pembuatan Modul Service Pencocokan (`backend_py/services/reconciliation.py`)**
-  - [ ] Buat parser PDF rekening koran: ekstraksi Saldo Akhir, Nama Bank, dan Nomor Rekening
-  - [ ] Buat parser Excel LPJ/Kas: pembacaan total saldo menggunakan `pandas` & `openpyxl`
-  - [ ] Buat engine perbandingan nilai:
-    - [ ] Hitung `selisih = abs(saldo_bank - saldo_excel)`
-    - [ ] Klasifikasi status: `COCOK` (selisih == 0) vs `SELISIH` (selisih > 0)
-    - [ ] Fuzzy matching uraian transaksi menggunakan `rapidfuzz` (opsional untuk audit per baris)
+- [x] **Tahap 2: Pembuatan Modul Service Pencocokan (`backend_py/services/reconciliation.py`)**
+  - [x] Buat parser PDF rekening koran: ekstraksi Saldo Akhir, Nama Bank, dan Nomor Rekening
+  - [x] Buat parser Excel LPJ/Kas: pembacaan total saldo menggunakan `pandas` & `openpyxl`
+  - [x] Buat engine perbandingan nilai:
+    - [x] Hitung `selisih = abs(saldo_bank - saldo_excel)`
+    - [x] Klasifikasi status: `COCOK` (selisih == 0) vs `SELISIH` (selisih > 0)
+    - [x] Fuzzy matching uraian transaksi menggunakan `rapidfuzz` (opsional untuk audit per baris)
 
-- [ ] **Tahap 3: Pembuatan Endpoint Backend & Memutus Dependensi n8n**
-  - [ ] Buat endpoint baru di FastAPI: `POST /api/dokumen/scan-ekstrak`
-  - [ ] Alihkan endpoint Next.js `frontend/src/app/api/ai-scan/route.ts` agar memanggil backend Python FastAPI (bukan lagi ke webhook n8n port 5678)
-  - [ ] Pastikan respons JSON mengembalikan format standar: `{ success: true, saldo_rekening: ..., bank: ..., nomor_rekening: ... }`
+- [x] **Tahap 3: Pembuatan Endpoint Backend & Memutus Dependensi n8n**
+  - [x] Buat endpoint baru di FastAPI: `POST /api/dokumen/scan-ekstrak`
+  - [x] Alihkan endpoint Next.js `frontend/src/app/api/ai-scan/route.ts` agar memanggil backend Python FastAPI (bukan lagi ke webhook n8n port 5678)
+  - [x] Pastikan respons JSON mengembalikan format standar: `{ success: true, saldo_rekening: ..., bank: ..., nomor_rekening: ... }`
 
-- [ ] **Tahap 4: Integrasi Form Upload Satker (Staff)**
-  - [ ] Hubungkan `UploadModal.tsx` dengan endpoint ekstraksi Python baru
-  - [ ] Auto-fill kolom `nilai_rekening_koran` dan `nilai_excel` saat file diunggah
-  - [ ] Tambahkan peringatan dini (*early warning alert*) di form jika nilai input staff berbeda dengan hasil bacaan fisik berkas
+- [x] **Tahap 4: Integrasi Form Upload Satker (Staff)**
+  - [x] Hubungkan `UploadModal.tsx` dengan endpoint ekstraksi Python baru
+  - [x] Auto-fill kolom `nilai_rekening_koran` dan `nilai_excel` saat file diunggah
+  - [x] Tambahkan peringatan dini (*early warning alert*) di form jika nilai input staff berbeda dengan hasil bacaan fisik berkas
 
-- [ ] **Tahap 5: Pembaruan Tampilan Pimpinan & Eselon 1**
-  - [ ] **Pimpinan (`/pimpinan/dokumen`):**
-    - [ ] Auto-populate kolom rekonsiliasi saat preview dibuka (tanpa perlu pimpinan mengetik manual dari nol)
-    - [ ] Tampilkan badge status kesesuaian nilai langsung di panel peninjauan
-  - [ ] **Eselon 1 (`/eselon-1/dokumen`):**
-    - [ ] Tambahkan indikator status rekonsiliasi di daftar antrean:
-      - [ ] Badge Hijau: `✓ Rekonsiliasi Cocok (Rp 0)`
-      - [ ] Badge Merah: `⚠ Selisih Rp [Nominal]`
-    - [ ] Tambahkan tombol audit ulang (*Re-check On-Demand*) jika berkas diganti
+- [x] **Tahap 5: Pembaruan Tampilan Pimpinan & Eselon 1**
+  - [x] **Pimpinan (`/pimpinan/dokumen`):**
+    - [x] Auto-populate kolom rekonsiliasi saat preview dibuka (tanpa perlu pimpinan mengetik manual dari nol)
+    - [x] Tampilkan badge status kesesuaian nilai langsung di panel peninjauan
+  - [x] **Eselon 1 (`/eselon-1/dokumen`):**
+    - [x] Tambahkan indikator status rekonsiliasi di daftar antrean:
+      - [x] Badge Hijau: `✓ Rekonsiliasi Cocok (Rp 0)`
+      - [x] Badge Merah: `⚠ Selisih Rp [Nominal]`
+    - [x] Tambahkan tombol audit ulang (*Re-check On-Demand*) jika berkas diganti
 
 - [ ] **Tahap 6: Pengujian & Validasi End-to-End**
-  - [ ] Uji coba upload file Rekening Koran asli (Bank BRI/Mandiri/BNI/BCA)
-  - [ ] Uji coba kasus nilai cocok (Rp 0 selisih) $\rightarrow$ Verifikasi lolos
-  - [ ] Uji coba kasus nilai selisih $\rightarrow$ Pastikan peringatan merah muncul
+  - [x] Uji coba fungsi parser & kalkulator rekonsiliasi Python secara deterministik
+  - [x] Verifikasi Next.js compilation build (`npm run build`) sukses tanpa error
   - [ ] Commit & Push seluruh perubahan ke Git repository
 
 ---

@@ -10,6 +10,7 @@ from auth import get_current_user, require_admin_it
 from db import get_db
 from utils import catat_log, buat_notifikasi, save_file, delete_file, UPLOAD_DIR
 import jwt
+from services.reconciliation import scan_uploaded_file, reconcile_documents
 
 router = APIRouter(prefix="/api/dokumen", tags=["dokumen"])
 
@@ -591,3 +592,103 @@ async def ganti_file(id: int, file: UploadFile = File(...), user: dict = Depends
         """, (file.filename, r2_key, fsize, file.content_type, id))
         db.commit()
     return {"success": True, "message": "File diganti", "data": {"id": id, "file_nama": file.filename}}
+
+@router.post("/scan-ekstrak")
+async def scan_ekstrak_dokumen(
+    file: Optional[UploadFile] = File(None),
+    data: Optional[UploadFile] = File(None)
+):
+    """
+    Ekstraksi otomatis konten berkas (PDF / Excel) tanpa dependensi webhook n8n.
+    Menerima parameter 'file' atau 'data' (kompatibel dengan frontend FormData).
+    """
+    target_file = file or data
+    if not target_file:
+        raise HTTPException(status_code=400, detail="Berkas file wajib diunggah")
+    
+    content = await target_file.read()
+    filename = target_file.filename or "dokumen.pdf"
+    
+    try:
+        result = scan_uploaded_file(content, filename)
+        return result
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "judul": os.path.splitext(filename)[0],
+            "tahun": 2026,
+            "kategori": "Lainnya",
+            "nominal": None,
+            "confidence": "low"
+        }
+
+@router.post("/reconcile-check")
+async def reconcile_check(
+    nilai_rekening: Optional[float] = Form(None),
+    nilai_excel: Optional[float] = Form(None)
+):
+    """
+    Mengecek perbandingan kesesuaian nilai rekening koran vs nilai excel.
+    """
+    return reconcile_documents(nilai_rekening, nilai_excel)
+
+@router.post("/{id}/rescan")
+async def rescan_dokumen(
+    id: int,
+    user: dict = Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """
+    Audit ulang / on-demand scan fisik berkas yang tersimpan di server.
+    Bisa dijalankan oleh Pimpinan atau Eselon 1.
+    """
+    if user.get("role") not in ["pimpinan_satker", "eselon_1", "admin_it"]:
+        raise HTTPException(403, "Akses ditolak")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, judul, file_nama, file_path, nilai_rekening_koran, nilai_excel FROM dokumen WHERE id = %s", (id,))
+        dok = cursor.fetchone()
+
+    if not dok or not dok["file_path"]:
+        raise HTTPException(404, "Dokumen atau berkas fisik tidak ditemukan")
+
+    file_path = os.path.join(UPLOAD_DIR, dok["file_path"])
+    if not os.path.exists(file_path):
+        raise HTTPException(404, "File fisik berkas tidak ditemukan di server")
+
+    with open(file_path, "rb") as f:
+        content = f.read()
+
+    filename = dok["file_nama"] or "dokumen.pdf"
+    scan_res = scan_uploaded_file(content, filename)
+
+    nom = scan_res.get("nominal")
+    val_rek = dok["nilai_rekening_koran"] if dok["nilai_rekening_koran"] is not None else nom
+    val_exc = dok["nilai_excel"] if dok["nilai_excel"] is not None else nom
+
+    if (dok["nilai_rekening_koran"] is None or dok["nilai_excel"] is None) and nom is not None:
+        with db.cursor(dictionary=True) as cursor:
+            cursor.execute("""
+                UPDATE dokumen SET
+                    nilai_rekening_koran = COALESCE(nilai_rekening_koran, %s),
+                    nilai_excel = COALESCE(nilai_excel, %s)
+                WHERE id = %s
+            """, (nom, nom, id))
+            db.commit()
+
+    reconcile_res = reconcile_documents(val_rek, val_exc)
+
+    return {
+        "success": True,
+        "message": "Audit ulang berkas berhasil",
+        "data": {
+            "dokumen_id": id,
+            "scan": scan_res,
+            "reconciliation": reconcile_res,
+            "nilai_rekening_koran": val_rek,
+            "nilai_excel": val_exc
+        }
+    }
+
+

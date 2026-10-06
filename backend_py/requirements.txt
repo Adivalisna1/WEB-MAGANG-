@@ -9,3 +9,5 @@ aiofiles
 psutil
 pandas
 openpyxl
+pdfplumber
+rapidfuzz
