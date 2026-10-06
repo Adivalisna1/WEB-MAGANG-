@@ -39,10 +39,10 @@ Dokumen ini berisi tahapan eksekusi fitur **Pencocokan & Rekonsiliasi Otomatis (
       - [x] Badge Merah: `⚠ Selisih Rp [Nominal]`
     - [x] Tambahkan tombol audit ulang (*Re-check On-Demand*) jika berkas diganti
 
-- [ ] **Tahap 6: Pengujian & Validasi End-to-End**
+- [x] **Tahap 6: Pengujian & Validasi End-to-End**
   - [x] Uji coba fungsi parser & kalkulator rekonsiliasi Python secara deterministik
   - [x] Verifikasi Next.js compilation build (`npm run build`) sukses tanpa error
-  - [ ] Commit & Push seluruh perubahan ke Git repository
+  - [x] Commit & Push seluruh perubahan ke Git repository
 
 ---
 
