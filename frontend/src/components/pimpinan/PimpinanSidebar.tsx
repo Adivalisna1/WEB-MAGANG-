@@ -5,18 +5,18 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileCheck, Users,
-  Activity, LogOut, ChevronRight, ShieldCheck, Home, Tag, User, FileSpreadsheet, Calculator, X, ChevronLeft
+  Activity, LogOut, ChevronRight, Home, User, FileSpreadsheet, Calculator, X, ChevronLeft
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const PimpinanMenu = [
-  { href: '/pimpinan',              icon: LayoutDashboard, label: 'Dashboard',          exact: true },
-  { href: '/pimpinan/dokumen',      icon: FileCheck,       label: 'Verifikasi Dokumen' },
-  { href: '/pimpinan/rekening-koran', icon: FileSpreadsheet,  label: 'Rekening Koran' },
-  { href: '/pimpinan/pencatatan',    icon: Calculator,      label: 'Pencatatan' },
-  { href: '/pimpinan/users',        icon: Users,           label: 'Manajemen User' },
-  { href: '/pimpinan/logs',         icon: Activity,        label: 'Log Aktivitas' },
-  { href: '/pimpinan/profil',       icon: User,            label: 'Profil' },
+  { href: '/pimpinan',                icon: LayoutDashboard, label: 'Dashboard',          exact: true },
+  { href: '/pimpinan/dokumen',        icon: FileCheck,       label: 'Verifikasi Dokumen' },
+  { href: '/pimpinan/rekening-koran', icon: FileSpreadsheet, label: 'Rekening Koran' },
+  { href: '/pimpinan/pencatatan',     icon: Calculator,      label: 'Pencatatan' },
+  { href: '/pimpinan/users',          icon: Users,           label: 'Manajemen User' },
+  { href: '/pimpinan/logs',           icon: Activity,        label: 'Log Aktivitas' },
+  { href: '/pimpinan/profil',         icon: User,            label: 'Profil' },
 ];
 
 interface SidebarProps {
@@ -30,14 +30,12 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
   const pathname = usePathname();
   const { user, logoutFn } = useAuth();
 
-  const menu = PimpinanMenu;
-
   return (
     <>
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-white border-r border-slate-200/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-white/80 border-r border-slate-200/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
@@ -47,15 +45,16 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
         ${isMobileOpen ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
         ${isCollapsed ? 'md:w-20' : 'md:w-[260px]'}
       `}>
+        {/* Header */}
         <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
-              <span className="text-sm">P</span>
+              <span className="text-sm">PM</span>
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
                 <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">Pimpinan</h1>
-                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">PORTAL VERIFIKASI</p>
+                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">PORTAL SATKER</p>
               </div>
             )}
           </div>
@@ -68,84 +67,92 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
           </button>
         </div>
 
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {menu.map(({ href, icon: Icon, label, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          return (
+        {/* Menu */}
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {PimpinanMenu.map(({ href, icon: Icon, label, exact }) => {
+            const active = exact ? pathname === href : (pathname === href || pathname.startsWith(href));
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx(
+                  'flex items-center px-4 py-3 rounded-xl font-medium transition-all group',
+                  active
+                    ? 'bg-[#475569] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-[#475569]/50',
+                  isCollapsed ? 'justify-center' : 'gap-3 w-full'
+                )}
+                title={isCollapsed ? label : undefined}
+              >
+                <Icon className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-white")} />
+                {!isCollapsed && <span className="truncate">{label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Footer / User Profile & Actions */}
+        <div className="p-3 border-t border-slate-100 flex flex-col gap-2 bg-slate-50/50">
+          <Link
+            href="/laporan"
+            className={clsx(
+              "flex items-center text-slate-600 hover:text-white bg-white hover:bg-[#1E90FF] rounded-xl font-medium transition-all group border border-slate-200/80 shadow-xs",
+              isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-xs w-full'
+            )}
+            title={isCollapsed ? "Dashboard Laporan" : undefined}
+          >
+            <Home className="w-4 h-4 text-slate-500 shrink-0 group-hover:text-white" />
+            {!isCollapsed && <span>Dashboard Laporan Publik</span>}
+          </Link>
+
+          {/* User Profile Card */}
+          <div className={clsx(
+            "flex items-center bg-white border border-slate-200/80 rounded-xl p-2 transition-all shadow-xs",
+            isCollapsed ? "justify-center" : "justify-between gap-2"
+          )}>
             <Link
-              key={href}
-              href={href}
-              className={clsx(
-                'flex items-center px-4 py-3 rounded-xl font-medium transition-all group',
-                active
-                  ? 'bg-[#1E90FF] text-white shadow-lg shadow-[#1E90FF]/30'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50',
-                isCollapsed ? 'justify-center' : 'gap-3 w-full'
-              )}
-              title={isCollapsed ? label : undefined}
+              href="/pimpinan/profil"
+              className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80 transition-opacity"
+              title="Lihat Profil"
             >
-              <Icon className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-slate-900")} />
-              {!isCollapsed && <span className="truncate">{label}</span>}
+              <div className="relative shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-400 text-white font-bold text-xs flex items-center justify-center">
+                  {(user?.nama || 'PM').substring(0, 2).toUpperCase()}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+              </div>
+              {!isCollapsed && (
+                <div className="min-w-0 flex flex-col">
+                  <span className="text-xs font-bold text-slate-800 truncate leading-tight">
+                    {user?.nama || 'Pimpinan Satker'}
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-semibold tracking-wide">
+                    PIMPINAN SATKER
+                  </span>
+                </div>
+              )}
             </Link>
-          );
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-slate-200 flex flex-col gap-2">
-        <Link
-          href="/pimpinan/profil"
-          className={clsx(
-            "flex items-center mb-2 cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors",
-            isCollapsed ? 'justify-center' : 'gap-3'
-          )}
-          title={isCollapsed ? "Profil" : undefined}
-        >
-          <div className="w-10 h-10 rounded-full bg-[#1E90FF] flex items-center justify-center font-bold text-white shadow-inner shrink-0">
-            {user?.nama?.charAt(0).toUpperCase() ?? 'A'}
+            {!isCollapsed && (
+              <button
+                onClick={logoutFn}
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                title="Keluar dari Sistem"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          {!isCollapsed && (
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-slate-900 truncate">{user?.nama ?? '-'}</p>
-              <p className="text-xs text-slate-500 truncate capitalize">
-                {user?.role?.replace('_', ' ') ?? 'Ketua Pimpinan'}
-              </p>
-            </div>
-          )}
-        </Link>
-        
-        <Link
-          href="/laporan"
-          className={clsx(
-            "py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-[#1E90FF] hover:text-white hover:border-[#1E90FF] transition-all font-medium text-sm flex items-center group mb-2",
-            isCollapsed ? 'justify-center' : 'justify-center gap-2 w-full'
-          )}
-          title={isCollapsed ? "Dashboard Laporan" : undefined}
-        >
-          <Home className="w-4 h-4 shrink-0 group-hover:text-white" />
-          {!isCollapsed && <span>Dashboard Laporan</span>}
-        </Link>
 
-        <button
-          onClick={logoutFn}
-          className={clsx(
-            "py-2.5 px-4 rounded-xl border border-[#334155] text-slate-600 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all font-medium text-sm flex items-center group",
-            isCollapsed ? 'justify-center' : 'justify-center gap-2 w-full'
-          )}
-          title={isCollapsed ? "Keluar" : undefined}
-        >
-          <LogOut className="w-4 h-4 shrink-0 group-hover:text-white" />
-          {!isCollapsed && <span>Keluar</span>}
-        </button>
-
-        {/* Collapse Toggle (Desktop only) */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex items-center justify-center p-2 mt-2 text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors border border-[#1e293b]"
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-    </aside>
+          {/* Collapse Toggle (Desktop only) */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden md:flex items-center justify-center p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors"
+            title={isCollapsed ? "Lebarkan Sidebar" : "Ciutkan Sidebar"}
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+      </aside>
     </>
   );
 }
