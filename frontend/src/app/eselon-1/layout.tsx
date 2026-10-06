@@ -42,27 +42,40 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100 relative">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative">
       <Eselon1Sidebar 
         isMobileOpen={isMobileOpen} 
         setIsMobileOpen={setIsMobileOpen} 
         isCollapsed={isCollapsed} 
         setIsCollapsed={setIsCollapsed} 
       />
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-between md:justify-end gap-3 px-4 md:px-6 py-3 bg-white border-b border-gray-200">
-          <div className="flex items-center md:hidden">
+      <div className="flex-1 flex flex-col h-screen relative bg-slate-50 min-w-0">
+        <header className="h-20 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border-b border-slate-200 flex justify-between items-center px-4 md:px-10 z-20 sticky top-0 w-full">
+          <div className="flex items-center gap-4 h-full pt-1">
             <button 
               onClick={() => setIsMobileOpen(true)}
-              className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+              className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <Menu className="w-6 h-6" />
             </button>
+            <div className="flex flex-col justify-center">
+              <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight leading-none truncate max-w-[200px] md:max-w-none">
+                Eselon 1 &bull; Pimpinan Pusat
+              </h1>
+              <p className="text-[11px] md:text-sm text-slate-500 font-medium mt-1 truncate max-w-[200px] md:max-w-none">
+                Sistem Informasi Manajemen & Monitoring Dokumen Satker
+              </p>
+            </div>
           </div>
-          <NotificationBell />
+
+          <div className="flex items-center gap-3 md:gap-6">
+            <NotificationBell />
+          </div>
         </header>
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8" id="main-content">
+          <div className="max-w-[1400px] mx-auto animate-fade-in">
+            {children}
+          </div>
         </main>
       </div>
       <SessionTimeoutModal open={showWarning} onStay={handleStay} />
