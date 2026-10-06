@@ -237,6 +237,9 @@ async def get_stats(
         
         cursor.execute("SELECT COUNT(*) AS total FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE status = 'lolos_admin' AND u.satker_id = %s", (sid,))
         lolos_admin = cursor.fetchone()["total"]
+
+        cursor.execute("SELECT COUNT(*) AS total FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE status = 'revisi' AND u.satker_id = %s", (sid,))
+        revisi = cursor.fetchone()["total"]
         
         cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role_id = 2 AND satker_id = %s", (sid,))
         total_user = cursor.fetchone()["total"]
@@ -254,6 +257,7 @@ async def get_stats(
                 "terverifikasi": terverifikasi,
                 "menunggu": menunggu,
                 "lolosAdmin": lolos_admin,
+                "revisi": revisi,
                 "totalUser": total_user,
                 "totalDownload": total_download,
                 "onlineNow": online_now
