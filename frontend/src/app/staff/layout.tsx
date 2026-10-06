@@ -9,8 +9,9 @@ import { useAuth } from '@/context/AuthContext';
 import StaffSidebar from '@/components/Staff/StaffSidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
-import { Loader2, Search, X, FileText, ChevronRight, Menu } from 'lucide-react';
+import { Loader2, Search, X, FileText, ChevronRight, Menu, Plus } from 'lucide-react';
 import { SearchContext } from '@/context/SearchContext';
+import './staff.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 

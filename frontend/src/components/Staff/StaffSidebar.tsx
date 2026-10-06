@@ -10,8 +10,7 @@ import {
 import clsx from 'clsx';
 
 const StaffMenu = [
-  { href: '/staff/dokumen',        icon: LayoutDashboard, label: 'Dokumen Saya' },
-  { href: '/staff/dokumen/upload', icon: Upload,          label: 'Upload Dokumen' },
+  { href: '/staff/dokumen',        icon: LayoutDashboard, label: 'Dokumen' },
   { href: '/staff/rekening-koran', icon: FileSpreadsheet, label: 'Rekening Koran' },
   { href: '/staff/pencatatan',      icon: Calculator,      label: 'Pencatatan' },
   { href: '/staff/profil',         icon: User,            label: 'Profil' },
@@ -67,7 +66,7 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, se
       {/* Menu */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {StaffMenu.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || (href !== '/staff/dokumen' && pathname.startsWith(href));
+          const active = pathname === href || pathname.startsWith(href);
           return (
             <Link
               key={href}
@@ -88,34 +87,58 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, se
         })}
       </nav>
 
-      <div className="p-4 space-y-2 mb-4 flex flex-col gap-1">
+      <div className="p-3 border-t border-slate-100 flex flex-col gap-2 bg-slate-50/50">
         <Link
           href="/laporan"
           className={clsx(
-            "flex items-center text-slate-600 hover:text-white bg-slate-100 hover:bg-[#1E90FF] rounded-xl font-medium transition-all group",
-            isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3 w-full'
+            "flex items-center text-slate-600 hover:text-white bg-white hover:bg-[#1E90FF] rounded-xl font-medium transition-all group border border-slate-200/80 shadow-xs",
+            isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-xs w-full'
           )}
           title={isCollapsed ? "Dashboard Laporan" : undefined}
         >
-          <Home className="w-5 h-5 text-slate-500 shrink-0 group-hover:text-white" />
-          {!isCollapsed && <span>Dashboard Laporan</span>}
+          <Home className="w-4 h-4 text-slate-500 shrink-0 group-hover:text-white" />
+          {!isCollapsed && <span>Dashboard Laporan Publik</span>}
         </Link>
-        <button
-          onClick={logoutFn}
-          className={clsx(
-            "flex items-center text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl font-medium transition-all group",
-            isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3 w-full'
+
+        {/* User Profile Card */}
+        <div className={clsx(
+          "flex items-center bg-white border border-slate-200/80 rounded-xl p-2 transition-all shadow-xs",
+          isCollapsed ? "justify-center" : "justify-between gap-2"
+        )}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-400 text-white font-bold text-xs flex items-center justify-center">
+                {(user?.nama || 'ST').substring(0, 2).toUpperCase()}
+              </div>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 flex flex-col">
+                <span className="text-xs font-bold text-slate-800 truncate leading-tight">
+                  {user?.nama || 'Staff Satker'}
+                </span>
+                <span className="text-[10px] text-blue-600 font-semibold tracking-wide">
+                  STAFF SATKER
+                </span>
+              </div>
+            )}
+          </div>
+          {!isCollapsed && (
+            <button
+              onClick={logoutFn}
+              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+              title="Keluar dari Sistem"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           )}
-          title={isCollapsed ? "Logout" : undefined}
-        >
-          <LogOut className="w-5 h-5 text-rose-400 group-hover:text-white shrink-0" />
-          {!isCollapsed && <span>Logout</span>}
-        </button>
+        </div>
 
         {/* Collapse Toggle (Desktop only) */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex items-center justify-center p-2 mt-2 text-slate-400 hover:text-white hover:bg-[#475569]/50 rounded-lg transition-colors border border-[#475569]/30"
+          className="hidden md:flex items-center justify-center p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors"
+          title={isCollapsed ? "Lebarkan Sidebar" : "Ciutkan Sidebar"}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Edit, Download, Paperclip, Search } from 'lucide-react';
+import { Plus, Edit, Download, Paperclip, Search, DollarSign, TrendingUp, Building2, Clock } from 'lucide-react';
 import clsx from 'clsx';
 import * as XLSX from 'xlsx';
 
@@ -169,6 +169,10 @@ export default function StaffpencatatanPage() {
     XLSX.writeFile(wb, fileName);
   };
 
+  const totalDebit = transaksi.filter(t => t.jenis === 'debit').reduce((acc, t) => acc + (Number(t.nominal) || 0), 0);
+  const totalKredit = transaksi.filter(t => t.jenis === 'kredit').reduce((acc, t) => acc + (Number(t.nominal) || 0), 0);
+  const saldoKas = totalDebit - totalKredit;
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -183,6 +187,53 @@ export default function StaffpencatatanPage() {
           <button onClick={() => { resetForm(); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Plus className="w-4 h-4" /> Tambah Data
           </button>
+        </div>
+      </div>
+
+      {/* Stats Summary Strip (Prototype Design) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="staff-mini-card">
+          <div className="staff-mini-label">
+            <span>Total Transaksi Tercatat</span>
+            <DollarSign className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="staff-mini-val text-blue-600">
+            Rp {(totalDebit + totalKredit).toLocaleString('id-ID')}
+          </div>
+          <span className="text-xs font-semibold text-emerald-600">+{transaksi.length} Transaksi Tercatat</span>
+        </div>
+
+        <div className="staff-mini-card">
+          <div className="staff-mini-label">
+            <span>Realisasi Belanja</span>
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div className="staff-mini-val text-emerald-600">
+            Rp {totalKredit.toLocaleString('id-ID')}
+          </div>
+          <span className="text-xs text-slate-500">Pengeluaran terdata</span>
+        </div>
+
+        <div className="staff-mini-card">
+          <div className="staff-mini-label">
+            <span>Saldo Kas Berjalan</span>
+            <Building2 className="w-4 h-4 text-indigo-500" />
+          </div>
+          <div className="staff-mini-val text-slate-900">
+            Rp {saldoKas.toLocaleString('id-ID')}
+          </div>
+          <span className="text-xs text-blue-600 font-medium">Buku Kas Pembantu</span>
+        </div>
+
+        <div className="staff-mini-card">
+          <div className="staff-mini-label">
+            <span>Pemasukan / Setoran</span>
+            <Clock className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="staff-mini-val text-indigo-600">
+            Rp {totalDebit.toLocaleString('id-ID')}
+          </div>
+          <span className="text-xs text-indigo-600 font-medium">Total Debet Masuk</span>
         </div>
       </div>
 

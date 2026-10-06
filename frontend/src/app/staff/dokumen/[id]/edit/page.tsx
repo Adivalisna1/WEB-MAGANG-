@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import {
   Save, ArrowLeft, Loader2, AlertCircle,
-  CheckCircle, CloudUpload, FileText, X, RefreshCw, DollarSign
+  CheckCircle, CloudUpload, FileText, X, RefreshCw, DollarSign, AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -223,11 +223,12 @@ export default function EditDokumenPage() {
 
       {/* Catatan revisi dari reviewer (Pimpinan / Eselon 1) */}
       {dokumen?.catatan && dokumen.status === 'revisi' && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-orange-700 mb-1">
-            Catatan Revisi dari {dokumen.catatan_oleh === 'ketua_tim' ? 'Eselon 1' : 'Pimpinan'}:
-          </p>
-          <p className="text-sm text-orange-800">{dokumen.catatan}</p>
+        <div className="bg-amber-50 border border-amber-300 border-l-4 border-l-amber-500 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-900 font-bold text-sm mb-1">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <span>Catatan Revisi dari {dokumen.catatan_oleh === 'ketua_tim' ? 'Eselon 1' : 'Pimpinan'}</span>
+          </div>
+          <p className="text-sm text-amber-800 leading-relaxed pl-7">{dokumen.catatan}</p>
         </div>
       )}
 

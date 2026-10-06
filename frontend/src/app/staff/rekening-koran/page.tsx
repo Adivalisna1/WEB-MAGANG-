@@ -305,6 +305,27 @@ export default function KertasKerjaPage() {
         </div>
       </div>
 
+      {/* Header Rekening Giro Bank Persepsi (Prototype Standard) */}
+      <div className="rounded-2xl p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-md border border-slate-700/60">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 bg-blue-500/20 text-sky-400 px-3 py-1 rounded-full text-xs font-bold mb-2">
+              BANK PERSEPSI PEMERINTAH
+            </div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">PT Bank Negara Indonesia (Persero) Tbk</h2>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">
+              Nomor Rekening Giro: 0329-01-002841-30-8 • KPPN Jakarta II
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-slate-400">Total Saldo Terdata:</span>
+            <div className="text-2xl font-extrabold text-sky-400">
+              Rp {dataList.reduce((acc, curr) => acc + (Number(curr.saldo_akhir_bulan) || 0), 0).toLocaleString('id-ID')}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max">
         {!isEselon1 && (
           <button onClick={() => setActiveTab('excel')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'excel' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
