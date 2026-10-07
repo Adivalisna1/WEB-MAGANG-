@@ -6,6 +6,10 @@ export interface User {
   username: string;
   email: string;
   role: 'pimpinan_satker' | 'staff_satker' | 'eselon_1' | 'admin_it';
+  satker_id?: number | null;
+  eselon_1_id?: number | null;
+  eselon_1_nama?: string | null;
+  eselon_1_singkatan?: string | null;
 }
 
 export interface LoginResponse {

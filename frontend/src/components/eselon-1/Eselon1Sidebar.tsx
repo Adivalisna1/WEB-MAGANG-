@@ -53,7 +53,9 @@ export default function Eselon1Sidebar({ isMobileOpen, setIsMobileOpen, isCollap
             {!isCollapsed && (
               <div className="flex flex-col">
                 <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">Eselon 1</h1>
-                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">PIMPINAN PUSAT</p>
+                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0 uppercase truncate max-w-[170px]" title={user?.eselon_1_nama || undefined}>
+                  {user?.eselon_1_singkatan || 'PIMPINAN PUSAT'}
+                </p>
               </div>
             )}
           </div>
@@ -125,8 +127,8 @@ export default function Eselon1Sidebar({ isMobileOpen, setIsMobileOpen, isCollap
                   <span className="text-xs font-bold text-slate-800 truncate leading-tight">
                     {user?.nama || 'Pejabat Eselon 1'}
                   </span>
-                  <span className="text-[10px] text-blue-600 font-semibold tracking-wide">
-                    PIMPINAN PUSAT
+                  <span className="text-[10px] text-blue-600 font-semibold tracking-wide truncate max-w-[140px]" title={user?.eselon_1_nama || undefined}>
+                    {user?.eselon_1_singkatan ? `${user.eselon_1_singkatan} · E1` : 'PIMPINAN PUSAT'}
                   </span>
                 </div>
               )}

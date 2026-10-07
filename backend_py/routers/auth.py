@@ -38,10 +38,12 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     cursor = db.cursor(dictionary=True)
     
     cursor.execute("""
-        SELECT u.id, u.role_id, u.satker_id, u.nama, u.username, u.email,
-               u.password_hash, u.is_active, u.permissions, r.nama AS role
+        SELECT u.id, u.role_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
+               u.password_hash, u.is_active, u.permissions, r.nama AS role,
+               ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
         FROM users u
         JOIN roles r ON r.id = u.role_id
+        LEFT JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
         WHERE u.username = %s OR u.email = %s
         LIMIT 1
     """, (data.username, data.username))
@@ -96,6 +98,9 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
             "role_id": user['role_id'],
             "role": user['role'], 
             "satker_id": user.get('satker_id'),
+            "eselon_1_id": user.get('eselon_1_id'),
+            "eselon_1_nama": user.get('eselon_1_nama'),
+            "eselon_1_singkatan": user.get('eselon_1_singkatan'),
             "sessionId": session_id, 
             "permissions": user['permissions'],
             "exp": datetime.utcnow() + timedelta(hours=8)
@@ -125,6 +130,9 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
                 "username": user['username'],
                 "email": user['email'],
                 "role": user['role'],
+                "eselon_1_id": user.get('eselon_1_id'),
+                "eselon_1_nama": user.get('eselon_1_nama'),
+                "eselon_1_singkatan": user.get('eselon_1_singkatan'),
                 "permissions": user['permissions']
             }
         }
@@ -150,8 +158,12 @@ async def logout(req: Request, db = Depends(get_db), current_user: dict = Depend
 def me(db = Depends(get_db), current_user: dict = Depends(get_current_user)):
     cursor = db.cursor(dictionary=True)
     cursor.execute("""
-        SELECT u.id, u.role_id, u.nama, u.username, u.email, u.is_active, u.permissions, r.nama AS role
-        FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = %s
+        SELECT u.id, u.role_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.is_active, u.permissions, r.nama AS role,
+               ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
+        FROM users u 
+        JOIN roles r ON r.id = u.role_id 
+        LEFT JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
+        WHERE u.id = %s
     """, (current_user['id'],))
     user = cursor.fetchone()
     if not user:

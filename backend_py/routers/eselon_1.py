@@ -19,6 +19,34 @@ def verify_eselon_1(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Eselon 1.")
     return current_user
 
+@router.get("/units")
+async def get_all_units(
+    db=Depends(get_db)
+):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT id, kode, nama, singkatan, deskripsi, created_at
+            FROM unit_eselon_1
+            ORDER BY id ASC
+        """)
+        units = cursor.fetchall()
+        return {"success": True, "data": units}
+
+@router.get("/my-unit")
+async def get_my_unit(
+    current_user: dict = Depends(verify_eselon_1),
+    db=Depends(get_db)
+):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT ue.id, ue.kode, ue.nama, ue.singkatan, ue.deskripsi
+            FROM users u
+            JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
+            WHERE u.id = %s
+        """, (current_user['id'],))
+        unit = cursor.fetchone()
+        return {"success": True, "data": unit}
+
 @router.get("/stats")
 async def get_stats(
     current_user: dict = Depends(verify_eselon_1),

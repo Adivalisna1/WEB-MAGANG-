@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
   FileText, Clock, CheckCircle, RefreshCw,
-  Loader2, AlertCircle, Users
+  Loader2, AlertCircle, Users, Building2, ShieldCheck
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -116,8 +116,18 @@ export default function KetuaDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-xs">
+              <Building2 className="w-3.5 h-3.5 text-blue-600" />
+              {user?.eselon_1_singkatan ? `${user.eselon_1_singkatan} · ${user.eselon_1_nama}` : 'Unit Eselon 1 Pusat'}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+              Tingkat K/L (Eselon I)
+            </span>
+          </div>
           <h1 className="text-2xl font-bold text-gray-900">
             Selamat Datang, {user?.nama || 'Pejabat Eselon 1'}
           </h1>
