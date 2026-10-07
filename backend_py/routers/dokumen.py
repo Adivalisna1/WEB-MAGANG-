@@ -62,8 +62,8 @@ async def get_dokumen_publik(
     params = []
     
     if kategori:
-        where += ' AND k.slug = %s'
-        params.append(kategori)
+        where += ' AND (k.slug = %s OR k.nama = %s OR CAST(k.id AS CHAR) = %s)'
+        params.extend([kategori, kategori, kategori])
     if tahun:
         where += ' AND d.tahun = %s'
         params.append(tahun)
@@ -146,10 +146,13 @@ async def get_all_dokumen(
                    d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size,
                    d.download_count, d.is_public, d.created_at, d.updated_at,
                    d.nilai_rekening_koran, d.nilai_excel,
-                   k.nama AS kategori, k.perlu_nominal, u.nama AS uploaded_by
+                   k.nama AS kategori, k.perlu_nominal, 
+                   u.nama AS uploaded_by, u.username AS uploaded_username,
+                   s.NO_Satker AS no_satker, s.nama AS satker_nama
             FROM dokumen d
             JOIN kategori_dokumen k ON k.id = d.kategori_id
             JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
             WHERE {where}
             ORDER BY d.created_at DESC
             LIMIT %s OFFSET %s

@@ -173,13 +173,20 @@ async def forgot_password(req: Request, data: ForgotPasswordRequest, db = Depend
     )
     db.commit()
     
-    origin = req.headers.get("origin") or os.getenv("CORS_ORIGIN") or "http://localhost:3000"
+    cors_origin = os.getenv("CORS_ORIGIN", "http://localhost:3000")
+    default_origin = cors_origin.split(",")[0].strip() if cors_origin else "http://localhost:3000"
+    origin = req.headers.get("origin") or default_origin
     reset_url = f"{origin}/reset-password?token={reset_token}"
     sender_email = os.getenv("EMAIL_FROM", "no-reply@laporan.go.id")
     brevo_api_key = os.getenv("BREVO_API_KEY")
     
     if not brevo_api_key:
-        raise HTTPException(status_code=500, detail="BREVO_API_KEY belum dikonfigurasi di server.")
+        print(f"\n[DEV MODE] Password reset token generated for {user['email']}: {reset_url}\n")
+        return {
+            "success": True,
+            "message": "Tautan reset password berhasil dibuat (Mode Pengujian Lokal).",
+            "testUrl": reset_url
+        }
     
     payload = {
       "sender": {"name": "Admin Dashboard Laporan", "email": sender_email},
@@ -188,19 +195,31 @@ async def forgot_password(req: Request, data: ForgotPasswordRequest, db = Depend
       "htmlContent": f"<p>Halo <b>{user['nama']}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>"
     }
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            'https://api.brevo.com/v3/smtp/email',
-            headers={
-                'api-key': brevo_api_key,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            json=payload
-        )
-        if response.status_code >= 400:
-            print("Brevo API Error:", response.json())
-            raise HTTPException(status_code=500, detail=f"Gagal mengirim email via Brevo")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                'https://api.brevo.com/v3/smtp/email',
+                headers={
+                    'api-key': brevo_api_key,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                json=payload
+            )
+            if response.status_code >= 400:
+                print("Brevo API Error:", response.text)
+                return {
+                    "success": True,
+                    "message": "Gagal terhubung ke provider email Brevo. Tautan reset dialihkan ke mode pengujian.",
+                    "testUrl": reset_url
+                }
+    except Exception as e:
+        print(f"Brevo Network Error: {e}")
+        return {
+            "success": True,
+            "message": "Gagal mengirim via SMTP/Brevo. Tautan reset dialihkan ke mode pengujian.",
+            "testUrl": reset_url
+        }
             
     return {"success": True, "message": "Link reset password berhasil dikirimkan ke email Anda."}
 

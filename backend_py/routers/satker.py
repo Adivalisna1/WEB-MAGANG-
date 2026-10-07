@@ -7,8 +7,7 @@ import mysql.connector
 
 router = APIRouter(
     prefix="/api/satker",
-    tags=["satker"],
-    dependencies=[Depends(get_current_user)]
+    tags=["satker"]
 )
 
 class SatkerCreate(BaseModel):

@@ -24,6 +24,9 @@ interface Dokumen {
   kategori: string;
   catatan: string | null;
   uploaded_by: string;
+  uploaded_username?: string;
+  no_satker?: number | string | null;
+  satker_nama?: string | null;
   created_at: string;
   file_nama?: string;
   nilai_rekening_koran?: number | null;
@@ -335,10 +338,13 @@ export default function KetuaDokumenPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {dok.kategori} · {periodeLabel(dok)} · oleh {dok.uploaded_by}
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span>{dok.kategori} · {periodeLabel(dok)}</span>
+                      <span>·</span>
+                      <span className="font-bold text-gray-800">{dok.satker_nama || 'Satker'}</span>
+                      <span className="text-gray-400">({dok.uploaded_by})</span>
                       {dok.nomor_laporan && (
-                        <span className="inline-flex items-center gap-1 ml-2 text-indigo-600">
+                        <span className="inline-flex items-center gap-1 ml-1 text-indigo-600 font-mono">
                           <Hash className="w-3 h-3" />{dok.nomor_laporan}
                         </span>
                       )}
@@ -414,7 +420,7 @@ export default function KetuaDokumenPage() {
                   <th className="px-5 py-3">Kode</th>
                   <th className="px-5 py-3">Kategori</th>
                   <th className="px-5 py-3">Periode</th>
-                  <th className="px-5 py-3">Diupload Oleh</th>
+                  <th className="px-5 py-3">Satker / Pengunggah</th>
                   <th className="px-5 py-3">Nilai</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Tanggal Upload</th>
@@ -429,7 +435,16 @@ export default function KetuaDokumenPage() {
                     </td>
                     <td className="px-5 py-3 text-gray-600">{dok.kategori}</td>
                     <td className="px-5 py-3 text-gray-600">{periodeLabel(dok)}</td>
-                    <td className="px-5 py-3 text-gray-600">{dok.uploaded_by}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900 text-xs truncate max-w-[220px]" title={dok.satker_nama || 'Satker'}>
+                          {dok.satker_nama || (dok.no_satker ? `Satker ${dok.no_satker}` : '—')}
+                        </span>
+                        <span className="text-[11px] text-gray-500 mt-0.5">
+                          {dok.uploaded_by || dok.uploaded_username || 'Staff'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-5 py-3 text-xs whitespace-nowrap">
                       {dok.nilai_rekening_koran != null || dok.nilai_excel != null ? (
                         <div className="space-y-1">
@@ -608,8 +623,13 @@ export default function KetuaDokumenPage() {
                       <p className="font-bold text-slate-800 mt-0.5 truncate">{periodeLabel(modalDok)}</p>
                     </div>
                     <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Diupload Oleh</p>
-                      <p className="font-bold text-slate-800 mt-0.5 truncate">{modalDok.uploaded_by}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Nama Satker</p>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate text-xs" title={modalDok.satker_nama || 'Satker'}>
+                        {modalDok.satker_nama || (modalDok.no_satker ? `Satker ${modalDok.no_satker}` : '—')}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                        Pengunggah: {modalDok.uploaded_by}
+                      </p>
                     </div>
                     <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
                       <p className="text-[10px] text-slate-400 font-bold uppercase">Berkas</p>

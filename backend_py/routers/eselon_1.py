@@ -161,10 +161,12 @@ async def get_dokumen(
         cursor.execute(f"""
             SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan,
                    d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
-                   k.nama AS kategori, u.nama AS uploaded_by
+                   k.nama AS kategori, u.nama AS uploaded_by, u.username AS uploaded_username,
+                   s.NO_Satker AS no_satker, s.nama AS satker_nama
             FROM dokumen d
             JOIN kategori_dokumen k ON k.id = d.kategori_id
             JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
             WHERE {where}
             ORDER BY d.created_at DESC
             LIMIT %s
@@ -183,10 +185,12 @@ async def get_dokumen_menunggu(
                    d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
                    d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
                    k.nama AS kategori, k.slug AS kategori_slug,
-                   u.nama AS uploaded_by
+                   u.nama AS uploaded_by, u.username AS uploaded_username,
+                   s.NO_Satker AS no_satker, s.nama AS satker_nama
             FROM dokumen d
             JOIN kategori_dokumen k ON k.id = d.kategori_id
             JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
             WHERE d.status = 'lolos_admin'
             ORDER BY d.updated_at ASC
         """)
