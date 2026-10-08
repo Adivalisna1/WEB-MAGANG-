@@ -10,9 +10,37 @@ import psutil
 router = APIRouter()
 
 def verify_admin_it(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role_id") != 4:
+    is_admin = (
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("role_id") in [3, 4]
+    )
+    if not is_admin:
         raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Admin IT.")
     return current_user
+
+@router.get("/roles")
+async def get_roles(db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, nama, deskripsi FROM roles ORDER BY id ASC")
+        return {"success": True, "data": cursor.fetchall()}
+
+@router.get("/tingkats")
+async def get_tingkats(db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, kode, nama, deskripsi FROM tingkats ORDER BY id ASC")
+        return {"success": True, "data": cursor.fetchall()}
+
+@router.get("/satkers")
+async def get_satkers(db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, NO_Satker, nama, eselon_1_id FROM satkers ORDER BY nama ASC")
+        return {"success": True, "data": cursor.fetchall()}
+
+@router.get("/unit-eselon-1")
+async def get_unit_eselon_1(db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, kode, nama, singkatan FROM unit_eselon_1 ORDER BY id ASC")
+        return {"success": True, "data": cursor.fetchall()}
 
 @router.get("/stats")
 async def get_stats(db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
@@ -68,13 +96,20 @@ async def get_users(db=Depends(get_db), current_user: dict = Depends(verify_admi
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions,
-                   u.last_login, u.created_at, r.nama AS role, sk.nama AS satker, sk.NO_Satker,
+                   u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id,
+                   u.last_login, u.created_at, 
+                   r.nama AS role, 
+                   t.kode AS tingkat, t.nama AS tingkat_nama,
+                   sk.nama AS satker, sk.NO_Satker,
+                   ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan,
                    (SELECT is_online FROM user_sessions s
                     WHERE s.user_id = u.id AND s.is_online = 1
                     ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
             FROM users u
             JOIN roles r ON r.id = u.role_id
+            JOIN tingkats t ON t.id = u.tingkat_id
             LEFT JOIN satkers sk ON sk.id = u.satker_id
+            LEFT JOIN unit_eselon_1 ue ON ue.id = COALESCE(u.eselon_1_id, sk.eselon_1_id)
             ORDER BY u.created_at DESC
         """)
         return {"success": True, "data": cursor.fetchall()}
@@ -87,12 +122,14 @@ async def create_user(
     current_user: dict = Depends(verify_admin_it)
 ):
     role_id = body.get("role_id")
+    tingkat_id = body.get("tingkat_id") or 1
     nama = body.get("nama")
     username = body.get("username")
     email = body.get("email")
     password = body.get("password")
     permissions = body.get("permissions")
     satker_id = body.get("satker_id") or None
+    eselon_1_id = body.get("eselon_1_id") or None
     
     password_hash = bcrypt.hashpw(str(password).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     perms_json = json.dumps(permissions) if permissions else None
@@ -100,16 +137,16 @@ async def create_user(
     try:
         with db.cursor(dictionary=True) as cursor:
             cursor.execute("""
-                INSERT INTO users (role_id, nama, username, email, password_hash, permissions, satker_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (role_id, nama, username, email, password_hash, perms_json, satker_id))
+                INSERT INTO users (role_id, tingkat_id, nama, username, email, password_hash, permissions, satker_id, eselon_1_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (role_id, tingkat_id, nama, username, email, password_hash, perms_json, satker_id, eselon_1_id))
             insert_id = cursor.lastrowid
             
             ip_addr = request.client.host if request.client else "127.0.0.1"
             cursor.execute("""
                 INSERT INTO aktivitas_log (user_id, aksi, entitas, entitas_id, detail, ip_address)
                 VALUES (%s, %s, %s, %s, %s, %s)
-            """, (current_user["id"], "buat_user", "user", insert_id, json.dumps({"username": username, "role_id": role_id}), ip_addr))
+            """, (current_user["id"], "buat_user", "user", insert_id, json.dumps({"username": username, "role_id": role_id, "tingkat_id": tingkat_id}), ip_addr))
             db.commit()
             
         return {"success": True, "message": "User berhasil dibuat"}
@@ -194,21 +231,29 @@ async def update_user(
     current_user: dict = Depends(verify_admin_it)
 ):
     role_id = body.get("role_id")
+    tingkat_id = body.get("tingkat_id")
     nama = body.get("nama")
     username = body.get("username")
     email = body.get("email")
     permissions = body.get("permissions")
     satker_id = body.get("satker_id") or None
+    eselon_1_id = body.get("eselon_1_id") or None
     
     perms_json = json.dumps(permissions) if permissions else None
     
     try:
         with db.cursor(dictionary=True) as cursor:
+            # Check existing user
+            cursor.execute("SELECT tingkat_id, eselon_1_id FROM users WHERE id = %s", (user_id,))
+            current_row = cursor.fetchone()
+            final_tingkat_id = tingkat_id if tingkat_id is not None else (current_row["tingkat_id"] if current_row else 1)
+            final_eselon_1_id = eselon_1_id if eselon_1_id is not None else (current_row.get("eselon_1_id") if current_row else None)
+
             cursor.execute("""
                 UPDATE users
-                SET role_id=%s, nama=%s, username=%s, email=%s, permissions=%s, satker_id=%s
+                SET role_id=%s, tingkat_id=%s, eselon_1_id=%s, nama=%s, username=%s, email=%s, permissions=%s, satker_id=%s
                 WHERE id=%s
-            """, (role_id, nama, username, email, perms_json, satker_id, user_id))
+            """, (role_id, final_tingkat_id, final_eselon_1_id, nama, username, email, perms_json, satker_id, user_id))
             
             ip_addr = request.client.host if request.client else "127.0.0.1"
             cursor.execute("""

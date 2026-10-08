@@ -15,8 +15,13 @@ from utils import catat_log, buat_notifikasi, UPLOAD_DIR
 router = APIRouter()
 
 def verify_eselon_1(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role_id") != 3:
-        raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Eselon 1.")
+    is_allowed = (
+        current_user.get("tingkat") in ["eselon_1", "kl"] or
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("role_id") == 3
+    )
+    if not is_allowed:
+        raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Pembina Eselon 1.")
     return current_user
 
 @router.get("/units")
@@ -85,7 +90,7 @@ async def get_stats(
         total_budget = fin_res["totalBudget"] if fin_res and fin_res["totalBudget"] else 0
         total_expenditure = fin_res["totalExpenditure"] if fin_res and fin_res["totalExpenditure"] else 0
         
-        cursor.execute("SELECT COUNT(DISTINCT satker_id) AS activeBranches FROM users WHERE is_active = 1 AND role_id = 2")
+        cursor.execute("SELECT COUNT(DISTINCT satker_id) AS activeBranches FROM users WHERE is_active = 1 AND role_id IN (1, 2)")
         active_branches = cursor.fetchone()["activeBranches"]
         
         cursor.execute("""
@@ -95,7 +100,7 @@ async def get_stats(
                    SUM(d.status = 'revisi') AS revisi
             FROM users u
             LEFT JOIN dokumen d ON d.uploaded_by = u.id
-            WHERE u.role_id = 2 AND u.is_active = 1
+            WHERE u.role_id IN (1, 2) AND u.is_active = 1
             GROUP BY u.id, u.nama
             ORDER BY total DESC
         """)
@@ -156,15 +161,16 @@ async def get_users(
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT u.id, u.nama, u.username, u.email, u.is_active,
-                   u.last_login, u.password_reset_at, u.created_at, r.nama AS role,
+                   u.last_login, u.password_reset_at, u.created_at, r.nama AS role, t.kode AS tingkat,
                    (SELECT is_online FROM user_sessions s
                     WHERE s.user_id = u.id AND s.is_online = 1
                     ORDER BY s.last_active_at DESC LIMIT 1) AS is_online,
                    st.nama AS satker_nama
             FROM users u
             JOIN roles r ON r.id = u.role_id
+            JOIN tingkats t ON t.id = u.tingkat_id
             LEFT JOIN satkers st ON st.id = u.satker_id
-            WHERE u.role_id = 1
+            WHERE u.role_id IN (1, 2)
             ORDER BY u.created_at DESC
         """)
         rows = cursor.fetchall()

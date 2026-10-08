@@ -9,8 +9,12 @@ router = APIRouter()
 
 # Middleware-like dependency to ensure user is pimpinan
 def verify_pimpinan(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role_id") != 1:
-        raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Pimpinan.")
+    is_allowed = (
+        current_user.get("role") in ["administrasi", "it", "admin_it"] or
+        current_user.get("role_id") in [1, 2]
+    )
+    if not is_allowed:
+        raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Pimpinan / Administrasi.")
     return current_user
 
 @router.get("/users")
@@ -21,13 +25,14 @@ async def get_users(
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT u.id, u.nama, u.username, u.email, u.is_active,
-                   u.last_login, u.created_at, r.nama AS role,
+                   u.last_login, u.created_at, r.nama AS role, t.kode AS tingkat,
                    (SELECT is_online FROM user_sessions s
                     WHERE s.user_id = u.id AND s.is_online = 1
                     ORDER BY s.last_active_at DESC LIMIT 1) AS is_online
             FROM users u
             JOIN roles r ON r.id = u.role_id
-            WHERE u.role_id NOT IN (3, 4) AND u.satker_id = %s
+            JOIN tingkats t ON t.id = u.tingkat_id
+            WHERE u.satker_id = %s AND u.role_id IN (1, 2)
             ORDER BY u.created_at DESC
         """, (current_user.get("satker_id"),))
         rows = cursor.fetchall()
@@ -49,12 +54,13 @@ async def get_online_users(
         db.commit()
         
         cursor.execute("""
-            SELECT u.id, u.nama, u.username, r.nama AS role,
+            SELECT u.id, u.nama, u.username, r.nama AS role, t.kode AS tingkat,
                    s.ip_address, s.last_active_at, s.login_at
             FROM user_sessions s
             JOIN users u ON u.id = s.user_id
             JOIN roles r ON r.id = u.role_id
-            WHERE s.is_online = 1 AND u.role_id NOT IN (3, 4) AND u.satker_id = %s
+            JOIN tingkats t ON t.id = u.tingkat_id
+            WHERE s.is_online = 1 AND u.satker_id = %s
             ORDER BY s.last_active_at DESC
         """, (current_user.get("satker_id"),))
         rows = cursor.fetchall()
@@ -77,8 +83,8 @@ async def toggle_user_active(
         if user_id == current_user.get("id"):
             return {"success": False, "message": "Tidak bisa menonaktifkan akun sendiri"}
             
-        if user_row["role_id"] != 2 or user_row["satker_id"] != current_user.get("satker_id"):
-            return {"success": False, "message": "Akses ditolak. Anda hanya dapat mengelola akun Staff (Satker) di divisi Anda sendiri."}
+        if user_row["satker_id"] != current_user.get("satker_id") or user_row["role_id"] == 3:
+            return {"success": False, "message": "Akses ditolak. Anda hanya dapat mengelola akun di unit satker Anda sendiri."}
             
         new_status = 0 if user_row["is_active"] else 1
         cursor.execute("UPDATE users SET is_active = %s WHERE id = %s", (new_status, user_id))
@@ -122,8 +128,8 @@ async def reset_user_password(
         if not user_row:
             return {"success": False, "message": "User tidak ditemukan"}
             
-        if user_row["role_id"] != 2 or user_row["satker_id"] != current_user.get("satker_id"):
-            return {"success": False, "message": "Akses ditolak. Anda hanya dapat mereset password akun Staff di divisi Anda sendiri."}
+        if user_row["satker_id"] != current_user.get("satker_id") or user_row["role_id"] == 3:
+            return {"success": False, "message": "Akses ditolak. Anda hanya dapat mereset password akun di unit satker Anda sendiri."}
             
         if user_id == current_user.get("id"):
             return {"success": False, "message": "Gunakan fitur ganti password untuk akun sendiri"}
@@ -159,7 +165,7 @@ async def get_logs(
 ):
     offset = (page - 1) * limit
     with db.cursor(dictionary=True) as cursor:
-        where_clause = "u.satker_id = %s AND u.role_id = 2"
+        where_clause = "u.satker_id = %s AND u.role_id IN (1, 2)"
         params = [current_user.get("satker_id")]
         
         if user_id:
@@ -241,7 +247,7 @@ async def get_stats(
         cursor.execute("SELECT COUNT(*) AS total FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE status = 'revisi' AND u.satker_id = %s", (sid,))
         revisi = cursor.fetchone()["total"]
         
-        cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role_id = 2 AND satker_id = %s", (sid,))
+        cursor.execute("SELECT COUNT(*) AS total FROM users WHERE satker_id = %s AND role_id IN (1, 2)", (sid,))
         total_user = cursor.fetchone()["total"]
         
         cursor.execute("SELECT COALESCE(SUM(download_count), 0) AS total FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE u.satker_id = %s", (sid,))

@@ -38,12 +38,17 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     cursor = db.cursor(dictionary=True)
     
     cursor.execute("""
-        SELECT u.id, u.role_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
-               u.password_hash, u.is_active, u.permissions, r.nama AS role,
-               ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
+        SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
+               u.password_hash, u.is_active, u.permissions,
+               r.nama AS role,
+               t.kode AS tingkat, t.nama AS tingkat_nama,
+               s.nama AS satker_nama, s.NO_Satker AS satker_kode,
+               ue.id AS unit_eselon_id, ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
         FROM users u
         JOIN roles r ON r.id = u.role_id
-        LEFT JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
+        JOIN tingkats t ON t.id = u.tingkat_id
+        LEFT JOIN satkers s ON s.id = u.satker_id
+        LEFT JOIN unit_eselon_1 ue ON ue.id = COALESCE(u.eselon_1_id, s.eselon_1_id)
         WHERE u.username = %s OR u.email = %s
         LIMIT 1
     """, (data.username, data.username))
@@ -91,17 +96,29 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     cursor.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user['id'],))
     db.commit()
     
+    # Resolved Eselon 1 ID
+    final_eselon_1_id = user.get('unit_eselon_id') or user.get('eselon_1_id')
+
     # Generate JWT
     token = jwt.encode(
         {
-            "id": user['id'], 
+            "id": user['id'],
+            "nama": user['nama'],
+            "username": user['username'],
+            "email": user['email'],
             "role_id": user['role_id'],
-            "role": user['role'], 
+            "role": user['role'],
+            "tingkat_id": user['tingkat_id'],
+            "tingkat": user['tingkat'],
+            "tingkat_nama": user['tingkat_nama'],
             "satker_id": user.get('satker_id'),
-            "eselon_1_id": user.get('eselon_1_id'),
+            "satker_nama": user.get('satker_nama'),
+            "satker_kode": user.get('satker_kode'),
+            "eselon_1_id": final_eselon_1_id,
+            "eselon_1_kode": user.get('eselon_1_kode'),
             "eselon_1_nama": user.get('eselon_1_nama'),
             "eselon_1_singkatan": user.get('eselon_1_singkatan'),
-            "sessionId": session_id, 
+            "sessionId": session_id,
             "permissions": user['permissions'],
             "exp": datetime.utcnow() + timedelta(hours=8)
         },
@@ -115,7 +132,7 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
         aksi='login', 
         entitas='user', 
         entitas_id=user['id'], 
-        detail={"username": user['username'], "role": user['role']}, 
+        detail={"username": user['username'], "role": user['role'], "tingkat": user['tingkat']}, 
         ip=ip
     )
     
@@ -130,7 +147,15 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
                 "username": user['username'],
                 "email": user['email'],
                 "role": user['role'],
-                "eselon_1_id": user.get('eselon_1_id'),
+                "role_id": user['role_id'],
+                "tingkat": user['tingkat'],
+                "tingkat_id": user['tingkat_id'],
+                "tingkat_nama": user['tingkat_nama'],
+                "satker_id": user.get('satker_id'),
+                "satker_nama": user.get('satker_nama'),
+                "satker_kode": user.get('satker_kode'),
+                "eselon_1_id": final_eselon_1_id,
+                "eselon_1_kode": user.get('eselon_1_kode'),
                 "eselon_1_nama": user.get('eselon_1_nama'),
                 "eselon_1_singkatan": user.get('eselon_1_singkatan'),
                 "permissions": user['permissions']
@@ -158,16 +183,25 @@ async def logout(req: Request, db = Depends(get_db), current_user: dict = Depend
 def me(db = Depends(get_db), current_user: dict = Depends(get_current_user)):
     cursor = db.cursor(dictionary=True)
     cursor.execute("""
-        SELECT u.id, u.role_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.is_active, u.permissions, r.nama AS role,
-               ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
+        SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.is_active, u.permissions,
+               r.nama AS role,
+               t.kode AS tingkat, t.nama AS tingkat_nama,
+               s.nama AS satker_nama, s.NO_Satker AS satker_kode,
+               ue.id AS unit_eselon_id, ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
         FROM users u 
         JOIN roles r ON r.id = u.role_id 
-        LEFT JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
+        JOIN tingkats t ON t.id = u.tingkat_id
+        LEFT JOIN satkers s ON s.id = u.satker_id
+        LEFT JOIN unit_eselon_1 ue ON ue.id = COALESCE(u.eselon_1_id, s.eselon_1_id)
         WHERE u.id = %s
     """, (current_user['id'],))
     user = cursor.fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+        
+    final_eselon_1_id = user.get('unit_eselon_id') or user.get('eselon_1_id')
+    user['eselon_1_id'] = final_eselon_1_id
+    
     return {"success": True, "data": user}
 
 @router.post("/forgot-password")

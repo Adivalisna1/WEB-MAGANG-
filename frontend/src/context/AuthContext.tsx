@@ -39,13 +39,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.data.user);
     setToken(res.data.token);
 
-    // Redirect sesuai role
-    if (res.data.user.role === 'pimpinan_satker') {
-      router.push('/pimpinan');
-    } else if (res.data.user.role === 'eselon_1') {
-      router.push('/eselon-1');
-    } else if (res.data.user.role === 'admin_it') {
+    // Redirect sesuai role & tingkat
+    const r = res.data.user.role;
+    const t = res.data.user.tingkat;
+    if (r === 'admin_it' || r === 'it') {
       router.push('/admin-it');
+    } else if (r === 'eselon_1' || t === 'eselon_1' || t === 'kl') {
+      router.push('/eselon-1');
+    } else if (r === 'pimpinan_satker' || (t === 'satker' && r === 'administrasi')) {
+      router.push('/pimpinan');
     } else {
       router.push('/staff/dokumen');
     }
@@ -64,13 +66,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   }, [token, router]);
 
+  const isPimpinan = Boolean(
+    user?.role === 'pimpinan_satker' || 
+    (user?.tingkat === 'satker' && user?.role === 'administrasi')
+  );
+  const isKetuaTim = Boolean(
+    user?.role === 'eselon_1' || 
+    user?.tingkat === 'eselon_1' || 
+    user?.tingkat === 'kl'
+  );
+  const isStaff = Boolean(
+    user?.role === 'staff_satker' || 
+    user?.role === 'operator' || 
+    (!isPimpinan && !isKetuaTim && user?.role !== 'admin_it')
+  );
+
   return (
     <AuthContext.Provider value={{
       user, token, loading,
       loginFn, logoutFn,
-      isPimpinan: user?.role === 'pimpinan_satker',
-      isStaff: user?.role === 'staff_satker',
-      isKetuaTim: user?.role === 'eselon_1',
+      isPimpinan,
+      isStaff,
+      isKetuaTim,
     }}>
       {children}
     </AuthContext.Provider>

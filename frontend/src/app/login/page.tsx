@@ -28,12 +28,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Kalau sudah login, redirect sesuai role
+  // Kalau sudah login, redirect sesuai role & tingkat
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'pimpinan_satker') router.replace('/pimpinan');
-      else if (user.role === 'eselon_1') router.replace('/eselon-1');
-      else if (user.role === 'admin_it') router.replace('/admin-it');
+      const r = user.role;
+      const t = user.tingkat;
+      if (r === 'admin_it' || r === 'it') router.replace('/admin-it');
+      else if (r === 'eselon_1' || t === 'eselon_1' || t === 'kl') router.replace('/eselon-1');
+      else if (r === 'pimpinan_satker' || (t === 'satker' && r === 'administrasi')) router.replace('/pimpinan');
       else router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);

@@ -5,11 +5,18 @@ export interface User {
   nama: string;
   username: string;
   email: string;
-  role: 'pimpinan_satker' | 'staff_satker' | 'eselon_1' | 'admin_it';
+  role: string;
+  role_id?: number;
+  tingkat?: string;
+  tingkat_id?: number;
+  tingkat_nama?: string;
   satker_id?: number | null;
+  satker_nama?: string | null;
+  satker_kode?: string | null;
   eselon_1_id?: number | null;
   eselon_1_nama?: string | null;
   eselon_1_singkatan?: string | null;
+  permissions?: string[];
 }
 
 export interface LoginResponse {
