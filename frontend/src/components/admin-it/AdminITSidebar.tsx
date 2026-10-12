@@ -74,7 +74,7 @@ export default function AdminITSidebar({ isMobileOpen, setIsMobileOpen, isCollap
             {!isCollapsed && (
               <div className="overflow-hidden">
                 <p className="text-sm font-semibold text-slate-900 truncate">{user?.nama}</p>
-                <p className="text-xs text-slate-500 truncate">{user?.role}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.role === 'it' ? 'IT Administrator' : (user?.role || 'Admin IT')}</p>
               </div>
             )}
           </div>

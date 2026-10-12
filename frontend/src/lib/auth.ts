@@ -16,7 +16,11 @@ export interface User {
   eselon_1_id?: number | null;
   eselon_1_nama?: string | null;
   eselon_1_singkatan?: string | null;
-  permissions?: string[];
+  permissions?: Record<string, boolean> | any;
+  is_operator?: boolean;
+  is_manajemen?: boolean;
+  is_administrasi?: boolean;
+  is_it?: boolean;
 }
 
 export interface LoginResponse {
@@ -36,7 +40,7 @@ export async function login(username: string, password: string): Promise<LoginRe
     body: JSON.stringify({ username, password }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Login gagal');
+  if (!res.ok) throw new Error(data.detail || data.message || 'Login gagal');
   return data;
 }
 

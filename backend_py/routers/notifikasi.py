@@ -39,6 +39,7 @@ async def mark_as_read(
 ):
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("UPDATE notifikasi SET is_read = 1 WHERE id = %s AND user_id = %s", (notif_id, current_user["id"]))
+        db.commit()
         return {"success": True, "message": "Notifikasi ditandai sudah dibaca"}
 
 @router.patch("/read-all")
@@ -48,4 +49,5 @@ async def mark_all_as_read(
 ):
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("UPDATE notifikasi SET is_read = 1 WHERE user_id = %s AND is_read = 0", (current_user["id"],))
+        db.commit()
         return {"success": True, "message": "Semua notifikasi ditandai sudah dibaca"}

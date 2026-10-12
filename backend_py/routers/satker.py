@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional, Union
 from db import get_db
 from auth import get_current_user, require_admin_it
 import mysql.connector
@@ -11,16 +11,22 @@ router = APIRouter(
 )
 
 class SatkerCreate(BaseModel):
-    NO_Satker: str
+    NO_Satker: Union[int, str]
     nama: str
+    eselon_1_id: Optional[int] = None
+
+class SatkerBulkItem(BaseModel):
+    NO_Satker: Optional[Union[int, str]] = None
+    nama: str
+    eselon_1_id: Optional[int] = None
 
 class BulkSatkerCreate(BaseModel):
-    satkers: List[str]
+    satkers: List[Union[SatkerBulkItem, str]]
 
 @router.get("")
 def get_satkers(db = Depends(get_db)):
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT id, NO_Satker, nama, created_at FROM satkers ORDER BY nama ASC")
+    cursor.execute("SELECT id, NO_Satker, nama, eselon_1_id, created_at FROM satkers ORDER BY nama ASC")
     rows = cursor.fetchall()
     cursor.close()
     return {"success": True, "data": rows}
@@ -29,9 +35,15 @@ def get_satkers(db = Depends(get_db)):
 def create_satker(satker: SatkerCreate, db = Depends(get_db), user: dict = Depends(require_admin_it)):
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("INSERT INTO satkers (NO_Satker, nama) VALUES (%s, %s)", (satker.NO_Satker, satker.nama))
+        try:
+            no_satker_val = int(str(satker.NO_Satker).strip())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="NO_Satker harus berupa angka")
+            
+        cursor.execute("INSERT INTO satkers (NO_Satker, nama, eselon_1_id) VALUES (%s, %s, %s)", 
+                      (no_satker_val, satker.nama, satker.eselon_1_id))
         db.commit()
-        return {"success": True, "message": "Satker berhasil ditambahkan", "data": {"id": cursor.lastrowid, "NO_Satker": satker.NO_Satker, "nama": satker.nama}}
+        return {"success": True, "message": "Satker berhasil ditambahkan", "data": {"id": cursor.lastrowid, "NO_Satker": no_satker_val, "nama": satker.nama}}
     except mysql.connector.Error as err:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(err))
@@ -45,10 +57,20 @@ def create_bulk_satker(bulk: BulkSatkerCreate, db = Depends(get_db), user: dict 
     
     cursor = db.cursor(dictionary=True)
     try:
-        values = [(s,) for s in bulk.satkers]
-        cursor.executemany("INSERT INTO satkers (nama) VALUES (%s)", values)
+        values = []
+        for idx, item in enumerate(bulk.satkers):
+            if isinstance(item, str):
+                values.append((idx + 100000, item, None))
+            else:
+                try:
+                    no_s = int(str(item.NO_Satker).strip()) if item.NO_Satker else (idx + 100000)
+                except ValueError:
+                    no_s = idx + 100000
+                values.append((no_s, item.nama, item.eselon_1_id))
+                
+        cursor.executemany("INSERT INTO satkers (NO_Satker, nama, eselon_1_id) VALUES (%s, %s, %s)", values)
         db.commit()
-        return {"success": True, "message": f"{len(bulk.satkers)} Satker berhasil diimport"}
+        return {"success": True, "message": f"{len(values)} Satker berhasil diimport"}
     except mysql.connector.Error as err:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(err))
@@ -59,7 +81,13 @@ def create_bulk_satker(bulk: BulkSatkerCreate, db = Depends(get_db), user: dict 
 def update_satker(satker_id: int, satker: SatkerCreate, db = Depends(get_db), user: dict = Depends(require_admin_it)):
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("UPDATE satkers SET NO_Satker = %s, nama = %s WHERE id = %s", (satker.NO_Satker, satker.nama, satker_id))
+        try:
+            no_satker_val = int(str(satker.NO_Satker).strip())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="NO_Satker harus berupa angka")
+            
+        cursor.execute("UPDATE satkers SET NO_Satker = %s, nama = %s, eselon_1_id = COALESCE(%s, eselon_1_id) WHERE id = %s", 
+                      (no_satker_val, satker.nama, satker.eselon_1_id, satker_id))
         db.commit()
         return {"success": True, "message": "Satker berhasil diupdate"}
     except mysql.connector.Error as err:

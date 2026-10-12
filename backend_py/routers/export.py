@@ -10,17 +10,28 @@ import datetime
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
-def _get_satker_filter(role_id, satker_id, satker_param=None):
-    """Helper: return (where_clause, params) based on role."""
+def _get_satker_filter(user, satker_param=None):
+    """Helper: return (where_clause, params) based on tingkat and role."""
     where = "1=1"
     params = []
-    if role_id in (1, 2):  # pimpinan_satker / staff_satker — hanya satker sendiri
+    tingkat = user.get("tingkat")
+    satker_id = user.get("satker_id")
+    eselon_1_id = user.get("eselon_1_id")
+    
+    if tingkat == "satker":
         if satker_id:
             where += " AND r.satker_id = %s"
             params.append(satker_id)
         else:
             where += " AND r.satker_id IS NULL"
-    else:  # eselon1 / admin_it — bisa filter per satker atau semua
+    elif tingkat == "eselon_1":
+        if satker_param:
+            where += " AND r.satker_id = %s"
+            params.append(satker_param)
+        elif eselon_1_id:
+            where += " AND s.eselon_1_id = %s"
+            params.append(eselon_1_id)
+    else:  # kl / it
         if satker_param:
             where += " AND r.satker_id = %s"
             params.append(satker_param)
@@ -38,10 +49,7 @@ async def export_rekening_koran(
     user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    role_id = user.get("role_id")
-    user_satker_id = user.get("satker_id")
-
-    where, params = _get_satker_filter(role_id, user_satker_id, satker)
+    where, params = _get_satker_filter(user, satker)
 
     if tahun:
         where += " AND r.tahun = %s"
@@ -139,18 +147,26 @@ async def export_pencatatan(
     user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    role_id = user.get("role_id")
+    tingkat = user.get("tingkat")
     user_satker_id = user.get("satker_id")
+    user_eselon_id = user.get("eselon_1_id")
 
     where = "1=1"
     params = []
 
-    if role_id in (1, 2):
+    if tingkat == "satker":
         if user_satker_id:
             where += " AND u.satker_id = %s"
             params.append(user_satker_id)
         else:
             where += " AND u.satker_id IS NULL"
+    elif tingkat == "eselon_1":
+        if satker:
+            where += " AND u.satker_id = %s"
+            params.append(satker)
+        elif user_eselon_id:
+            where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+            params.extend([user_eselon_id, user_eselon_id])
     else:
         if satker:
             where += " AND u.satker_id = %s"
@@ -239,12 +255,18 @@ async def export_rekening_koran_all_satker(
     user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    role_id = user.get("role_id")
-    if role_id not in (3,):  # hanya eselon_1
-        raise HTTPException(403, "Hanya Eselon 1 yang bisa export semua satker")
+    is_allowed = (
+        user.get("tingkat") in ["eselon_1", "kl"] or
+        user.get("role") in ["it", "admin_it"]
+    )
+    if not is_allowed:
+        raise HTTPException(403, "Hanya Eselon 1, KL, atau IT Admin yang bisa export semua satker")
 
     where = "1=1"
     params = []
+    if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):
+        where += " AND s.eselon_1_id = %s"
+        params.append(user.get("eselon_1_id"))
     if tahun:
         where += " AND r.tahun = %s"
         params.append(tahun)

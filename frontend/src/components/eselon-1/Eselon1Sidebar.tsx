@@ -5,18 +5,10 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard, FileSearch, FileSpreadsheet, Users,
-  Activity, LogOut, ChevronRight, Home, User, X, ChevronLeft
+  Activity, LogOut, ChevronRight, Home, User, X, ChevronLeft,
+  BookOpen
 } from 'lucide-react';
 import clsx from 'clsx';
-
-const EselonMenu = [
-  { href: '/eselon-1',                icon: LayoutDashboard,    label: 'Dashboard',       exact: true },
-  { href: '/eselon-1/dokumen',        icon: FileSearch,          label: 'Monitor Dokumen' },
-  { href: '/eselon-1/rekening-koran', icon: FileSpreadsheet,     label: 'Rekening Koran' },
-  { href: '/eselon-1/users',          icon: Users,               label: 'Manajemen User' },
-  { href: '/eselon-1/logs',           icon: Activity,            label: 'Log Aktivitas' },
-  { href: '/eselon-1/profil',         icon: User,                label: 'Profil' },
-];
 
 interface SidebarProps {
   isMobileOpen: boolean;
@@ -28,6 +20,28 @@ interface SidebarProps {
 export default function Eselon1Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, setIsCollapsed }: SidebarProps) {
   const pathname = usePathname();
   const { user, logoutFn } = useAuth();
+
+  const isOperator = user?.role === 'operator' || user?.is_operator;
+
+  const menuItems = isOperator
+    ? [
+        { href: '/eselon-1',                icon: LayoutDashboard,    label: 'Dashboard',           exact: true },
+        { href: '/eselon-1/dokumen',        icon: FileSearch,          label: 'Dokumen Satker' },
+        { href: '/eselon-1/pencatatan',     icon: BookOpen,            label: 'Pencatatan Kas' },
+        { href: '/eselon-1/rekening-koran', icon: FileSpreadsheet,     label: 'Rekening Koran' },
+        { href: '/eselon-1/profil',         icon: User,                label: 'Profil' },
+      ]
+    : [
+        { href: '/eselon-1',                icon: LayoutDashboard,    label: 'Dashboard Eksekutif', exact: true },
+        { href: '/eselon-1/dokumen',        icon: FileSearch,          label: 'Verifikasi Dokumen' },
+        { href: '/eselon-1/pencatatan',     icon: BookOpen,            label: 'Pencatatan Kas Satker' },
+        { href: '/eselon-1/rekening-koran', icon: FileSpreadsheet,     label: 'Rekening Koran Satker' },
+        { href: '/eselon-1/users',          icon: Users,               label: 'Manajemen User Satker' },
+        { href: '/eselon-1/logs',           icon: Activity,            label: 'Log Aktivitas' },
+        { href: '/eselon-1/profil',         icon: User,                label: 'Profil' },
+      ];
+
+  const roleTitle = isOperator ? 'Staff Eselon 1' : 'Pimpinan Eselon 1';
 
   return (
     <>
@@ -47,14 +61,14 @@ export default function Eselon1Sidebar({ isMobileOpen, setIsMobileOpen, isCollap
         {/* Header */}
         <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
+            <div className={`w-8 h-8 ${isOperator ? 'bg-indigo-600' : 'bg-[#1E90FF]'} rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
               <span className="text-sm">E1</span>
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">Eselon 1</h1>
+                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">{roleTitle}</h1>
                 <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0 uppercase truncate max-w-[170px]" title={user?.eselon_1_nama || undefined}>
-                  {user?.eselon_1_singkatan || 'PIMPINAN PUSAT'}
+                  {user?.eselon_1_singkatan || (isOperator ? 'STAFF DITJEN' : 'PIMPINAN PUSAT')}
                 </p>
               </div>
             )}
@@ -70,7 +84,7 @@ export default function Eselon1Sidebar({ isMobileOpen, setIsMobileOpen, isCollap
 
         {/* Menu Navigasi */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {EselonMenu.map(({ href, icon: Icon, label, exact }) => {
+          {menuItems.map(({ href, icon: Icon, label, exact }) => {
             const active = exact ? pathname === href : (pathname === href || pathname.startsWith(href));
             return (
               <Link

@@ -3,6 +3,9 @@ import urllib.error
 import json
 import sys
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 BASE_URL = "http://localhost:5000"
 
 def log(msg, status="INFO"):
@@ -42,13 +45,13 @@ def run_tests():
     
     test_accounts = [
         {"username": "operator_satker", "expected_role": "operator", "expected_tingkat": "satker"},
-        {"username": "admin_satker", "expected_role": "administrasi", "expected_tingkat": "satker"},
-        {"username": "operator_eselon1", "expected_role": "operator", "expected_tingkat": "eselon_1"},
-        {"username": "admin_eselon1", "expected_role": "administrasi", "expected_tingkat": "eselon_1"},
+        {"username": "admin_satker", "expected_role": "manajemen", "expected_tingkat": "satker"},
+        {"username": "staff_eselon1", "expected_role": "operator", "expected_tingkat": "eselon_1"},
+        {"username": "pimpinan_eselon1", "expected_role": "manajemen", "expected_tingkat": "eselon_1"},
         {"username": "operator_kl", "expected_role": "operator", "expected_tingkat": "kl"},
-        {"username": "admin_kl", "expected_role": "administrasi", "expected_tingkat": "kl"},
-        {"username": "it_admin", "expected_role": "it", "expected_tingkat": "kl"},
-        {"username": "naufal", "expected_role": "it", "expected_tingkat": "kl"},
+        {"username": "admin_kl", "expected_role": "manajemen", "expected_tingkat": "kl"},
+        {"username": "it_admin", "expected_role": "operator", "expected_tingkat": "kl"},
+        {"username": "naufal", "expected_role": "operator", "expected_tingkat": "kl"},
     ]
     
     tokens = {}
@@ -109,14 +112,13 @@ def run_tests():
             log(f"Akses /api/admin-it/stats oleh it_admin gagal: HTTP {status} {data}", "FAIL")
             failed += 1
             
-        # 3b. Admin IT Roles endpoint -> should be 200 OK
         status, data = request_json(f"{BASE_URL}/api/admin-it/roles", method="GET", headers=headers)
         roles = data.get("data", [])
-        if status == 200 and len(roles) >= 3:
-            log(f"Akses /api/admin-it/roles: 200 OK (Ditemukan {len(roles)} roles)", "PASS")
+        if status == 200 and len(roles) == 2:
+            log(f"Akses /api/admin-it/roles: 200 OK (Ditemukan {len(roles)} roles: {[r['nama'] for r in roles]})", "PASS")
             passed += 1
         else:
-            log(f"Akses /api/admin-it/roles gagal: HTTP {status}", "FAIL")
+            log(f"Akses /api/admin-it/roles gagal: HTTP {status} (roles: {len(roles)})", "FAIL")
             failed += 1
 
         # 3c. Admin IT Tingkats endpoint -> should be 200 OK
@@ -141,21 +143,112 @@ def run_tests():
             log(f"Security Breach! Operator Satker mendapat HTTP {status} saat akses /api/admin-it/stats", "FAIL")
             failed += 1
 
-    # 3e. Eselon 1 Units access by admin_eselon1 -> should be 200 OK
-    eselon1_token = tokens.get("admin_eselon1")
+    # 3e. Eselon 1 Units access by pimpinan_eselon1 -> should be 200 OK
+    eselon1_token = tokens.get("pimpinan_eselon1")
     if eselon1_token:
         headers = {"Authorization": f"Bearer {eselon1_token}"}
         status, data = request_json(f"{BASE_URL}/api/eselon-1/units", method="GET", headers=headers)
         if status == 200:
             units = data.get("data", [])
-            log(f"Akses /api/eselon-1/units oleh admin_eselon1: 200 OK ({len(units)} unit)", "PASS")
+            log(f"Akses /api/eselon-1/units oleh pimpinan_eselon1: 200 OK ({len(units)} unit)", "PASS")
             passed += 1
         else:
-            log(f"Akses /api/eselon-1/units oleh admin_eselon1 gagal: HTTP {status}", "FAIL")
+            log(f"Akses /api/eselon-1/units oleh pimpinan_eselon1 gagal: HTTP {status}", "FAIL")
+            failed += 1
+
+        # 3f. Eselon 1 Stats by pimpinan_eselon1 -> 200 OK
+        status, data = request_json(f"{BASE_URL}/api/eselon-1/stats", method="GET", headers=headers)
+        if status == 200:
+            log("Akses /api/eselon-1/stats oleh pimpinan_eselon1: 200 OK", "PASS")
+            passed += 1
+        else:
+            log(f"Akses /api/eselon-1/stats gagal: HTTP {status}", "FAIL")
+            failed += 1
+
+        # 3g. Eselon 1 Dokumen by pimpinan_eselon1 -> 200 OK
+        status, data = request_json(f"{BASE_URL}/api/eselon-1/dokumen", method="GET", headers=headers)
+        if status == 200:
+            log("Akses /api/eselon-1/dokumen oleh pimpinan_eselon1: 200 OK", "PASS")
+            passed += 1
+        else:
+            log(f"Akses /api/eselon-1/dokumen gagal: HTTP {status}", "FAIL")
+            failed += 1
+
+        # 3h. Eselon 1 block from admin-it
+        status, data = request_json(f"{BASE_URL}/api/admin-it/stats", method="GET", headers=headers)
+        if status == 403:
+            log("Security Guard: pimpinan_eselon1 diblokir dari /api/admin-it/stats (403 Forbidden)", "PASS")
+            passed += 1
+        else:
+            log(f"Security Breach! pimpinan_eselon1 mendapat HTTP {status} saat akses /api/admin-it/stats", "FAIL")
+            failed += 1
+
+    # 3i. Operator Satker access /api/dokumen/all -> 200 OK
+    if op_token:
+        headers = {"Authorization": f"Bearer {op_token}"}
+        status, data = request_json(f"{BASE_URL}/api/dokumen/all", method="GET", headers=headers)
+        if status == 200:
+            log("Akses /api/dokumen/all oleh operator_satker: 200 OK", "PASS")
+            passed += 1
+        else:
+            log(f"Akses /api/dokumen/all oleh operator_satker gagal: HTTP {status}", "FAIL")
+            failed += 1
+
+        # 3j. Operator Satker blocked from /api/eselon-1/stats -> 403 Forbidden
+        status, data = request_json(f"{BASE_URL}/api/eselon-1/stats", method="GET", headers=headers)
+        if status == 403:
+            log("Security Guard: operator_satker diblokir dari /api/eselon-1/stats (403 Forbidden)", "PASS")
+            passed += 1
+        else:
+            log(f"Security Breach! operator_satker mendapat HTTP {status} saat akses /api/eselon-1/stats", "FAIL")
+            failed += 1
+
+    # 3k. Admin Satker tests
+    admin_satker_token = tokens.get("admin_satker")
+    if admin_satker_token:
+        headers = {"Authorization": f"Bearer {admin_satker_token}"}
+        # /api/pimpinan/stats -> 200 OK
+        status, data = request_json(f"{BASE_URL}/api/pimpinan/stats", method="GET", headers=headers)
+        if status == 200:
+            log("Akses /api/pimpinan/stats oleh admin_satker: 200 OK", "PASS")
+            passed += 1
+        else:
+            log(f"Akses /api/pimpinan/stats oleh admin_satker gagal: HTTP {status}", "FAIL")
+            failed += 1
+
+        # /api/pimpinan/dokumen -> 200 OK
+        status, data = request_json(f"{BASE_URL}/api/pimpinan/dokumen", method="GET", headers=headers)
+        if status == 200:
+            log("Akses /api/pimpinan/dokumen oleh admin_satker: 200 OK", "PASS")
+            passed += 1
+        else:
+            log(f"Akses /api/pimpinan/dokumen oleh admin_satker gagal: HTTP {status}", "FAIL")
+            failed += 1
+
+        # Blocked from /api/admin-it/stats -> 403 Forbidden
+        status, data = request_json(f"{BASE_URL}/api/admin-it/stats", method="GET", headers=headers)
+        if status == 403:
+            log("Security Guard: admin_satker diblokir dari /api/admin-it/stats (403 Forbidden)", "PASS")
+            passed += 1
+        else:
+            log(f"Security Breach! admin_satker mendapat HTTP {status} saat akses /api/admin-it/stats", "FAIL")
+            failed += 1
+
+    # 3l. Admin KL tests
+    kl_token = tokens.get("admin_kl")
+    if kl_token:
+        headers = {"Authorization": f"Bearer {kl_token}"}
+        # KL should be allowed to view eselon-1 stats (KL oversight) -> 200 OK
+        status, data = request_json(f"{BASE_URL}/api/eselon-1/stats", method="GET", headers=headers)
+        if status == 200:
+            log("Akses /api/eselon-1/stats oleh admin_kl: 200 OK (KL Oversight)", "PASS")
+            passed += 1
+        else:
+            log(f"Akses /api/eselon-1/stats oleh admin_kl gagal: HTTP {status}", "FAIL")
             failed += 1
 
     print("=" * 65)
-    print(f"📊 HASIL PENGUJIAN: {passed} PASSED, {failed} FAILED")
+    print(f"HASIL PENGUJIAN: {passed} PASSED, {failed} FAILED")
     print("=" * 65)
     
     if failed > 0:
@@ -163,3 +256,4 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+

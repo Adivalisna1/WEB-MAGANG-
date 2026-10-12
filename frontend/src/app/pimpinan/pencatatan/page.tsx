@@ -4,11 +4,35 @@ import toast from 'react-hot-toast';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Edit, Download, Paperclip, Search } from 'lucide-react';
+import { 
+  Plus, Edit, Download, Paperclip, Search, X, Loader2, 
+  CheckCircle2, AlertCircle, Sparkles, Building2, Landmark 
+} from 'lucide-react';
 import clsx from 'clsx';
 import * as XLSX from 'xlsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+// Daftar Bank BUMN di Indonesia
+const BANK_BUMN_LIST = [
+  'Bank Mandiri',
+  'Bank BRI',
+  'Bank BNI',
+  'Bank BTN',
+  'Bank BSI (Bank Syariah Indonesia)',
+  'Bank Lainnya',
+];
+
+// Helper urutkan kategori sesuai ID di database, dengan 'Lainnya' selalu paling bawah
+const sortKategoriDokumen = (cats: any[]) => {
+  return [...cats].sort((a, b) => {
+    const aIsLainnya = a.nama_kategori?.toLowerCase().includes('lainnya') || Number(a.id) === 999;
+    const bIsLainnya = b.nama_kategori?.toLowerCase().includes('lainnya') || Number(b.id) === 999;
+    if (aIsLainnya && !bIsLainnya) return 1;
+    if (!aIsLainnya && bIsLainnya) return -1;
+    return Number(a.id) - Number(b.id);
+  });
+};
 
 // Helper buka file: PDF/DOCX → preview tab baru, Excel → auto download
 const openFile = async (bukti_file: string, token: string) => {
@@ -58,8 +82,14 @@ export default function PimpinanpencatatanPage() {
     nama_bank: ''
   });
   const [file, setFile] = useState<File | null>(null);
+  const [customBank, setCustomBank] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  // AI Auto Analysis State
+  const [aiScanning, setAiScanning] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiError, setAiError] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -83,6 +113,104 @@ export default function PimpinanpencatatanPage() {
     if (token) fetchData();
   }, [token]);
 
+  // Urutkan kategori sesuai spesifikasi: urut ID, 'Lainnya' di paling bawah
+  const sortedKategori = sortKategoriDokumen(kategori);
+
+  // Handle otomatis scan berkas ketika user memilih file
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFile(selectedFile);
+    setAiResult(null);
+    setAiError('');
+
+    if (!selectedFile) return;
+
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+    if (['pdf', 'xlsx', 'xls'].includes(ext || '')) {
+      setAiScanning(true);
+      try {
+        const fd = new FormData();
+        fd.append('data', selectedFile, selectedFile.name);
+        const res = await fetch('/api/ai-scan', {
+          method: 'POST',
+          body: fd,
+        });
+        if (res.ok) {
+          const result = await res.json();
+          setAiResult(result);
+
+          const isRekeningKoran =
+            (result.kategori && result.kategori.toLowerCase().includes('rekening')) ||
+            Boolean(result.bank) ||
+            Boolean(result.nomor_rekening) ||
+            selectedFile.name.toLowerCase().includes('rekening') ||
+            selectedFile.name.toLowerCase().includes('rk') ||
+            selectedFile.name.toLowerCase().includes('koran');
+
+          setFormData(prev => {
+            const updated = { ...prev };
+
+            // 1. Auto pilih Kategori Dokumen = Rekening Koran
+            if (isRekeningKoran) {
+              const rkCat = sortedKategori.find(k =>
+                k.nama_kategori?.toLowerCase().includes('rekening koran') ||
+                k.nama_kategori?.toLowerCase().includes('rekening_koran')
+              );
+              if (rkCat) {
+                updated.id_kategori = String(rkCat.id);
+              }
+            }
+
+            // 2. Auto deteksi nama Bank dari berkas
+            if (result.bank) {
+              const bName = result.bank.toLowerCase();
+              let matchedBank = BANK_BUMN_LIST.find(b => {
+                const cleanB = b.toLowerCase().replace('bank ', '').trim();
+                return bName.includes(cleanB) || cleanB.includes(bName);
+              });
+              if (!matchedBank) {
+                matchedBank = result.bank || '';
+              }
+              updated.nama_bank = matchedBank || '';
+            }
+
+            // 3. Auto isi nominal saldo jika terdeteksi dan belum diisi manual
+            if (result.nominal !== undefined && result.nominal !== null && !prev.nominal) {
+              updated.nominal = String(result.nominal);
+            }
+
+            // 4. Auto isi nomor rekening jika terdeteksi
+            if (result.nomor_rekening && !prev.nomor_rekening_bank) {
+              updated.nomor_rekening_bank = String(result.nomor_rekening);
+            }
+
+            // 5. Auto isi uraian jika masih kosong
+            if (!prev.uraian) {
+              if (result.bank) {
+                updated.uraian = `Pencatatan Rekening Koran ${result.bank}`;
+              } else if (result.judul) {
+                updated.uraian = `Pencatatan ${result.judul}`;
+              }
+            }
+
+            return updated;
+          });
+
+          if (result.bank) {
+            toast.success(`AI: Berkas terbaca dari ${result.bank}!`);
+          } else {
+            toast.success('AI: Analisis berkas selesai!');
+          }
+        }
+      } catch (err: any) {
+        console.error('AI Scan error:', err);
+        setAiError('Gagal menganalisis otomatis berkas.');
+      } finally {
+        setAiScanning(false);
+      }
+    }
+  };
+
   // Filtered data
   const filteredData = transaksi.filter(t => {
     const matchKategori = !filterKategori || String(t.id_kategori) === filterKategori;
@@ -98,6 +226,10 @@ export default function PimpinanpencatatanPage() {
     e.preventDefault();
     setSubmitLoading(true);
     try {
+      const finalBank = formData.nama_bank === 'Bank Lainnya' && customBank.trim()
+        ? customBank.trim()
+        : formData.nama_bank;
+
       const data = new FormData();
       data.append('tanggal', formData.tanggal);
       data.append('uraian', formData.uraian);
@@ -107,7 +239,7 @@ export default function PimpinanpencatatanPage() {
       data.append('catatan_audit', formData.catatan_audit);
       data.append('nomor_rekening_bank', formData.nomor_rekening_bank);
       data.append('nama_rekening', formData.nama_rekening);
-      data.append('nama_bank', formData.nama_bank);
+      data.append('nama_bank', finalBank);
       if (file) data.append('file', file);
 
       const url = `${API}/pencatatan`;
@@ -138,6 +270,9 @@ export default function PimpinanpencatatanPage() {
   const resetForm = () => {
     setFormData({ tanggal: '', uraian: '', jenis: 'debit', id_kategori: '', nominal: '', catatan_audit: '', nomor_rekening_bank: '', nama_rekening: '', nama_bank: '' });
     setFile(null);
+    setAiResult(null);
+    setAiError('');
+    setCustomBank('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -147,7 +282,9 @@ export default function PimpinanpencatatanPage() {
       'Tanggal': new Date(t.tanggal).toLocaleDateString('id-ID'),
       'Uraian': t.uraian,
       'Jenis': t.jenis === 'debit' ? 'PEMASUKAN' : 'PENGELUARAN',
-      'Kategori': t.nama_kategori,
+      'Kategori Dokumen': t.nama_kategori,
+      'Bank': t.nama_bank || '-',
+      'No. Rekening': t.nomor_rekening || '-',
       'Nominal': Number(t.nominal),
       'Catatan Audit': t.catatan_audit || '-',
       'Dibuat Oleh': t.pembuat || '-',
@@ -195,8 +332,8 @@ export default function PimpinanpencatatanPage() {
           <option value="kredit">Pengeluaran</option>
         </select>
         <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
-          <option value="">Semua Kategori</option>
-          {kategori.map(k => <option key={k.id} value={String(k.id)}>{k.nama_kategori}</option>)}
+          <option value="">Semua Kategori Dokumen</option>
+          {sortedKategori.map(k => <option key={k.id} value={String(k.id)}>{k.nama_kategori}</option>)}
         </select>
         {(filterTahun || filterJenis || filterKategori) && (
           <button onClick={() => { setFilterTahun(''); setFilterJenis(''); setFilterKategori(''); }} className="text-sm text-red-500 hover:text-red-700 px-2 py-1 transition-colors">
@@ -208,78 +345,268 @@ export default function PimpinanpencatatanPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg font-semibold text-gray-900">Tambah Transaksi</h2>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden my-8 border border-gray-100 transition-all">
+            <div className="px-6 py-4 md:px-8 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span>Tambah Transaksi</span>
+                  {aiScanning && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 animate-pulse">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Analisis AI...
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">Entri data pencatatan transaksi kas dan pembukuan satker</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-colors"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                  <input type="date" required value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
-                  <select required value={formData.jenis} onChange={e => setFormData({...formData, jenis: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="debit">Pemasukan</option>
-                    <option value="kredit">Pengeluaran</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Akun</label>
-                <select required value={formData.id_kategori} onChange={e => setFormData({...formData, id_kategori: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option value="">Pilih Kategori...</option>
-                  {kategori.map(k => (
-                    <option key={k.id} value={k.id}>{k.nama_kategori}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Tampilkan kolom tambahan jika Kategori = Rekening Koran */}
-              {kategori.find(k => String(k.id) === formData.id_kategori)?.nama_kategori?.toLowerCase().includes('rekening koran') && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
+              {/* Banner Hasil Analisis Otomatis AI */}
+              {aiScanning && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-center gap-3 animate-pulse">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600 shrink-0" />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Rekening Bank</label>
-                    <input type="text" required value={formData.nomor_rekening_bank} onChange={e => setFormData({...formData, nomor_rekening_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: 1234567890" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Rekening</label>
-                    <input type="text" required value={formData.nama_rekening} onChange={e => setFormData({...formData, nama_rekening: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: RPL 123" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Bank</label>
-                    <input type="text" required value={formData.nama_bank} onChange={e => setFormData({...formData, nama_bank: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: BNI" />
+                    <p className="font-bold">Sedang Menganalisis Berkas Otomatis...</p>
+                    <p className="text-blue-600 mt-0.5">Membaca isi berkas, mendeteksi nama bank, nomor rekening, dan saldo akhir.</p>
                   </div>
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Uraian / Deskripsi</label>
-                <textarea rows={2} required value={formData.uraian} onChange={e => setFormData({...formData, uraian: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: Pembayaran tagihan listrik bulan Agustus"></textarea>
-              </div>
+              {aiResult && !aiScanning && (aiResult.bank || aiResult.nominal || aiResult.nomor_rekening) && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2 flex-wrap">
+                      <span>✨ Analisis Berkas Berhasil:</span>
+                      {aiResult.bank && (
+                        <span className="bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                          {aiResult.bank}
+                        </span>
+                      )}
+                      {aiResult.kategori && (
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                          {aiResult.kategori}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-emerald-700">
+                      {aiResult.bank && <span>Bank <strong>{aiResult.bank}</strong> berhasil dideteksi. </span>}
+                      {aiResult.nominal != null && <span>Saldo: <strong>Rp {Number(aiResult.nominal).toLocaleString('id-ID')}</strong>. </span>}
+                      {aiResult.nomor_rekening && <span>No Rekening: <strong>{aiResult.nomor_rekening}</strong>. </span>}
+                      Form otomatis disesuaikan!
+                    </p>
+                  </div>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {aiError && !aiScanning && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{aiError}</span>
+                </div>
+              )}
+
+              {/* Row 1: Tanggal Transaksi & Jenis Transaksi */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
-                  <input type="number" min="0" required value={formData.nominal} onChange={e => setFormData({...formData, nominal: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Contoh: 1500000" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tanggal Transaksi</label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.tanggal}
+                    onChange={e => setFormData({...formData, tanggal: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bukti File (Wajib)</label>
-                  <input type="file" required ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Jenis Transaksi</label>
+                  <select
+                    required
+                    value={formData.jenis}
+                    onChange={e => setFormData({...formData, jenis: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
+                  >
+                    <option value="debit">Pemasukan (Debit)</option>
+                    <option value="kredit">Pengeluaran (Kredit)</option>
+                  </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Audit (Opsional)</label>
-                <textarea rows={2} value={formData.catatan_audit} onChange={e => setFormData({...formData, catatan_audit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Catatan khusus dari Pimpinan..."></textarea>
+              {/* Row 2: Kategori Dokumen & Bank (Dropdown Bank BUMN) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Kategori Dokumen</label>
+                  <select
+                    required
+                    value={formData.id_kategori}
+                    onChange={e => setFormData({...formData, id_kategori: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
+                  >
+                    <option value="">Pilih Kategori Dokumen...</option>
+                    {sortedKategori.map(k => (
+                      <option key={k.id} value={k.id}>{k.nama_kategori}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>Bank</span>
+                    <span className="text-[11px] font-normal text-gray-400">Bank BUMN / Persepsi</span>
+                  </label>
+                  <div className="space-y-2">
+                    <select
+                      value={
+                        BANK_BUMN_LIST.includes(formData.nama_bank)
+                          ? formData.nama_bank
+                          : (formData.nama_bank ? formData.nama_bank : '')
+                      }
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData({...formData, nama_bank: val});
+                        if (val !== 'Bank Lainnya') setCustomBank('');
+                      }}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
+                    >
+                      <option value="">Pilih Bank...</option>
+                      {/* Tampilkan bank yang terdeteksi AI jika di luar daftar default */}
+                      {formData.nama_bank && !BANK_BUMN_LIST.includes(formData.nama_bank) && (
+                        <option value={formData.nama_bank}>{formData.nama_bank} (Hasil Baca AI)</option>
+                      )}
+                      {BANK_BUMN_LIST.map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+
+                    {formData.nama_bank === 'Bank Lainnya' && (
+                      <input
+                        type="text"
+                        value={customBank}
+                        onChange={e => setCustomBank(e.target.value)}
+                        placeholder="Ketikkan nama bank..."
+                        className="w-full px-3.5 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 outline-none bg-blue-50/30"
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
 
+              {/* Sub-panel Rekening Bank (Tampil jika Kategori = Rekening Koran atau Bank terisi) */}
+              {(kategori.find(k => String(k.id) === formData.id_kategori)?.nama_kategori?.toLowerCase().includes('rekening') || formData.nama_bank) && (
+                <div className="p-5 bg-blue-50/60 border border-blue-200/80 rounded-2xl space-y-3">
+                  <div className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Landmark className="w-3.5 h-3.5" />
+                    <span>Informasi Rekening Bank</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nomor Rekening Bank</label>
+                      <input
+                        type="text"
+                        value={formData.nomor_rekening_bank}
+                        onChange={e => setFormData({...formData, nomor_rekening_bank: e.target.value})}
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none shadow-sm"
+                        placeholder="Contoh: 1234567890"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nama Rekening / Pemilik</label>
+                      <input
+                        type="text"
+                        value={formData.nama_rekening}
+                        onChange={e => setFormData({...formData, nama_rekening: e.target.value})}
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none shadow-sm"
+                        placeholder="Contoh: RPL 123 Satker"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Row 3: Nominal & Bukti File */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nominal (Rp)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formData.nominal}
+                    onChange={e => setFormData({...formData, nominal: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+                    placeholder="Contoh: 1500000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>Bukti File (Wajib)</span>
+                    <span className="text-[11px] font-normal text-blue-600 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Auto-Deteksi AI
+                    </span>
+                  </label>
+                  <div className="border border-dashed border-gray-300 hover:border-blue-400 rounded-xl p-3 bg-gray-50/50 transition-colors">
+                    <input
+                      type="file"
+                      required
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-2">
+                      {aiScanning ? 'Sedang memindai...' : 'PDF / Excel Rekening Koran akan dibaca otomatis'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Uraian & Catatan Tambahan */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Uraian / Deskripsi</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={formData.uraian}
+                    onChange={e => setFormData({...formData, uraian: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+                    placeholder="Contoh: Pembayaran tagihan listrik bulan Agustus"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Catatan Audit (Opsional)</label>
+                  <textarea
+                    rows={2}
+                    value={formData.catatan_audit}
+                    onChange={e => setFormData({...formData, catatan_audit: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
+                    placeholder="Catatan khusus verifikasi atau audit dari Pimpinan..."
+                  />
+                </div>
+              </div>
+
+              {/* Actions Footer */}
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Batal</button>
-                <button type="submit" disabled={submitLoading} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitLoading || aiScanning}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm shadow-blue-500/20 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {submitLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   {submitLoading ? 'Menyimpan...' : 'Simpan Transaksi'}
                 </button>
               </div>
@@ -296,14 +623,15 @@ export default function PimpinanpencatatanPage() {
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-32">Tanggal</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Uraian</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-24">Jenis</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori Dokumen</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Bank</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Nominal</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-center">File</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
-              {loading ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Memuat data...</td></tr> : 
-                filteredData.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
+              {loading ? <tr><td colSpan={8} className="p-8 text-center text-gray-500">Memuat data...</td></tr> : 
+                filteredData.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
                 filteredData.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 text-gray-600 font-medium">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
@@ -318,6 +646,16 @@ export default function PimpinanpencatatanPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{t.nama_kategori}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {t.nama_bank ? (
+                      <span className="inline-flex items-center gap-1.5 font-medium text-gray-800 bg-gray-100 px-2.5 py-1 rounded-md text-xs">
+                        <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                        {t.nama_bank}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
                     Rp {Number(t.nominal).toLocaleString('id-ID')}
                   </td>

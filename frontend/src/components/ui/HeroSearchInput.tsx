@@ -30,7 +30,7 @@ export default function HeroSearchInput({
   const [tahun,    setTahun]    = useState(searchParams.get('tahun')    ?? '');
   const [satker,   setSatker]   = useState(searchParams.get('satker')   ?? '');
 
-  const isEselon1 = user?.role === 'eselon_1' || user?.role === 'ketua_tim' || user?.role === 'admin_it';
+  const isEselon1 = user?.role === 'eselon_1' || user?.role === 'ketua_tim' || user?.role === 'admin_it' || user?.role === 'it' || user?.tingkat === 'eselon_1' || user?.tingkat === 'kl';
 
   const currentRealYear = new Date().getFullYear();
   const tahunList = Array.from({ length: 6 }, (_, i) => currentRealYear - i);

@@ -14,40 +14,56 @@ async def get_dashboard_stats(
     db=Depends(get_db)
 ):
     with db.cursor(dictionary=True) as cursor:
+        role = current_user.get("role")
+        tingkat = current_user.get("tingkat")
         role_id = current_user.get("role_id")
         user_id = current_user.get("id")
+        user_satker_id = current_user.get("satker_id")
+        user_eselon_id = current_user.get("eselon_1_id")
         target_tahun = tahun or datetime.datetime.now().year
-        
-        # Admin IT tidak boleh melihat data keuangan
-        if role_id == 4:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=403, detail="Akses ditolak. Admin IT tidak berhak melihat data laporan keuangan.")
-            
-        # Get user's satker_id
-        cursor.execute("SELECT satker_id FROM users WHERE id = %s", (user_id,))
-        user_data = cursor.fetchone()
-        user_satker_id = user_data["satker_id"] if user_data else None
 
-        user_filter = "WHERE role_id IN (2, 3) AND is_active = 1"
+        user_filter = "WHERE is_active = 1"
         kk_filter = "WHERE 1=1"
         params = []
         kk_params = []
+        doc_filter = ""
+        doc_params = []
 
-        if role_id in (1, 2):
+        if tingkat == "satker":
             if user_satker_id:
                 user_filter += " AND satker_id = %s"
                 params.append(user_satker_id)
                 kk_filter += " AND satker_id = %s"
                 kk_params.append(user_satker_id)
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
+                doc_params.append(user_satker_id)
             else:
                 user_filter += " AND satker_id = 0"
                 kk_filter += " AND satker_id = 0"
-        else:
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = 0"
+        elif tingkat == "eselon_1":
             if satker:
                 user_filter += " AND satker_id = %s"
                 params.append(satker)
                 kk_filter += " AND satker_id = %s"
                 kk_params.append(satker)
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
+                doc_params.append(satker)
+            elif user_eselon_id:
+                user_filter += " AND (eselon_1_id = %s OR satker_id IN (SELECT id FROM satkers WHERE eselon_1_id = %s))"
+                params.extend([user_eselon_id, user_eselon_id])
+                kk_filter += " AND satker_id IN (SELECT id FROM satkers WHERE eselon_1_id = %s)"
+                kk_params.append(user_eselon_id)
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id LEFT JOIN satkers s ON s.id = u.satker_id WHERE (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+                doc_params.extend([user_eselon_id, user_eselon_id])
+        else: # tingkat == "kl" or role in ("it", "admin_it")
+            if satker:
+                user_filter += " AND satker_id = %s"
+                params.append(satker)
+                kk_filter += " AND satker_id = %s"
+                kk_params.append(satker)
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
+                doc_params.append(satker)
 
         # Year filter for rekening koran
         kk_filter_year = kk_filter + " AND tahun = %s"
@@ -57,28 +73,19 @@ async def get_dashboard_stats(
         cursor.execute(f"SELECT COUNT(id) AS total FROM users {user_filter}", tuple(params))
         total_user = cursor.fetchone()["total"]
 
-        # 1.2 Total Satker (Khusus Eselon 1 & Admin)
+        # 1.2 Total Satker (Khusus Eselon 1, KL & Admin IT)
         total_satker = 0
-        if role_id in (3, 4):
+        if tingkat in ("eselon_1", "kl") or role in ("it", "admin_it"):
             if satker:
                 total_satker = 1
+            elif tingkat == "eselon_1" and user_eselon_id:
+                cursor.execute("SELECT COUNT(id) AS total FROM satkers WHERE eselon_1_id = %s", (user_eselon_id,))
+                total_satker = cursor.fetchone()["total"]
             else:
                 cursor.execute("SELECT COUNT(id) AS total FROM satkers")
                 total_satker = cursor.fetchone()["total"]
 
         # 1.5 Total Dokumen
-        doc_filter = ""
-        doc_params = []
-        if role_id in (1, 2):
-            if user_satker_id:
-                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
-                doc_params.append(user_satker_id)
-            else:
-                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = 0"
-        elif satker:
-            doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
-            doc_params.append(satker)
-
         doc_filter_year = doc_filter
         doc_params_year = list(doc_params)
         if doc_filter_year:
@@ -97,10 +104,11 @@ async def get_dashboard_stats(
 
         # 3. Saldo Per Satker / Per Kategori Saldo
         is_single_satker = False
-        if role_id in (1, 2) and user_satker_id:
+        if tingkat == "satker" and user_satker_id:
             is_single_satker = True
-        elif role_id in (3, 4) and satker:
+        elif (tingkat in ("eselon_1", "kl") or role in ("it", "admin_it")) and satker:
             is_single_satker = True
+
 
         formatted_satker = []
         if is_single_satker:

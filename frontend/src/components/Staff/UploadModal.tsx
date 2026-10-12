@@ -43,7 +43,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
 
   // AI Autofill state
   const [aiScanning,  setAiScanning]  = useState(false);
-  const [aiResult,    setAiResult]    = useState<{judul?:string; tahun?:number; kategori?:string; semester?:number|null; nominal?:number|null; deskripsi?:string; confidence?:string} | null>(null);
+  const [aiResult,    setAiResult]    = useState<{judul?:string; tahun?:number; kategori?:string; semester?:number|null; nominal?:number|null; deskripsi?:string; confidence?:string; bank?:string} | null>(null);
   const [aiError,     setAiError]     = useState('');
   const [aiFilledFields, setAiFilledFields] = useState<string[]>([]);
 

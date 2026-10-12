@@ -49,12 +49,14 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
         <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 bg-[#1E90FF] rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
-              <span className="text-sm">PM</span>
+              <span className="text-sm">MN</span>
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">Pimpinan</h1>
-                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0">PORTAL SATKER</p>
+                <h1 className="font-bold text-slate-900 tracking-tight leading-none text-[15px] m-0">Manajemen</h1>
+                <p className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0 uppercase truncate max-w-[170px]" title={user?.satker_nama || undefined}>
+                  {user?.satker_nama || 'PORTAL SATKER'}
+                </p>
               </div>
             )}
           </div>
@@ -124,10 +126,10 @@ export default function PimpinanSidebar({ isMobileOpen, setIsMobileOpen, isColla
               {!isCollapsed && (
                 <div className="min-w-0 flex flex-col">
                   <span className="text-xs font-bold text-slate-800 truncate leading-tight">
-                    {user?.nama || 'Pimpinan Satker'}
+                    {user?.nama || 'Manajemen Satker'}
                   </span>
-                  <span className="text-[10px] text-blue-600 font-semibold tracking-wide">
-                    PIMPINAN SATKER
+                  <span className="text-[10px] text-blue-600 font-semibold tracking-wide truncate max-w-[130px]" title={user?.satker_nama || undefined}>
+                    {user?.satker_nama || 'MANAJEMEN SATKER'}
                   </span>
                 </div>
               )}

@@ -20,8 +20,9 @@ export default function AutoFilterSatker() {
     if (!session) return;
 
     const userRole = session.user.role;
-    // Pimpinan dan Staff hanya boleh melihat satker mereka sendiri
-    if (userRole === 'pimpinan_satker' || userRole === 'staff_satker') {
+    const userTingkat = session.user.tingkat;
+    // Pimpinan dan Operator tingkat satker hanya boleh melihat satker mereka sendiri
+    if (userTingkat === 'satker' || userRole === 'pimpinan_satker' || userRole === 'staff_satker' || userRole === 'operator') {
       const currentSatker = searchParams.get('satker');
       
       const fetchProfile = async () => {

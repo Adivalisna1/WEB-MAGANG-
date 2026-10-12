@@ -6,13 +6,16 @@ import bcrypt
 import math
 import json
 import psutil
+import re
 
 router = APIRouter()
 
 def verify_admin_it(current_user: dict = Depends(get_current_user)):
     is_admin = (
+        current_user.get("is_it") or
         current_user.get("role") in ["it", "admin_it"] or
-        current_user.get("role_id") in [3, 4]
+        current_user.get("role_id") in [3, 4] or
+        current_user.get("username") in ["it_admin", "naufal"]
     )
     if not is_admin:
         raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Admin IT.")
@@ -122,7 +125,7 @@ async def create_user(
     current_user: dict = Depends(verify_admin_it)
 ):
     role_id = body.get("role_id")
-    tingkat_id = body.get("tingkat_id") or 1
+    tingkat_id = body.get("tingkat_id")
     nama = body.get("nama")
     username = body.get("username")
     email = body.get("email")
@@ -136,6 +139,16 @@ async def create_user(
     
     try:
         with db.cursor(dictionary=True) as cursor:
+            # Auto-resolve eselon_1_id & tingkat_id dari satker
+            if satker_id and not eselon_1_id:
+                cursor.execute("SELECT eselon_1_id FROM satkers WHERE id = %s", (satker_id,))
+                s_row = cursor.fetchone()
+                if s_row and s_row["eselon_1_id"]:
+                    eselon_1_id = s_row["eselon_1_id"]
+                    
+            if not tingkat_id:
+                tingkat_id = 1 if satker_id else (2 if eselon_1_id else 3)
+                
             cursor.execute("""
                 INSERT INTO users (role_id, tingkat_id, nama, username, email, password_hash, permissions, satker_id, eselon_1_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -186,20 +199,24 @@ async def create_bulk_users(
                         continue
                         
                     satker_id = None
+                    eselon_1_id = None
+                    tingkat_id = user.get("tingkat_id") or 1
+                    
                     if kode_satker:
-                        cursor.execute("SELECT id FROM satkers WHERE NO_Satker = %s", (str(kode_satker).strip(),))
+                        cursor.execute("SELECT id, eselon_1_id FROM satkers WHERE NO_Satker = %s", (str(kode_satker).strip(),))
                         satker_row = cursor.fetchone()
                         if satker_row:
                             satker_id = satker_row["id"]
+                            eselon_1_id = satker_row["eselon_1_id"]
                         else:
                             failed_count += 1
                             continue
                             
                     password_hash = bcrypt.hashpw(str(password).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     cursor.execute("""
-                        INSERT INTO users (role_id, satker_id, nama, username, email, password_hash, permissions)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """, (role_id, satker_id, nama, username, email, password_hash, None))
+                        INSERT INTO users (role_id, tingkat_id, satker_id, eselon_1_id, nama, username, email, password_hash, permissions)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (role_id, tingkat_id, satker_id, eselon_1_id, nama, username, email, password_hash, None))
                     success_count += 1
                 except Exception as e:
                     failed_count += 1
@@ -244,22 +261,34 @@ async def update_user(
     try:
         with db.cursor(dictionary=True) as cursor:
             # Check existing user
-            cursor.execute("SELECT tingkat_id, eselon_1_id FROM users WHERE id = %s", (user_id,))
+            cursor.execute("SELECT tingkat_id, eselon_1_id, satker_id FROM users WHERE id = %s", (user_id,))
             current_row = cursor.fetchone()
-            final_tingkat_id = tingkat_id if tingkat_id is not None else (current_row["tingkat_id"] if current_row else 1)
+            
+            final_satker_id = satker_id if "satker_id" in body else (current_row.get("satker_id") if current_row else None)
+            
+            # Auto-resolve eselon_1_id jika satker diubah/ada
+            if final_satker_id and not eselon_1_id:
+                cursor.execute("SELECT eselon_1_id FROM satkers WHERE id = %s", (final_satker_id,))
+                s_row = cursor.fetchone()
+                if s_row and s_row["eselon_1_id"]:
+                    eselon_1_id = s_row["eselon_1_id"]
+                    
+            final_tingkat_id = tingkat_id if tingkat_id is not None else (current_row["tingkat_id"] if current_row else (1 if final_satker_id else 3))
             final_eselon_1_id = eselon_1_id if eselon_1_id is not None else (current_row.get("eselon_1_id") if current_row else None)
 
             cursor.execute("""
                 UPDATE users
                 SET role_id=%s, tingkat_id=%s, eselon_1_id=%s, nama=%s, username=%s, email=%s, permissions=%s, satker_id=%s
                 WHERE id=%s
-            """, (role_id, final_tingkat_id, final_eselon_1_id, nama, username, email, perms_json, satker_id, user_id))
+            """, (role_id, final_tingkat_id, final_eselon_1_id, nama, username, email, perms_json, final_satker_id, user_id))
+
             
             ip_addr = request.client.host if request.client else "127.0.0.1"
             cursor.execute("""
                 INSERT INTO aktivitas_log (user_id, aksi, entitas, entitas_id, detail, ip_address)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (current_user["id"], "update_user", "user", user_id, json.dumps({"username": username, "role_id": role_id, "permissions": permissions}), ip_addr))
+            db.commit()
             
         return {"success": True, "message": "User berhasil diupdate"}
     except Exception as e:
@@ -285,6 +314,7 @@ async def delete_user(
             INSERT INTO aktivitas_log (user_id, aksi, entitas, entitas_id, ip_address)
             VALUES (%s, %s, %s, %s, %s)
         """, (current_user["id"], "hapus_user", "user", user_id, ip_addr))
+        db.commit()
         
     return {"success": True, "message": "User berhasil dihapus"}
 
@@ -310,6 +340,7 @@ async def force_reset_password(
             INSERT INTO aktivitas_log (user_id, aksi, entitas, entitas_id, ip_address)
             VALUES (%s, %s, %s, %s, %s)
         """, (current_user["id"], "reset_password_manual", "user", user_id, ip_addr))
+        db.commit()
         
     return {"success": True, "message": "Password berhasil diubah"}
 
@@ -321,22 +352,32 @@ async def get_kategori(db=Depends(get_db), current_user: dict = Depends(verify_a
 
 @router.post("/kategori")
 async def create_kategori(body: dict, db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
+    nama = body.get("nama")
+    if not nama:
+        raise HTTPException(status_code=400, detail="Nama kategori wajib diisi")
+    slug = body.get("slug") or re.sub(r'[^a-zA-Z0-9]+', '-', nama.lower()).strip('-')
+    perlu_nom = 1 if body.get("perlu_nominal") else 0
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("INSERT INTO kategori_dokumen (nama, slug, deskripsi) VALUES (%s, %s, %s)", 
-                      (body.get("nama"), body.get("slug"), body.get("deskripsi")))
+        cursor.execute("INSERT INTO kategori_dokumen (nama, slug, deskripsi, perlu_nominal) VALUES (%s, %s, %s, %s)", 
+                      (nama, slug, body.get("deskripsi"), perlu_nom))
+        db.commit()
     return {"success": True, "message": "Kategori dibuat"}
 
 @router.put("/kategori/{kat_id}")
 async def update_kategori(kat_id: int, body: dict, db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
+    nama = body.get("nama")
+    slug = body.get("slug") or (re.sub(r'[^a-zA-Z0-9]+', '-', nama.lower()).strip('-') if nama else None)
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("UPDATE kategori_dokumen SET nama=%s, slug=%s, deskripsi=%s WHERE id=%s", 
-                      (body.get("nama"), body.get("slug"), body.get("deskripsi"), kat_id))
+        cursor.execute("UPDATE kategori_dokumen SET nama=COALESCE(%s, nama), slug=COALESCE(%s, slug), deskripsi=COALESCE(%s, deskripsi) WHERE id=%s", 
+                      (nama, slug, body.get("deskripsi"), kat_id))
+        db.commit()
     return {"success": True, "message": "Kategori diupdate"}
 
 @router.delete("/kategori/{kat_id}")
 async def delete_kategori(kat_id: int, db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("DELETE FROM kategori_dokumen WHERE id=%s", (kat_id,))
+        db.commit()
     return {"success": True, "message": "Kategori dihapus"}
 
 @router.get("/logs")

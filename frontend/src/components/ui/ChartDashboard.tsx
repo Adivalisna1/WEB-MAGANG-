@@ -55,6 +55,7 @@ interface StatsData {
   kepatuhan_title?: string;
   kepatuhan_desc?: string;
   saldo_growth_pct?: number;
+  monthly_activity?: any[];
   rekonsiliasi_keuangan?: {
     total_bank: number;
     total_buku: number;
@@ -90,7 +91,7 @@ export default function ChartDashboard() {
   const [satkers, setSatkers] = useState<{ id: number, nama: string }[]>([]);
   const [selectedSatker, setSelectedSatker] = useState<string>(urlSatker || '');
   const session = getSession();
-  const isEselon1 = session?.user?.role === 'eselon_1' || session?.user?.role === 'ketua_tim' || session?.user?.role === 'admin_it';
+  const isEselon1 = session?.user?.role === 'eselon_1' || session?.user?.role === 'ketua_tim' || session?.user?.role === 'admin_it' || session?.user?.role === 'it' || session?.user?.tingkat === 'eselon_1' || session?.user?.tingkat === 'kl';
 
   // Sync if URL search params change
   useEffect(() => {
@@ -579,7 +580,7 @@ export default function ChartDashboard() {
             </div>
 
             {/* Monthly Nodes */}
-            {timelineMonths.map((m) => {
+            {timelineMonths.map((m: any) => {
               const isVerified = m.status === 'verified';
               const isPending = m.status === 'pending';
               const isEmpty = m.status === 'empty';

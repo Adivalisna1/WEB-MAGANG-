@@ -33,9 +33,15 @@ export default function LoginPage() {
     if (!loading && user) {
       const r = user.role;
       const t = user.tingkat;
-      if (r === 'admin_it' || r === 'it') router.replace('/admin-it');
+      const isIt = Boolean(
+        user.is_it ||
+        r === 'admin_it' ||
+        r === 'it' ||
+        (t === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
+      );
+      if (isIt) router.replace('/admin-it');
       else if (r === 'eselon_1' || t === 'eselon_1' || t === 'kl') router.replace('/eselon-1');
-      else if (r === 'pimpinan_satker' || (t === 'satker' && r === 'administrasi')) router.replace('/pimpinan');
+      else if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) router.replace('/pimpinan');
       else router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);

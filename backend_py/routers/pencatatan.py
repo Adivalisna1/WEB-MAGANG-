@@ -10,12 +10,22 @@ import datetime
 
 router = APIRouter(prefix="/api/pencatatan", tags=["pencatatan"])
 
-UPLOAD_DIR = "/app/uploads/akuntansi"
+UPLOAD_DIR = os.getenv("UPLOAD_DIR_AKUNTANSI", "/app/uploads/akuntansi" if os.path.exists("/app") else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads", "akuntansi"))
 
 @router.get("/kategori")
 async def get_kategori(user: dict = Depends(get_current_user), db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT id, nama as nama_kategori FROM kategori_dokumen WHERE is_active = 1 ORDER BY nama ASC")
+        cursor.execute("""
+            SELECT id, nama as nama_kategori 
+            FROM kategori_dokumen 
+            WHERE is_active = 1 
+            ORDER BY 
+                CASE 
+                    WHEN LOWER(nama) LIKE '%lainnya%' OR id = 999 THEN 1 
+                    ELSE 0 
+                END ASC, 
+                id ASC
+        """)
         rows = cursor.fetchall()
     return {"success": True, "data": rows}
 
@@ -80,28 +90,31 @@ async def serve_file(
 
 @router.get("")
 async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_db)):
-    role = user.get("role_id")
+    tingkat = user.get("tingkat")
     satker_id = user.get("satker_id")
+    eselon_1_id = user.get("eselon_1_id")
     
     where = "1=1"
     params = []
     
-    if str(role) in ["1", "2"]:
-        if satker_id is None:
-            where += " AND u.satker_id IS NULL"
-        else:
-            where += " AND u.satker_id = %s"
-            params.append(satker_id)
+    if tingkat == "satker":
+        if satker_id:
+            where += " AND (a.satker_id = %s OR u.satker_id = %s)"
+            params.extend([satker_id, satker_id])
+    elif tingkat == "eselon_1":
+        if eselon_1_id:
+            where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+            params.extend([eselon_1_id, eselon_1_id])
             
     with db.cursor(dictionary=True) as cursor:
         query = f"""
             SELECT a.*, k.nama as nama_kategori, u.nama as pembuat, u2.nama as pengedit,
-                   u.satker_id, s.nama as satker_nama
+                   COALESCE(a.satker_id, u.satker_id) as satker_id, s.nama as satker_nama
             FROM pencatatan a
             LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id
             LEFT JOIN users u ON a.created_by = u.id
             LEFT JOIN users u2 ON a.updated_by = u2.id
-            LEFT JOIN satkers s ON u.satker_id = s.id
+            LEFT JOIN satkers s ON COALESCE(a.satker_id, u.satker_id) = s.id
             WHERE {where}
             ORDER BY a.tanggal DESC, a.created_at DESC
         """
@@ -116,6 +129,7 @@ async def create_akuntansi(
     jenis: str = Form(...),
     id_kategori: int = Form(...),
     nominal: float = Form(...),
+    satker_id: Optional[int] = Form(None),
     catatan_audit: Optional[str] = Form(None),
     nomor_rekening_bank: Optional[str] = Form(None),
     nama_rekening: Optional[str] = Form(None),
@@ -124,8 +138,15 @@ async def create_akuntansi(
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    if user.get("role") not in ["pimpinan_satker", "staff_satker"]:
-        raise HTTPException(403, "Forbidden")
+    is_allowed = (
+        user.get("role") in ["operator", "manajemen", "administrasi", "it", "admin_it", "pimpinan_satker", "staff_satker"] or
+        user.get("role_id") in [1, 2, 3] or
+        user.get("is_operator") or
+        user.get("is_manajemen") or
+        user.get("is_it")
+    )
+    if not is_allowed:
+        raise HTTPException(403, "Forbidden: Akses khusus Operator dan Manajemen Satker")
         
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{file.filename}"
@@ -139,8 +160,7 @@ async def create_akuntansi(
     try:
         with db.cursor(dictionary=True) as cursor:
             created_by = user["id"]
-            satker_id = user.get("satker_id")
-            print(f"DEBUG: user payload: {user}", flush=True)
+            final_satker_id = satker_id or user.get("satker_id")
             
             cursor.execute("SELECT nama FROM kategori_dokumen WHERE id = %s", (id_kategori,))
             cat_res = cursor.fetchone()
@@ -177,15 +197,15 @@ async def create_akuntansi(
                         keterangan, nama_bank, tahun, tanggal_pembukaan_rekening, dokumen_id
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    satker_id, created_by, nomor_rekening_bank, nama_rekening, nominal, uraian,
+                    final_satker_id, created_by, nomor_rekening_bank, nama_rekening, nominal, uraian,
                     nama_bank, tahun, tanggal, dokumen_id
                 ))
             
             cursor.execute("""
                 INSERT INTO pencatatan 
-                (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, nama_rekening) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (tanggal, uraian, jenis, id_kategori, nominal, bukti_file, catatan_audit, created_by, nomor_rekening_bank, nama_bank, nama_rekening))
+                (tanggal, uraian, jenis, id_kategori, satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, nama_rekening) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (tanggal, uraian, jenis, id_kategori, final_satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening_bank, nama_bank, nama_rekening))
             insert_id = cursor.lastrowid
             
         db.commit()

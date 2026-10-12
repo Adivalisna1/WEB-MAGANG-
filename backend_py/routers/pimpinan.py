@@ -7,15 +7,72 @@ import math
 
 router = APIRouter()
 
-# Middleware-like dependency to ensure user is pimpinan
+# Middleware-like dependency to ensure user is pimpinan / manajemen
 def verify_pimpinan(current_user: dict = Depends(get_current_user)):
     is_allowed = (
-        current_user.get("role") in ["administrasi", "it", "admin_it"] or
-        current_user.get("role_id") in [1, 2]
+        current_user.get("role") in ["manajemen", "administrasi", "it", "admin_it", "pimpinan_satker"] or
+        current_user.get("role_id") in [2, 3] or
+        current_user.get("is_manajemen") or
+        current_user.get("is_it")
     )
     if not is_allowed:
-        raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Pimpinan / Administrasi.")
+        raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Tim Manajemen / Pimpinan.")
     return current_user
+
+@router.get("/dokumen")
+async def get_satker_dokumen(
+    status: Optional[str] = None,
+    limit: int = 100,
+    current_user: dict = Depends(verify_pimpinan),
+    db=Depends(get_db)
+):
+    sid = current_user.get("satker_id")
+    where = "u.satker_id = %s"
+    params = [sid]
+    if status and status != 'all':
+        where += " AND d.status = %s"
+        params.append(status)
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute(f"""
+            SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
+                   d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
+                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
+                   k.nama AS kategori, k.slug AS kategori_slug,
+                   u.nama AS uploaded_by, u.username AS uploaded_username,
+                   s.NO_Satker AS no_satker, s.nama AS satker_nama
+            FROM dokumen d
+            JOIN kategori_dokumen k ON k.id = d.kategori_id
+            JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE {where}
+            ORDER BY d.created_at DESC
+            LIMIT %s
+        """, tuple(params + [min(limit, 250)]))
+        return {"success": True, "data": cursor.fetchall()}
+
+@router.get("/dokumen/menunggu")
+async def get_satker_dokumen_menunggu(
+    current_user: dict = Depends(verify_pimpinan),
+    db=Depends(get_db)
+):
+    sid = current_user.get("satker_id")
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
+                   d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
+                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
+                   k.nama AS kategori, k.slug AS kategori_slug,
+                   u.nama AS uploaded_by, u.username AS uploaded_username,
+                   s.NO_Satker AS no_satker, s.nama AS satker_nama
+            FROM dokumen d
+            JOIN kategori_dokumen k ON k.id = d.kategori_id
+            JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.status = 'menunggu_verifikasi' AND u.satker_id = %s
+            ORDER BY d.created_at ASC
+        """, (sid,))
+        return {"success": True, "data": cursor.fetchall()}
+
 
 @router.get("/users")
 async def get_users(
@@ -102,6 +159,7 @@ async def toggle_user_active(
             f'{{"is_active": {new_status}}}',
             ip_addr
         ))
+        db.commit()
         
         return {
             "success": True,
@@ -151,6 +209,7 @@ async def reset_user_password(
             f'{{"target_nama": "{user_row["nama"]}", "target_username": "{user_row["username"]}"}}',
             ip_addr
         ))
+        db.commit()
         
         return {"success": True, "message": f"Password {user_row['nama']} berhasil direset"}
 
@@ -212,6 +271,7 @@ async def clear_logs(
         else:
             cursor.execute("DELETE FROM aktivitas_log WHERE created_at < NOW() - INTERVAL %s DAY", (before_days,))
             
+        db.commit()
         cursor.execute("SELECT COUNT(*) AS total FROM aktivitas_log")
         total = cursor.fetchone()["total"]
         

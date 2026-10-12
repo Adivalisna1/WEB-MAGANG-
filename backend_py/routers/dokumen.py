@@ -113,6 +113,8 @@ async def get_all_dokumen(
     status: Optional[str] = None,
     kategori: Optional[str] = None,
     tahun: Optional[int] = None,
+    satker: Optional[int] = None,
+    only_mine: Optional[bool] = False,
     page: int = 1,
     limit: int = 20,
     user: dict = Depends(get_current_user),
@@ -122,13 +124,35 @@ async def get_all_dokumen(
     where = '1=1'
     params = []
     
-    if user.get("role_id") == 2:
+    role = user.get("role")
+    tingkat = user.get("tingkat")
+    satker_id = user.get("satker_id")
+    eselon_1_id = user.get("eselon_1_id")
+
+    if only_mine:
         where += ' AND d.uploaded_by = %s'
         params.append(user["id"])
-    elif user.get("role_id") == 1:
-        if user.get("satker_id"):
+    elif role in ["it", "admin_it"] or tingkat == "kl":
+        # Global access across all satkers; can filter by satker query param if provided
+        if satker:
             where += ' AND u.satker_id = %s'
-            params.append(user["satker_id"])
+            params.append(satker)
+    elif tingkat == "satker":
+        # Both Operator and Administrasi Satker see their own satker documents
+        if satker_id:
+            where += ' AND (u.satker_id = %s OR d.uploaded_by = %s)'
+            params.extend([satker_id, user["id"]])
+        else:
+            where += ' AND d.uploaded_by = %s'
+            params.append(user["id"])
+    elif tingkat == "eselon_1":
+        # Eselon 1 Pembina sees all satkers under their Eselon 1 unit
+        if satker:
+            where += ' AND u.satker_id = %s'
+            params.append(satker)
+        elif eselon_1_id:
+            where += ' AND (s.eselon_1_id = %s OR u.eselon_1_id = %s OR d.uploaded_by = %s)'
+            params.extend([eselon_1_id, eselon_1_id, user["id"]])
         
     if status and status != 'all':
         where += ' AND d.status = %s'
@@ -164,6 +188,7 @@ async def get_all_dokumen(
             SELECT COUNT(*) AS total FROM dokumen d
             JOIN kategori_dokumen k ON k.id = d.kategori_id
             JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
             WHERE {where}
         """, tuple(params))
         total = cursor.fetchone()["total"]
@@ -189,8 +214,13 @@ async def upload_dokumen(
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    if user.get("role_id") != 2:
-        raise HTTPException(403, "Hanya staff yang bisa upload")
+    is_uploader = (
+        user.get("role") in ["operator", "it", "admin_it", "staff_satker"] or
+        user.get("role_id") in [1, 3] # 1=operator, 3=it
+    )
+    if not is_uploader:
+        raise HTTPException(403, "Hanya Operator Pelaksana yang berhak mengunggah dokumen")
+
         
     if not judul: raise HTTPException(400, "Judul wajib diisi")
     
@@ -251,12 +281,11 @@ async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_
     has_access = dok["status"] == "terverifikasi" and dok["is_public"]
     if not has_access and token:
         try:
-            import os
             secret = os.getenv("JWT_SECRET")
             decoded = jwt.decode(token, secret, algorithms=["HS256"])
             if decoded.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker", "eselon_1"] or decoded.get("tingkat") in ["satker", "eselon_1", "kl"] or (dok["uploaded_by"] == decoded.get("id")):
                 has_access = True
-        except:
+        except Exception:
             pass
             
     if not has_access:
@@ -365,8 +394,8 @@ async def edit_dokumen(
         
     if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
     
-    is_uploader = (user.get("role") in ["operator", "staff_satker"] or user.get("role_id") == 2)
-    is_editor = (user.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker"] or user.get("role_id") in [1, 5])
+    is_uploader = (user.get("role") in ["operator", "staff_satker"] or user.get("role_id") == 1)
+    is_editor = (user.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker"] or user.get("role_id") in [2, 3])
     
     if is_uploader:
         if dok["uploaded_by"] != user["id"]: raise HTTPException(403, "Bukan dokumen Anda")
@@ -434,12 +463,25 @@ async def submit_verifikasi(id: int, request: Request, user: dict = Depends(get_
         
         cursor.execute("UPDATE dokumen SET status = 'menunggu_verifikasi', catatan = NULL, catatan_oleh = NULL WHERE id = %s", (id,))
         
-        cursor.execute("SELECT id FROM users WHERE role_id = 1 AND is_active = 1")
+        # Cari approver (Manajemen) di satker yang bersangkutan atau global
+        satker_id = user.get("satker_id")
+        if satker_id:
+            cursor.execute("""
+                SELECT u.id FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE (r.nama IN ('manajemen', 'administrasi', 'pimpinan_satker') OR u.role_id = 2) AND u.satker_id = %s AND u.is_active = 1
+            """, (satker_id,))
+        else:
+            cursor.execute("""
+                SELECT u.id FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE (r.nama IN ('manajemen', 'administrasi', 'pimpinan_satker') OR u.role_id = 2) AND u.is_active = 1
+            """)
         admins = cursor.fetchall()
         
         cursor.execute("SELECT nama FROM users WHERE id = %s", (user["id"],))
         staff_row = cursor.fetchone()
-        staff_nama = staff_row["nama"] if staff_row else "Staff"
+        staff_nama = staff_row["nama"] if staff_row else "Operator"
         
         for admin in admins:
             await buat_notifikasi(db, admin["id"], "submit", dok["judul"], f"{staff_nama} mengajukan \"{dok['judul']}\" untuk ditinjau", id)
@@ -451,10 +493,12 @@ async def submit_verifikasi(id: int, request: Request, user: dict = Depends(get_
 @router.patch("/{id}/verify")
 async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
     is_pimpinan = (
-        user.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker"] or
-        user.get("role_id") in [1, 2]
+        user.get("role") in ["manajemen", "administrasi", "it", "admin_it", "pimpinan_satker"] or
+        user.get("role_id") in [2, 3] or
+        user.get("is_manajemen") or
+        user.get("is_it")
     )
-    if not is_pimpinan: raise HTTPException(403, "Akses ditolak. Anda bukan Tim Administrasi / Verifikator Satker.")
+    if not is_pimpinan: raise HTTPException(403, "Akses ditolak. Anda bukan Tim Manajemen / Verifikator Satker.")
     body = await request.json()
     aksi = body.get("aksi")
     catatan = body.get("catatan")
@@ -467,6 +511,13 @@ async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_cur
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
         if dok["status"] != 'menunggu_verifikasi': raise HTTPException(400, "Dokumen tidak dalam antrian verifikasi")
         
+        # Jika verifikator adalah manajemen tingkat satker, validasi dokumen milik satkernya
+        if user.get("role") in ["manajemen", "administrasi"] and user.get("tingkat") == "satker" and user.get("satker_id"):
+            cursor.execute("SELECT satker_id FROM users WHERE id = %s", (dok["uploaded_by"],))
+            up_row = cursor.fetchone()
+            if up_row and up_row.get("satker_id") and up_row["satker_id"] != user["satker_id"]:
+                raise HTTPException(403, "Akses ditolak. Dokumen bukan dari Satker Anda.")
+        
         new_status = 'lolos_admin' if aksi == 'lolos' else 'revisi'
         n_rk = body.get("nilai_rekening_koran", dok["nilai_rekening_koran"])
         n_ex = body.get("nilai_excel", dok["nilai_excel"])
@@ -477,10 +528,22 @@ async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_cur
         """, (new_status, catatan, n_rk, n_ex, user["id"], id))
         
         if aksi == 'lolos':
-            await buat_notifikasi(db, dok["uploaded_by"], "lolos_admin", dok["judul"], f"Dokumen \"{dok['judul']}\" lolos tinjauan admin", id)
-            cursor.execute("SELECT id FROM users WHERE (role_id = 3 OR tingkat_id IN (SELECT id FROM tingkats WHERE kode IN ('eselon_1', 'kl'))) AND is_active = 1")
+            await buat_notifikasi(db, dok["uploaded_by"], "lolos_admin", dok["judul"], f"Dokumen \"{dok['judul']}\" lolos tinjauan manajemen Satker", id)
+            # Notifikasi ke Tim Eselon 1 Pembina satker tersebut
+            satker_target_id = user.get("satker_id")
+            cursor.execute("""
+                SELECT u.id FROM users u
+                JOIN roles r ON r.id = u.role_id
+                JOIN tingkats t ON t.id = u.tingkat_id
+                LEFT JOIN satkers s ON s.id = %s
+                WHERE (
+                    (t.kode = 'eselon_1' AND (u.eselon_1_id = s.eselon_1_id OR u.eselon_1_id IS NULL))
+                    OR t.kode = 'kl'
+                    OR r.nama IN ('it', 'admin_it')
+                ) AND u.is_active = 1
+            """, (satker_target_id,))
             for ketua in cursor.fetchall():
-                await buat_notifikasi(db, ketua["id"], "submit", dok["judul"], f"Dokumen \"{dok['judul']}\" diloloskan admin", id)
+                await buat_notifikasi(db, ketua["id"], "submit", dok["judul"], f"Dokumen \"{dok['judul']}\" diloloskan manajemen Satker dan menunggu persetujuan Eselon 1", id)
         else:
             await buat_notifikasi(db, dok["uploaded_by"], "reject", dok["judul"], f"Dokumen perlu direvisi: {catatan}", id)
             
@@ -490,12 +553,16 @@ async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_cur
 
 @router.patch("/{id}/eselon-1-verify")
 async def verify_eselon(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    is_eselon = (
-        user.get("tingkat") in ["eselon_1", "kl"] or
-        user.get("role") in ["it", "admin_it", "eselon_1"] or
+    # Hanya Pimpinan Eselon 1 (manajemen/administrasi) atau IT Admin yang berwenang verifikasi
+    is_pimpinan_eselon = (
+        (user.get("role") in ["manajemen", "administrasi"] and user.get("tingkat") in ["eselon_1", "kl"]) or
+        (user.get("tingkat") in ["eselon_1", "kl"] and user.get("role_id") == 2) or
+        user.get("role") in ["it", "admin_it"] or
+        user.get("is_it") or
         user.get("role_id") == 3
     )
-    if not is_eselon: raise HTTPException(403, "Akses ditolak. Anda bukan Pembina Tingkat Eselon 1.")
+    if not is_pimpinan_eselon:
+        raise HTTPException(403, "Akses ditolak. Staff Eselon 1 tidak memiliki hak verifikasi. Hanya Pimpinan Eselon 1 yang berwenang.")
     body = await request.json()
     aksi = body.get("aksi")
     catatan = body.get("catatan")
@@ -505,7 +572,19 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
-        if dok["status"] != 'lolos_admin': raise HTTPException(400, "Belum diloloskan admin")
+        if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
+        if dok["status"] != 'lolos_admin': raise HTTPException(400, "Belum diloloskan admin Satker")
+        
+        # Validasi bahwa satker uploader berada di bawah eselon 1 user (jika user tingkat eselon_1)
+        if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):
+            cursor.execute("""
+                SELECT s.eselon_1_id FROM users u
+                LEFT JOIN satkers s ON s.id = u.satker_id
+                WHERE u.id = %s
+            """, (dok["uploaded_by"],))
+            sat_row = cursor.fetchone()
+            if sat_row and sat_row.get("eselon_1_id") and sat_row["eselon_1_id"] != user["eselon_1_id"]:
+                raise HTTPException(403, "Akses ditolak. Dokumen bukan dari Satker binaan Eselon 1 Anda.")
         
         new_status = 'terverifikasi' if aksi == 'approve' else 'revisi'
         is_pub = 1 if aksi == 'approve' else 0
@@ -525,8 +604,10 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
 @router.delete("/{id}")
 async def delete_dokumen(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
     is_authorized = (
-        user.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker"] or
-        user.get("role_id") in [1, 2]
+        user.get("role") in ["manajemen", "administrasi", "it", "admin_it", "pimpinan_satker"] or
+        user.get("role_id") in [2, 3] or
+        user.get("is_manajemen") or
+        user.get("is_it")
     )
     if not is_authorized: raise HTTPException(403, "Akses ditolak")
     with db.cursor(dictionary=True) as cursor:
@@ -603,7 +684,10 @@ async def ganti_file(id: int, file: UploadFile = File(...), user: dict = Depends
         
         if not dok: raise HTTPException(404, "Not found")
         if dok["status"] not in ["revisi", "draft"]: raise HTTPException(400, "Only draft/revisi")
-        if user.get("role_id") == 2 and dok["uploaded_by"] != user["id"]: raise HTTPException(403, "Akses ditolak")
+        is_owner = (dok["uploaded_by"] == user["id"])
+        is_admin_or_it = (user.get("role") in ["it", "admin_it", "manajemen", "administrasi"] or user.get("is_manajemen") or user.get("is_it"))
+        if not is_owner and not is_admin_or_it:
+            raise HTTPException(403, "Akses ditolak. Bukan dokumen Anda")
         
         if dok["file_path"]: delete_file(dok["file_path"])
         
@@ -672,7 +756,13 @@ async def rescan_dokumen(
     Audit ulang / on-demand scan fisik berkas yang tersimpan di server.
     Bisa dijalankan oleh Pimpinan atau Eselon 1.
     """
-    if user.get("role") not in ["pimpinan_satker", "eselon_1", "admin_it"]:
+    is_allowed = (
+        user.get("role") in ["manajemen", "administrasi", "it", "admin_it", "pimpinan_satker", "eselon_1"] or
+        user.get("is_manajemen") or
+        user.get("is_it") or
+        user.get("tingkat") in ["eselon_1", "kl"]
+    )
+    if not is_allowed:
         raise HTTPException(403, "Akses ditolak")
 
     with db.cursor(dictionary=True) as cursor:

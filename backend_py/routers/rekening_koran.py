@@ -8,18 +8,24 @@ router = APIRouter(prefix="/api/rekening-koran", tags=["rekening_koran"])
 
 @router.get("")
 async def get_rekening_koran(user: dict = Depends(get_current_user), db=Depends(get_db)):
-    role = user.get("role_id")
+    tingkat = user.get("tingkat")
     satker_id = user.get("satker_id")
+    eselon_1_id = user.get("eselon_1_id")
+    role = user.get("role")
     
     where = "1=1"
     params = []
     
-    if str(role) in ['1', '2']:  # Pimpinan & Staff
-        if satker_id is None:
-            where += " AND k.satker_id IS NULL"
-        else:
+    if tingkat == "satker":
+        if satker_id:
             where += " AND k.satker_id = %s"
             params.append(satker_id)
+        else:
+            where += " AND k.satker_id IS NULL"
+    elif tingkat == "eselon_1":
+        if eselon_1_id:
+            where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+            params.extend([eselon_1_id, eselon_1_id])
             
     with db.cursor(dictionary=True) as cursor:
         query = f"""

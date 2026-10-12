@@ -8,14 +8,18 @@ import { logout, clearSession } from '@/lib/auth';
 import Eselon1Sidebar from '@/components/eselon-1/Eselon1Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
+import { useAuth } from '@/context/AuthContext';
 import { Loader2, Menu } from 'lucide-react';
 
 export default function KetuaLayout({ children }: { children: React.ReactNode }) {
   const { loading } = useRequireAuth('eselon_1');
+  const { user } = useAuth();
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const isOperator = user?.role === 'operator' || user?.is_operator;
 
   const handleLogout = useCallback(async () => {
     const token = localStorage.getItem('token') || '';
@@ -60,10 +64,12 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
             </button>
             <div className="flex flex-col justify-center">
               <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight leading-none truncate max-w-[200px] md:max-w-none">
-                Eselon 1 &bull; Pimpinan Pusat
+                {isOperator ? 'Staff Eselon 1' : 'Pimpinan Eselon 1'} &bull; {user?.eselon_1_singkatan || 'Ditjen Pembina'}
               </h1>
               <p className="text-[11px] md:text-sm text-slate-500 font-medium mt-1 truncate max-w-[200px] md:max-w-none">
-                Sistem Informasi Manajemen & Monitoring Dokumen Satker
+                {isOperator 
+                  ? 'Portal Operasional, Upload & Monitoring Rekening Koran Satker Binaan'
+                  : 'Sistem Informasi Manajemen, Verifikasi & Pengesahan Dokumen Satker'}
               </p>
             </div>
           </div>

@@ -4,10 +4,12 @@ import toast from 'react-hot-toast';
 
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
+import UploadModal from '@/components/Staff/UploadModal';
 import {
   FileSearch, Loader2, RefreshCw, AlertCircle,
   CheckCircle, Undo2, Stamp, Hash, Eye, ExternalLink,
-  FileText, Download, X
+  FileText, Download, X, Plus
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -65,12 +67,16 @@ function formatRupiah(val: number | null | undefined): string {
 }
 
 export default function KetuaDokumenPage() {
+  const { user } = useAuth();
+  const isOperator = user?.role === 'operator' || user?.is_operator;
+
   const [list,     setList]     = useState<Dokumen[]>([]);
   const [menunggu, setMenunggu] = useState<Dokumen[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
-  const [filter,   setFilter]   = useState('lolos_admin');
+  const [filter,   setFilter]   = useState(isOperator ? '' : 'lolos_admin');
   const [auditingId, setAuditingId] = useState<number | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Modal keputusan approve / reject
   const [target,   setTarget]   = useState<{ dok: Dokumen; aksi: 'approve' | 'reject' } | null>(null);
@@ -170,7 +176,7 @@ export default function KetuaDokumenPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+      if (!res.ok) throw new Error(json.detail || json.message);
       setList(json.data);
       setError('');
     } catch (e: any) {
@@ -245,7 +251,7 @@ export default function KetuaDokumenPage() {
         body: JSON.stringify({ aksi: target.aksi, catatan: catatan.trim() }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+      if (!res.ok) throw new Error(json.detail || json.message);
       setTarget(null);
       setModalDok(null);
       setCatatan('');
@@ -261,12 +267,16 @@ export default function KetuaDokumenPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Monitor Dokumen</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isOperator ? 'Dokumen Satker Binaan' : 'Monitor & Verifikasi Dokumen'}
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Pantau status verifikasi semua dokumen dan setujui dokumen yang sudah lolos Pimpinan
+            {isOperator
+              ? 'Kelola, unggah berkas, dan pantau status dokumen dari seluruh Satker binaan'
+              : 'Pantau status verifikasi dokumen dan berikan persetujuan final dokumen yang lolos Pimpinan Satker'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={filter}
             onChange={(e) => { setLoading(true); setFilter(e.target.value); }}
@@ -285,6 +295,14 @@ export default function KetuaDokumenPage() {
           >
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
+          {isOperator && (
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Unggah Dokumen
+            </button>
+          )}
         </div>
       </div>
 
@@ -294,116 +312,118 @@ export default function KetuaDokumenPage() {
         </div>
       )}
 
-      {/* ── Antrian persetujuan final (lolos_Pimpinan) ── */}
-      <div className="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
-        <div className="px-5 py-4 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Stamp className="w-4 h-4 text-blue-600" /> Menunggu Persetujuan Saya
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Dokumen yang sudah lolos penyaringan Pimpinan — persetujuan final ada di Eselon 1
-            </p>
+      {/* ── Antrian persetujuan final (Khusus Pimpinan Eselon 1) ── */}
+      {!isOperator && (
+        <div className="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+          <div className="px-5 py-4 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Stamp className="w-4 h-4 text-blue-600" /> Menunggu Persetujuan Saya
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Dokumen yang sudah lolos penyaringan Pimpinan Satker — persetujuan final ada di Pimpinan Eselon 1
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-blue-600 text-white text-xs font-semibold">
+              {menunggu.length}
+            </span>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-blue-600 text-white text-xs font-semibold">
-            {menunggu.length}
-          </span>
-        </div>
-        {!menunggu.length ? (
-          <p className="py-8 text-center text-sm text-gray-400">
-            Tidak ada dokumen yang menunggu persetujuan
-          </p>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {menunggu.map((dok) => {
-              const valRek = dok.nilai_rekening_koran != null ? Number(dok.nilai_rekening_koran) : null;
-              const valExc = dok.nilai_excel != null ? Number(dok.nilai_excel) : null;
-              const hasBoth = valRek !== null && valExc !== null;
-              const selisih = hasBoth ? Math.round(Math.abs(valRek - valExc) * 100) / 100 : null;
-              const isCocok = hasBoth && selisih === 0;
+          {!menunggu.length ? (
+            <p className="py-8 text-center text-sm text-gray-400">
+              Tidak ada dokumen yang menunggu persetujuan
+            </p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {menunggu.map((dok) => {
+                const valRek = dok.nilai_rekening_koran != null ? Number(dok.nilai_rekening_koran) : null;
+                const valExc = dok.nilai_excel != null ? Number(dok.nilai_excel) : null;
+                const hasBoth = valRek !== null && valExc !== null;
+                const selisih = hasBoth ? Math.round(Math.abs(valRek - valExc) * 100) / 100 : null;
+                const isCocok = hasBoth && selisih === 0;
 
-              return (
-                <div key={dok.id} className="px-5 py-4 flex flex-col md:flex-row md:items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-gray-900 truncate">{dok.judul}</p>
-                      {hasBoth && isCocok && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          <CheckCircle className="w-3 h-3 text-emerald-600" /> Cocok (Rp 0)
-                        </span>
-                      )}
-                      {hasBoth && !isCocok && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                          <AlertCircle className="w-3 h-3 text-rose-600" /> Selisih Rp {selisih?.toLocaleString('id-ID')}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
-                      <span>{dok.kategori} · {periodeLabel(dok)}</span>
-                      <span>·</span>
-                      <span className="font-bold text-gray-800">{dok.satker_nama || 'Satker'}</span>
-                      <span className="text-gray-400">({dok.uploaded_by})</span>
-                      {dok.nomor_laporan && (
-                        <span className="inline-flex items-center gap-1 ml-1 text-indigo-600 font-mono">
-                          <Hash className="w-3 h-3" />{dok.nomor_laporan}
-                        </span>
-                      )}
-                    </p>
-                    {(valRek != null || valExc != null) && (
-                      <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 flex-wrap">
-                        {valRek != null && (
-                          <span className="bg-slate-100 px-2 py-0.5 rounded">
-                            Bank: <strong className="text-slate-800">{formatRupiah(valRek)}</strong>
+                return (
+                  <div key={dok.id} className="px-5 py-4 flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-gray-900 truncate">{dok.judul}</p>
+                        {hasBoth && isCocok && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <CheckCircle className="w-3 h-3 text-emerald-600" /> Cocok (Rp 0)
                           </span>
                         )}
-                        {valExc != null && (
-                          <span className="bg-slate-100 px-2 py-0.5 rounded">
-                            LPJ: <strong className="text-slate-800">{formatRupiah(valExc)}</strong>
+                        {hasBoth && !isCocok && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                            <AlertCircle className="w-3 h-3 text-rose-600" /> Selisih Rp {selisih?.toLocaleString('id-ID')}
                           </span>
                         )}
                       </div>
-                    )}
-                    {dok.catatan && (
-                      <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1.5 inline-block">
-                        Catatan Pimpinan: {dok.catatan}
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span>{dok.kategori} · {periodeLabel(dok)}</span>
+                        <span>·</span>
+                        <span className="font-bold text-gray-800">{dok.satker_nama || 'Satker'}</span>
+                        <span className="text-gray-400">({dok.uploaded_by})</span>
+                        {dok.nomor_laporan && (
+                          <span className="inline-flex items-center gap-1 ml-1 text-indigo-600 font-mono">
+                            <Hash className="w-3 h-3" />{dok.nomor_laporan}
+                          </span>
+                        )}
                       </p>
-                    )}
+                      {(valRek != null || valExc != null) && (
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 flex-wrap">
+                          {valRek != null && (
+                            <span className="bg-slate-100 px-2 py-0.5 rounded">
+                              Bank: <strong className="text-slate-800">{formatRupiah(valRek)}</strong>
+                            </span>
+                          )}
+                          {valExc != null && (
+                            <span className="bg-slate-100 px-2 py-0.5 rounded">
+                              LPJ: <strong className="text-slate-800">{formatRupiah(valExc)}</strong>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {dok.catatan && (
+                        <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1.5 inline-block">
+                          Catatan Pimpinan: {dok.catatan}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <button
+                        onClick={() => handleAuditUlang(dok.id)}
+                        disabled={auditingId === dok.id}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50"
+                        title="Audit ulang berkas rekonsiliasi"
+                      >
+                        <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === dok.id && "animate-spin")} />
+                        {auditingId === dok.id ? 'Audit...' : 'Audit Ulang'}
+                      </button>
+                      <button
+                        onClick={() => setModalDok(dok)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Tinjau
+                      </button>
+                      <button
+                        onClick={() => { setTarget({ dok, aksi: 'approve' }); setCatatan(''); }}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Setujui & Publish
+                      </button>
+                      <button
+                        onClick={() => { setTarget({ dok, aksi: 'reject' }); setCatatan(''); }}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
+                      >
+                        <Undo2 className="w-3.5 h-3.5" /> Kembalikan Revisi
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    <button
-                      onClick={() => handleAuditUlang(dok.id)}
-                      disabled={auditingId === dok.id}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50"
-                      title="Audit ulang berkas rekonsiliasi"
-                    >
-                      <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === dok.id && "animate-spin")} />
-                      {auditingId === dok.id ? 'Audit...' : 'Audit Ulang'}
-                    </button>
-                    <button
-                      onClick={() => setModalDok(dok)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> Tinjau
-                    </button>
-                    <button
-                      onClick={() => { setTarget({ dok, aksi: 'approve' }); setCatatan(''); }}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" /> Setujui & Publish
-                    </button>
-                    <button
-                      onClick={() => { setTarget({ dok, aksi: 'reject' }); setCatatan(''); }}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
-                    >
-                      <Undo2 className="w-3.5 h-3.5" /> Kembalikan Revisi
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Tabel semua dokumen ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -707,22 +727,24 @@ export default function KetuaDokumenPage() {
                   )}
                 </div>
 
-                {/* Tombol Keputusan Pinned di Bawah */}
-                <div className="border-t border-slate-200 pt-4 mt-4 space-y-2 shrink-0">
-                  <button
-                    onClick={() => { setTarget({ dok: modalDok, aksi: 'approve' }); setCatatan(''); }}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-600/20"
-                  >
-                    <CheckCircle className="w-4 h-4" /> Setujui & Publish Dokumen
-                  </button>
+                {/* Tombol Keputusan Pinned di Bawah (Hanya untuk Pimpinan Eselon 1) */}
+                {!isOperator && modalDok.status === 'lolos_admin' && (
+                  <div className="border-t border-slate-200 pt-4 mt-4 space-y-2 shrink-0">
+                    <button
+                      onClick={() => { setTarget({ dok: modalDok, aksi: 'approve' }); setCatatan(''); }}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-600/20"
+                    >
+                      <CheckCircle className="w-4 h-4" /> Setujui & Publish Dokumen
+                    </button>
 
-                  <button
-                    onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all"
-                  >
-                    <Undo2 className="w-4 h-4" /> Kembalikan untuk Revisi
-                  </button>
-                </div>
+                    <button
+                      onClick={() => { setTarget({ dok: modalDok, aksi: 'reject' }); setCatatan(''); }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all"
+                    >
+                      <Undo2 className="w-4 h-4" /> Kembalikan untuk Revisi
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -781,6 +803,16 @@ export default function KetuaDokumenPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Upload Dokumen untuk Staff Eselon 1 */}
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={() => {
+          setShowUploadModal(false);
+          refresh();
+        }}
+      />
     </div>
   );
 }

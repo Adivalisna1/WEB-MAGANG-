@@ -93,7 +93,7 @@ export default function KertasKerjaPage() {
         setDataList(d.data ?? []);
       }
 
-      if (['eselon_1', 'pimpinan_satker', 'admin_it'].includes(session?.user?.role || '')) {
+      if (['eselon_1', 'pimpinan_satker', 'admin_it', 'it', 'manajemen', 'administrasi'].includes(session?.user?.role || '') || ['eselon_1', 'kl'].includes(session?.user?.tingkat || '')) {
         const resSatker = await fetch(`${API}/satker`, {
           headers: session ? { Authorization: `Bearer ${session.token}` } : {},
         });

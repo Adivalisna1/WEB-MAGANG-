@@ -43,13 +43,22 @@ async def get_my_unit(
     db=Depends(get_db)
 ):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("""
-            SELECT ue.id, ue.kode, ue.nama, ue.singkatan, ue.deskripsi
-            FROM users u
-            JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
-            WHERE u.id = %s
-        """, (current_user['id'],))
-        unit = cursor.fetchone()
+        eselon_id = current_user.get("eselon_1_id")
+        if eselon_id:
+            cursor.execute("""
+                SELECT ue.id, ue.kode, ue.nama, ue.singkatan, ue.deskripsi
+                FROM unit_eselon_1 ue
+                WHERE ue.id = %s
+            """, (eselon_id,))
+            unit = cursor.fetchone()
+        else:
+            cursor.execute("""
+                SELECT ue.id, ue.kode, ue.nama, ue.singkatan, ue.deskripsi
+                FROM users u
+                LEFT JOIN unit_eselon_1 ue ON ue.id = u.eselon_1_id
+                WHERE u.id = %s
+            """, (current_user['id'],))
+            unit = cursor.fetchone()
         return {"success": True, "data": unit}
 
 @router.get("/stats")
@@ -57,6 +66,9 @@ async def get_stats(
     current_user: dict = Depends(verify_eselon_1),
     db=Depends(get_db)
 ):
+    eselon_id = current_user.get("eselon_1_id")
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+    
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             UPDATE user_sessions
@@ -66,59 +78,88 @@ async def get_stats(
         """)
         db.commit()
         
-        cursor.execute("SELECT COUNT(*) AS totalDokumen FROM dokumen")
-        total_dokumen = cursor.fetchone()["totalDokumen"]
+        doc_where = "WHERE 1=1"
+        doc_params = []
+        if is_specific:
+            doc_where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+            doc_params = [eselon_id, eselon_id]
+            
+        cursor.execute(f"""
+            SELECT COUNT(*) AS totalDokumen,
+                   SUM(d.status = 'terverifikasi') AS terverifikasi,
+                   SUM(d.status = 'menunggu_verifikasi') AS menunggu,
+                   SUM(d.status = 'lolos_admin') AS lolosPimpinan,
+                   SUM(d.status = 'revisi') AS revisi,
+                   COALESCE(SUM(CASE WHEN d.status = 'terverifikasi' THEN d.nilai_rekening_koran ELSE 0 END), 0) AS totalBudget,
+                   COALESCE(SUM(CASE WHEN d.status = 'terverifikasi' THEN d.nilai_excel ELSE 0 END), 0) AS totalExpenditure
+            FROM dokumen d
+            JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            {doc_where}
+        """, tuple(doc_params))
+        doc_summary = cursor.fetchone() or {}
         
-        cursor.execute("SELECT COUNT(*) AS terverifikasi FROM dokumen WHERE status = 'terverifikasi'")
-        terverifikasi = cursor.fetchone()["terverifikasi"]
-        
-        cursor.execute("SELECT COUNT(*) AS menunggu FROM dokumen WHERE status = 'menunggu_verifikasi'")
-        menunggu = cursor.fetchone()["menunggu"]
-        
-        cursor.execute("SELECT COUNT(*) AS lolosPimpinan FROM dokumen WHERE status = 'lolos_admin'")
-        res = cursor.fetchone()
-        lolos_pimpinan = res["lolosPimpinan"] if res and res["lolosPimpinan"] is not None else 0
-        
-        cursor.execute("SELECT COUNT(*) AS revisi FROM dokumen WHERE status = 'revisi'")
-        revisi = cursor.fetchone()["revisi"]
+        total_dokumen = doc_summary.get("totalDokumen") or 0
+        terverifikasi = doc_summary.get("terverifikasi") or 0
+        menunggu = doc_summary.get("menunggu") or 0
+        lolos_pimpinan = doc_summary.get("lolosPimpinan") or 0
+        revisi = doc_summary.get("revisi") or 0
+        total_budget = float(doc_summary.get("totalBudget") or 0)
+        total_expenditure = float(doc_summary.get("totalExpenditure") or 0)
         
         cursor.execute("SELECT COUNT(*) AS onlineNow FROM user_sessions WHERE is_online = 1")
         online_now = cursor.fetchone()["onlineNow"]
         
-        cursor.execute("SELECT SUM(nilai_rekening_koran) AS totalBudget, SUM(nilai_excel) AS totalExpenditure FROM dokumen WHERE status = 'terverifikasi'")
-        fin_res = cursor.fetchone()
-        total_budget = fin_res["totalBudget"] if fin_res and fin_res["totalBudget"] else 0
-        total_expenditure = fin_res["totalExpenditure"] if fin_res and fin_res["totalExpenditure"] else 0
-        
-        cursor.execute("SELECT COUNT(DISTINCT satker_id) AS activeBranches FROM users WHERE is_active = 1 AND role_id IN (1, 2)")
+        branch_where = "WHERE u.is_active = 1 AND u.role_id IN (1, 2)"
+        branch_params = []
+        if is_specific:
+            branch_where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+            branch_params = [eselon_id, eselon_id]
+            
+        cursor.execute(f"""
+            SELECT COUNT(DISTINCT u.satker_id) AS activeBranches 
+            FROM users u
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            {branch_where}
+        """, tuple(branch_params))
         active_branches = cursor.fetchone()["activeBranches"]
         
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT u.nama,
                    COUNT(d.id) AS total,
                    SUM(d.status = 'terverifikasi') AS terverifikasi,
                    SUM(d.status = 'revisi') AS revisi
             FROM users u
+            LEFT JOIN satkers s ON s.id = u.satker_id
             LEFT JOIN dokumen d ON d.uploaded_by = u.id
-            WHERE u.role_id IN (1, 2) AND u.is_active = 1
+            {branch_where}
             GROUP BY u.id, u.nama
             ORDER BY total DESC
-        """)
+        """, tuple(branch_params))
         per_staff = cursor.fetchall()
         
-        cursor.execute("""
-            SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS tanggal, 
-                   COALESCE(SUM(nilai_rekening_koran), 0) AS budget, 
-                   COALESCE(SUM(nilai_excel), 0) AS expenditure
-            FROM dokumen
-            WHERE created_at >= CURDATE() - INTERVAL 13 DAY
-              AND status = 'terverifikasi'
+        cursor.execute(f"""
+            SELECT DATE_FORMAT(d.created_at, '%Y-%m-%d') AS tanggal, 
+                   COALESCE(SUM(d.nilai_rekening_koran), 0) AS budget, 
+                   COALESCE(SUM(d.nilai_excel), 0) AS expenditure
+            FROM dokumen d
+            JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            {doc_where} AND d.created_at >= CURDATE() - INTERVAL 13 DAY
+              AND d.status = 'terverifikasi'
             GROUP BY tanggal
             ORDER BY tanggal ASC
-        """)
+        """, tuple(doc_params))
         per_hari = cursor.fetchall()
         
-        cursor.execute("SELECT status, COUNT(*) AS total FROM dokumen GROUP BY status")
+        cursor.execute(f"""
+            SELECT d.status, COUNT(*) AS total 
+            FROM dokumen d
+            JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            {doc_where}
+            GROUP BY d.status
+        """, tuple(doc_params))
         status_dist = cursor.fetchall()
         
         cursor.execute("""
@@ -140,11 +181,11 @@ async def get_stats(
                 "totalDokumen": total_dokumen,
                 "terverifikasi": terverifikasi,
                 "menunggu": menunggu,
-                "lolosPimpinan": int(lolos_pimpinan),
+                "lolosPimpinan": int(lolos_pimpinan or 0),
                 "revisi": revisi,
                 "onlineNow": online_now,
-                "totalBudget": float(total_budget),
-                "totalExpenditure": float(total_expenditure),
+                "totalBudget": total_budget,
+                "totalExpenditure": total_expenditure,
                 "activeBranches": active_branches,
                 "perSatker": per_staff,
                 "perHari": per_hari,
@@ -158,8 +199,17 @@ async def get_users(
     current_user: dict = Depends(verify_eselon_1),
     db=Depends(get_db)
 ):
+    eselon_id = current_user.get("eselon_1_id")
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+    
+    where = "WHERE u.role_id IN (1, 2)"
+    params = []
+    if is_specific:
+        where += " AND (st.eselon_1_id = %s OR u.eselon_1_id = %s)"
+        params = [eselon_id, eselon_id]
+        
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT u.id, u.nama, u.username, u.email, u.is_active,
                    u.last_login, u.password_reset_at, u.created_at, r.nama AS role, t.kode AS tingkat,
                    (SELECT is_online FROM user_sessions s
@@ -170,9 +220,9 @@ async def get_users(
             JOIN roles r ON r.id = u.role_id
             JOIN tingkats t ON t.id = u.tingkat_id
             LEFT JOIN satkers st ON st.id = u.satker_id
-            WHERE u.role_id IN (1, 2)
+            {where}
             ORDER BY u.created_at DESC
-        """)
+        """, tuple(params))
         rows = cursor.fetchall()
         return {"success": True, "data": rows}
 
@@ -187,7 +237,13 @@ async def get_dokumen(
     where = '1=1'
     params = []
     
-    if status:
+    eselon_id = current_user.get("eselon_1_id")
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+    if is_specific:
+        where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+        params.extend([eselon_id, eselon_id])
+    
+    if status and status != 'all':
         where += ' AND d.status = %s'
         params.append(status)
         
@@ -213,8 +269,16 @@ async def get_dokumen_menunggu(
     current_user: dict = Depends(verify_eselon_1),
     db=Depends(get_db)
 ):
+    eselon_id = current_user.get("eselon_1_id")
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+    where = "d.status = 'lolos_admin'"
+    params = []
+    if is_specific:
+        where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+        params.extend([eselon_id, eselon_id])
+        
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
                    d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
                    d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
@@ -225,9 +289,9 @@ async def get_dokumen_menunggu(
             JOIN kategori_dokumen k ON k.id = d.kategori_id
             JOIN users u ON u.id = d.uploaded_by
             LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE d.status = 'lolos_admin'
+            WHERE {where}
             ORDER BY d.updated_at ASC
-        """)
+        """, tuple(params))
         rows = cursor.fetchall()
         return {"success": True, "data": rows}
 
@@ -269,6 +333,7 @@ async def toggle_user_active(
             f'{{"nama": "{user_row["nama"]}", "is_active": {new_status}, "oleh": "eselon_1"}}',
             ip_addr
         ))
+        db.commit()
         
         return {
             "success": True,
@@ -320,6 +385,7 @@ async def reset_password(
             'Password Direset',
             'Password akun Anda baru saja direset oleh Eselon 1. Silakan login dengan password baru Anda.'
         ))
+        db.commit()
         
         return {
             "success": True,

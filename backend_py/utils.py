@@ -1,3 +1,4 @@
+import os
 import httpx
 import json
 
@@ -87,11 +88,10 @@ async def buat_notifikasi(db, user_id: int, aksi: str, judul: str, pesan: str, d
     except Exception as e:
         print(f"Error buat notifikasi: {e}")
 
-import os
 import shutil
 import aiofiles
 
-UPLOAD_DIR = "/app/uploads"
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads" if os.path.exists("/app") else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads"))
 
 async def save_file(file_obj, filename: str, tahun: str | int) -> str:
     key = f"{tahun}/{filename}"

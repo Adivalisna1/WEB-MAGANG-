@@ -47,26 +47,30 @@ export default function LaporanLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  const dashboardHref = user.role === 'pimpinan_satker'
-    ? '/pimpinan'
-    : user.role === 'eselon_1'
+  const isIt = Boolean(
+    user.is_it ||
+    user.role === 'admin_it' ||
+    user.role === 'it' ||
+    (user.tingkat === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
+  );
+
+  const dashboardHref = isIt
+    ? '/admin-it'
+    : (user.role === 'eselon_1' || user.tingkat === 'eselon_1' || user.tingkat === 'kl')
       ? '/eselon-1'
-      : user.role === 'admin_it'
-        ? '/admin-it'
+      : (user.role === 'pimpinan_satker' || (user.tingkat === 'satker' && (user.role === 'manajemen' || user.role === 'administrasi')))
+        ? '/pimpinan'
         : '/staff/dokumen';
 
-  const roleLabels: Record<string, string> = {
-    pimpinan_satker: 'Pimpinan Satker',
-    pimpinan:        'Pimpinan Satker',
-    eselon_1:        'Eselon 1',
-    ketua_tim:       'Eselon 1',
-    staff:           'Staff Satker',
-    staff_satker:    'Staff Satker',
-    satker:          'Staff Satker',
-    admin_it:        'Admin IT',
-    administrasi:    'Administrasi',
+  const getRoleLabel = () => {
+    if (isIt) return 'IT Administrator';
+    const isManajemen = user.role === 'manajemen' || user.role === 'administrasi';
+    if (user.tingkat === 'eselon_1') return isManajemen ? 'Pimpinan Eselon 1 (Manajemen)' : 'Operator Eselon 1';
+    if (user.tingkat === 'kl') return isManajemen ? 'Pimpinan K/L (Manajemen)' : 'Operator K/L';
+    if (user.tingkat === 'satker') return isManajemen ? 'Pimpinan Satker (Manajemen)' : 'Operator Satker';
+    return user.role.replace('_', ' ');
   };
-  const roleLabel = roleLabels[user.role] ?? 'Staff Satker';
+  const roleLabel = getRoleLabel();
 
   // Get user initials (e.g., "Ahmad Rizky" -> "AR")
   const getInitials = (name: string) => {

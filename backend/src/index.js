@@ -74,7 +74,7 @@ app.use('/uploads', (req, res) => {
 const fastApiProxy = createProxyMiddleware({ 
   target: process.env.FASTAPI_URL || 'http://localhost:8000', 
   changeOrigin: true,
-  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran', '/api/dokumen', '/api/pimpinan', '/api/eselon-1', '/api/admin-it', '/api/stats', '/api/notifikasi', '/api/user'],
+  pathFilter: ['/api/auth', '/api/satker', '/api/pencatatan', '/api/rekening-koran', '/api/dokumen', '/api/pimpinan', '/api/eselon-1', '/api/admin-it', '/api/stats', '/api/notifikasi', '/api/user', '/api/export'],
   on: {
     proxyReq: fixRequestBody,
   }

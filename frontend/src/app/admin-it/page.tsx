@@ -32,11 +32,11 @@ export default function AdminITDashboard() {
     if (!token) return;
     Promise.all([
       fetch(`${API}/admin-it/stats`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch(`${API}/admin-it/users/form-data`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${API}/satker`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ])
-      .then(([statsRes, formDataRes]) => {
+      .then(([statsRes, satkerRes]) => {
         if (statsRes.success) setStats(statsRes.data);
-        if (formDataRes.success) setSatkers(formDataRes.data.satkers || []);
+        if (satkerRes.success) setSatkers(satkerRes.data || []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

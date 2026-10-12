@@ -24,10 +24,16 @@ export default function LandingPage() {
   // Kalau sudah login, langsung redirect ke dashboard role-nya
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'pimpinan_satker')          router.replace('/pimpinan');
-      else if (user.role === 'eselon_1') router.replace('/eselon-1');
-      else if (user.role === 'admin_it') router.replace('/admin-it');
-      else                                router.replace('/staff/dokumen');
+      const isIt = Boolean(
+        user.is_it ||
+        user.role === 'admin_it' ||
+        user.role === 'it' ||
+        (user.tingkat === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
+      );
+      if (isIt) router.replace('/admin-it');
+      else if (user.role === 'eselon_1' || user.tingkat === 'eselon_1' || user.tingkat === 'kl') router.replace('/eselon-1');
+      else if (user.role === 'pimpinan_satker' || (user.tingkat === 'satker' && (user.role === 'manajemen' || user.role === 'administrasi'))) router.replace('/pimpinan');
+      else router.replace('/staff/dokumen');
     }
   }, [user, loading, router]);
 
@@ -106,9 +112,9 @@ export default function LandingPage() {
             /* Sudah login → 1 tombol ke dashboard role-nya */
             <Link
               href={
-                user.role === 'pimpinan_satker' ? '/pimpinan' :
-                user.role === 'eselon_1' ? '/eselon-1' :
-                user.role === 'admin_it' ? '/admin-it' :
+                (user.is_it || user.role === 'admin_it' || user.role === 'it' || (user.tingkat === 'kl' && user.permissions?.can_manage_users)) ? '/admin-it' :
+                (user.role === 'eselon_1' || user.tingkat === 'eselon_1' || user.tingkat === 'kl') ? '/eselon-1' :
+                (user.role === 'pimpinan_satker' || (user.tingkat === 'satker' && (user.role === 'manajemen' || user.role === 'administrasi'))) ? '/pimpinan' :
                 '/staff/dokumen'
               }
               className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"

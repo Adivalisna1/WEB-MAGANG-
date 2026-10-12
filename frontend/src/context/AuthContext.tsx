@@ -42,11 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Redirect sesuai role & tingkat
     const r = res.data.user.role;
     const t = res.data.user.tingkat;
-    if (r === 'admin_it' || r === 'it') {
+    const isIt = Boolean(
+      res.data.user.is_it ||
+      r === 'admin_it' ||
+      r === 'it' ||
+      (t === 'kl' && (res.data.user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(res.data.user.username)))
+    );
+
+    if (isIt) {
       router.push('/admin-it');
     } else if (r === 'eselon_1' || t === 'eselon_1' || t === 'kl') {
       router.push('/eselon-1');
-    } else if (r === 'pimpinan_satker' || (t === 'satker' && r === 'administrasi')) {
+    } else if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) {
       router.push('/pimpinan');
     } else {
       router.push('/staff/dokumen');
@@ -66,9 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   }, [token, router]);
 
+  const isIt = Boolean(
+    user?.is_it ||
+    user?.role === 'admin_it' ||
+    user?.role === 'it' ||
+    (user?.tingkat === 'kl' && (user?.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user?.username || '')))
+  );
   const isPimpinan = Boolean(
     user?.role === 'pimpinan_satker' || 
-    (user?.tingkat === 'satker' && user?.role === 'administrasi')
+    (user?.tingkat === 'satker' && (user?.role === 'manajemen' || user?.role === 'administrasi'))
   );
   const isKetuaTim = Boolean(
     user?.role === 'eselon_1' || 
@@ -78,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isStaff = Boolean(
     user?.role === 'staff_satker' || 
     user?.role === 'operator' || 
-    (!isPimpinan && !isKetuaTim && user?.role !== 'admin_it')
+    (!isPimpinan && !isKetuaTim && !isIt)
   );
 
   return (

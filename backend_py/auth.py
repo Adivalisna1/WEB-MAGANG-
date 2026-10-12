@@ -2,10 +2,14 @@ import os
 import jwt
 from fastapi import Request, HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pathlib import Path
 from dotenv import load_dotenv
 from db import get_db
 
-load_dotenv(dotenv_path="../.env")
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if not env_path.exists():
+    env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
 JWT_SECRET = os.getenv("JWT_SECRET")
 
 security = HTTPBearer()
@@ -17,7 +21,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         # Fetch the latest user data with full role, tingkat, satker, and eselon 1 info
         with db.cursor(dictionary=True) as cursor:
             cursor.execute("""
-                SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
+                SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.permissions,
                        r.nama AS role, t.kode AS tingkat, t.nama AS tingkat_nama,
                        s.nama AS satker_nama, s.NO_Satker AS satker_kode,
                        ue.id AS unit_eselon_id, ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
@@ -43,10 +47,31 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
                 payload['eselon_1_nama'] = user['eselon_1_nama']
                 payload['eselon_1_singkatan'] = user['eselon_1_singkatan']
                 
+                # Permissions parsing
+                perms = user.get('permissions')
+                import json
+                if isinstance(perms, str):
+                    try:
+                        perms = json.loads(perms)
+                    except Exception:
+                        perms = {}
+                elif not isinstance(perms, dict):
+                    perms = {}
+                payload['permissions'] = perms
+                
                 # Flag shortcuts for convenient checks
                 payload['is_operator'] = (user['role'] == 'operator')
-                payload['is_administrasi'] = (user['role'] == 'administrasi')
-                payload['is_it'] = (user['role'] in ['it', 'admin_it'])
+                payload['is_manajemen'] = (user['role'] in ['manajemen', 'administrasi'])
+                payload['is_administrasi'] = payload['is_manajemen']  # Backwards compatibility
+                
+                # IT Admin: Operator tingkat K/L dengan izin can_manage_users, atau legacy role IT
+                has_it_perms = bool(perms.get('can_manage_users'))
+                is_it = (
+                    user['role'] in ['it', 'admin_it']
+                    or user.get('username') in ['it_admin', 'naufal']
+                    or (user['role'] == 'operator' and user['tingkat'] == 'kl' and has_it_perms)
+                )
+                payload['is_it'] = is_it
                 payload['is_satker'] = (user['tingkat'] == 'satker')
                 payload['is_eselon1'] = (user['tingkat'] == 'eselon_1')
                 payload['is_kl'] = (user['tingkat'] == 'kl')
@@ -59,17 +84,23 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
 
 def require_admin_it(user: dict = Security(get_current_user)):
     """Guard khusus IT Administrator"""
-    if user.get("role") not in ["it", "admin_it"] and user.get("role_id") not in [3, 4]:
+    if not user.get("is_it"):
         raise HTTPException(status_code=403, detail="Forbidden: Hanya IT Administrator yang memiliki akses")
     return user
 
 def require_role(allowed_roles: list):
-    """Guard fleksibel berdasarkan role ('operator', 'administrasi', 'it')"""
+    """Guard fleksibel berdasarkan role ('operator', 'manajemen', 'administrasi')"""
     def role_checker(user: dict = Security(get_current_user)):
         # IT admin selalu punya akses bypass
-        if user.get("role") in ["it", "admin_it"]:
+        if user.get("is_it") or user.get("role") in ["it", "admin_it"]:
             return user
-        if user.get("role") not in allowed_roles:
+        expanded_roles = set(allowed_roles)
+        if "manajemen" in expanded_roles:
+            expanded_roles.add("administrasi")
+        if "administrasi" in expanded_roles:
+            expanded_roles.add("manajemen")
+            
+        if user.get("role") not in expanded_roles:
             raise HTTPException(status_code=403, detail=f"Forbidden: Akses membutuhkan role {allowed_roles}")
         return user
     return role_checker
@@ -78,9 +109,29 @@ def require_tingkat(allowed_tingkat: list):
     """Guard fleksibel berdasarkan tingkat ('satker', 'eselon_1', 'kl')"""
     def tingkat_checker(user: dict = Security(get_current_user)):
         # IT admin selalu punya akses bypass
-        if user.get("role") in ["it", "admin_it"]:
+        if user.get("is_it") or user.get("role") in ["it", "admin_it"]:
             return user
         if user.get("tingkat") not in allowed_tingkat:
             raise HTTPException(status_code=403, detail=f"Forbidden: Akses khusus tingkat {allowed_tingkat}")
         return user
     return tingkat_checker
+
+def require_role_and_tingkat(allowed_roles: list, allowed_tingkat: list):
+    """Guard fleksibel berdasarkan kombinasi role dan tingkat"""
+    def combined_checker(user: dict = Security(get_current_user)):
+        # IT admin selalu punya akses bypass
+        if user.get("is_it") or user.get("role") in ["it", "admin_it"]:
+            return user
+        expanded_roles = set(allowed_roles)
+        if "manajemen" in expanded_roles:
+            expanded_roles.add("administrasi")
+        if "administrasi" in expanded_roles:
+            expanded_roles.add("manajemen")
+            
+        if user.get("role") not in expanded_roles:
+            raise HTTPException(status_code=403, detail=f"Forbidden: Akses membutuhkan role {allowed_roles}")
+        if user.get("tingkat") not in allowed_tingkat:
+            raise HTTPException(status_code=403, detail=f"Forbidden: Akses khusus tingkat {allowed_tingkat}")
+        return user
+    return combined_checker
+

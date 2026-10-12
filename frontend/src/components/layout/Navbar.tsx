@@ -54,21 +54,35 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Sembunyikan navbar publik di halaman dashboard (Satker/pimpinan/eselon-1)
-  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1');
+  // Sembunyikan navbar publik di halaman dashboard (Satker/pimpinan/eselon-1/admin-it)
+  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1') || pathname.startsWith('/admin-it');
   if (isDashboard) return null;
 
-  const dashboardHref = user?.role === 'pimpinan_satker'
-    ? '/pimpinan'
-    : user?.role === 'eselon_1'
-      ? '/eselon-1'
-      : '/staff/dokumen';
+  const isIt = Boolean(
+    user?.is_it ||
+    user?.role === 'admin_it' ||
+    user?.role === 'it' ||
+    (user?.tingkat === 'kl' && (user?.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user?.username || '')))
+  );
 
-  // Format role untuk tampilan: ketua_tim → Eselon 1
-  const roleLabels: Record<string, string> = {
-    ketua_tim: 'Eselon 1',
+  const dashboardHref = isIt
+    ? '/admin-it'
+    : (user?.role === 'eselon_1' || user?.tingkat === 'eselon_1' || user?.tingkat === 'kl')
+      ? '/eselon-1'
+      : (user?.role === 'pimpinan_satker' || (user?.tingkat === 'satker' && (user?.role === 'manajemen' || user?.role === 'administrasi')))
+        ? '/pimpinan'
+        : '/staff/dokumen';
+
+  const getRoleLabel = () => {
+    if (!user) return '';
+    if (isIt) return 'IT Administrator';
+    const isManajemen = user.role === 'manajemen' || user.role === 'administrasi';
+    if (user.tingkat === 'eselon_1') return isManajemen ? 'Pimpinan Eselon 1 (Manajemen)' : 'Operator Eselon 1';
+    if (user.tingkat === 'kl') return isManajemen ? 'Pimpinan K/L (Manajemen)' : 'Operator K/L';
+    if (user.tingkat === 'satker') return isManajemen ? 'Pimpinan Satker (Manajemen)' : 'Operator Satker';
+    return user.role.replace('_', ' ');
   };
-  const roleLabel = user?.role ? (roleLabels[user.role] ?? user.role.replace('_', ' ')) : '';
+  const roleLabel = getRoleLabel();
 
   return (
     <header className="bg-primary-800 text-white shadow-lg sticky top-0 z-50 border-b border-primary-700/50 transition-colors duration-200">

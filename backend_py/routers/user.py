@@ -35,7 +35,7 @@ async def update_profile(
         if email:
             cursor.execute("SELECT id FROM users WHERE email = %s AND id != %s", (email, current_user["id"]))
             if cursor.fetchone():
-                return {"success": False, "message": "Email sudah digunakan akun lain"}
+                raise HTTPException(status_code=400, detail="Email sudah digunakan akun lain")
                 
         cursor.execute("""
             UPDATE users SET
@@ -50,6 +50,7 @@ async def update_profile(
             VALUES (%s, %s, %s, %s)
         """, (current_user["id"], "edit_profil", "user", ip_addr))
         
+        db.commit()
         return {"success": True, "message": "Profil berhasil diupdate"}
 
 @router.patch("/password")
@@ -63,16 +64,16 @@ async def change_password(
     password_baru = body.get("password_baru")
     
     if not password_lama:
-        return {"success": False, "message": "Password lama wajib diisi"}
+        raise HTTPException(status_code=400, detail="Password lama wajib diisi")
     if not password_baru or len(password_baru) < 6:
-        return {"success": False, "message": "Password baru minimal 6 karakter"}
+        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter")
         
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT password_hash FROM users WHERE id = %s", (current_user["id"],))
         user_row = cursor.fetchone()
         
-        if not bcrypt.checkpw(password_lama.encode('utf-8'), user_row["password_hash"].encode('utf-8')):
-            return {"success": False, "message": "Password lama tidak sesuai"}
+        if not user_row or not bcrypt.checkpw(password_lama.encode('utf-8'), user_row["password_hash"].encode('utf-8')):
+            raise HTTPException(status_code=400, detail="Password lama tidak sesuai")
             
         hashed_pw = bcrypt.hashpw(password_baru.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hashed_pw, current_user["id"]))
@@ -85,4 +86,5 @@ async def change_password(
             VALUES (%s, %s, %s, %s)
         """, (current_user["id"], "ganti_password", "user", ip_addr))
         
+        db.commit()
         return {"success": True, "message": "Password berhasil diubah, silakan login ulang"}

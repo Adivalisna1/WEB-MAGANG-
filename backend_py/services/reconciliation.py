@@ -11,8 +11,9 @@ BANK_PATTERNS = [
     (r"\b(?:BANK\s+)?BRI\b|\bPT\s+BANK\s+RAKYAT\s+INDONESIA\b", "Bank BRI"),
     (r"\b(?:BANK\s+)?MANDIRI\b|\bPT\s+BANK\s+MANDIRI\b", "Bank Mandiri"),
     (r"\b(?:BANK\s+)?BCA\b|\bPT\s+BANK\s+CENTRAL\s+ASIA\b", "Bank BCA"),
-    (r"\b(?:BANK\s+)?BSI\b|\bPT\s+BANK\s+SYARIAH\s+INDONESIA\b", "Bank BSI"),
+    (r"\b(?:BANK\s+)?BSI\b|\bPT\s+BANK\s+SYARIAH\s+INDONESIA\b|\bBANK\s+SYARIAH\b|Branch\s*:\s*ID\d{5,8}|\b8101\d{10,14}\b", "Bank BSI"),
     (r"\b(?:BANK\s+)?BTN\b|\bPT\s+BANK\s+TABUNGAN\s+NEGARA\b", "Bank BTN"),
+    (r"\b(?:BANK\s+)?DANAMON\b|\bPT\s+BANK\s+DANAMON\b", "Bank Danamon"),
     (r"\bBANK\s+DKI\b", "Bank DKI"),
     (r"\bBANK\s+BJB\b", "Bank BJB"),
     (r"\bBANK\s+JATIM\b", "Bank Jatim"),
@@ -28,7 +29,7 @@ KATEGORI_PATTERNS = [
     (r"\bPK\b|PERJANJIAN\s+KINERJA", "PK"),
     (r"\bRKT\b|RENCANA\s+KINERJA\s+TAHUNAN", "RKT"),
     (r"\bIKU\b|INDIKATOR\s+KINERJA\s+UTAMA", "IKU"),
-    (r"REKENING\s+KORAN|MUTASI\s+REKENING|GIRO", "Rekening_koran"),
+    (r"REKENING\s+KORAN|MUTASI\s+REKENING|GIRO|ACCOUNT\s+STATEMENT|BANK\s+STATEMENT", "Rekening_koran"),
     (r"LPJ|PERTANGGUNGJAWABAN|BUKU\s+KAS", "LPJ"),
 ]
 
@@ -103,7 +104,7 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
     tahun_match = re.search(r"\b(202[0-9]|203[0-5])\b", text)
     tahun = int(tahun_match.group(1)) if tahun_match else 2026
 
-    # 2. Semester / Periode
+    # 2. Semester / Periode / Bulan
     semester = None
     if re.search(r"\bSemester\s*(?:1|I|Satu)\b", text, re.IGNORECASE):
         semester = 1
@@ -111,11 +112,33 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         semester = 2
 
     bulan = None
-    nama_bulan_list = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
-    for idx, bname in enumerate(nama_bulan_list, 1):
-        if re.search(rf"\b{bname}\b", text, re.IGNORECASE):
-            bulan = idx
-            break
+    # Cek format rentang tanggal laporan, misal: "Date :01 Jun 2026 - 30 Jun 2026" atau "Periode: 01/06/2026 s/d 30/06/2026"
+    date_range_match = re.search(
+        r"(?:Date|Periode)\s*[:\s]+[0-9]{1,2}[-\s/]+(?:[A-Za-z]+|\d{1,2})[-\s/]+\d{4}\s*(?:-|s/?d|sampai)\s*([0-9]{1,2})[-\s/]+([A-Za-z]+|\d{1,2})[-\s/]+(\d{4})",
+        text,
+        re.IGNORECASE,
+    )
+    if date_range_match:
+        m_bulan_str = date_range_match.group(2)
+        m_tahun_str = date_range_match.group(3)
+        tahun = int(m_tahun_str)
+        month_map = {
+            "jan": 1, "feb": 2, "mar": 3, "apr": 4, "mei": 5, "may": 5, "jun": 6,
+            "jul": 7, "agu": 8, "aug": 8, "sep": 9, "okt": 10, "oct": 10, "nov": 11, "des": 12, "dec": 12
+        }
+        for key, val in month_map.items():
+            if key in m_bulan_str.lower():
+                bulan = val
+                break
+        if bulan is None and m_bulan_str.isdigit():
+            bulan = int(m_bulan_str)
+
+    if bulan is None:
+        nama_bulan_list = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+        for idx, bname in enumerate(nama_bulan_list, 1):
+            if re.search(rf"\b{bname}\b", text, re.IGNORECASE):
+                bulan = idx
+                break
 
     # 3. Kategori
     kategori = "Lainnya"
@@ -127,18 +150,24 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
     # 4. Saldo Akhir / Nominal
     nominal = None
     saldo_patterns = [
-        r"(?:Saldo\s*Akhir|Ending\s*Balance|Saldo\s*Efektif|Total\s*Saldo|Saldo\s*Buku\s*Kas|Total\s*Realisasi|Jumlah\s*Realisasi)[:\s]+(?:Rp\.?\s*)?([\d\.,]+)",
-        r"(?:Total\s*Pengeluaran|Total\s*Belanja|Total\s*Penerimaan)[:\s]+(?:Rp\.?\s*)?([\d\.,]+)",
-        r"(?:Saldo\s*Akhir\s*Bulan)[:\s]+(?:Rp\.?\s*)?([\d\.,]+)",
+        r"(?:Closing\s*Balance|Ending\s*Balance|Saldo\s*Akhir\s*(?:Periode|Bulan)?|Total\s*Saldo)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
+        r"(?:Saldo\s*Akhir|Ending\s*Balance|Saldo\s*Efektif|Saldo\s*Buku\s*Kas|Total\s*Realisasi|Jumlah\s*Realisasi)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
+        r"(?:Total\s*Pengeluaran|Total\s*Belanja|Total\s*Penerimaan)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
+        r"(?:Saldo\s*Akhir\s*Bulan)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
         r"(?:Rp\.?\s*)([\d\.,]{6,})",
     ]
 
     for sp in saldo_patterns:
-        m = re.search(sp, text, re.IGNORECASE)
-        if m:
-            val = parse_indonesian_number(m.group(1))
-            if val is not None and val > 0:
-                nominal = val
+        # Cari semua kecocokan. Pada dokumen dengan banyak halaman atau berulang,
+        # ambil kemunculan paling akhir (posisi saldo penutup/akhir)
+        matches = re.findall(sp, text, re.IGNORECASE)
+        if matches:
+            for cand in reversed(matches):
+                val = parse_indonesian_number(cand)
+                if val is not None and val > 0:
+                    nominal = val
+                    break
+            if nominal is not None:
                 break
 
     return {
@@ -149,21 +178,21 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         "nominal": nominal,
     }
 
-def extract_from_pdf(file_source: Any) -> Dict[str, Any]:
+def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     """
     Mengekstrak teks, tabel, saldo akhir, dan metadata dari file PDF.
     file_source bisa berupa path file (str) atau byte stream (io.BytesIO).
     """
-    full_text = ""
+    pages_text: List[str] = []
     tables_data = []
 
     try:
         with pdfplumber.open(file_source) as pdf:
-            for page in pdf.pages[:5]:  # Baca hingga 5 halaman pertama
-                page_text = page.extract_text() or ""
-                full_text += page_text + "\n"
+            # Baca hingga 30 halaman untuk memastikan halaman terakhir (saldo akhir) terbaca
+            for page in pdf.pages[:30]:
+                pt = page.extract_text() or ""
+                pages_text.append(pt)
                 
-                # Ekstrak tabel jika ada
                 extracted_tables = page.extract_tables()
                 if extracted_tables:
                     for t in extracted_tables:
@@ -171,16 +200,30 @@ def extract_from_pdf(file_source: Any) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": f"Gagal membaca PDF: {str(e)}"}
 
-    meta = extract_metadata_from_text(full_text)
-    bank, rek = extract_bank_info(full_text)
+    full_text = "\n".join(pages_text)
+    combined_search_text = f"{filename}\n{full_text}" if filename else full_text
 
-    # Jika nominal belum ditemukan dari teks biasa, cari di tabel
+    meta = extract_metadata_from_text(combined_search_text)
+    bank, rek = extract_bank_info(combined_search_text)
+
+    # Multi-page fallback handling:
+    # Jika nominal belum ditemukan atau jika rekening koran memiliki running balance transaksi,
+    # periksa halaman terakhir (last page) untuk mengambil baris mutasi paling akhir
+    if meta["nominal"] is None and pages_text:
+        last_page_text = pages_text[-1]
+        tx_balances = re.findall(r"(?:DB|CR)\s+([\d\.,]+)", last_page_text)
+        if tx_balances:
+            last_bal = parse_indonesian_number(tx_balances[-1])
+            if last_bal is not None and last_bal > 0:
+                meta["nominal"] = last_bal
+
+    # Jika nominal belum ditemukan dari teks biasa, cari di tabel secara mundur
     if meta["nominal"] is None and tables_data:
         for row in reversed(tables_data):
             if not row:
                 continue
             row_str = " ".join([str(c or "") for c in row])
-            if re.search(r"Saldo\s*Akhir|Total|Ending\s*Balance|Jumlah", row_str, re.IGNORECASE):
+            if re.search(r"Saldo\s*Akhir|Total|Ending\s*Balance|Closing\s*Balance|Jumlah", row_str, re.IGNORECASE):
                 for cell in reversed(row):
                     val = parse_indonesian_number(str(cell or ""))
                     if val is not None and val > 0:
@@ -204,7 +247,7 @@ def extract_from_pdf(file_source: Any) -> Dict[str, Any]:
         "bulan": meta["bulan"],
         "kategori": meta["kategori"],
         "nominal": meta["nominal"],
-        "bank": bank or "PT Bank Negara Indonesia (Persero) Tbk",
+        "bank": bank,
         "nomor_rekening": rek,
         "deskripsi": f"Hasil ekstraksi otomatis dokumen {meta['kategori']} Tahun {meta['tahun']}" + (f" - {bank}" if bank else ""),
         "confidence": "high" if meta["nominal"] is not None else "medium",
@@ -302,7 +345,7 @@ def scan_uploaded_file(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     stream = io.BytesIO(file_bytes)
 
     if ext == ".pdf":
-        result = extract_from_pdf(stream)
+        result = extract_from_pdf(stream, filename=filename)
     elif ext in [".xlsx", ".xls"]:
         result = extract_from_excel(stream)
     else:

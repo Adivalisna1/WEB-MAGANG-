@@ -32,12 +32,25 @@ interface ResetResult {
 }
 
 const ROLE_BADGE: Record<string, string> = {
-  Pimpinan:     'bg-yellow-100 text-yellow-700',
-  Satker:     'bg-blue-100 text-blue-700',
+  operator: 'bg-blue-100 text-blue-700',
+  manajemen: 'bg-yellow-100 text-yellow-700',
+  administrasi: 'bg-yellow-100 text-yellow-700',
+  it: 'bg-purple-100 text-purple-700',
+  pimpinan_satker: 'bg-yellow-100 text-yellow-700',
+  staff_satker: 'bg-blue-100 text-blue-700',
+  Pimpinan: 'bg-yellow-100 text-yellow-700',
+  Satker: 'bg-blue-100 text-blue-700',
   ketua_tim: 'bg-indigo-100 text-indigo-700',
 };
 const ROLE_LABEL: Record<string, string> = {
-  Pimpinan: 'pimpinan_satker', satker: 'Satker', ketua_tim: 'Eselon 1',
+  operator: 'Operator',
+  manajemen: 'Manajemen',
+  administrasi: 'Manajemen',
+  it: 'IT Admin',
+  pimpinan_satker: 'Manajemen Satker',
+  staff_satker: 'Operator Satker',
+  ketua_tim: 'Eselon 1',
+  satker: 'Satker',
 };
 
 function formatTanggal(dt: string | null): string {
@@ -68,7 +81,7 @@ export default function KetuaUsersPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+      if (!res.ok) throw new Error(json.detail || json.message);
       setUsers(json.data);
       setError('');
     } catch (e: any) {
@@ -92,7 +105,7 @@ export default function KetuaUsersPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+      if (!res.ok) throw new Error(json.detail || json.message);
       await fetchUsers();
     } catch (e: any) {
       toast.error(e.message || 'Gagal mengubah status user');
@@ -112,7 +125,7 @@ export default function KetuaUsersPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
+      if (!res.ok) throw new Error(json.detail || json.message);
       setResetResult(json.data);
       setCopied(false);
       await fetchUsers();
@@ -247,8 +260,8 @@ export default function KetuaUsersPage() {
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <KeyRound className="w-4 h-4" />}
                         </button>
-                        {/* Eselon 1 HANYA bisa mengubah Pimpinan */}
-                        {user.role === 'pimpinan_satker' && (
+                        {/* Eselon 1 dapat mengaktifkan/menonaktifkan Pimpinan / Manajemen Satker */}
+                        {(user.role === 'pimpinan_satker' || user.role === 'manajemen' || user.role === 'administrasi') && (
                           <button
                             onClick={() => handleToggle(user)}
                             disabled={processing === user.id}

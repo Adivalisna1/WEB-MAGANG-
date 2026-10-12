@@ -80,7 +80,8 @@ export default function KertasKerjaPage() {
     setLoading(true);
     try {
       const session = getSession();
-      setUserRole(session?.user?.role || '');
+      const currentUser = session?.user;
+      setUserRole(currentUser?.role || '');
       
       const res = await fetch(`${API}/rekening-koran`, {
         headers: session ? { Authorization: `Bearer ${session.token}` } : {},
@@ -90,13 +91,16 @@ export default function KertasKerjaPage() {
         setDataList(d.data ?? []);
       }
 
-      if (['eselon_1', 'pimpinan_satker', 'admin_it'].includes(session?.user?.role || '')) {
+      if (['eselon_1', 'pimpinan_satker', 'admin_it', 'it', 'manajemen', 'administrasi', 'operator'].includes(currentUser?.role || '') || ['eselon_1', 'kl'].includes(currentUser?.tingkat || '')) {
         const resSatker = await fetch(`${API}/satker`, {
           headers: session ? { Authorization: `Bearer ${session.token}` } : {},
         });
         if (resSatker.ok) {
           const s = await resSatker.json();
-          setSatkerList(s.data ?? []);
+          const allSat = s.data ?? [];
+          const userE1 = currentUser?.eselon_1_id;
+          const filteredSat = userE1 ? allSat.filter((item: any) => Number(item.eselon_1_id) === Number(userE1)) : allSat;
+          setSatkerList(filteredSat);
         }
       }
     } catch (err) {
@@ -324,14 +328,15 @@ export default function KertasKerjaPage() {
     return matchSearch && matchSatker;
   });
 
-  const isEselon1 = userRole === 'eselon_1';
+  const isEselon1 = true;
+  const isPimpinan = userRole === 'manajemen' || userRole === 'pimpinan';
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
-    if (isEselon1 && activeTab === 'excel') setActiveTab('history');
-  }, [isEselon1, activeTab]);
+    if (isPimpinan && activeTab === 'excel') setActiveTab('history');
+  }, [isPimpinan, activeTab]);
 
   return (
     <div className="space-y-6">
@@ -342,13 +347,13 @@ export default function KertasKerjaPage() {
             Rekening Koran
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {isEselon1 ? 'Laporan Riwayat Rekening Koran Satker' : 'Kelola dan impor Rekening Koran via Excel.'}
+            {isPimpinan ? 'Laporan Riwayat Rekening Koran Satker Binaan' : 'Kelola dan impor Rekening Koran Satker Binaan via Excel.'}
           </p>
         </div>
       </div>
 
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max">
-        {!isEselon1 && (
+        {!isPimpinan && (
           <button onClick={() => setActiveTab('excel')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'excel' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
             <Upload className="w-4 h-4" /> Import Excel
           </button>
@@ -358,7 +363,7 @@ export default function KertasKerjaPage() {
         </button>
       </div>
 
-      {activeTab === 'excel' && !isEselon1 && (
+      {activeTab === 'excel' && !isPimpinan && (
         <div className="space-y-4">
           {excelData.length === 0 ? (
             <div
@@ -466,7 +471,7 @@ export default function KertasKerjaPage() {
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Tgl Buka</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Akhir</th>
                   <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs">Keterangan</th>
-                  {!isEselon1 && <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right w-[100px]">Aksi</th>}
+                  {!isPimpinan && <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right w-[100px]">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -497,12 +502,12 @@ export default function KertasKerjaPage() {
                         ) : (
                           <>
                             <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer">{d.nama_bank || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 font-mono text-xs cursor-pointer">{d.nomor_rekening_bank || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>{d.nama_rekening || '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
-                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs cursor-pointer">{d.keterangan || '-'}</td>
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer">{d.nama_bank || '-'}</td>
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-600 font-mono text-xs cursor-pointer">{d.nomor_rekening_bank || '-'}</td>
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>{d.nama_rekening || '-'}</td>
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs cursor-pointer">{d.keterangan || '-'}</td>
                           </>
                         )}
                       </tr>
@@ -510,7 +515,7 @@ export default function KertasKerjaPage() {
                   })
                 }
                   
-                  {!isEselon1 && (
+                  {!isPimpinan && (
                     <tr className="bg-emerald-50/30 border-t border-emerald-100">
                       <td className="px-2 py-2 text-[10px] text-emerald-600 font-bold uppercase tracking-wider text-center bg-emerald-100/50">Data Baru</td>
                       <td className="px-1 py-1"><input type="text" placeholder="Bank..." value={newRow.nama_bank} onChange={e => setNewRow({...newRow, nama_bank: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none"/></td>

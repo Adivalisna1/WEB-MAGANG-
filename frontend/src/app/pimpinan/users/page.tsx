@@ -47,7 +47,7 @@ export default function PimpinanUsersPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.detail || data.message);
       setUsers(data.data ?? []);
     } catch (e: any) {
       setError(e.message || 'Gagal memuat users');
@@ -67,7 +67,7 @@ export default function PimpinanUsersPage() {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.detail || data.message);
       await fetchUsers();
     } catch (e: any) {
       toast.error(e.message || 'Gagal mengubah status user');
@@ -92,7 +92,7 @@ export default function PimpinanUsersPage() {
         body: JSON.stringify({ password_baru: resetPass }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.detail || data.message);
       setResetOk(data.message || 'Password berhasil direset');
       setResetPass('');
       setTimeout(() => setResetModal(null), 1500);
@@ -158,8 +158,8 @@ export default function PimpinanUsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="badge bg-blue-100 text-blue-800">
-                        Staff
+                      <span className="badge bg-blue-100 text-blue-800 capitalize">
+                        {u.role === 'operator' ? 'Operator' : (u.role === 'staff_satker' ? 'Operator' : u.role)}
                       </span>
                     </td>
                     <td className="px-4 py-3">

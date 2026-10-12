@@ -136,30 +136,34 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
         ip=ip
     )
     
+    user_obj = {
+        "id": user['id'],
+        "nama": user['nama'],
+        "username": user['username'],
+        "email": user['email'],
+        "role": user['role'],
+        "role_id": user['role_id'],
+        "tingkat": user['tingkat'],
+        "tingkat_id": user['tingkat_id'],
+        "tingkat_nama": user['tingkat_nama'],
+        "satker_id": user.get('satker_id'),
+        "satker_nama": user.get('satker_nama'),
+        "satker_kode": user.get('satker_kode'),
+        "eselon_1_id": final_eselon_1_id,
+        "eselon_1_kode": user.get('eselon_1_kode'),
+        "eselon_1_nama": user.get('eselon_1_nama'),
+        "eselon_1_singkatan": user.get('eselon_1_singkatan'),
+        "permissions": user['permissions']
+    }
+
     return {
         "success": True,
         "message": "Login berhasil",
+        "token": token,
+        "user": user_obj,
         "data": {
             "token": token,
-            "user": {
-                "id": user['id'],
-                "nama": user['nama'],
-                "username": user['username'],
-                "email": user['email'],
-                "role": user['role'],
-                "role_id": user['role_id'],
-                "tingkat": user['tingkat'],
-                "tingkat_id": user['tingkat_id'],
-                "tingkat_nama": user['tingkat_nama'],
-                "satker_id": user.get('satker_id'),
-                "satker_nama": user.get('satker_nama'),
-                "satker_kode": user.get('satker_kode'),
-                "eselon_1_id": final_eselon_1_id,
-                "eselon_1_kode": user.get('eselon_1_kode'),
-                "eselon_1_nama": user.get('eselon_1_nama'),
-                "eselon_1_singkatan": user.get('eselon_1_singkatan'),
-                "permissions": user['permissions']
-            }
+            "user": user_obj
         }
     }
 
