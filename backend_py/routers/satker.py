@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Union
 from db import get_db
-from auth import get_current_user, require_admin_it
+from auth import get_current_user, require_admin_it, get_current_user_optional
 import mysql.connector
 
 router = APIRouter(
@@ -24,9 +24,24 @@ class BulkSatkerCreate(BaseModel):
     satkers: List[Union[SatkerBulkItem, str]]
 
 @router.get("")
-def get_satkers(db = Depends(get_db)):
+def get_satkers(
+    eselon_1_id: Optional[int] = None,
+    user: Optional[dict] = Depends(get_current_user_optional),
+    db = Depends(get_db)
+):
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT id, NO_Satker, nama, eselon_1_id, created_at FROM satkers ORDER BY nama ASC")
+    where = "1=1"
+    params = []
+
+    # Jika pemanggil adalah user Eselon 1, batasi HANYA ke satker binaannya
+    if user and user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):
+        where += " AND eselon_1_id = %s"
+        params.append(user["eselon_1_id"])
+    elif eselon_1_id:
+        where += " AND eselon_1_id = %s"
+        params.append(eselon_1_id)
+
+    cursor.execute(f"SELECT id, NO_Satker, nama, eselon_1_id, created_at FROM satkers WHERE {where} ORDER BY nama ASC", tuple(params))
     rows = cursor.fetchall()
     cursor.close()
     return {"success": True, "data": rows}

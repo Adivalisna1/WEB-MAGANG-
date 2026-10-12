@@ -161,6 +161,11 @@ async def create_akuntansi(
         with db.cursor(dictionary=True) as cursor:
             created_by = user["id"]
             final_satker_id = satker_id or user.get("satker_id")
+
+            if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id") and final_satker_id:
+                cursor.execute("SELECT id FROM satkers WHERE id = %s AND eselon_1_id = %s", (final_satker_id, user["eselon_1_id"]))
+                if not cursor.fetchone():
+                    raise HTTPException(403, "Akses ditolak: Satker tidak berada di bawah binaan Eselon 1 Anda")
             
             cursor.execute("SELECT nama FROM kategori_dokumen WHERE id = %s", (id_kategori,))
             cat_res = cursor.fetchone()

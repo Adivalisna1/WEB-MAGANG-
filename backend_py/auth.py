@@ -1,5 +1,6 @@
 import os
 import jwt
+from typing import Optional
 from fastapi import Request, HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pathlib import Path
@@ -13,6 +14,15 @@ load_dotenv(dotenv_path=env_path)
 JWT_SECRET = os.getenv("JWT_SECRET")
 
 security = HTTPBearer()
+security_optional = HTTPBearer(auto_error=False)
+
+def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials] = Security(security_optional), db = Depends(get_db)):
+    if not credentials:
+        return None
+    try:
+        return get_current_user(credentials, db)
+    except:
+        return None
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security), db = Depends(get_db)):
     token = credentials.credentials

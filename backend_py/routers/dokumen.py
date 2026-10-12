@@ -146,13 +146,13 @@ async def get_all_dokumen(
             where += ' AND d.uploaded_by = %s'
             params.append(user["id"])
     elif tingkat == "eselon_1":
-        # Eselon 1 Pembina sees all satkers under their Eselon 1 unit
+        # Eselon 1 Pembina strictly sees ONLY satkers under their Eselon 1 unit
+        if eselon_1_id:
+            where += ' AND (s.eselon_1_id = %s OR u.eselon_1_id = %s OR d.uploaded_by = %s)'
+            params.extend([eselon_1_id, eselon_1_id, user["id"]])
         if satker:
             where += ' AND u.satker_id = %s'
             params.append(satker)
-        elif eselon_1_id:
-            where += ' AND (s.eselon_1_id = %s OR u.eselon_1_id = %s OR d.uploaded_by = %s)'
-            params.extend([eselon_1_id, eselon_1_id, user["id"]])
         
     if status and status != 'all':
         where += ' AND d.status = %s'
@@ -578,13 +578,14 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
         # Validasi bahwa satker uploader berada di bawah eselon 1 user (jika user tingkat eselon_1)
         if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):
             cursor.execute("""
-                SELECT s.eselon_1_id FROM users u
+                SELECT COALESCE(s.eselon_1_id, u.eselon_1_id) AS doc_eselon_1_id 
+                FROM users u
                 LEFT JOIN satkers s ON s.id = u.satker_id
                 WHERE u.id = %s
             """, (dok["uploaded_by"],))
             sat_row = cursor.fetchone()
-            if sat_row and sat_row.get("eselon_1_id") and sat_row["eselon_1_id"] != user["eselon_1_id"]:
-                raise HTTPException(403, "Akses ditolak. Dokumen bukan dari Satker binaan Eselon 1 Anda.")
+            if not sat_row or sat_row.get("doc_eselon_1_id") != user["eselon_1_id"]:
+                raise HTTPException(403, "Akses ditolak. Anda hanya berwenang menyetujui dokumen dari Satker binaan Eselon 1 Anda.")
         
         new_status = 'terverifikasi' if aksi == 'approve' else 'revisi'
         is_pub = 1 if aksi == 'approve' else 0

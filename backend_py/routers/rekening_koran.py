@@ -55,7 +55,10 @@ async def bulk_insert_rekening_koran(request: dict, user: dict = Depends(get_cur
     values = []
     
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT id, NO_Satker FROM satkers WHERE NO_Satker IS NOT NULL")
+        if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):
+            cursor.execute("SELECT id, NO_Satker FROM satkers WHERE NO_Satker IS NOT NULL AND eselon_1_id = %s", (user["eselon_1_id"],))
+        else:
+            cursor.execute("SELECT id, NO_Satker FROM satkers WHERE NO_Satker IS NOT NULL")
         satkers_data = cursor.fetchall()
         satker_map = {str(s["NO_Satker"]): s["id"] for s in satkers_data}
         
