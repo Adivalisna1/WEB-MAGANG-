@@ -18,19 +18,19 @@ def req(url, method='GET', data=None, token=None):
 
 # Test 1: it_admin
 res = req(f'{API}/auth/login', 'POST', {'username': 'it_admin', 'password': 'Password@123'})
-assert res['success'] and res['data']['user']['role'] == 'it'
+assert res['success'] and res['data']['user']['role'] == 'operator'
 token_it = res['data']['token']
 print('1. it_admin login: OK, role =', res['data']['user']['role'], 'tingkat =', res['data']['user']['tingkat'])
 
-# Test 2: operator_satker
-res = req(f'{API}/auth/login', 'POST', {'username': 'operator_satker', 'password': 'Password@123'})
+# Test 2: staff_satker
+res = req(f'{API}/auth/login', 'POST', {'username': 'staff_satker', 'password': 'Password@123'})
 assert res['success'] and res['data']['user']['role'] == 'operator' and res['data']['user']['tingkat'] == 'satker'
-print('2. operator_satker login: OK, role =', res['data']['user']['role'], 'satker =', res['data']['user']['satker_nama'])
+print('2. staff_satker login: OK, role =', res['data']['user']['role'], 'satker =', res['data']['user']['satker_nama'])
 
-# Test 3: admin_satker
-res = req(f'{API}/auth/login', 'POST', {'username': 'admin_satker', 'password': 'Password@123'})
-assert res['success'] and res['data']['user']['role'] == 'administrasi' and res['data']['user']['tingkat'] == 'satker'
-print('3. admin_satker login: OK, role =', res['data']['user']['role'], 'tingkat =', res['data']['user']['tingkat'])
+# Test 3: pimpinan_satker
+res = req(f'{API}/auth/login', 'POST', {'username': 'pimpinan_satker', 'password': 'Password@123'})
+assert res['success'] and res['data']['user']['role'] == 'manajemen' and res['data']['user']['tingkat'] == 'satker'
+print('3. pimpinan_satker login: OK, role =', res['data']['user']['role'], 'tingkat =', res['data']['user']['tingkat'])
 
 # Test 4: pimpinan_eselon1
 res = req(f'{API}/auth/login', 'POST', {'username': 'pimpinan_eselon1', 'password': 'Password@123'})

@@ -44,8 +44,8 @@ def run_tests():
     print("=" * 65)
     
     test_accounts = [
-        {"username": "operator_satker", "expected_role": "operator", "expected_tingkat": "satker"},
-        {"username": "admin_satker", "expected_role": "manajemen", "expected_tingkat": "satker"},
+        {"username": "staff_satker", "expected_role": "operator", "expected_tingkat": "satker"},
+        {"username": "pimpinan_satker", "expected_role": "manajemen", "expected_tingkat": "satker"},
         {"username": "staff_eselon1", "expected_role": "operator", "expected_tingkat": "eselon_1"},
         {"username": "pimpinan_eselon1", "expected_role": "manajemen", "expected_tingkat": "eselon_1"},
         {"username": "operator_kl", "expected_role": "operator", "expected_tingkat": "kl"},
@@ -131,8 +131,8 @@ def run_tests():
             log(f"Akses /api/admin-it/tingkats gagal: HTTP {status}", "FAIL")
             failed += 1
 
-    # 3d. Operator Satker mencoba akses /api/admin-it/stats -> should be 403 Forbidden
-    op_token = tokens.get("operator_satker")
+    # 3d. Staff Satker mencoba akses /api/admin-it/stats -> should be 403 Forbidden
+    op_token = tokens.get("staff_satker")
     if op_token:
         headers = {"Authorization": f"Bearer {op_token}"}
         status, data = request_json(f"{BASE_URL}/api/admin-it/stats", method="GET", headers=headers)
@@ -183,55 +183,55 @@ def run_tests():
             log(f"Security Breach! pimpinan_eselon1 mendapat HTTP {status} saat akses /api/admin-it/stats", "FAIL")
             failed += 1
 
-    # 3i. Operator Satker access /api/dokumen/all -> 200 OK
+    # 3i. Staff Satker access /api/dokumen/all -> 200 OK
     if op_token:
         headers = {"Authorization": f"Bearer {op_token}"}
         status, data = request_json(f"{BASE_URL}/api/dokumen/all", method="GET", headers=headers)
         if status == 200:
-            log("Akses /api/dokumen/all oleh operator_satker: 200 OK", "PASS")
+            log("Akses /api/dokumen/all oleh staff_satker: 200 OK", "PASS")
             passed += 1
         else:
-            log(f"Akses /api/dokumen/all oleh operator_satker gagal: HTTP {status}", "FAIL")
+            log(f"Akses /api/dokumen/all oleh staff_satker gagal: HTTP {status}", "FAIL")
             failed += 1
 
-        # 3j. Operator Satker blocked from /api/eselon-1/stats -> 403 Forbidden
+        # 3j. Staff Satker blocked from /api/eselon-1/stats -> 403 Forbidden
         status, data = request_json(f"{BASE_URL}/api/eselon-1/stats", method="GET", headers=headers)
         if status == 403:
-            log("Security Guard: operator_satker diblokir dari /api/eselon-1/stats (403 Forbidden)", "PASS")
+            log("Security Guard: staff_satker diblokir dari /api/eselon-1/stats (403 Forbidden)", "PASS")
             passed += 1
         else:
-            log(f"Security Breach! operator_satker mendapat HTTP {status} saat akses /api/eselon-1/stats", "FAIL")
+            log(f"Security Breach! staff_satker mendapat HTTP {status} saat akses /api/eselon-1/stats", "FAIL")
             failed += 1
 
-    # 3k. Admin Satker tests
-    admin_satker_token = tokens.get("admin_satker")
+    # 3k. Pimpinan Satker tests
+    admin_satker_token = tokens.get("pimpinan_satker")
     if admin_satker_token:
         headers = {"Authorization": f"Bearer {admin_satker_token}"}
         # /api/pimpinan/stats -> 200 OK
         status, data = request_json(f"{BASE_URL}/api/pimpinan/stats", method="GET", headers=headers)
         if status == 200:
-            log("Akses /api/pimpinan/stats oleh admin_satker: 200 OK", "PASS")
+            log("Akses /api/pimpinan/stats oleh pimpinan_satker: 200 OK", "PASS")
             passed += 1
         else:
-            log(f"Akses /api/pimpinan/stats oleh admin_satker gagal: HTTP {status}", "FAIL")
+            log(f"Akses /api/pimpinan/stats oleh pimpinan_satker gagal: HTTP {status}", "FAIL")
             failed += 1
 
         # /api/pimpinan/dokumen -> 200 OK
         status, data = request_json(f"{BASE_URL}/api/pimpinan/dokumen", method="GET", headers=headers)
         if status == 200:
-            log("Akses /api/pimpinan/dokumen oleh admin_satker: 200 OK", "PASS")
+            log("Akses /api/pimpinan/dokumen oleh pimpinan_satker: 200 OK", "PASS")
             passed += 1
         else:
-            log(f"Akses /api/pimpinan/dokumen oleh admin_satker gagal: HTTP {status}", "FAIL")
+            log(f"Akses /api/pimpinan/dokumen oleh pimpinan_satker gagal: HTTP {status}", "FAIL")
             failed += 1
 
         # Blocked from /api/admin-it/stats -> 403 Forbidden
         status, data = request_json(f"{BASE_URL}/api/admin-it/stats", method="GET", headers=headers)
         if status == 403:
-            log("Security Guard: admin_satker diblokir dari /api/admin-it/stats (403 Forbidden)", "PASS")
+            log("Security Guard: pimpinan_satker diblokir dari /api/admin-it/stats (403 Forbidden)", "PASS")
             passed += 1
         else:
-            log(f"Security Breach! admin_satker mendapat HTTP {status} saat akses /api/admin-it/stats", "FAIL")
+            log(f"Security Breach! pimpinan_satker mendapat HTTP {status} saat akses /api/admin-it/stats", "FAIL")
             failed += 1
 
     # 3l. Admin KL tests

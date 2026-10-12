@@ -9,8 +9,8 @@
 1. [Matriks Perbandingan Cepat 7 Akun](#1-matriks-perbandingan-cepat-7-akun)
 2. [Alur Aliran Berkas & Interaksi Antar Akun di FE](#2-alur-aliran-berkas--interaksi-antar-akun-di-fe)
 3. [Panduan Rinci Masing-Masing Akun](#3-panduan-rinci-masing-masing-akun)
-   - [Akun 1: `operator_satker` (Operator Satker)](#akun-1-operator_satker-operator-tingkat-satker)
-   - [Akun 2: `admin_satker` (Manajemen Satker)](#akun-2-admin_satker-manajemen-tingkat-satker)
+   - [Akun 1: `staff_satker` (Staff Satker)](#akun-1-staff_satker-staff-tingkat-satker)
+   - [Akun 2: `pimpinan_satker` (Pimpinan Satker)](#akun-2-pimpinan_satker-pimpinan-tingkat-satker)
    - [Akun 3: `staff_eselon1` (Staff Ditjen Eselon 1)](#akun-3-staff_eselon1-staff-eselon-1--operator-ditjen-dikti)
    - [Akun 4: `pimpinan_eselon1` (Pimpinan Ditjen Eselon 1)](#akun-4-pimpinan_eselon1-pimpinan-eselon-1--manajemen-ditjen-dikti)
    - [Akun 5: `operator_kl` (Operator K/L Pusat)](#akun-5-operator_kl-operator-tingkat-kl)
@@ -26,8 +26,8 @@
 
 | No | Username | Role Database | Tingkat | Wilayah / Instansi Kerja | Landing Page FE | Fokus Utama Pekerjaan di Frontend |
 |:--:|:---|:---:|:---:|:---|:---|:---|
-| **1** | **`operator_satker`** | `operator` | `satker` | DITJEN DIKTI (PTN BH UGM) | `/staff/dokumen` | Upload dokumen, input rekening koran, catat transaksi kas harian. |
-| **2** | **`admin_satker`** | `manajemen` | `satker` | DITJEN DIKTI (PTN BH UGM) | `/pimpinan` | Verifikasi awal satker (`lolos_admin`), audit OCR saldo, pantau kas satker. |
+| **1** | **`staff_satker`** | `operator` | `satker` | DITJEN DIKTI (PTN BH UGM) | `/staff/dokumen` | Upload dokumen, input rekening koran, catat transaksi kas harian. |
+| **2** | **`pimpinan_satker`** | `manajemen` | `satker` | DITJEN DIKTI (PTN BH UGM) | `/pimpinan` | Verifikasi awal satker (`lolos_admin`), audit OCR saldo, pantau kas satker. |
 | **3** | **`staff_eselon1`** | `operator` | `eselon_1` | Ditjen Pendidikan Tinggi (Dikti) | `/eselon-1` | Rekapitulasi 96 satker Dikti, kompilasi RK, input kas AI, upload dokumen. |
 | **4** | **`pimpinan_eselon1`** | `manajemen` | `eselon_1` | Ditjen Pendidikan Tinggi (Dikti) | `/eselon-1` | Verifikasi final dokumen (`terverifikasi`), kembalikan revisi, kelola akun binaan. |
 | **5** | **`operator_kl`** | `operator` | `kl` | Kementerian Pusat (K/L) | `/eselon-1` | Konsolidasi nasional 5 Ditjen (153 Satker), ekspor RK nasional untuk Kemenkeu. |
@@ -41,12 +41,12 @@
 ## 2. ALUR ALIRAN BERKAS & INTERAKSI ANTAR AKUN DI FE
 
 ```
-[ 1. operator_satker ]
+[ 1. staff_satker ]
        │ Upload Dokumen Laporan (PDF/Excel) & Klik "Ajukan Verifikasi"
        ▼ (Status: menunggu_verifikasi)
-[ 2. admin_satker ]
+[ 2. pimpinan_satker ]
        │ Tinjau PDF + Audit Ulang Angka OCR
-       ├─► [Minta Revisi] ─────────────► Berkas kembali ke operator_satker (Status: revisi)
+       ├─► [Minta Revisi] ─────────────► Berkas kembali ke staff_satker (Status: revisi)
        │
        ▼ [Loloskan Satker] (Status: lolos_admin)
 [ 3. staff_eselon1 ]
@@ -70,10 +70,10 @@
 
 ---
 
-### AKUN 1: `operator_satker` (Operator Tingkat Satker)
-* **Kredensial:** `operator_satker` / `Password@123`
+### AKUN 1: `staff_satker` (Staff Tingkat Satker)
+* **Kredensial:** `staff_satker` / `Password@123`
 * **Instansi:** PTN BH - Universitas Gadjah Mada (UGM)
-* **Role & Tingkat:** `operator` di tingkat `satker`
+* **Role & Tingkat:** `operator` di tingkat `satker` (Staff Satker)
 * **Landing Page:** `/staff/dokumen`
 * **Layout / Sidebar:** `StaffSidebar`
 
@@ -92,7 +92,7 @@
    - File tersimpan dengan status awal **`draft`**.
 2. **Mengajukan Dokumen ke Pimpinan:**
    - Pada baris dokumen yang berstatus `draft`, klik tombol **"Ajukan Verifikasi"**.
-   - Status dokumen otomatis berubah menjadi **`menunggu_verifikasi`** sehingga masuk ke antrian verifikasi Pimpinan Satker (`admin_satker`).
+   - Status dokumen otomatis berubah menjadi **`menunggu_verifikasi`** sehingga masuk ke antrian verifikasi Pimpinan Satker (`pimpinan_satker`).
 3. **Memonitor Status Dokumen & Menangani Revisi:**
    - Melihat label status dokumen:
      - `Draft`: Masih bisa diedit bebas oleh staf.
@@ -119,8 +119,8 @@
 
 ---
 
-### AKUN 2: `admin_satker` (Manajemen Tingkat Satker)
-* **Kredensial:** `admin_satker` / `Password@123`
+### AKUN 2: `pimpinan_satker` (Pimpinan Tingkat Satker)
+* **Kredensial:** `pimpinan_satker` / `Password@123`
 * **Instansi:** PTN BH - Universitas Gadjah Mada (UGM)
 * **Role & Tingkat:** `manajemen` di tingkat `satker` (Pimpinan Kampus / PPK / KPA)
 * **Landing Page:** `/pimpinan`
@@ -363,7 +363,7 @@
 
 ## 4. TABEL MATRIKS AKSES HALAMAN & RUTE URL
 
-| Rute URL Frontend | Nama Fitur / Halaman | `operator_satker` | `admin_satker` | `staff_eselon1` | `pimpinan_eselon1` | `operator_kl` | `admin_kl` | `it_admin` |
+| Rute URL Frontend | Nama Fitur / Halaman | `staff_satker` | `pimpinan_satker` | `staff_eselon1` | `pimpinan_eselon1` | `operator_kl` | `admin_kl` | `it_admin` |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | `/login` | Halaman Masuk Akun | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `/staff/dokumen` | Kelola & Upload Dokumen Satker | ✅ *(Utama)* | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
