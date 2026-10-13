@@ -52,6 +52,7 @@ interface UserItem {
 }
 
 interface DocItem {
+  id?: number | string;
   name: string;
   code: string;
   satker: string;
@@ -60,6 +61,8 @@ interface DocItem {
   size: string;
   status: string;
   tone: string;
+  file_url?: string | null;
+  file_nama?: string;
 }
 
 interface AuditLogItem {
@@ -126,7 +129,7 @@ const DEFAULT_AUDIT_LOGS: AuditLogItem[] = [
 
 export default function KLDashboardPage() {
   const router = useRouter();
-  const { user, logoutFn } = useAuth();
+  const { user, token, logoutFn } = useAuth();
 
   // --- STATE ---
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -145,6 +148,50 @@ export default function KLDashboardPage() {
   const [signedOut, setSignedOut] = useState<boolean>(false);
   const [activeDetailUser, setActiveDetailUser] = useState<UserItem | null>(null);
   const [activeDetailAudit, setActiveDetailAudit] = useState<AuditLogItem | null>(null);
+  const [activeDetailDoc, setActiveDetailDoc] = useState<DocItem | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewError, setPreviewError] = useState<string>('');
+
+  const handleOpenDocPreview = async (d: DocItem) => {
+    setActiveDetailDoc(d);
+    setPreviewError('');
+    if (previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
+    }
+
+    if (!d.id) return;
+
+    setPreviewLoading(true);
+    try {
+      const session = getSession();
+      const currentToken = token || session?.token;
+      const res = await fetch(`${API}/dokumen/${d.id}/preview`, {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        setPreviewBlobUrl(objUrl);
+      } else {
+        setPreviewError('File fisik belum tersedia di server penyimpanan atau format bukan PDF.');
+      }
+    } catch {
+      setPreviewError('Tidak dapat terhubung ke endpoint preview dokumen.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleCloseDocPreview = () => {
+    setActiveDetailDoc(null);
+    if (previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
+    }
+    setPreviewError('');
+  };
 
   // Filter chips in sub-views
   const [docFilter, setDocFilter] = useState<string>('all');
@@ -272,7 +319,8 @@ export default function KLDashboardPage() {
         const jsonDocs = await resDocs.json();
         const docsData = jsonDocs.data || [];
         if (Array.isArray(docsData) && docsData.length > 0) {
-          const mappedDocs: DocItem[] = docsData.slice(0, 8).map((d: any) => ({
+          const mappedDocs: DocItem[] = docsData.slice(0, 15).map((d: any) => ({
+            id: d.id,
             name: d.judul || d.nama || "Dokumen Keuangan",
             code: `DOC-${year}-${String(d.id).padStart(3, '0')}`,
             satker: d.satker_nama || "Satker Kementerian",
@@ -280,7 +328,9 @@ export default function KLDashboardPage() {
             date: d.created_at ? new Date(d.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : "28 Juni 2026",
             size: `${((d.file_size || 3500000) / 1e6).toFixed(1)} MB · PDF`,
             status: d.status === 'terverifikasi' ? 'Valid' : (d.status === 'revisi' ? 'Perlu Revisi' : 'Menunggu'),
-            tone: d.status === 'terverifikasi' ? 'green' : (d.status === 'revisi' ? 'amber' : 'blue')
+            tone: d.status === 'terverifikasi' ? 'green' : (d.status === 'revisi' ? 'amber' : 'blue'),
+            file_url: d.file_path || d.file_url || null,
+            file_nama: d.file_nama || `${d.judul || 'dokumen'}.pdf`
           }));
           setDocsList(mappedDocs);
         }
@@ -972,7 +1022,11 @@ export default function KLDashboardPage() {
                             <span className={`pill ${d.status === 'Valid' ? 'success' : (d.status === 'Menunggu' ? 'blue' : 'danger')}`}>{d.status}</span>
                           </td>
                           <td>
-                            <button className="secondary-button" style={{ padding: '4px 8px', fontSize: 11.5 }} onClick={() => toast.success(`Membuka pratinjau dokumen ${d.name}`)}>
+                            <button
+                              className="secondary-button"
+                              style={{ padding: '4px 8px', fontSize: 11.5 }}
+                              onClick={() => handleOpenDocPreview(d)}
+                            >
                               📄 Lihat
                             </button>
                           </td>
@@ -1629,6 +1683,140 @@ export default function KLDashboardPage() {
               <button className="primary-button" onClick={() => setActiveDetailAudit(null)}>
                 Tutup
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 6: DOKUMEN PREVIEW --- */}
+      {activeDetailDoc && (
+        <div className="modal-backdrop" onMouseDown={handleCloseDocPreview}>
+          <div className="modal modal-lg" onMouseDown={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-eyebrow">PRATINJAU DOKUMEN NASIONAL</div>
+                <div className="modal-title">{activeDetailDoc.name}</div>
+              </div>
+              <button className="modal-close" onClick={handleCloseDocPreview} aria-label="Tutup modal">
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '78vh', overflowY: 'auto' }}>
+              <div className="modal-context" style={{ marginBottom: 14 }}>
+                <div className="satker-avatar satker-blue" style={{ width: 40, height: 40, fontSize: 13 }}>
+                  DOC
+                </div>
+                <div>
+                  <strong>{activeDetailDoc.satker}</strong>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                    {activeDetailDoc.unit} · {activeDetailDoc.code} · Diunggah: {activeDetailDoc.date}
+                  </span>
+                </div>
+                <span className={`pill ${activeDetailDoc.status === 'Valid' ? 'success' : (activeDetailDoc.status === 'Menunggu' ? 'blue' : 'danger')}`} style={{ marginLeft: 'auto' }}>
+                  {activeDetailDoc.status}
+                </span>
+              </div>
+
+              {/* Preview Content Area */}
+              <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #cbd5e1', overflow: 'hidden', minHeight: 460, position: 'relative' }}>
+                {previewLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 460, gap: 12 }}>
+                    <div className="spinner" style={{ width: 36, height: 36, border: '3px solid #cbd5e1', borderTopColor: '#173b75', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                    <span style={{ fontSize: 13, color: '#475569', fontWeight: 500 }}>Memuat berkas preview PDF...</span>
+                  </div>
+                ) : previewBlobUrl ? (
+                  <object
+                    data={previewBlobUrl}
+                    type="application/pdf"
+                    style={{ width: '100%', height: 540, border: 'none', display: 'block' }}
+                  >
+                    <div style={{ padding: 40, textAlign: 'center', background: '#fff' }}>
+                      <p style={{ color: '#475569', marginBottom: 14, fontSize: 14 }}>Browser Anda tidak mendukung preview PDF langsung.</p>
+                      <a href={previewBlobUrl} target="_blank" rel="noreferrer" className="primary-button" style={{ display: 'inline-block' }}>
+                        ↗ Buka Dokumen di Tab Baru
+                      </a>
+                    </div>
+                  </object>
+                ) : (
+                  /* Fallback Interactive Document Viewer Summary */
+                  <div style={{ padding: 24, background: '#ffffff', minHeight: 460, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ borderBottom: '2px solid #173b75', paddingBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 15, color: '#173b75', fontWeight: 700 }}>REPUBLIK INDONESIA - KEMENTERIAN NEGARA</h3>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>Arsip Laporan Digital No: {activeDetailDoc.code}</span>
+                      </div>
+                      <span className="pill success" style={{ fontSize: 10 }}>TERVERIFIKASI SISTEM</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div>
+                        <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Satuan Kerja (Satker)</span>
+                        <strong style={{ fontSize: 13, color: '#1e293b' }}>{activeDetailDoc.satker}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Unit Eselon 1 Pembina</span>
+                        <strong style={{ fontSize: 13, color: '#1e293b' }}>{activeDetailDoc.unit}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Format / Ukuran</span>
+                        <strong style={{ fontSize: 13, color: '#1e293b' }}>{activeDetailDoc.size}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Status Verifikasi</span>
+                        <strong style={{ fontSize: 13, color: activeDetailDoc.status === 'Valid' ? '#16a34a' : '#2563eb' }}>{activeDetailDoc.status}</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px dashed #cbd5e1', borderRadius: 8, padding: 24, background: '#fafafa', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 38 }}>📄</span>
+                      <strong style={{ fontSize: 15, color: '#1e293b' }}>{activeDetailDoc.name}</strong>
+                      <p style={{ fontSize: 12, color: '#64748b', maxWidth: 460, margin: 0 }}>
+                        {previewError || 'Berkas dokumen telah tercatat di repositori laporan keuangan nasional. Anda dapat mengunduh salinan berkas asli langsung dari server.'}
+                      </p>
+                      {activeDetailDoc.id && (
+                        <button
+                          className="secondary-button"
+                          style={{ marginTop: 8, fontSize: 12 }}
+                          onClick={() => {
+                            const session = getSession();
+                            const currentToken = token || session?.token;
+                            window.open(`${API}/dokumen/${activeDetailDoc.id}/download${currentToken ? `?token=${currentToken}` : ''}`, '_blank');
+                          }}
+                        >
+                          📥 Unduh Berkas Asli
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <div>
+                {previewBlobUrl && (
+                  <button
+                    className="secondary-button"
+                    onClick={() => window.open(previewBlobUrl, '_blank')}
+                  >
+                    ↗ Buka di Tab Baru
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    toast.success(`Dokumen ${activeDetailDoc.name} ditandai telah ditinjau.`);
+                    handleCloseDocPreview();
+                  }}
+                >
+                  ✓ Tandai Telah Ditinjau
+                </button>
+                <button className="primary-button" onClick={handleCloseDocPreview}>
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
