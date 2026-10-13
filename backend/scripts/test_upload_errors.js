@@ -4,7 +4,8 @@ require('dotenv').config({ path: '../.env' }); // pastikan load env jika dijalan
 const { pool } = require('../src/config/db');
 
 async function checkFailedUploads() {
-  const filePath = 'c:/Users/adiva/OneDrive/Dokumen/web magang munculin data lokal/Data_User_Siap_Upload.xlsx';
+  const path = require('path');
+  const filePath = path.resolve(__dirname, '../../data_excel/Data_User_Siap_Upload.xlsx');
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];

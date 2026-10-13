@@ -29,7 +29,8 @@ try {
   XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Users');
 
   // 5. Simpan hasilnya
-  const fileBaru = 'c:/Users/adiva/OneDrive/Dokumen/web magang munculin data lokal/Data_User_Siap_Upload.xlsx';
+  const path = require('path');
+  const fileBaru = path.resolve(__dirname, '../../data_excel/Data_User_Siap_Upload.xlsx');
   XLSX.writeFile(newWorkbook, fileBaru);
 
   console.log(`Berhasil! File baru disimpan di: ${fileBaru}`);
