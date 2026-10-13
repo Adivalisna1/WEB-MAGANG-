@@ -31,7 +31,8 @@ export default function LandingPage() {
         (user.tingkat === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
       );
       if (isIt) router.replace('/admin-it');
-      else if (user.role === 'eselon_1' || user.tingkat === 'eselon_1' || user.tingkat === 'kl') router.replace('/eselon-1');
+      else if (user.tingkat === 'kl') router.replace('/kl');
+      else if (user.role === 'eselon_1' || user.tingkat === 'eselon_1') router.replace('/eselon-1');
       else if (user.role === 'pimpinan_satker' || (user.tingkat === 'satker' && (user.role === 'manajemen' || user.role === 'administrasi'))) router.replace('/pimpinan');
       else router.replace('/staff/dokumen');
     }

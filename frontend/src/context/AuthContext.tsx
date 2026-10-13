@@ -13,6 +13,7 @@ interface AuthContextType {
   isPimpinan:   boolean;
   isStaff:   boolean;
   isKetuaTim: boolean;
+  isIt: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isPimpinan,
       isStaff,
       isKetuaTim,
+      isIt,
     }}>
       {children}
     </AuthContext.Provider>

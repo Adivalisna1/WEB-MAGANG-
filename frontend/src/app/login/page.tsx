@@ -40,7 +40,8 @@ export default function LoginPage() {
         (t === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
       );
       if (isIt) router.replace('/admin-it');
-      else if (r === 'eselon_1' || t === 'eselon_1' || t === 'kl') router.replace('/eselon-1');
+      else if (t === 'kl') router.replace('/kl');
+      else if (r === 'eselon_1' || t === 'eselon_1') router.replace('/eselon-1');
       else if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) router.replace('/pimpinan');
       else router.replace('/staff/dokumen');
     }

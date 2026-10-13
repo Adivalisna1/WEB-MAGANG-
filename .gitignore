@@ -28,6 +28,7 @@ database/init/fix_ketua_password.sql
 update_passwords.sql
 script excell/
 script_excell_py/
+scratch_sqlite/
 
 # ============================================================
 # Dependencies

@@ -1,14 +1,12 @@
 'use client';
 
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useState, useEffect } from 'react';
 import AdminITSidebar from '@/components/admin-it/AdminITSidebar';
 import { Menu } from 'lucide-react';
 
 export default function AdminITLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth('admin_it');
   const [mounted, setMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -17,17 +15,7 @@ export default function AdminITLayout({ children }: { children: React.ReactNode 
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!loading && mounted) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.role !== 'admin_it' && user.role !== 'it') {
-        router.replace('/');
-      }
-    }
-  }, [user, loading, router, mounted]);
-
-  if (!mounted || loading || !user || (user.role !== 'admin_it' && user.role !== 'it')) {
+  if (!mounted || loading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />

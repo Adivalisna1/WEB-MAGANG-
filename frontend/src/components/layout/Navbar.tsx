@@ -54,8 +54,8 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Sembunyikan navbar publik di halaman dashboard (Satker/pimpinan/eselon-1/admin-it)
-  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1') || pathname.startsWith('/admin-it');
+  // Sembunyikan navbar publik di halaman dashboard (Satker/pimpinan/eselon-1/admin-it/kl)
+  const isDashboard = pathname.startsWith('/staff') || pathname.startsWith('/pimpinan') || pathname.startsWith('/eselon-1') || pathname.startsWith('/admin-it') || pathname.startsWith('/kl');
   if (isDashboard) return null;
 
   const isIt = Boolean(
@@ -67,11 +67,13 @@ export default function Navbar() {
 
   const dashboardHref = isIt
     ? '/admin-it'
-    : (user?.role === 'eselon_1' || user?.tingkat === 'eselon_1' || user?.tingkat === 'kl')
-      ? '/eselon-1'
-      : (user?.role === 'pimpinan_satker' || (user?.tingkat === 'satker' && (user?.role === 'manajemen' || user?.role === 'administrasi')))
-        ? '/pimpinan'
-        : '/staff/dokumen';
+    : user?.tingkat === 'kl'
+      ? '/kl'
+      : (user?.role === 'eselon_1' || user?.tingkat === 'eselon_1')
+        ? '/eselon-1'
+        : (user?.role === 'pimpinan_satker' || (user?.tingkat === 'satker' && (user?.role === 'manajemen' || user?.role === 'administrasi')))
+          ? '/pimpinan'
+          : '/staff/dokumen';
 
   const getRoleLabel = () => {
     if (!user) return '';
