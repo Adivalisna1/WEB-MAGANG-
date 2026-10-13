@@ -127,6 +127,22 @@ const DEFAULT_AUDIT_LOGS: AuditLogItem[] = [
   { id: "AUD-2026-8808", time: "08:45:10 WIB", actor: "Sistem Keamanan SSL", role: "Pusintek Kemenkeu", action: "Enkripsi Sinkronisasi Berkas Cloud Harian", target: "153 Satker Terkoneksi Nasional", hash: "SHA256: 9e337710ad45", status: "Aman", tone: "green", icon: "lock" }
 ];
 
+const MONTH_NAMES: Record<string, string> = {
+  all: "Semua Bulan (Jan - Des)",
+  "1": "Januari",
+  "2": "Februari",
+  "3": "Maret",
+  "4": "April",
+  "5": "Mei",
+  "6": "Juni",
+  "7": "Juli",
+  "8": "Agustus",
+  "9": "September",
+  "10": "Oktober",
+  "11": "November",
+  "12": "Desember"
+};
+
 export default function KLDashboardPage() {
   const router = useRouter();
   const { user, token, logoutFn } = useAuth();
@@ -134,7 +150,7 @@ export default function KLDashboardPage() {
   // --- STATE ---
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [year, setYear] = useState<string>('2026');
-  const [semester, setSemester] = useState<string>('1');
+  const [selectedMonth, setSelectedMonth] = useState<string>('10');
   const [unitFilter, setUnitFilter] = useState<string>('all');
   const [chipFilter, setChipFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
@@ -241,8 +257,10 @@ export default function KLDashboardPage() {
       const session = getSession();
       const headers = { Authorization: `Bearer ${session?.token}` };
 
+      const bulanQuery = selectedMonth !== 'all' ? `&bulan=${selectedMonth}` : '';
+
       // 1. Dashboard Stats
-      const resStats = await fetch(`${API}/stats/dashboard?tahun=${year}`, { headers });
+      const resStats = await fetch(`${API}/stats/dashboard?tahun=${year}${bulanQuery}`, { headers });
       if (resStats.ok) {
         const json = await resStats.json();
         const d = json.data || {};
@@ -287,7 +305,7 @@ export default function KLDashboardPage() {
       }
 
       // 3. Rekening Koran / Selisih Satker
-      const resRk = await fetch(`${API}/rekening-koran?tahun=${year}`, { headers });
+      const resRk = await fetch(`${API}/rekening-koran?tahun=${year}${bulanQuery}`, { headers });
       if (resRk.ok) {
         const jsonRk = await resRk.json();
         const rkData = jsonRk.data || [];
@@ -314,7 +332,7 @@ export default function KLDashboardPage() {
       }
 
       // 4. Dokumen
-      const resDocs = await fetch(`${API}/dokumen?tahun=${year}`, { headers });
+      const resDocs = await fetch(`${API}/dokumen?tahun=${year}${bulanQuery}`, { headers });
       if (resDocs.ok) {
         const jsonDocs = await resDocs.json();
         const docsData = jsonDocs.data || [];
@@ -338,7 +356,7 @@ export default function KLDashboardPage() {
     } catch (err) {
       console.warn("Backend API sync notice: Menggunakan data lokal terstruktur.", err);
     }
-  }, [year]);
+  }, [year, selectedMonth]);
 
   useEffect(() => {
     fetchBackendData();
@@ -391,10 +409,12 @@ export default function KLDashboardPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `MONLAP-KEMENKEU-KONSOLIDASI-${year}-SEM${semester}.csv`;
+    const monthLabel = MONTH_NAMES[selectedMonth] || `Bulan ${selectedMonth}`;
+    const monthSuffix = selectedMonth === 'all' ? 'SEMUA-BULAN' : `BLN-${selectedMonth.padStart(2, '0')}`;
+    a.download = `MONLAP-KEMENKEU-KONSOLIDASI-${year}-${monthSuffix}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`File CSV konsolidasi TA ${year} Semester ${semester} berhasil diunduh.`);
+    toast.success(`File CSV konsolidasi TA ${year} periode ${monthLabel} berhasil diunduh.`);
   };
 
   // Handle Logout Confirmation
@@ -606,7 +626,7 @@ export default function KLDashboardPage() {
                 <div className="period-note">
                   <div>
                     <span>Periode pelaporan aktif</span>
-                    <strong>Semester {semester === "1" ? "I (Ganjil)" : "II (Genap)"} · {year}</strong>
+                    <strong>{selectedMonth === "all" ? "Semua Bulan (Jan - Des)" : `Bulan ${MONTH_NAMES[selectedMonth]}`} · {year}</strong>
                   </div>
                 </div>
               </div>
@@ -630,15 +650,26 @@ export default function KLDashboardPage() {
 
                   <div className="select-wrap">
                     <select
-                      aria-label="Semester"
-                      value={semester}
+                      aria-label="Filter Bulan"
+                      value={selectedMonth}
                       onChange={(e) => {
-                        setSemester(e.target.value);
-                        toast.success(`Data Semester ${e.target.value} dimuat.`);
+                        setSelectedMonth(e.target.value);
+                        toast.success(`Data periode ${MONTH_NAMES[e.target.value] || 'Bulan'} dimuat.`);
                       }}
                     >
-                      <option value="1">Semester 1 (Ganjil)</option>
-                      <option value="2">Semester 2 (Genap)</option>
+                      <option value="all">Semua Bulan (Jan - Des)</option>
+                      <option value="1">Januari</option>
+                      <option value="2">Februari</option>
+                      <option value="3">Maret</option>
+                      <option value="4">April</option>
+                      <option value="5">Mei</option>
+                      <option value="6">Juni</option>
+                      <option value="7">Juli</option>
+                      <option value="8">Agustus</option>
+                      <option value="9">September</option>
+                      <option value="10">Oktober</option>
+                      <option value="11">November</option>
+                      <option value="12">Desember</option>
                     </select>
                   </div>
 
@@ -699,7 +730,7 @@ export default function KLDashboardPage() {
                     <div className="kpi-body">
                       <div>
                         <div className="kpi-metric">{liveStats.compliance}<span>%</span></div>
-                        <div className="kpi-trend">↗ {liveStats.trend} vs semester lalu</div>
+                        <div className="kpi-trend">↗ {liveStats.trend} vs bulan lalu</div>
                       </div>
                       <div className="compliance-ring">
                         <svg viewBox="0 0 46 46">
@@ -1109,7 +1140,7 @@ export default function KLDashboardPage() {
               <div className="workspace-header">
                 <div>
                   <h2>Kepatuhan Satker Berdasarkan Unit Eselon 1</h2>
-                  <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Monitoring agregat persentase penyampaian laporan tepat waktu periode Semester {semester} TA {year}</p>
+                  <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Monitoring agregat persentase penyampaian laporan tepat waktu periode {selectedMonth === "all" ? "Semua Bulan" : `Bulan ${MONTH_NAMES[selectedMonth]}`} TA {year}</p>
                 </div>
                 <button
                   className="primary-button"
