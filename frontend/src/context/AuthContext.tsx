@@ -51,7 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (isIt) {
       router.push('/admin-it');
-    } else if (r === 'eselon_1' || t === 'eselon_1' || t === 'kl') {
+    } else if (t === 'kl') {
+      router.push('/kl');
+    } else if (r === 'eselon_1' || t === 'eselon_1') {
       router.push('/eselon-1');
     } else if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) {
       router.push('/pimpinan');
