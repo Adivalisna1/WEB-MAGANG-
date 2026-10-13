@@ -29,6 +29,7 @@ update_passwords.sql
 script excell/
 script_excell_py/
 scratch_sqlite/
+scripts/
 
 # ============================================================
 # Dependencies
