@@ -13,8 +13,8 @@
    - [Akun 2: `pimpinan_satker` (Pimpinan Satker)](#akun-2-pimpinan_satker-pimpinan-tingkat-satker)
    - [Akun 3: `staff_eselon1` (Staff Ditjen Eselon 1)](#akun-3-staff_eselon1-staff-eselon-1--operator-ditjen-dikti)
    - [Akun 4: `pimpinan_eselon1` (Pimpinan Ditjen Eselon 1)](#akun-4-pimpinan_eselon1-pimpinan-eselon-1--manajemen-ditjen-dikti)
-   - [Akun 5: `operator_kl` (Operator K/L Pusat)](#akun-5-operator_kl-operator-tingkat-kl)
-   - [Akun 6: `admin_kl` (Manajemen K/L Pusat)](#akun-6-admin_kl-manajemen-tingkat-kl)
+   - [Akun 5: `staff_kl` (Staff K/L Pusat)](#akun-5-staff_kl-staff-tingkat-kl-pusat)
+   - [Akun 6: `pimpinan_kl` (Pimpinan K/L Pusat)](#akun-6-pimpinan_kl-manajemen-tingkat-kl-pusat)
    - [Akun 7: `it_admin` (IT Administrator K/L)](#akun-7-it_admin-it-administrator-sistem)
 4. [Tabel Matriks Akses Halaman & Rute URL](#4-tabel-matriks-akses-halaman--rute-url)
 
@@ -30,8 +30,8 @@
 | **2** | **`pimpinan_satker`** | `manajemen` | `satker` | DITJEN DIKTI (PTN BH UGM) | `/pimpinan` | Verifikasi awal satker (`lolos_admin`), audit OCR saldo, pantau kas satker. |
 | **3** | **`staff_eselon1`** | `operator` | `eselon_1` | Ditjen Pendidikan Tinggi (Dikti) | `/eselon-1` | Rekapitulasi 96 satker Dikti, kompilasi RK, input kas AI, upload dokumen. |
 | **4** | **`pimpinan_eselon1`** | `manajemen` | `eselon_1` | Ditjen Pendidikan Tinggi (Dikti) | `/eselon-1` | Verifikasi final dokumen (`terverifikasi`), kembalikan revisi, kelola akun binaan. |
-| **5** | **`operator_kl`** | `operator` | `kl` | Kementerian Pusat (K/L) | `/eselon-1` | Konsolidasi nasional 5 Ditjen (153 Satker), ekspor RK nasional untuk Kemenkeu. |
-| **6** | **`admin_kl`** | `manajemen` | `kl` | Kementerian Pusat (K/L) | `/eselon-1` | Dashboard eksekutif nasional, pengawasan likuiditas & kepatuhan seluruh instansi. |
+| **5** | **`staff_kl`** | `operator` | `kl` | Kementerian Pusat (K/L) | `/kl` | Konsolidasi nasional 5 Ditjen (153 Satker), ekspor RK nasional untuk Kemenkeu. *(Alias: `operator_kl`)* |
+| **6** | **`pimpinan_kl`** | `manajemen` | `kl` | Kementerian Pusat (K/L) | `/kl` | Executive Dashboard FinSight Nasional, pengawasan likuiditas & kepatuhan 153 satker. *(Alias: `admin_kl`)* |
 | **7** | **`it_admin`** | `operator`* | `kl` | Server IT K/L (Super Admin) | `/admin-it` | Kelola master user se-Indonesia, master satker, reset password, live audit log. |
 
 *\*Catatan: `it_admin` memiliki izin khusus `permissions.can_manage_users = true` dan `is_it = true`.*
@@ -246,12 +246,12 @@
 
 ---
 
-### AKUN 5: `operator_kl` (Operator Tingkat K/L Pusat)
-* **Kredensial:** `operator_kl` / `Password@123`
+### AKUN 5: `staff_kl` (Staff Tingkat K/L Pusat)
+* **Kredensial:** `staff_kl` / `Password@123` *(Dapat juga login dengan alias: `operator_kl`)*
 * **Instansi:** Kementerian Pusat (K/L)
 * **Role & Tingkat:** `operator` di tingkat `kl` (Biro Keuangan / Tim Konsolidasi Nasional)
-* **Landing Page:** `/eselon-1`
-* **Layout / Sidebar:** `Eselon1Sidebar`
+* **Landing Page:** `/kl`
+* **Layout / Sidebar:** `Portal Eksekutif K/L`
 
 #### 📌 Menu yang Muncul di Sidebar:
 1. **Dashboard** (`/eselon-1`)
@@ -278,12 +278,12 @@
 
 ---
 
-### AKUN 6: `admin_kl` (Manajemen Tingkat K/L Pusat)
-* **Kredensial:** `admin_kl` / `Password@123`
+### AKUN 6: `pimpinan_kl` (Manajemen Tingkat K/L Pusat)
+* **Kredensial:** `pimpinan_kl` / `Password@123` *(Dapat juga login dengan alias: `admin_kl`)*
 * **Instansi:** Kementerian Pusat (K/L)
 * **Role & Tingkat:** `manajemen` di tingkat `kl` (Menteri / Sekjen / Kepala Biro Keuangan)
-* **Landing Page:** `/eselon-1`
-* **Layout / Sidebar:** `Eselon1Sidebar`
+* **Landing Page:** `/kl`
+* **Layout / Sidebar:** `Portal Eksekutif K/L`
 
 #### 📌 Menu yang Muncul di Sidebar:
 1. **Dashboard** (`/eselon-1`)
@@ -363,9 +363,10 @@
 
 ## 4. TABEL MATRIKS AKSES HALAMAN & RUTE URL
 
-| Rute URL Frontend | Nama Fitur / Halaman | `staff_satker` | `pimpinan_satker` | `staff_eselon1` | `pimpinan_eselon1` | `operator_kl` | `admin_kl` | `it_admin` |
+| Rute URL Frontend | Nama Fitur / Halaman | `staff_satker` | `pimpinan_satker` | `staff_eselon1` | `pimpinan_eselon1` | `staff_kl` | `pimpinan_kl` | `it_admin` |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | `/login` | Halaman Masuk Akun | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `/kl` | Dashboard Eksekutif K/L | ❌ | ❌ | ❌ | ❌ | ✅ *(Utama)* | ✅ *(Utama)* | ✅ |
 | `/staff/dokumen` | Kelola & Upload Dokumen Satker | ✅ *(Utama)* | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | `/staff/rekening-koran` | Upload Rekening Koran Satker | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | `/staff/pencatatan` | Input Transaksi Kas Satker | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |

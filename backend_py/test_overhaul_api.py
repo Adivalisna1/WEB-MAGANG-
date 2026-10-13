@@ -48,6 +48,8 @@ def run_tests():
         {"username": "pimpinan_satker", "expected_role": "manajemen", "expected_tingkat": "satker"},
         {"username": "staff_eselon1", "expected_role": "operator", "expected_tingkat": "eselon_1"},
         {"username": "pimpinan_eselon1", "expected_role": "manajemen", "expected_tingkat": "eselon_1"},
+        {"username": "staff_kl", "expected_role": "operator", "expected_tingkat": "kl"},
+        {"username": "pimpinan_kl", "expected_role": "manajemen", "expected_tingkat": "kl"},
         {"username": "operator_kl", "expected_role": "operator", "expected_tingkat": "kl"},
         {"username": "admin_kl", "expected_role": "manajemen", "expected_tingkat": "kl"},
         {"username": "it_admin", "expected_role": "operator", "expected_tingkat": "kl"},
