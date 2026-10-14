@@ -214,16 +214,17 @@ export default function KertasKerjaPage() {
 
     filteredData.forEach(item => {
       const bankName = (item.nama_bank || 'Bank Lainnya').trim();
-      if (!groups[bankName]) {
-        groups[bankName] = {
+      const bKey = bankName.toUpperCase();
+      if (!groups[bKey]) {
+        groups[bKey] = {
           nama_bank: bankName,
           total_saldo: 0,
           rekening_list: []
         };
       }
       const saldo = Number(item.saldo_akhir_bulan || 0);
-      groups[bankName].total_saldo += saldo;
-      groups[bankName].rekening_list.push({
+      groups[bKey].total_saldo += saldo;
+      groups[bKey].rekening_list.push({
         id: item.id,
         no_rek: item.nomor_rekening_bank || '-',
         nama_rek: item.nama_rekening || '-',
@@ -238,7 +239,7 @@ export default function KertasKerjaPage() {
   const bankTotalMap = useMemo(() => {
     const map: Record<string, number> = {};
     filteredData.forEach(item => {
-      const b = (item.nama_bank || 'Bank Lainnya').trim();
+      const b = (item.nama_bank || 'Bank Lainnya').trim().toUpperCase();
       map[b] = (map[b] || 0) + Number(item.saldo_akhir_bulan || 0);
     });
     return map;
