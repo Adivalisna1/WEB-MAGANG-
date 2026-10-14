@@ -10,9 +10,9 @@ export default function NotFound() {
         Halaman atau dokumen yang kamu cari tidak ditemukan atau sudah tidak tersedia.
       </p>
       <div className="flex gap-3">
-        <Link href="/laporan" className="btn-primary flex items-center gap-2">
+        <Link href="/login" className="btn-primary flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
-          Dashboard Laporan
+          Masuk ke Dashboard
         </Link>
         <Link href="/" className="btn-secondary flex items-center gap-2 text-sm">
           Beranda

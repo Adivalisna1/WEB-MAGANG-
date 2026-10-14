@@ -90,18 +90,6 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen, isCollapsed, se
       </nav>
 
       <div className="p-3 border-t border-slate-100 flex flex-col gap-2 bg-slate-50/50">
-        <Link
-          href="/laporan"
-          className={clsx(
-            "flex items-center text-slate-600 hover:text-white bg-white hover:bg-[#1E90FF] rounded-xl font-medium transition-all group border border-slate-200/80 shadow-xs",
-            isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2 text-xs w-full'
-          )}
-          title={isCollapsed ? "Dashboard Laporan" : undefined}
-        >
-          <Home className="w-4 h-4 text-slate-500 shrink-0 group-hover:text-white" />
-          {!isCollapsed && <span>Dashboard Laporan Publik</span>}
-        </Link>
-
         {/* User Profile Card */}
         <div className={clsx(
           "flex items-center bg-white border border-slate-200/80 rounded-xl p-2 transition-all shadow-xs",

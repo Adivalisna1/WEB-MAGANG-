@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props) {
   try {
     const res = await getDokumenById(Number(params.id));
     return {
-      title: `${res.data.judul} — Dashboard Laporan`,
+      title: `${res.data.judul} — Sistem Informasi Pelaporan`,
       description: res.data.deskripsi ?? `Unduh dokumen ${res.data.judul} tahun ${res.data.tahun}`,
     };
   } catch {
@@ -43,11 +43,11 @@ export default async function DokumenDetailPage({ params }: Props) {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumb */}
       <Link
-        href="/laporan"
+        href="/"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Kembali ke daftar dokumen
+        Kembali ke beranda
       </Link>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -103,7 +103,7 @@ export default async function DokumenDetailPage({ params }: Props) {
               href={getDownloadUrl(dokumen.id)}
               fileName={dokumen.file_nama || `dokumen-${dokumen.id}`}
             />
-            <Link href="/laporan" className="btn-secondary flex items-center justify-center gap-2 py-3 text-base">
+            <Link href="/" className="btn-secondary flex items-center justify-center gap-2 py-3 text-base">
               <ArrowLeft className="w-5 h-5" />
               Kembali
             </Link>

@@ -17,7 +17,7 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-400" />
-            <span className="font-semibold text-white">Dashboard Laporan</span>
+            <span className="font-semibold text-white">Sistem Informasi Laporan</span>
           </div>
           <p className="text-sm text-center">
             Platform dokumen laporan instansi — akses wajib login.

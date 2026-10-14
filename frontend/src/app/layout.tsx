@@ -3,7 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 export const metadata: Metadata = {
-  title: 'Dashboard Laporan',
+  title: 'Sistem Informasi Pelaporan',
   description: 'Platform pengelolaan dan pengarsipan dokumen laporan instansi secara digital, aman, dan terstruktur.',
 };
 

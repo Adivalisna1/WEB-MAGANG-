@@ -100,7 +100,7 @@ export default function LandingPage() {
 
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
             Selamat Datang di<br />
-            <span className="text-amber-400">Dashboard Laporan</span>
+            <span className="text-amber-400">Sistem Informasi Pelaporan</span>
           </h1>
 
           <p className="text-white/65 text-base sm:text-lg leading-relaxed mb-10">
@@ -124,21 +124,14 @@ export default function LandingPage() {
               Buka Dashboard
             </Link>
           ) : (
-            /* Belum login → 2 tombol */
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            /* Belum login → Tombol Masuk */
+            <div className="flex items-center justify-center">
               <Link
                 href="/login"
                 className="inline-flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#0f2447] font-bold text-base px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(251,191,36,0.35)] hover:shadow-[0_12px_40px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 transition-all duration-250"
               >
                 <LogIn className="w-5 h-5" />
                 Masuk ke Dashboard
-              </Link>
-              <Link
-                href="/laporan"
-                className="inline-flex items-center gap-3 bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white/50 text-white font-semibold text-base px-8 py-4 rounded-xl hover:-translate-y-0.5 transition-all duration-250"
-              >
-                <Eye className="w-5 h-5" />
-                Dashboard Laporan
               </Link>
             </div>
           )}

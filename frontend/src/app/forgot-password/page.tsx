@@ -166,7 +166,7 @@ export default function ForgotPasswordPage() {
               <div>
                 <h4 className="text-sm font-bold text-white">Buat Kata Sandi Baru</h4>
                 <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                  Perbarui sandi baru Anda dan langsung masuk kembali ke dashboard laporan.
+                  Perbarui sandi baru Anda dan langsung masuk kembali ke dashboard aplikasi.
                 </p>
               </div>
             </div>
