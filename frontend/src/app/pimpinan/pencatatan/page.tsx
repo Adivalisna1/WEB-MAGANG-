@@ -34,6 +34,22 @@ const sortKategoriDokumen = (cats: any[]) => {
   });
 };
 
+// Helper tampilkan periode (fallback otomatis dari tanggal jika kolom periode kosong)
+const getDisplayPeriode = (periode?: string, tanggal?: string) => {
+  if (periode && periode.trim() && periode !== '-' && periode !== 'None') return periode;
+  if (tanggal) {
+    try {
+      const d = new Date(tanggal);
+      if (!isNaN(d.getTime())) {
+        const m = d.toLocaleDateString('id-ID', { month: 'long' });
+        const y = d.getFullYear();
+        return `${m.charAt(0).toUpperCase() + m.slice(1)} ${y}`;
+      }
+    } catch {}
+  }
+  return '-';
+};
+
 // Helper buka file: PDF/DOCX → preview tab baru, Excel → auto download
 const openFile = async (bukti_file: string, token: string) => {
   const url = bukti_file.startsWith('http')
@@ -218,11 +234,14 @@ export default function PimpinanpencatatanPage() {
   const filteredData = transaksi.filter(t => {
     const matchKategori = !filterKategori || String(t.id_kategori) === filterKategori;
     const matchJenis = !filterJenis || t.jenis === filterJenis;
-    const matchPeriode = !filterPeriode || t.periode === filterPeriode;
+    const tPeriode = getDisplayPeriode(t.periode, t.tanggal);
+    const matchPeriode = !filterPeriode || tPeriode.toLowerCase() === filterPeriode.toLowerCase();
     return matchKategori && matchJenis && matchPeriode;
   });
 
-  const uniquePeriode = Array.from(new Set(transaksi.map(t => t.periode).filter(Boolean))).sort();
+  const uniquePeriode = Array.from(
+    new Set(transaksi.map(t => getDisplayPeriode(t.periode, t.tanggal)).filter(p => p !== '-'))
+  ).sort();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -605,7 +624,7 @@ export default function PimpinanpencatatanPage() {
                 <tr key={t.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2.5 py-1 rounded-md text-xs">
-                      {t.periode || '-'}
+                      {getDisplayPeriode(t.periode, t.tanggal)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-700 font-medium">{t.nama_kategori}</td>

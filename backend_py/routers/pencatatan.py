@@ -120,6 +120,29 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
         """
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
+
+        # Fallback nama bulan Indonesia jika kolom periode kosong
+        nama_bulan = {
+            1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+            5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+            9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+        }
+        for r in rows:
+            if not r.get("periode") or str(r.get("periode")).strip() in ["-", "None", ""]:
+                d = r.get("tanggal")
+                if d:
+                    if hasattr(d, "month") and hasattr(d, "year"):
+                        r["periode"] = f"{nama_bulan.get(d.month, 'Januari')} {d.year}"
+                    else:
+                        try:
+                            parts = str(d).split("-")
+                            m_idx = int(parts[1])
+                            r["periode"] = f"{nama_bulan.get(m_idx, 'Januari')} {parts[0]}"
+                        except Exception:
+                            r["periode"] = f"{datetime.date.today().strftime('%B %Y')}"
+                else:
+                    r["periode"] = "Periode Berjalan"
+
     return {"success": True, "data": rows}
 
 @router.post("")
@@ -175,10 +198,20 @@ async def create_akuntansi(
             
             # Resolve nominal / saldo_akhir
             final_nominal = float(saldo_akhir if saldo_akhir is not None else (nominal if nominal is not None else 0))
-            # Resolve tanggal (diambil otomatis saat user import/upload jika tidak dispesifikasi)
-            final_tanggal = tanggal.strip() if tanggal and tanggal.strip() else datetime.date.today().isoformat()
-            # Resolve periode
+            # Resolve periode (jika kosong, ambil nama bulan dan tahun dari final_tanggal)
             final_periode = periode.strip() if periode and periode.strip() else None
+            if not final_periode and final_tanggal:
+                nama_bulan = {
+                    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+                    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+                    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+                }
+                try:
+                    parts = final_tanggal.split("-")
+                    m_idx = int(parts[1])
+                    final_periode = f"{nama_bulan.get(m_idx, 'Januari')} {parts[0]}"
+                except Exception:
+                    final_periode = datetime.date.today().strftime("%B %Y")
             # Resolve uraian
             final_uraian = uraian.strip() if uraian and uraian.strip() else f"Pencatatan {cat_res['nama'] if cat_res else 'Dokumen'} - {nama_bank or 'Bank'} ({final_periode or 'Periode Berjalan'})"
             final_jenis = jenis or "debit"

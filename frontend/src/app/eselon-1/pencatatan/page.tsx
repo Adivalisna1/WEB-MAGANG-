@@ -34,6 +34,22 @@ const sortKategoriDokumen = (cats: any[]) => {
   });
 };
 
+// Helper tampilkan periode (fallback otomatis dari tanggal jika kolom periode kosong)
+const getDisplayPeriode = (periode?: string, tanggal?: string) => {
+  if (periode && periode.trim() && periode !== '-' && periode !== 'None') return periode;
+  if (tanggal) {
+    try {
+      const d = new Date(tanggal);
+      if (!isNaN(d.getTime())) {
+        const m = d.toLocaleDateString('id-ID', { month: 'long' });
+        const y = d.getFullYear();
+        return `${m.charAt(0).toUpperCase() + m.slice(1)} ${y}`;
+      }
+    } catch {}
+  }
+  return '-';
+};
+
 // Helper buka file: PDF/DOCX → preview tab baru, Excel → auto download
 const openFile = async (bukti_file: string, token: string) => {
   const url = bukti_file.startsWith('http')
@@ -226,13 +242,16 @@ export default function Eselon1PencatatanPage() {
     const matchSatker = !filterSatker || t.satker_nama === filterSatker;
     const matchKategori = !filterKategori || String(t.id_kategori) === filterKategori;
     const matchJenis = !filterJenis || t.jenis === filterJenis;
-    const matchPeriode = !filterPeriode || t.periode === filterPeriode;
+    const tPeriode = getDisplayPeriode(t.periode, t.tanggal);
+    const matchPeriode = !filterPeriode || tPeriode.toLowerCase() === filterPeriode.toLowerCase();
     const matchUraian = !searchUraian || t.uraian?.toLowerCase().includes(searchUraian.toLowerCase());
     return matchSatker && matchKategori && matchJenis && matchPeriode && matchUraian;
   });
 
   const uniqueSatker = Array.from(new Set(transaksi.map(t => t.satker_nama).filter(Boolean))).sort();
-  const uniquePeriode = Array.from(new Set(transaksi.map(t => t.periode).filter(Boolean))).sort();
+  const uniquePeriode = Array.from(
+    new Set(transaksi.map(t => getDisplayPeriode(t.periode, t.tanggal)).filter(p => p !== '-'))
+  ).sort();
 
   const totalDebit = filteredData.filter(t => t.jenis === 'debit').reduce((acc, t) => acc + Number(t.nominal || 0), 0);
   const totalKredit = filteredData.filter(t => t.jenis === 'kredit').reduce((acc, t) => acc + Number(t.nominal || 0), 0);
@@ -510,7 +529,7 @@ export default function Eselon1PencatatanPage() {
                   <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded text-[11px]">
-                        {row.periode || '—'}
+                        {getDisplayPeriode(row.periode, row.tanggal)}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
@@ -802,7 +821,7 @@ export default function Eselon1PencatatanPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Periode Laporan</span>
                   <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                    {selectedDetail.periode || '—'}
+                    {getDisplayPeriode(selectedDetail.periode, selectedDetail.tanggal)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

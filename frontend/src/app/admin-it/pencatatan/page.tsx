@@ -7,6 +7,22 @@ import clsx from 'clsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+// Helper tampilkan periode (fallback otomatis dari tanggal jika kolom periode kosong)
+const getDisplayPeriode = (periode?: string, tanggal?: string) => {
+  if (periode && periode.trim() && periode !== '-' && periode !== 'None') return periode;
+  if (tanggal) {
+    try {
+      const d = new Date(tanggal);
+      if (!isNaN(d.getTime())) {
+        const m = d.toLocaleDateString('id-ID', { month: 'long' });
+        const y = d.getFullYear();
+        return `${m.charAt(0).toUpperCase() + m.slice(1)} ${y}`;
+      }
+    } catch {}
+  }
+  return '-';
+};
+
 export default function AdminpencatatanPage() {
   const { token } = useAuth();
   
@@ -180,7 +196,7 @@ export default function AdminpencatatanPage() {
                   <tr key={t.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded text-xs">
-                        {t.periode || '-'}
+                        {getDisplayPeriode(t.periode, t.tanggal)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
