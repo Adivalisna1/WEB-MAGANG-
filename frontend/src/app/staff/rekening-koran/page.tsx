@@ -5,11 +5,38 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { getSession } from '@/lib/auth';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
-import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X, Building2, CreditCard } from 'lucide-react';
+import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X, Building2, CreditCard, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+const BULAN_OPTIONS = [
+  { val: '1', label: 'Januari' },
+  { val: '2', label: 'Februari' },
+  { val: '3', label: 'Maret' },
+  { val: '4', label: 'April' },
+  { val: '5', label: 'Mei' },
+  { val: '6', label: 'Juni' },
+  { val: '7', label: 'Juli' },
+  { val: '8', label: 'Agustus' },
+  { val: '9', label: 'September' },
+  { val: '10', label: 'Oktober' },
+  { val: '11', label: 'November' },
+  { val: '12', label: 'Desember' },
+];
+
+const formatPeriodeDisplay = (periode?: string | number, tahun?: number) => {
+  if (!periode && !tahun) return '-';
+  const pStr = String(periode || '').trim();
+  const found = BULAN_OPTIONS.find(b => b.val === pStr || b.label.toLowerCase() === pStr.toLowerCase());
+  const namaBulan = found ? found.label : pStr;
+  if (!namaBulan && tahun) return `${tahun}`;
+  if (tahun && !namaBulan.includes(String(tahun))) {
+    return `${namaBulan} ${tahun}`;
+  }
+  return namaBulan || '-';
+};
 
 interface KertasKerja {
   id: number;
@@ -201,7 +228,8 @@ export default function KertasKerjaPage() {
     const matchSearch = !searchQ || d.nama_bank?.toLowerCase().includes(searchQ.toLowerCase()) || d.nomor_rekening_bank?.includes(searchQ) || d.nama_rekening?.toLowerCase().includes(searchQ.toLowerCase());
     const matchSatker = !filterSatker || d.satker_id === Number(filterSatker);
     const matchBank = !filterBank || (d.nama_bank || 'Bank Lainnya').toLowerCase() === filterBank.toLowerCase();
-    return matchSearch && matchSatker && matchBank;
+    const matchPeriode = !filterPeriode || String(d.periode).trim() === filterPeriode.trim() || formatPeriodeDisplay(d.periode).toLowerCase().includes(filterPeriode.toLowerCase());
+    return matchSearch && matchSatker && matchBank && matchPeriode;
   });
 
   // Agregasi: 1. Nama per Bank, 2. No Rek per Bank, 3. Saldo per Rek, 4. Total Saldo per Bank
@@ -409,6 +437,17 @@ export default function KertasKerjaPage() {
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
+
+            <select
+              value={filterPeriode}
+              onChange={e => setFilterPeriode(e.target.value)}
+              className="text-xs font-medium border border-gray-300 rounded-xl px-3 py-2 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">Semua Periode</option>
+              {BULAN_OPTIONS.map(b => (
+                <option key={b.val} value={b.val}>{b.label}</option>
+              ))}
+            </select>
             
             {['eselon_1', 'pimpinan_satker', 'admin_it'].includes(userRole) && (
               <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-xs font-medium border border-gray-300 rounded-xl px-3 py-2 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20">
@@ -427,7 +466,7 @@ export default function KertasKerjaPage() {
           <table className="w-full text-xs text-left min-w-[1100px]">
             <thead className="bg-gray-50/90 border-b border-gray-200 text-gray-600 uppercase font-bold tracking-wider">
               <tr>
-                <th className="px-4 py-3.5 w-[100px]">Satker</th>
+                <th className="px-4 py-3.5 w-[130px]">Periode</th>
                 <th className="px-4 py-3.5 w-[180px]">1. Bank</th>
                 <th className="px-4 py-3.5 w-[160px]">2. No Rekening</th>
                 <th className="px-4 py-3.5">Nama Rekening</th>
@@ -448,7 +487,17 @@ export default function KertasKerjaPage() {
                       <tr key={d.id} className="hover:bg-blue-50/30 transition-colors group">
                         {isEditing ? (
                           <>
-                            <td className="px-3 py-2 text-gray-500 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
+                            <td className="px-1.5 py-2">
+                              <select
+                                value={editRowData.periode || '1'}
+                                onChange={e => setEditRowData({...editRowData, periode: e.target.value})}
+                                className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-medium bg-white"
+                              >
+                                {BULAN_OPTIONS.map(b => (
+                                  <option key={b.val} value={b.val}>{b.label}</option>
+                                ))}
+                              </select>
+                            </td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({...editRowData, nama_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-semibold"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({...editRowData, nomor_rekening_bank: e.target.value})} className="w-full text-xs font-mono border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({...editRowData, nama_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"/></td>
@@ -468,7 +517,12 @@ export default function KertasKerjaPage() {
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-700 font-medium whitespace-nowrap cursor-pointer">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span>{formatPeriodeDisplay(d.periode, d.tahun)}</span>
+                              </div>
+                            </td>
                             {/* 1. Nama per Bank */}
                             <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-semibold cursor-pointer">
                               <div className="flex items-center gap-1.5">
@@ -510,7 +564,18 @@ export default function KertasKerjaPage() {
                   
                 {!isEselon1 && (
                   <tr className="bg-emerald-50/30 border-t-2 border-emerald-100">
-                    <td className="px-3 py-2 text-[10px] text-emerald-700 font-bold uppercase tracking-wider text-center bg-emerald-100/50 rounded-l">Data Baru</td>
+                    <td className="px-1.5 py-2">
+                      <select
+                        value={newRow.periode || '1'}
+                        onChange={e => setNewRow({...newRow, periode: e.target.value})}
+                        className="w-full text-xs font-semibold border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none bg-white text-emerald-800"
+                        title="Pilih Bulan Periode"
+                      >
+                        {BULAN_OPTIONS.map(b => (
+                          <option key={b.val} value={b.val}>{b.label}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="px-1.5 py-2"><input type="text" placeholder="1. Nama Bank..." value={newRow.nama_bank} onChange={e => setNewRow({...newRow, nama_bank: e.target.value})} className="w-full text-xs font-semibold border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
                     <td className="px-1.5 py-2"><input type="text" placeholder="2. No Rekening..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({...newRow, nomor_rekening_bank: e.target.value})} className="w-full text-xs font-mono border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
                     <td className="px-1.5 py-2"><input type="text" placeholder="Nama Rekening..." value={newRow.nama_rekening} onChange={e => setNewRow({...newRow, nama_rekening: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
