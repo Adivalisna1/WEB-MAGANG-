@@ -47,8 +47,16 @@ async def get_dashboard_stats(
                 params.append(satker)
                 kk_filter += " AND satker_id = %s"
                 kk_params.append(satker)
-                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
-                doc_params.append(satker)
+                if user_eselon_id:
+                    user_filter += " AND satker_id IN (SELECT id FROM satkers WHERE eselon_1_id = %s)"
+                    params.append(user_eselon_id)
+                    kk_filter += " AND satker_id IN (SELECT id FROM satkers WHERE eselon_1_id = %s)"
+                    kk_params.append(user_eselon_id)
+                    doc_filter = "JOIN users u ON d.uploaded_by = u.id LEFT JOIN satkers s ON s.id = u.satker_id WHERE u.satker_id = %s AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+                    doc_params.extend([satker, user_eselon_id, user_eselon_id])
+                else:
+                    doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = %s"
+                    doc_params.append(satker)
             elif user_eselon_id:
                 user_filter += " AND (eselon_1_id = %s OR satker_id IN (SELECT id FROM satkers WHERE eselon_1_id = %s))"
                 params.extend([user_eselon_id, user_eselon_id])
