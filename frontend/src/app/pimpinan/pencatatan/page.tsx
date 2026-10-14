@@ -174,10 +174,10 @@ export default function PimpinanpencatatanPage() {
 
             // 2. Auto deteksi nama Bank dari berkas
             if (result.bank) {
-              const bName = result.bank.toLowerCase();
+              const bName = result.bank.toLowerCase().trim();
               let matchedBank = BANK_BUMN_LIST.find(b => {
                 const cleanB = b.toLowerCase().replace('bank ', '').trim();
-                return bName.includes(cleanB) || cleanB.includes(bName);
+                return bName.includes(cleanB) || cleanB.includes(bName) || (bName.includes('bsi') && b.toLowerCase().includes('bsi'));
               });
               if (!matchedBank) {
                 matchedBank = result.bank || '';
@@ -539,7 +539,7 @@ export default function PimpinanpencatatanPage() {
                     >
                       <option value="">Pilih Bank...</option>
                       {formData.nama_bank && !BANK_BUMN_LIST.includes(formData.nama_bank) && (
-                        <option value={formData.nama_bank}>{formData.nama_bank} (Hasil Baca AI)</option>
+                        <option value={formData.nama_bank}>{formData.nama_bank}</option>
                       )}
                       {BANK_BUMN_LIST.map(b => (
                         <option key={b} value={b}>{b}</option>
