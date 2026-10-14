@@ -43,16 +43,7 @@ export default function KertasKerjaPage() {
   const [dataList, setDataList] = useState<KertasKerja[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Excel state
-  const [excelData, setExcelData] = useState<any[]>([]);
-  const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
-  const [excelFileName, setExcelFileName] = useState('');
-  const [dragging, setDragging] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
   // Filter state
-  const [activeTab, setActiveTab] = useState<'excel' | 'history'>('history');
   const [searchQ, setSearchQ] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
@@ -66,9 +57,6 @@ export default function KertasKerjaPage() {
 
   // New Row State
   const [newRow, setNewRow] = useState(initialRowState);
-
-  // Selected Satker for Excel Upload
-  const [selectedUploadSatker, setSelectedUploadSatker] = useState<string>('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -102,71 +90,7 @@ export default function KertasKerjaPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleExcelFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      
-      if (jsonData.length > 0) {
-        setExcelHeaders(Object.keys(jsonData[0] as object));
-        setExcelData(jsonData);
-        setExcelFileName(file.name);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleExcelFile(file);
-  };
-
-  const downloadTemplate = () => {
-    const templateData = [{ 
-      'Kode Satker': '191',
-      'Nama Satker': 'BPS Provinsi Jawa Tengah',
-      'Nama Bank': 'BRI',
-      'Nomor Rekening Bank': '0123456789',
-      'Nama Rekening': 'BPS JATENG',
-      'Nomor Pembukaan Rekening': 'SK-123/2026',
-      'Tanggal Pembukaan Rekening': '2026-01-01',
-      'SALDO PER AKHIR BULAN': 1000000,
-      'SALDO PER AKHIR BULAN (RK)': 500000,
-      'LAPORAN SALDO PER AKHIR BULAN (SALDO REKENING)': 1500000,
-      'SALDO PER AKHIR BULAN (RPL/LPJ)': 0,
-      'KETERANGAN': 'Aman'
-    }];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Rekening Koran');
-    XLSX.writeFile(wb, 'Template_Rekening_Koran.xlsx');
-  };
-
-  const saveToDatabase = async () => {
-    if (excelData.length === 0) return;
-    setIsSaving(true);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/rekening-koran/bulk`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token}` },
-        body: JSON.stringify({ data: excelData, satker_id: selectedUploadSatker ? parseInt(selectedUploadSatker) : null })
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success('Data berhasil disimpan ke database!');
-        setExcelData([]); setExcelFileName(''); setActiveTab('history'); fetchData();
-      } else {
-        toast.error('Gagal menyimpan: ' + result.message);
-      }
-    } catch (err) { toast.error('Terjadi kesalahan server saat menyimpan.'); } 
-    finally { setIsSaving(false); }
-  };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
@@ -267,9 +191,7 @@ export default function KertasKerjaPage() {
 
   const isEselon1 = userRole === 'eselon_1';
 
-  useEffect(() => {
-    if (isEselon1 && activeTab === 'excel') setActiveTab('history');
-  }, [isEselon1, activeTab]);
+
 
   return (
     <div className="space-y-6">
@@ -280,82 +202,12 @@ export default function KertasKerjaPage() {
             Rekening Koran
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {isEselon1 ? 'Laporan Riwayat Rekening Koran Satker' : 'Kelola dan impor Rekening Koran via Excel.'}
+            Laporan dan Riwayat Rekening Koran Satker.
           </p>
         </div>
       </div>
 
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max">
-        {!isEselon1 && (
-          <button onClick={() => setActiveTab('excel')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'excel' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-            <Upload className="w-4 h-4" /> Import Excel
-          </button>
-        )}
-        <button onClick={() => setActiveTab('history')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-          <Table2 className="w-4 h-4" /> Data Rekening Koran
-        </button>
-      </div>
-
-      {activeTab === 'excel' && !isEselon1 && (
-        <div className="space-y-4">
-          {excelData.length === 0 ? (
-            <div
-              onDragOver={e => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${dragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 hover:bg-gray-50'}`}
-            >
-              <FileSpreadsheet className={`w-14 h-14 mx-auto mb-3 ${dragging ? 'text-emerald-500' : 'text-gray-300'}`} />
-              <p className="text-lg font-semibold text-gray-700">Drag & drop file Excel di sini</p>
-              <p className="text-sm text-gray-400 mt-1 mb-4">Gunakan format kolom yang sesuai dengan template (Bank, No Rekening, Saldo, dll).</p>
-              <button onClick={(e) => { e.stopPropagation(); downloadTemplate(); }} className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors mx-auto">
-                <Download className="w-4 h-4" /> Download Template Excel
-              </button>
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="w-8 h-8 text-emerald-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">{excelFileName}</p>
-                    <p className="text-xs text-gray-500">{excelData.length} baris siap disimpan</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  {['admin_it', 'pimpinan_satker'].includes(userRole) && satkerList.length > 0 && (
-                    <select value={selectedUploadSatker} onChange={e => setSelectedUploadSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
-                      <option value="">-- Otomatis dari Excel (atau pilih) --</option>
-                      {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
-                    </select>
-                  )}
-                  <button onClick={() => setExcelData([])} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg">Batal</button>
-                  <button onClick={saveToDatabase} disabled={isSaving} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Simpan ke Database
-                  </button>
-                </div>
-              </div>
-              <div className="overflow-auto max-h-[400px] border rounded-lg">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>{excelHeaders.map(h => <th key={h} className="px-4 py-3 font-medium text-gray-500 whitespace-nowrap">{h}</th>)}</tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {excelData.slice(0, 50).map((row, i) => (
-                      <tr key={i}>{excelHeaders.map(h => <td key={h} className="px-4 py-2 whitespace-nowrap text-gray-700">{String(row[h] || '')}</td>)}</tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => e.target.files?.[0] && handleExcelFile(e.target.files[0])} />
-        </div>
-      )}
-
-      {activeTab === 'history' && (
-        <div className="space-y-4">
+      <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 flex-1 min-w-[200px] max-w-sm">
@@ -451,7 +303,6 @@ export default function KertasKerjaPage() {
             </table>
           </div>
         </div>
-      )}
     </div>
   );
 }

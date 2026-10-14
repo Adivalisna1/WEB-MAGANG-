@@ -73,16 +73,23 @@ export default function Eselon1PencatatanPage() {
   const [searchUraian, setSearchUraian] = useState('');
 
   // Form State
+  const currentMonthName = new Date().toLocaleDateString('id-ID', { month: 'long' });
+  const currentYear = new Date().getFullYear();
+  const defaultPeriode = `${currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1)} ${currentYear}`;
+  const todayDate = new Date().toISOString().split('T')[0];
+
   const [showForm, setShowForm] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
   
   const [formData, setFormData] = useState({
-    tanggal: '',
+    tanggal: todayDate,
+    periode: defaultPeriode,
     satker_id: '',
     uraian: '',
     jenis: 'debit',
     id_kategori: '',
     nominal: '',
+    saldo_akhir: '',
     catatan_audit: '',
     nomor_rekening_bank: '',
     nama_rekening: '',
@@ -139,6 +146,9 @@ export default function Eselon1PencatatanPage() {
 
     if (!selectedFile) return;
 
+    // Tanggal otomatis diset ke tanggal saat berkas diimport
+    const nowIso = new Date().toISOString().split('T')[0];
+
     const ext = selectedFile.name.split('.').pop()?.toLowerCase();
     if (['pdf', 'xlsx', 'xls'].includes(ext || '')) {
       setAiScanning(true);
@@ -161,6 +171,7 @@ export default function Eselon1PencatatanPage() {
 
           setFormData(prev => {
             const updated = { ...prev };
+            updated.tanggal = nowIso;
 
             if (isRekeningKoran) {
               const rkCat = sortedKategori.find(k =>
@@ -184,20 +195,13 @@ export default function Eselon1PencatatanPage() {
               updated.nama_bank = matchedBank || '';
             }
 
-            if (result.nominal !== undefined && result.nominal !== null && !prev.nominal) {
+            if (result.nominal !== undefined && result.nominal !== null) {
               updated.nominal = String(result.nominal);
+              updated.saldo_akhir = String(result.nominal);
             }
 
             if (result.nomor_rekening && !prev.nomor_rekening_bank) {
               updated.nomor_rekening_bank = String(result.nomor_rekening);
-            }
-
-            if (!prev.uraian) {
-              if (result.bank) {
-                updated.uraian = `Pencatatan Rekening Koran ${result.bank}`;
-              } else if (result.judul) {
-                updated.uraian = `Pencatatan ${result.judul}`;
-              }
             }
 
             return updated;
@@ -238,18 +242,24 @@ export default function Eselon1PencatatanPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitLoading(true);
-    try {
-      const finalBank = formData.nama_bank === 'Bank Lainnya' && customBank.trim()
-        ? customBank.trim()
-        : formData.nama_bank;
+    const katName = sortedKategori.find(k => String(k.id) === formData.id_kategori)?.nama_kategori || 'Dokumen';
+    const finalBank = formData.nama_bank === 'Bank Lainnya' && customBank.trim()
+      ? customBank.trim()
+      : formData.nama_bank;
+    const finalUraian = formData.uraian?.trim() || `Pencatatan ${katName} - ${finalBank || 'Bank'} (${formData.periode})`;
+    const finalTanggal = formData.tanggal || todayDate;
+    const finalNominal = formData.saldo_akhir || formData.nominal || '0';
 
+    try {
       const data = new FormData();
-      data.append('tanggal', formData.tanggal);
+      data.append('tanggal', finalTanggal);
+      data.append('periode', formData.periode);
       if (formData.satker_id) data.append('satker_id', formData.satker_id);
-      data.append('uraian', formData.uraian);
-      data.append('jenis', formData.jenis);
+      data.append('uraian', finalUraian);
+      data.append('jenis', 'debit');
       data.append('id_kategori', formData.id_kategori);
-      data.append('nominal', formData.nominal);
+      data.append('nominal', finalNominal);
+      data.append('saldo_akhir', finalNominal);
       data.append('catatan_audit', formData.catatan_audit);
       data.append('nomor_rekening_bank', formData.nomor_rekening_bank);
       data.append('nama_rekening', formData.nama_rekening);
@@ -267,12 +277,14 @@ export default function Eselon1PencatatanPage() {
         toast.success('Pencatatan berhasil ditambahkan');
         setShowForm(false);
         setFormData({
-          tanggal: '',
+          tanggal: todayDate,
+          periode: defaultPeriode,
           satker_id: '',
           uraian: '',
           jenis: 'debit',
           id_kategori: '',
           nominal: '',
+          saldo_akhir: '',
           catatan_audit: '',
           nomor_rekening_bank: '',
           nama_rekening: '',
@@ -281,6 +293,7 @@ export default function Eselon1PencatatanPage() {
         setCustomBank('');
         setFile(null);
         setAiResult(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         fetchData();
       } else {
         toast.error(j.message || 'Gagal menyimpan data');
@@ -338,12 +351,14 @@ export default function Eselon1PencatatanPage() {
               onClick={() => {
                 setShowForm(true);
                 setFormData({
-                  tanggal: new Date().toISOString().slice(0, 10),
+                  tanggal: todayDate,
+                  periode: defaultPeriode,
                   satker_id: '',
                   uraian: '',
                   jenis: 'debit',
                   id_kategori: '',
                   nominal: '',
+                  saldo_akhir: '',
                   catatan_audit: '',
                   nomor_rekening_bank: '',
                   nama_rekening: '',
@@ -352,6 +367,7 @@ export default function Eselon1PencatatanPage() {
                 setCustomBank('');
                 setFile(null);
                 setAiResult(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
               }}
               className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20"
             >
@@ -481,12 +497,12 @@ export default function Eselon1PencatatanPage() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider">
                   <th className="px-5 py-3.5">Tanggal</th>
+                  <th className="px-5 py-3.5">Periode</th>
                   <th className="px-5 py-3.5">Satker Binaan</th>
                   <th className="px-5 py-3.5">Kategori Dokumen</th>
                   <th className="px-5 py-3.5">Bank</th>
-                  <th className="px-5 py-3.5">Uraian Transaksi</th>
-                  <th className="px-5 py-3.5">Nomor Rekening</th>
-                  <th className="px-5 py-3.5 text-right">Nominal (Rp)</th>
+                  <th className="px-5 py-3.5 text-right">Saldo Akhir</th>
+                  <th className="px-5 py-3.5">Keterangan</th>
                   <th className="px-5 py-3.5 text-center">Bukti</th>
                   <th className="px-5 py-3.5 text-center">Aksi</th>
                 </tr>
@@ -496,6 +512,11 @@ export default function Eselon1PencatatanPage() {
                   <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-5 py-3.5 text-slate-700 whitespace-nowrap">
                       {row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded text-[11px]">
+                        {row.periode || '—'}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="font-bold text-slate-800 max-w-[180px] truncate" title={row.satker_nama || 'Satker'}>
@@ -519,18 +540,11 @@ export default function Eselon1PencatatanPage() {
                         </span>
                       ) : <span className="text-slate-400">—</span>}
                     </td>
-                    <td className="px-5 py-3.5 font-medium text-slate-800 max-w-[240px] truncate" title={row.uraian}>
-                      {row.uraian}
+                    <td className="px-5 py-3.5 text-right font-bold text-slate-900 whitespace-nowrap">
+                      Rp {Number(row.saldo_akhir || row.nominal || 0).toLocaleString('id-ID')}
                     </td>
-                    <td className="px-5 py-3.5 font-mono text-slate-600 whitespace-nowrap">
-                      {row.nomor_rekening || '—'}
-                    </td>
-                    <td className={clsx(
-                      "px-5 py-3.5 text-right font-bold whitespace-nowrap",
-                      row.jenis === 'debit' ? "text-emerald-600" : "text-rose-600"
-                    )}>
-                      {row.jenis === 'debit' ? '+ ' : '- '}
-                      Rp {Number(row.nominal || 0).toLocaleString('id-ID')}
+                    <td className="px-5 py-3.5 text-slate-800 max-w-[200px] truncate" title={row.uraian}>
+                      {row.uraian || '—'}
                     </td>
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
                       {row.bukti_file ? (
@@ -581,7 +595,7 @@ export default function Eselon1PencatatanPage() {
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-700 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-indigo-600" />
-                    Unggah Bukti Berkas (Auto Scan AI)
+                    Upload Bukti Berkas / Import PDF Rekening Koran *
                   </label>
                   {aiScanning && (
                     <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
@@ -590,6 +604,7 @@ export default function Eselon1PencatatanPage() {
                   )}
                 </div>
                 <input
+                  required
                   ref={fileInputRef}
                   type="file"
                   accept=".pdf,.xlsx,.xls,.docx,.png,.jpg,.jpeg"
@@ -616,7 +631,7 @@ export default function Eselon1PencatatanPage() {
                     </div>
                     <div className="text-emerald-700 leading-relaxed">
                       {aiResult.bank && <span>Bank: <strong>{aiResult.bank}</strong>. </span>}
-                      {aiResult.nominal != null && <span>Saldo/Nominal: <strong>Rp {Number(aiResult.nominal).toLocaleString('id-ID')}</strong>. </span>}
+                      {aiResult.nominal != null && <span>Saldo Akhir: <strong>Rp {Number(aiResult.nominal).toLocaleString('id-ID')}</strong>. </span>}
                       {aiResult.nomor_rekening && <span>No Rekening: <strong>{aiResult.nomor_rekening}</strong>. </span>}
                     </div>
                   </div>
@@ -648,31 +663,44 @@ export default function Eselon1PencatatanPage() {
                 </select>
               </div>
 
+              {/* Row: Tanggal (Otomatis saat import PDF / web) & Periode */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tanggal Transaksi *</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.tanggal}
-                    onChange={e => setFormData({ ...formData, tanggal: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white"
-                  />
+                  <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Tanggal Catat</span>
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">
+                      ✓ Otomatis saat import PDF
+                    </span>
+                  </label>
+                  <div className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-medium text-slate-700 flex items-center justify-between">
+                    <span>
+                      {formData.tanggal 
+                        ? new Date(formData.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : 'Tanggal saat ini'}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">({formData.tanggal || todayDate})</span>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Jenis Transaksi *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Periode *</label>
                   <select
-                    value={formData.jenis}
-                    onChange={e => setFormData({ ...formData, jenis: e.target.value })}
+                    required
+                    value={formData.periode}
+                    onChange={e => setFormData({ ...formData, periode: e.target.value })}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
                   >
-                    <option value="debit">Penerimaan (Debit / Kas Masuk)</option>
-                    <option value="kredit">Pengeluaran (Kredit / Kas Keluar)</option>
+                    <option value="">Pilih Periode Bulan...</option>
+                    {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
+                      <option key={m} value={`${m} ${new Date().getFullYear()}`}>
+                        {m} {new Date().getFullYear()}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
+              {/* Row: Kategori Dokumen & Bank (Tetap & Tidak Perlu Diganti) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Kategori Dokumen *</label>
@@ -690,13 +718,25 @@ export default function Eselon1PencatatanPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nama Bank Persepsi</label>
+                  <label className="block font-bold text-slate-700 mb-1">Bank *</label>
                   <select
-                    value={formData.nama_bank}
-                    onChange={e => setFormData({ ...formData, nama_bank: e.target.value })}
+                    required
+                    value={
+                      BANK_BUMN_LIST.includes(formData.nama_bank)
+                        ? formData.nama_bank
+                        : (formData.nama_bank ? formData.nama_bank : '')
+                    }
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, nama_bank: val });
+                      if (val !== 'Bank Lainnya') setCustomBank('');
+                    }}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
                   >
                     <option value="">Pilih Bank Persepsi</option>
+                    {formData.nama_bank && !BANK_BUMN_LIST.includes(formData.nama_bank) && (
+                      <option value={formData.nama_bank}>{formData.nama_bank} (Hasil Baca AI)</option>
+                    )}
                     {BANK_BUMN_LIST.map(b => (
                       <option key={b} value={b}>{b}</option>
                     ))}
@@ -704,6 +744,7 @@ export default function Eselon1PencatatanPage() {
                   {formData.nama_bank === 'Bank Lainnya' && (
                     <input
                       type="text"
+                      required
                       placeholder="Ketikkan nama bank..."
                       value={customBank}
                       onChange={e => setCustomBank(e.target.value)}
@@ -713,41 +754,25 @@ export default function Eselon1PencatatanPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nominal (Rp) *</label>
+              {/* Row: Saldo Akhir (Menggantikan Nominal) */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Saldo Akhir (Rp) *</span>
+                  <span className="text-[11px] font-normal text-slate-400">Nominal saldo akhir kas/rekening</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
                   <input
                     type="number"
+                    step="any"
+                    min="0"
                     required
                     placeholder="Contoh: 50000000"
-                    value={formData.nominal}
-                    onChange={e => setFormData({ ...formData, nominal: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-mono font-bold text-slate-800"
+                    value={formData.saldo_akhir || formData.nominal}
+                    onChange={e => setFormData({ ...formData, saldo_akhir: e.target.value, nominal: e.target.value })}
+                    className="w-full pl-10 pr-3 p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-mono font-bold text-slate-800"
                   />
                 </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nomor Rekening</label>
-                  <input
-                    type="text"
-                    placeholder="Nomor rekening bank..."
-                    value={formData.nomor_rekening_bank}
-                    onChange={e => setFormData({ ...formData, nomor_rekening_bank: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Uraian Transaksi *</label>
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="Keterangan uraian transaksi..."
-                  value={formData.uraian}
-                  onChange={e => setFormData({ ...formData, uraian: e.target.value })}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white"
-                />
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
@@ -760,7 +785,7 @@ export default function Eselon1PencatatanPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitLoading}
+                  disabled={submitLoading || aiScanning}
                   className="flex items-center gap-2 px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
                 >
                   {submitLoading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -799,21 +824,21 @@ export default function Eselon1PencatatanPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Periode Laporan</span>
+                  <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    {selectedDetail.periode || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Tanggal Transaksi</span>
                   <span className="font-mono text-slate-800 font-medium">
                     {selectedDetail.tanggal ? new Date(selectedDetail.tanggal).toLocaleDateString('id-ID', { dateStyle: 'long' }) : '—'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">Jenis Transaksi</span>
-                  <span className={clsx("font-bold px-2 py-0.5 rounded text-[11px]", selectedDetail.jenis === 'debit' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200")}>
-                    {selectedDetail.jenis === 'debit' ? 'Penerimaan (Debit)' : 'Pengeluaran (Kredit)'}
-                  </span>
-                </div>
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Nominal</span>
-                  <span className={clsx("text-base font-extrabold", selectedDetail.jenis === 'debit' ? "text-emerald-600" : "text-rose-600")}>
-                    {selectedDetail.jenis === 'debit' ? '+ ' : '- '}Rp {Number(selectedDetail.nominal || 0).toLocaleString('id-ID')}
+                  <span className="text-slate-500 font-medium">Saldo Akhir</span>
+                  <span className="text-base font-extrabold text-slate-900">
+                    Rp {Number(selectedDetail.saldo_akhir || selectedDetail.nominal || 0).toLocaleString('id-ID')}
                   </span>
                 </div>
               </div>

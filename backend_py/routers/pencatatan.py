@@ -124,11 +124,13 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
 
 @router.post("")
 async def create_akuntansi(
-    tanggal: str = Form(...),
-    uraian: str = Form(...),
-    jenis: str = Form(...),
+    tanggal: Optional[str] = Form(None),
+    uraian: Optional[str] = Form(None),
+    jenis: Optional[str] = Form("debit"),
     id_kategori: int = Form(...),
-    nominal: float = Form(...),
+    nominal: Optional[float] = Form(None),
+    saldo_akhir: Optional[float] = Form(None),
+    periode: Optional[str] = Form(None),
     satker_id: Optional[int] = Form(None),
     catatan_audit: Optional[str] = Form(None),
     nomor_rekening_bank: Optional[str] = Form(None),
@@ -171,19 +173,29 @@ async def create_akuntansi(
             cat_res = cursor.fetchone()
             nama_kategori = cat_res["nama"].lower() if cat_res else ""
             
+            # Resolve nominal / saldo_akhir
+            final_nominal = float(saldo_akhir if saldo_akhir is not None else (nominal if nominal is not None else 0))
+            # Resolve tanggal (diambil otomatis saat user import/upload jika tidak dispesifikasi)
+            final_tanggal = tanggal.strip() if tanggal and tanggal.strip() else datetime.date.today().isoformat()
+            # Resolve periode
+            final_periode = periode.strip() if periode and periode.strip() else None
+            # Resolve uraian
+            final_uraian = uraian.strip() if uraian and uraian.strip() else f"Pencatatan {cat_res['nama'] if cat_res else 'Dokumen'} - {nama_bank or 'Bank'} ({final_periode or 'Periode Berjalan'})"
+            final_jenis = jenis or "debit"
+
             dokumen_id = None
             if "rekening koran" in nama_kategori.replace("_", " "):
                 cursor.execute("SELECT id FROM kategori_dokumen WHERE LOWER(REPLACE(nama, '_', ' ')) = %s LIMIT 1", ("rekening koran",))
                 kat_dok_res = cursor.fetchone()
                 kat_dok_id = kat_dok_res["id"] if kat_dok_res else 1
                 
-                tahun = int(tanggal.split("-")[0]) if "-" in tanggal else datetime.datetime.now().year
+                tahun = int(final_tanggal.split("-")[0]) if "-" in final_tanggal else datetime.datetime.now().year
                 
                 cursor.execute("""
                     INSERT INTO dokumen (judul, kategori_id, tahun, file_path, file_nama, uploaded_by, status, is_public, nilai_excel, file_mime) 
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    f"Bukti Rekening Koran - {uraian}",
+                    f"Bukti Rekening Koran - {final_uraian}",
                     kat_dok_id,
                     tahun,
                     f"akuntansi/{filename}",
@@ -191,7 +203,7 @@ async def create_akuntansi(
                     created_by,
                     'menunggu_verifikasi',
                     0,
-                    nominal,
+                    final_nominal,
                     file.content_type
                 ))
                 dokumen_id = cursor.lastrowid
@@ -199,18 +211,18 @@ async def create_akuntansi(
                 cursor.execute("""
                     INSERT INTO rekening_koran (
                         satker_id, uploaded_by, nomor_rekening_bank, nama_rekening, saldo_akhir_bulan, 
-                        keterangan, nama_bank, tahun, tanggal_pembukaan_rekening, dokumen_id
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        keterangan, nama_bank, tahun, tanggal_pembukaan_rekening, dokumen_id, periode
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    final_satker_id, created_by, nomor_rekening_bank, nama_rekening, nominal, uraian,
-                    nama_bank, tahun, tanggal, dokumen_id
+                    final_satker_id, created_by, nomor_rekening_bank, nama_rekening, final_nominal, final_uraian,
+                    nama_bank, tahun, final_tanggal, dokumen_id, final_periode
                 ))
             
             cursor.execute("""
                 INSERT INTO pencatatan 
-                (tanggal, uraian, jenis, id_kategori, satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, nama_rekening) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (tanggal, uraian, jenis, id_kategori, final_satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening_bank, nama_bank, nama_rekening))
+                (tanggal, periode, uraian, jenis, id_kategori, satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, nama_rekening) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (final_tanggal, final_periode, final_uraian, final_jenis, id_kategori, final_satker_id, final_nominal, bukti_file, catatan_audit, created_by, nomor_rekening_bank, nama_bank, nama_rekening))
             insert_id = cursor.lastrowid
             
         db.commit()

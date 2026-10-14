@@ -169,32 +169,32 @@ export default function AdminpencatatanPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tanggal</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Uraian</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Jenis</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Periode</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Satker</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Nominal</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Saldo Akhir</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Uraian</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 text-sm">
-                {loading ? <tr><td colSpan={7} className="p-4 text-center text-gray-500">Loading...</td></tr> : filteredTransaksi.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-gray-500">Tidak ada data transaksi.</td></tr> : filteredTransaksi.map(t => (
+                {loading ? <tr><td colSpan={6} className="p-4 text-center text-gray-500">Loading...</td></tr> : filteredTransaksi.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-gray-500">Tidak ada data transaksi.</td></tr> : filteredTransaksi.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
-                    <td className="px-4 py-3 max-w-[200px] truncate" title={t.uraian}>{t.uraian}</td>
-                    <td className="px-4 py-3">
-                      <span className={clsx("px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider", t.jenis === 'debit' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")}>
-                        {t.jenis === 'debit' ? 'Pemasukan' : 'Pengeluaran'}
+                    <td className="px-4 py-3 whitespace-nowrap">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded text-xs">
+                        {t.periode || '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-gray-900">{t.nama_kategori}</span>
+                      <span className="text-gray-900 font-medium">{t.nama_kategori}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-600 truncate max-w-[150px]" title={t.satker_nama || 'Pusat'}>
                       {t.satker_nama || 'Pusat'}
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      Rp {Number(t.nominal).toLocaleString('id-ID')}
+                    <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
+                      Rp {Number(t.saldo_akhir || t.nominal || 0).toLocaleString('id-ID')}
                     </td>
+                    <td className="px-4 py-3 max-w-[200px] truncate text-xs text-gray-600" title={t.uraian}>{t.uraian}</td>
                   </tr>
                 ))}
               </tbody>
