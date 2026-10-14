@@ -10,6 +10,7 @@ import zipfile
 import io
 import random
 import string
+import datetime
 from utils import catat_log, buat_notifikasi, UPLOAD_DIR
 
 router = APIRouter()
@@ -491,3 +492,281 @@ async def get_logs(
                 "totalPages": math.ceil(total / limit) if limit > 0 else 0
             }
         }
+
+NAMA_BULAN_INDONESIA = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+}
+BULAN_MAP = {v.lower(): k for k, v in NAMA_BULAN_INDONESIA.items()}
+
+@router.get("/monitoring-satker")
+async def get_monitoring_satker(
+    periode: Optional[str] = None,
+    status: Optional[str] = "all",
+    q: Optional[str] = None,
+    current_user: dict = Depends(verify_eselon_1),
+    db=Depends(get_db)
+):
+    eselon_id = current_user.get("eselon_1_id")
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+
+    today = datetime.date.today()
+    cur_month_name = NAMA_BULAN_INDONESIA.get(today.month, "Oktober")
+    default_periode = f"{cur_month_name} {today.year}"
+
+    with db.cursor(dictionary=True) as cursor:
+        # 1. Kumpulkan daftar periode yang tersedia
+        cursor.execute("SELECT DISTINCT periode FROM rekening_koran WHERE periode IS NOT NULL AND periode NOT IN ('1', '2', '')")
+        rk_periods = [r["periode"].strip() for r in cursor.fetchall() if r.get("periode") and str(r.get("periode")).strip()]
+
+        cursor.execute("SELECT DISTINCT periode FROM pencatatan WHERE periode IS NOT NULL AND periode != ''")
+        p_periods = [r["periode"].strip() for r in cursor.fetchall() if r.get("periode") and str(r.get("periode")).strip()]
+
+        # Generate standard periods for current year
+        standard_periods = [f"{NAMA_BULAN_INDONESIA[m]} {today.year}" for m in range(12, 0, -1)]
+        all_unique_periods = []
+        for p in [default_periode] + rk_periods + p_periods + standard_periods:
+            if p and p not in all_unique_periods:
+                all_unique_periods.append(p)
+
+        active_periode = (periode.strip() if periode and periode.strip() else default_periode)
+
+        # Parse active_periode into month number & year
+        p_parts = active_periode.split()
+        bulan_nama = p_parts[0] if len(p_parts) > 0 else cur_month_name
+        tahun_val = int(p_parts[1]) if len(p_parts) > 1 and p_parts[1].isdigit() else today.year
+        bulan_num = BULAN_MAP.get(bulan_nama.lower(), today.month)
+
+        # 2. Query satkers under this Eselon 1
+        satker_where = "WHERE 1=1"
+        satker_params = []
+        if is_specific:
+            satker_where += " AND s.eselon_1_id = %s"
+            satker_params.append(eselon_id)
+
+        cursor.execute(f"""
+            SELECT 
+                s.id, 
+                s.NO_Satker, 
+                s.nama,
+                s.eselon_1_id,
+                ue.nama AS eselon_nama,
+                ue.singkatan AS eselon_singkatan,
+                u.id AS user_id,
+                u.nama AS user_nama,
+                u.username AS user_username,
+                u.email AS user_email
+            FROM satkers s
+            LEFT JOIN unit_eselon_1 ue ON ue.id = s.eselon_1_id
+            LEFT JOIN (
+                SELECT satker_id, MIN(id) as id, MIN(nama) as nama, MIN(username) as username, MIN(email) as email
+                FROM users
+                WHERE role_id IN (1, 2)
+                GROUP BY satker_id
+            ) u ON u.satker_id = s.id
+            {satker_where}
+            ORDER BY s.nama ASC
+        """, tuple(satker_params))
+        all_satkers = cursor.fetchall()
+
+        # 3. Query documents matching this period
+        doc_where = "WHERE 1=1"
+        doc_params = []
+        if is_specific:
+            doc_where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+            doc_params.extend([eselon_id, eselon_id])
+
+        cursor.execute(f"""
+            SELECT 
+                d.id,
+                d.judul,
+                d.status,
+                d.tahun,
+                d.bulan,
+                d.created_at,
+                d.nomor_laporan,
+                d.file_nama,
+                d.file_path,
+                d.file_size,
+                d.file_mime,
+                d.nilai_excel,
+                d.nilai_rekening_koran,
+                k.nama AS kategori_nama,
+                u.satker_id
+            FROM dokumen d
+            JOIN users u ON u.id = d.uploaded_by
+            JOIN kategori_dokumen k ON k.id = d.kategori_id
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            LEFT JOIN rekening_koran rk ON rk.dokumen_id = d.id
+            {doc_where}
+              AND (
+                  rk.periode = %s
+                  OR (
+                      d.tahun = %s 
+                      AND (
+                          d.bulan = %s 
+                          OR (d.bulan IS NULL AND MONTH(d.created_at) = %s)
+                      )
+                  )
+              )
+            ORDER BY d.created_at DESC
+        """, tuple(doc_params + [active_periode, tahun_val, bulan_num, bulan_num]))
+        docs_rows = cursor.fetchall()
+
+        # Group documents by satker_id
+        doc_map = {}
+        for d in docs_rows:
+            sid = d.get("satker_id")
+            if not sid:
+                continue
+            if sid not in doc_map:
+                doc_map[sid] = []
+            if not any(x["id"] == d["id"] for x in doc_map[sid]):
+                doc_item = {
+                    "id": d["id"],
+                    "judul": d["judul"],
+                    "status": d["status"],
+                    "tahun": d["tahun"],
+                    "bulan": d["bulan"],
+                    "nomor_laporan": d["nomor_laporan"],
+                    "file_nama": d["file_nama"],
+                    "file_path": d["file_path"],
+                    "file_size": d["file_size"],
+                    "file_mime": d["file_mime"],
+                    "nilai_excel": float(d["nilai_excel"] or 0),
+                    "nilai_rekening_koran": float(d["nilai_rekening_koran"] or 0),
+                    "kategori": d["kategori_nama"],
+                    "created_at": d["created_at"].isoformat() if d.get("created_at") else None
+                }
+                doc_map[sid].append(doc_item)
+
+        # 4. Global last upload per satker
+        cursor.execute("""
+            SELECT 
+                u.satker_id,
+                MAX(d.created_at) AS global_last_upload
+            FROM dokumen d
+            JOIN users u ON u.id = d.uploaded_by
+            WHERE u.satker_id IS NOT NULL
+            GROUP BY u.satker_id
+        """)
+        last_upload_map = {r["satker_id"]: (r["global_last_upload"].isoformat() if r.get("global_last_upload") else None) for r in cursor.fetchall()}
+
+        # 5. Build structured satker list
+        processed_satkers = []
+        sudah_count = 0
+        belum_count = 0
+
+        for s in all_satkers:
+            sid = s["id"]
+            docs = doc_map.get(sid, [])
+            has_doc = len(docs) > 0
+
+            if has_doc:
+                sudah_count += 1
+                doc_status = "sudah"
+                last_up = docs[0]["created_at"]
+            else:
+                belum_count += 1
+                doc_status = "belum"
+                last_up = None
+
+            item = {
+                "id": sid,
+                "no_satker": s["NO_Satker"],
+                "nama": s["nama"],
+                "eselon_1_id": s["eselon_1_id"],
+                "eselon_nama": s.get("eselon_nama"),
+                "eselon_singkatan": s.get("eselon_singkatan"),
+                "status": doc_status,
+                "total_dokumen": len(docs),
+                "terakhir_upload": last_up,
+                "dokumen_terakhir_judul": docs[0]["judul"] if docs else None,
+                "dokumen_list": docs,
+                "global_last_upload": last_upload_map.get(sid),
+                "kontak": {
+                    "nama": s.get("user_nama"),
+                    "username": s.get("user_username"),
+                    "email": s.get("user_email")
+                }
+            }
+            processed_satkers.append(item)
+
+        # 6. Apply filter status ('all', 'sudah', 'belum')
+        filtered = processed_satkers
+        if status and status.lower() in ["sudah", "belum"]:
+            filtered = [s for s in filtered if s["status"] == status.lower()]
+
+        # 7. Apply search query q
+        if q and q.strip():
+            query_str = q.strip().lower()
+            filtered = [
+                s for s in filtered 
+                if query_str in str(s["no_satker"]).lower() or query_str in s["nama"].lower()
+            ]
+
+        total_satker = len(all_satkers)
+        pct = round((sudah_count / total_satker) * 100, 1) if total_satker > 0 else 0.0
+
+        return {
+            "success": True,
+            "summary": {
+                "total_satker": total_satker,
+                "sudah_melampirkan": sudah_count,
+                "belum_mengumpulkan": belum_count,
+                "persentase_kepatuhan": pct,
+                "periode_aktif": active_periode,
+                "available_periods": all_unique_periods
+            },
+            "data": filtered
+        }
+
+@router.post("/monitoring-satker/remind/{satker_id}")
+async def remind_satker_dokumen(
+    satker_id: int,
+    request: Request,
+    periode: Optional[str] = Query(None),
+    current_user: dict = Depends(verify_eselon_1),
+    db=Depends(get_db)
+):
+    eselon_id = current_user.get("eselon_1_id")
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, nama, NO_Satker, eselon_1_id FROM satkers WHERE id = %s", (satker_id,))
+        satker = cursor.fetchone()
+        if not satker:
+            raise HTTPException(status_code=404, detail="Satker tidak ditemukan")
+
+        if is_specific and satker.get("eselon_1_id") != eselon_id:
+            raise HTTPException(status_code=403, detail="Akses ditolak: Satker ini bukan binaan Eselon 1 Anda")
+
+        cursor.execute("SELECT id, nama, email FROM users WHERE satker_id = %s", (satker_id,))
+        satker_users = cursor.fetchall()
+        if not satker_users:
+            raise HTTPException(status_code=400, detail="Tidak ditemukan akun pengelola aktif untuk satker ini")
+
+        periode_label = periode or "periode aktif berjalan"
+        judul_notif = "Pengingat Pengumpulan Dokumen"
+        pesan_notif = f"Unit Eselon 1 ({current_user.get('nama', 'Pembina')}) mengingatkan agar Satker {satker['nama']} segera melampirkan berkas dokumen rekening koran / laporan untuk periode {periode_label}."
+
+        for u in satker_users:
+            await buat_notifikasi(db, u["id"], "reminder_dokumen", judul_notif, pesan_notif)
+
+        ip_addr = request.client.host if request.client else "127.0.0.1"
+        await catat_log(
+            db,
+            current_user.get("id"),
+            "kirim_pengingat_satker",
+            "satker",
+            satker_id,
+            {"satker_nama": satker["nama"], "periode": periode_label, "target_users_count": len(satker_users)},
+            ip_addr
+        )
+
+        return {
+            "success": True,
+            "message": f"Pengingat pengumpulan dokumen periode {periode_label} berhasil dikirim ke {len(satker_users)} user Satker {satker['nama']}."
+        }
+

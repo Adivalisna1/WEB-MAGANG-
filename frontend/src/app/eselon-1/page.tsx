@@ -11,6 +11,7 @@ import {
   FileText, Clock, CheckCircle, RefreshCw,
   Loader2, AlertCircle, Users, Building2, ShieldCheck
 } from 'lucide-react';
+import MonitoringSatkerSection from '@/components/eselon-1/MonitoringSatkerSection';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const POLL_INTERVAL = 30_000; // 30 detik
@@ -161,6 +162,9 @@ export default function KetuaDashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Monitoring Dokumen Satker Binaan (Fitur Baru Eselon 1) */}
+      <MonitoringSatkerSection />
 
       {/* Grafik baris 1: upload per Satker + distribusi status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
