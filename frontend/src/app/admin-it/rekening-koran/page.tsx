@@ -1,11 +1,11 @@
 'use client';
 import toast from 'react-hot-toast';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { getSession } from '@/lib/auth';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
-import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X } from 'lucide-react';
+import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X, Building2, CreditCard } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -49,6 +49,7 @@ export default function KertasKerjaPage() {
   // Filter state
   const [searchQ, setSearchQ] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
+  const [filterBank, setFilterBank] = useState('');
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
 
   const searchParams = useSearchParams();
@@ -179,10 +180,8 @@ export default function KertasKerjaPage() {
       'Nama Rekening': d.nama_rekening || '-',
       'Nomor Pembukaan Rekening': d.nomor_pembukaan_rekening || '-',
       'Tanggal Pembukaan Rekening': d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-',
-      'SALDO PER AKHIR BULAN': d.saldo_akhir_bulan || 0,
-      'SALDO PER AKHIR BULAN (RK)': d.saldo_rk || 0,
-      'LAPORAN SALDO PER AKHIR BULAN (SALDO REKENING)': d.saldo_rekening || 0,
-      'SALDO PER AKHIR BULAN (RPL/LPJ)': d.saldo_rpl_lpj || 0,
+      'SALDO REKENING': d.saldo_akhir_bulan || 0,
+      'TOTAL SALDO BANK': bankTotalMap[(d.nama_bank || '').trim().toUpperCase()] || 0,
       'KETERANGAN': d.keterangan || '-'
     }));
 
@@ -192,165 +191,350 @@ export default function KertasKerjaPage() {
     XLSX.writeFile(wb, 'Laporan_Rekening_Koran.xlsx');
   };
 
-  const filteredData = dataList.filter(d => {
-    const matchSearch = !searchQ || d.nama_bank?.toLowerCase().includes(searchQ.toLowerCase()) || d.nomor_rekening_bank?.includes(searchQ) || d.nama_rekening?.toLowerCase().includes(searchQ.toLowerCase());
-    const matchSatker = !filterSatker || d.satker_id === Number(filterSatker);
-    return matchSearch && matchSatker;
-  });
+  const filteredData = useMemo(() => {
+    return dataList.filter(d => {
+      const matchSearch = !searchQ || d.nama_bank?.toLowerCase().includes(searchQ.toLowerCase()) || d.nomor_rekening_bank?.includes(searchQ) || d.nama_rekening?.toLowerCase().includes(searchQ.toLowerCase());
+      const matchSatker = !filterSatker || d.satker_id === Number(filterSatker);
+      const matchBank = !filterBank || (d.nama_bank || '').trim().toLowerCase() === filterBank.trim().toLowerCase();
+      return matchSearch && matchSatker && matchBank;
+    });
+  }, [dataList, searchQ, filterSatker, filterBank]);
+
+  // Agregasi per Bank: 1. Nama per Bank, 2. No Rek per Bank, 3. Saldo per Rek, 4. Total Saldo per Bank
+  const bankSummary = useMemo(() => {
+    const map: Record<string, {
+      nama_bank: string;
+      total_saldo: number;
+      rekening_list: Array<{ id: number; no_rek: string; nama_rek: string; saldo: number }>;
+    }> = {};
+
+    filteredData.forEach(item => {
+      const bName = (item.nama_bank || 'Bank Lainnya').trim();
+      const bKey = bName.toUpperCase();
+      if (!map[bKey]) {
+        map[bKey] = {
+          nama_bank: bName,
+          total_saldo: 0,
+          rekening_list: []
+        };
+      }
+      const saldo = Number(item.saldo_akhir_bulan || 0);
+      map[bKey].total_saldo += saldo;
+      map[bKey].rekening_list.push({
+        id: item.id,
+        no_rek: item.nomor_rekening_bank || '-',
+        nama_rek: item.nama_rekening || '-',
+        saldo: saldo
+      });
+    });
+
+    return Object.values(map);
+  }, [filteredData]);
+
+  const bankTotalMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredData.forEach(item => {
+      const b = (item.nama_bank || 'Bank Lainnya').trim().toUpperCase();
+      map[b] = (map[b] || 0) + Number(item.saldo_akhir_bulan || 0);
+    });
+    return map;
+  }, [filteredData]);
+
+  const totalSaldoSemuaBank = useMemo(() => {
+    return filteredData.reduce((acc, curr) => acc + Number(curr.saldo_akhir_bulan || 0), 0);
+  }, [filteredData]);
+
+  const uniqueBanks = useMemo(() => {
+    return Array.from(new Set(dataList.map(d => (d.nama_bank || 'Bank Lainnya').trim()))).filter(Boolean).sort();
+  }, [dataList]);
 
   const isEselon1 = userRole === 'eselon_1';
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileSpreadsheet className="w-7 h-7 text-emerald-600" />
             Rekening Koran
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Laporan dan Riwayat Rekening Koran Satker.
+            Rekapitulasi Saldo Bank dan Riwayat Rekening Koran Satker.
           </p>
         </div>
       </div>
 
+      {/* Ringkasan Saldo Per Bank: 1. Nama per Bank, 2. No Rek per Bank, 3. Saldo per Rek, 4. Total Saldo per Bank */}
       <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2 flex-1">
-              <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 flex-1 min-w-[200px] max-w-sm">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Cari Bank / No Rek..." className="flex-1 text-sm outline-none" />
+        {/* Ringkasan Akumulasi Total */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-wide uppercase text-blue-100">Total Seluruh Saldo Bank</span>
+              <div className="p-2 bg-white/10 rounded-xl">
+                <CreditCard className="w-5 h-5 text-white" />
               </div>
+            </div>
+            <div className="text-2xl font-black mt-2">
+              Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
+            </div>
+            <p className="text-xs text-blue-100/80 mt-1">
+              Akumulasi dari {filteredData.length} rekening terdaftar
+            </p>
+          </div>
 
-              {['eselon_1', 'pimpinan_satker', 'admin_it'].includes(userRole) && (
-                <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white min-w-[150px]">
-                  <option value="">Semua Satker</option>
-                  {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
-                </select>
-              )}
+          <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-gray-400 uppercase">Jumlah Mitra Bank</span>
+              <div className="text-2xl font-black text-gray-900 mt-0.5">{bankSummary.length} Bank</div>
+              <p className="text-xs text-gray-500">Terdistribusi di Satker</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+              <FileSpreadsheet className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-gray-400 uppercase">Total Rekening Aktif</span>
+              <div className="text-2xl font-black text-gray-900 mt-0.5">{filteredData.length} Rekening</div>
+              <p className="text-xs text-gray-500">Sesuai filter terpilih</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Kartu Rincian Per Bank */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              Ringkasan Saldo Per Bank
+            </h2>
+            {filterBank && (
+              <button 
+                onClick={() => setFilterBank('')}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Reset Filter Bank
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bankSummary.map((b) => (
+              <div 
+                key={b.nama_bank} 
+                onClick={() => setFilterBank(filterBank === b.nama_bank ? '' : b.nama_bank)}
+                className={`bg-white border rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between ${
+                  filterBank.toLowerCase() === b.nama_bank.toLowerCase() ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/10' : 'border-gray-200/90'
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3 mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        {/* 1. Nama per Bank */}
+                        <h3 className="font-bold text-gray-900 text-sm">{b.nama_bank}</h3>
+                        <span className="text-[11px] text-gray-500 font-medium">{b.rekening_list.length} Rekening</span>
+                      </div>
+                    </div>
+                    {/* 4. Total Saldo per Bank */}
+                    <div className="text-right">
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Total Saldo Bank</span>
+                      <span className="text-sm font-black text-blue-600">
+                        Rp {b.total_saldo.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 2. No Rek per Bank & 3. Saldo per Rek */}
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {b.rekening_list.map((rek, idx) => (
+                      <div key={rek.id || idx} className="bg-gray-50/80 hover:bg-gray-100/70 p-2.5 rounded-xl border border-gray-100 flex items-center justify-between text-xs transition-colors">
+                        <div className="min-w-0 pr-2">
+                          <div className="font-mono font-bold text-gray-800 text-xs truncate">
+                            {rek.no_rek}
+                          </div>
+                          <div className="text-[11px] text-gray-500 truncate" title={rek.nama_rek}>
+                            {rek.nama_rek}
+                          </div>
+                        </div>
+                        <div className="text-right font-extrabold text-gray-900 whitespace-nowrap">
+                          Rp {rek.saldo.toLocaleString('id-ID')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                  <span className="text-gray-400">Total Akumulasi:</span>
+                  <span className="font-bold text-gray-800">Rp {b.total_saldo.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 flex-1 min-w-[200px] max-w-sm shadow-xs">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Cari Bank / No Rek / Nama Rek..." className="flex-1 text-sm outline-none" />
             </div>
 
-            <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
-              <Download className="w-4 h-4" /> Export Excel
-            </button>
+            <select
+              value={filterBank}
+              onChange={e => setFilterBank(e.target.value)}
+              className="text-xs font-medium border border-gray-300 rounded-xl px-3 py-2 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">Semua Bank ({uniqueBanks.length})</option>
+              {uniqueBanks.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+
+            {['eselon_1', 'pimpinan_satker', 'admin_it'].includes(userRole) && (
+              <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-xs font-medium border border-gray-300 rounded-xl px-3 py-2 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20">
+                <option value="">Semua Satker</option>
+                {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+              </select>
+            )}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
-            <table className="w-full text-sm text-left min-w-[1400px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Satker</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[150px]">Bank</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[150px]">No Rekening</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[180px]">Nama Rekening</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[80px]">Tahun</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[80px]">Periode</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs w-[100px]">Tgl Buka</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Akhir</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RK</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo Rekening</th>
-                  <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right">Saldo RPL/LPJ</th>
-                  {!isEselon1 && <th className="px-4 py-3 font-semibold text-gray-500 uppercase text-xs text-right w-[100px]">Aksi</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? <tr><td colSpan={10} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
-                  paginatedData.length === 0 ? <tr><td colSpan={10} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
-                    paginatedData.map(d => {
-                      const isEditing = editingRowId === d.id;
-                      return (
-                        <tr key={d.id} className="hover:bg-gray-50 transition-colors group">
-                          {isEditing ? (
-                            <>
-                              <td className="px-2 py-2 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
-                              <td className="px-1 py-1"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({ ...editRowData, nama_bank: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({ ...editRowData, nomor_rekening_bank: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({ ...editRowData, nama_rekening: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="number" value={editRowData.tahun} onChange={e => setEditRowData({ ...editRowData, tahun: parseInt(e.target.value) || 2026 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1">
-                                <select value={editRowData.periode} onChange={e => setEditRowData({ ...editRowData, periode: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none">
-                                  <option value="1">1</option>
-                                  <option value="2">2</option>
-                                </select>
-                              </td>
-                              <td className="px-1 py-1"><input type="date" value={editRowData.tanggal_pembukaan_rekening} onChange={e => setEditRowData({ ...editRowData, tanggal_pembukaan_rekening: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({ ...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rk} onChange={e => setEditRowData({ ...editRowData, saldo_rk: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rekening} onChange={e => setEditRowData({ ...editRowData, saldo_rekening: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-1 py-1"><input type="number" step="any" value={editRowData.saldo_rpl_lpj} onChange={e => setEditRowData({ ...editRowData, saldo_rpl_lpj: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-blue-500 outline-none" /></td>
-                              <td className="px-2 py-2 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <button onClick={() => saveInlineEdit(d.id)} disabled={isSavingRow === d.id} className="p-1 text-white bg-green-500 hover:bg-green-600 rounded">
-                                    {isSavingRow === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                                  </button>
-                                  <button onClick={() => setEditingRowId(null)} className="p-1 text-gray-500 hover:bg-gray-200 rounded"><X className="w-3.5 h-3.5" /></button>
+          <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shadow-xs">
+            <Download className="w-4 h-4" /> Export Excel
+          </button>
+        </div>
+
+        <div className="bg-white border border-gray-200/90 rounded-2xl overflow-x-auto shadow-xs">
+          <table className="w-full text-xs text-left min-w-[1100px]">
+            <thead className="bg-gray-50/90 border-b border-gray-200 text-gray-600 uppercase font-bold tracking-wider">
+              <tr>
+                <th className="px-4 py-3.5 w-[100px]">Satker</th>
+                <th className="px-4 py-3.5 w-[180px]">1. Bank</th>
+                <th className="px-4 py-3.5 w-[160px]">2. No Rekening</th>
+                <th className="px-4 py-3.5">Nama Rekening</th>
+                <th className="px-4 py-3.5 text-right w-[160px]">3. Saldo Rekening</th>
+                <th className="px-4 py-3.5 text-right w-[180px] text-blue-700">4. Total Saldo Bank</th>
+                <th className="px-4 py-3.5 w-[160px]">Keterangan</th>
+                {!isEselon1 && <th className="px-4 py-3.5 text-right w-[100px]">Aksi</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? <tr><td colSpan={!isEselon1 ? 8 : 7} className="text-center py-8 text-gray-500">Memuat data...</td></tr> :
+                filteredData.length === 0 ? <tr><td colSpan={!isEselon1 ? 8 : 7} className="text-center py-8 text-gray-400">Belum ada data.</td></tr> :
+                  filteredData.map(d => {
+                    const isEditing = editingRowId === d.id;
+                    const bankKey = (d.nama_bank || '').trim().toUpperCase();
+                    const totalBankSaldo = bankTotalMap[bankKey] || 0;
+                    return (
+                      <tr key={d.id} className="hover:bg-blue-50/30 transition-colors group">
+                        {isEditing ? (
+                          <>
+                            <td className="px-3 py-2 text-gray-500 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
+                            <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({ ...editRowData, nama_bank: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-semibold" /></td>
+                            <td className="px-1.5 py-2"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({ ...editRowData, nomor_rekening_bank: e.target.value })} className="w-full text-xs font-mono border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                            <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({ ...editRowData, nama_rekening: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                            <td className="px-1.5 py-2"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({ ...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg text-right font-bold focus:ring-1 focus:ring-blue-500 outline-none" /></td>
+                            <td className="px-3 py-2 text-right text-xs font-bold text-blue-700 bg-blue-50/40">
+                              Rp {Number(bankTotalMap[editRowData.nama_bank?.trim()?.toUpperCase()] || totalBankSaldo).toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-1.5 py-2"><input type="text" value={editRowData.keterangan} onChange={e => setEditRowData({ ...editRowData, keterangan: e.target.value })} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Keterangan..." /></td>
+                            <td className="px-2 py-2 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => saveInlineEdit(d.id)} disabled={isSavingRow === d.id} className="p-1.5 text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-xs transition-colors">
+                                  {isSavingRow === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                </button>
+                                <button onClick={() => setEditingRowId(null)} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors"><X className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
+                            {/* 1. Nama per Bank */}
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-semibold cursor-pointer">
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span className="truncate">{d.nama_bank || '-'}</span>
+                              </div>
+                            </td>
+                            {/* 2. No Rek per Bank */}
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-800 font-mono font-medium text-xs cursor-pointer">
+                              {d.nomor_rekening_bank || '-'}
+                            </td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>
+                              {d.nama_rekening || '-'}
+                            </td>
+                            {/* 3. Saldo per Rek */}
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap cursor-pointer">
+                              Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}
+                            </td>
+                            {/* 4. Total Saldo per Bank */}
+                            <td className="px-4 py-3 text-right font-black text-blue-700 bg-blue-50/40 whitespace-nowrap">
+                              Rp {Number(totalBankSaldo).toLocaleString('id-ID')}
+                            </td>
+                            <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs truncate max-w-[160px] cursor-pointer" title={d.keterangan || ''}>
+                              {d.keterangan || '-'}
+                            </td>
+                            {!isEselon1 && (
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => startEdit(d)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Baris"><Edit className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => handleDelete(d.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Baris"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                               </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer">{d.nama_bank || '-'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 font-mono text-xs cursor-pointer">{d.nomor_rekening_bank || '-'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>{d.nama_rekening || '-'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 cursor-pointer">{d.tahun || '2026'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 cursor-pointer">{d.periode || '1'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 whitespace-nowrap cursor-pointer">{d.tanggal_pembukaan_rekening ? new Date(d.tanggal_pembukaan_rekening).toLocaleDateString('id-ID') : '-'}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rk || 0).toLocaleString('id-ID')}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rekening || 0).toLocaleString('id-ID')}</td>
-                              <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-right text-gray-600 whitespace-nowrap cursor-pointer">Rp {Number(d.saldo_rpl_lpj || 0).toLocaleString('id-ID')}</td>
-                              {!isEselon1 && (
-                                <td className="px-4 py-3 text-right">
-                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => startEdit(d)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
-                                    <button onClick={() => handleDelete(d.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
-                                  </div>
-                                </td>
-                              )}
-                            </>
-                          )}
-                        </tr>
-                      );
-                    })
-                }
+                            )}
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })
+              }
 
-                {!isEselon1 && (
-                  <tr className="bg-emerald-50/30 border-t border-emerald-100">
-                    <td className="px-2 py-2 text-[10px] text-emerald-600 font-bold uppercase tracking-wider text-center bg-emerald-100/50">Data Baru</td>
-                    <td className="px-1 py-1"><input type="text" placeholder="Bank..." value={newRow.nama_bank} onChange={e => setNewRow({ ...newRow, nama_bank: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="text" placeholder="No Rek..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({ ...newRow, nomor_rekening_bank: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="text" placeholder="Nama Rek..." value={newRow.nama_rekening} onChange={e => setNewRow({ ...newRow, nama_rekening: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="number" value={newRow.tahun} onChange={e => setNewRow({ ...newRow, tahun: parseInt(e.target.value) || 2026 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1">
-                      <select value={newRow.periode} onChange={e => setNewRow({ ...newRow, periode: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                      </select>
-                    </td>
-                    <td className="px-1 py-1"><input type="date" value={newRow.tanggal_pembukaan_rekening} onChange={e => setNewRow({ ...newRow, tanggal_pembukaan_rekening: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_akhir_bulan} onChange={e => setNewRow({ ...newRow, saldo_akhir_bulan: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rk} onChange={e => setNewRow({ ...newRow, saldo_rk: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rekening} onChange={e => setNewRow({ ...newRow, saldo_rekening: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-1 py-1"><input type="number" step="any" placeholder="0" value={newRow.saldo_rpl_lpj} onChange={e => setNewRow({ ...newRow, saldo_rpl_lpj: parseFloat(e.target.value) || 0 })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
-                    <td className="px-2 py-2 text-right">
-                      <button onClick={saveNewRow} disabled={isSavingRow === 'new'} className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded text-xs ml-auto disabled:opacity-50 transition-colors">
-                        {isSavingRow === 'new' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} <span>Tambah</span>
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          <Pagination currentPage={currentPage} totalPages={totalPages} basePath="/admin-it/rekening-koran" />
+              {!isEselon1 && (
+                <tr className="bg-emerald-50/30 border-t-2 border-emerald-100">
+                  <td className="px-3 py-2 text-[10px] text-emerald-700 font-bold uppercase tracking-wider text-center bg-emerald-100/50 rounded-l">Data Baru</td>
+                  <td className="px-1.5 py-2"><input type="text" placeholder="1. Nama Bank..." value={newRow.nama_bank} onChange={e => setNewRow({ ...newRow, nama_bank: e.target.value })} className="w-full text-xs font-semibold border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                  <td className="px-1.5 py-2"><input type="text" placeholder="2. No Rekening..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({ ...newRow, nomor_rekening_bank: e.target.value })} className="w-full text-xs font-mono border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                  <td className="px-1.5 py-2"><input type="text" placeholder="Nama Rekening..." value={newRow.nama_rekening} onChange={e => setNewRow({ ...newRow, nama_rekening: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                  <td className="px-1.5 py-2"><input type="number" step="any" placeholder="3. Saldo Rek..." value={newRow.saldo_akhir_bulan} onChange={e => setNewRow({ ...newRow, saldo_akhir_bulan: parseFloat(e.target.value) || 0 })} className="w-full text-xs font-bold border border-emerald-200 px-2 py-1.5 rounded-lg text-right focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                  <td className="px-3 py-2 text-right text-xs text-gray-400 bg-emerald-50/20 italic">- (Otomatis)</td>
+                  <td className="px-1.5 py-2"><input type="text" placeholder="Keterangan..." value={newRow.keterangan} onChange={e => setNewRow({ ...newRow, keterangan: e.target.value })} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none" /></td>
+                  <td className="px-2 py-2 text-right">
+                    <button onClick={saveNewRow} disabled={isSavingRow === 'new'} className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium ml-auto disabled:opacity-50 transition-colors shadow-xs">
+                      {isSavingRow === 'new' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} <span>Tambah</span>
+                    </button>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-bold text-gray-800">
+              <tr>
+                <td colSpan={4} className="px-4 py-3 text-right uppercase tracking-wider text-xs text-gray-600">
+                  Total Keseluruhan Saldo ({filteredData.length} Rekening):
+                </td>
+                <td className="px-4 py-3 text-right font-black text-gray-900 text-sm whitespace-nowrap">
+                  Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
+                </td>
+                <td className="px-4 py-3 text-right font-black text-blue-700 text-sm whitespace-nowrap bg-blue-50/40">
+                  Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
+                </td>
+                <td colSpan={!isEselon1 ? 2 : 1}></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
+      </div>
     </div>
   );
 }
