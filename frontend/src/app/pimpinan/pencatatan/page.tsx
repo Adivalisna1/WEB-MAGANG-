@@ -65,7 +65,7 @@ export default function PimpinanpencatatanPage() {
   // Filter State
   const [filterKategori, setFilterKategori] = useState('');
   const [filterJenis, setFilterJenis] = useState('');
-  const [filterTahun, setFilterTahun] = useState('');
+  const [filterPeriode, setFilterPeriode] = useState('');
 
   // Form State
   const currentMonthName = new Date().toLocaleDateString('id-ID', { month: 'long' });
@@ -218,12 +218,11 @@ export default function PimpinanpencatatanPage() {
   const filteredData = transaksi.filter(t => {
     const matchKategori = !filterKategori || String(t.id_kategori) === filterKategori;
     const matchJenis = !filterJenis || t.jenis === filterJenis;
-    const year = t.tanggal ? new Date(t.tanggal).getFullYear().toString() : '';
-    const matchTahun = !filterTahun || year === filterTahun;
-    return matchKategori && matchJenis && matchTahun;
+    const matchPeriode = !filterPeriode || t.periode === filterPeriode;
+    return matchKategori && matchJenis && matchPeriode;
   });
 
-  const uniqueTahun = Array.from(new Set(transaksi.map(t => t.tanggal ? new Date(t.tanggal).getFullYear().toString() : ''))).filter(Boolean).sort((a, b) => b.localeCompare(a));
+  const uniquePeriode = Array.from(new Set(transaksi.map(t => t.periode).filter(Boolean))).sort();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,13 +298,11 @@ export default function PimpinanpencatatanPage() {
   const exportToExcel = () => {
     const wsData = filteredData.map((t, index) => ({
       'No': index + 1,
-      'Tanggal': new Date(t.tanggal).toLocaleDateString('id-ID'),
-      'Uraian': t.uraian,
-      'Jenis': t.jenis === 'debit' ? 'PEMASUKAN' : 'PENGELUARAN',
+      'Periode': t.periode || '-',
       'Kategori Dokumen': t.nama_kategori,
       'Bank': t.nama_bank || '-',
-      'No. Rekening': t.nomor_rekening || '-',
-      'Nominal': Number(t.nominal),
+      'Saldo Akhir': Number(t.saldo_akhir || t.nominal || 0),
+      'Uraian': t.uraian,
       'Catatan Audit': t.catatan_audit || '-',
       'Dibuat Oleh': t.pembuat || '-',
       'Diedit Oleh': t.pengedit || '-'
@@ -317,8 +314,8 @@ export default function PimpinanpencatatanPage() {
 
     const katStr = filterKategori ? `_${kategori.find(k => String(k.id) === filterKategori)?.nama_kategori || ''}` : '';
     const jenisStr = filterJenis ? `_${filterJenis === 'debit' ? 'Pemasukan' : 'Pengeluaran'}` : '';
-    const thnStr = filterTahun ? `_${filterTahun}` : '';
-    const fileName = `Pencatatan${thnStr}${jenisStr}${katStr}.xlsx`.replace(/\s+/g, '_');
+    const perStr = filterPeriode ? `_${filterPeriode}` : '';
+    const fileName = `Pencatatan${perStr}${jenisStr}${katStr}.xlsx`.replace(/\s+/g, '_');
 
     XLSX.writeFile(wb, fileName);
   };
@@ -342,9 +339,9 @@ export default function PimpinanpencatatanPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <select value={filterTahun} onChange={e => setFilterTahun(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
-          <option value="">Semua Tahun</option>
-          {uniqueTahun.map(t => <option key={t} value={t}>Tahun {t}</option>)}
+        <select value={filterPeriode} onChange={e => setFilterPeriode(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
+          <option value="">Semua Periode</option>
+          {uniquePeriode.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <select value={filterJenis} onChange={e => setFilterJenis(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white">
           <option value="">Semua Jenis</option>
@@ -355,8 +352,8 @@ export default function PimpinanpencatatanPage() {
           <option value="">Semua Kategori Dokumen</option>
           {sortedKategori.map(k => <option key={k.id} value={String(k.id)}>{k.nama_kategori}</option>)}
         </select>
-        {(filterTahun || filterJenis || filterKategori) && (
-          <button onClick={() => { setFilterTahun(''); setFilterJenis(''); setFilterKategori(''); }} className="text-sm text-red-500 hover:text-red-700 px-2 py-1 transition-colors">
+        {(filterPeriode || filterJenis || filterKategori) && (
+          <button onClick={() => { setFilterPeriode(''); setFilterJenis(''); setFilterKategori(''); }} className="text-sm text-red-500 hover:text-red-700 px-2 py-1 transition-colors">
             Reset Filter
           </button>
         )}
@@ -463,41 +460,25 @@ export default function PimpinanpencatatanPage() {
                 </div>
               </div>
 
-              {/* Row 2: Tanggal (Otomatis saat import PDF / web) & Periode */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                    <span>Tanggal Catat</span>
-                    <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      ✓ Otomatis saat import PDF / web
-                    </span>
-                  </label>
-                  <div className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 flex items-center justify-between shadow-xs">
-                    <span>
-                      {formData.tanggal 
-                        ? new Date(formData.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                        : 'Tanggal saat ini'}
-                    </span>
-                    <span className="text-xs text-gray-400 font-mono">({formData.tanggal || todayDate})</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Periode *</label>
-                  <select
-                    required
-                    value={formData.periode}
-                    onChange={e => setFormData({ ...formData, periode: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
-                  >
-                    <option value="">Pilih Periode Bulan...</option>
-                    {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
-                      <option key={m} value={`${m} ${new Date().getFullYear()}`}>
-                        {m} {new Date().getFullYear()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Row 2: Periode Pengatur Waktu Transaksi */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
+                  <span>Periode *</span>
+                  <span className="text-[11px] font-normal text-gray-400">Pengatur waktu pelaporan transaksi</span>
+                </label>
+                <select
+                  required
+                  value={formData.periode}
+                  onChange={e => setFormData({ ...formData, periode: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
+                >
+                  <option value="">Pilih Periode Bulan...</option>
+                  {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
+                    <option key={m} value={`${m} ${new Date().getFullYear()}`}>
+                      {m} {new Date().getFullYear()}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Row 3: Kategori Dokumen & Bank (Tetap & Tidak Perlu Diganti) */}
@@ -609,7 +590,6 @@ export default function PimpinanpencatatanPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-32">Tanggal</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Periode</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori Dokumen</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Bank</th>
@@ -619,15 +599,12 @@ export default function PimpinanpencatatanPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
-              {loading ? <tr><td colSpan={8} className="p-8 text-center text-gray-500">Memuat data...</td></tr> : 
-                filteredData.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
+              {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Memuat data...</td></tr> : 
+                filteredData.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
                 filteredData.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 text-gray-600 font-medium whitespace-nowrap">
-                    {t.tanggal ? new Date(t.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded text-xs">
+                    <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2.5 py-1 rounded-md text-xs">
                       {t.periode || '-'}
                     </span>
                   </td>

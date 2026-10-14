@@ -69,7 +69,7 @@ export default function Eselon1PencatatanPage() {
   const [filterSatker, setFilterSatker] = useState('');
   const [filterKategori, setFilterKategori] = useState('');
   const [filterJenis, setFilterJenis] = useState('');
-  const [filterTahun, setFilterTahun] = useState('');
+  const [filterPeriode, setFilterPeriode] = useState('');
   const [searchUraian, setSearchUraian] = useState('');
 
   // Form State
@@ -226,14 +226,13 @@ export default function Eselon1PencatatanPage() {
     const matchSatker = !filterSatker || t.satker_nama === filterSatker;
     const matchKategori = !filterKategori || String(t.id_kategori) === filterKategori;
     const matchJenis = !filterJenis || t.jenis === filterJenis;
-    const year = t.tanggal ? new Date(t.tanggal).getFullYear().toString() : '';
-    const matchTahun = !filterTahun || year === filterTahun;
+    const matchPeriode = !filterPeriode || t.periode === filterPeriode;
     const matchUraian = !searchUraian || t.uraian?.toLowerCase().includes(searchUraian.toLowerCase());
-    return matchSatker && matchKategori && matchJenis && matchTahun && matchUraian;
+    return matchSatker && matchKategori && matchJenis && matchPeriode && matchUraian;
   });
 
   const uniqueSatker = Array.from(new Set(transaksi.map(t => t.satker_nama).filter(Boolean))).sort();
-  const uniqueTahun = Array.from(new Set(transaksi.map(t => t.tanggal ? new Date(t.tanggal).getFullYear().toString() : ''))).filter(Boolean).sort((a, b) => b.localeCompare(a));
+  const uniquePeriode = Array.from(new Set(transaksi.map(t => t.periode).filter(Boolean))).sort();
 
   const totalDebit = filteredData.filter(t => t.jenis === 'debit').reduce((acc, t) => acc + Number(t.nominal || 0), 0);
   const totalKredit = filteredData.filter(t => t.jenis === 'kredit').reduce((acc, t) => acc + Number(t.nominal || 0), 0);
@@ -455,23 +454,23 @@ export default function Eselon1PencatatanPage() {
         </select>
 
         <select
-          value={filterTahun}
-          onChange={e => setFilterTahun(e.target.value)}
+          value={filterPeriode}
+          onChange={e => setFilterPeriode(e.target.value)}
           className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
         >
-          <option value="">Semua Tahun</option>
-          {uniqueTahun.map(y => (
-            <option key={y} value={y}>{y}</option>
+          <option value="">Semua Periode</option>
+          {uniquePeriode.map(p => (
+            <option key={p} value={p}>{p}</option>
           ))}
         </select>
 
-        {(filterSatker || filterKategori || filterJenis || filterTahun || searchUraian) && (
+        {(filterSatker || filterKategori || filterJenis || filterPeriode || searchUraian) && (
           <button
             onClick={() => {
               setFilterSatker('');
               setFilterKategori('');
               setFilterJenis('');
-              setFilterTahun('');
+              setFilterPeriode('');
               setSearchUraian('');
             }}
             className="px-3 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors"
@@ -496,7 +495,6 @@ export default function Eselon1PencatatanPage() {
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="px-5 py-3.5">Tanggal</th>
                   <th className="px-5 py-3.5">Periode</th>
                   <th className="px-5 py-3.5">Satker Binaan</th>
                   <th className="px-5 py-3.5">Kategori Dokumen</th>
@@ -510,9 +508,6 @@ export default function Eselon1PencatatanPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredData.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-5 py-3.5 text-slate-700 whitespace-nowrap">
-                      {row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                    </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded text-[11px]">
                         {row.periode || '—'}
@@ -663,41 +658,22 @@ export default function Eselon1PencatatanPage() {
                 </select>
               </div>
 
-              {/* Row: Tanggal (Otomatis saat import PDF / web) & Periode */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
-                    <span>Tanggal Catat</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">
-                      ✓ Otomatis saat import PDF
-                    </span>
-                  </label>
-                  <div className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-medium text-slate-700 flex items-center justify-between">
-                    <span>
-                      {formData.tanggal 
-                        ? new Date(formData.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                        : 'Tanggal saat ini'}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-mono">({formData.tanggal || todayDate})</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Periode *</label>
-                  <select
-                    required
-                    value={formData.periode}
-                    onChange={e => setFormData({ ...formData, periode: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
-                  >
-                    <option value="">Pilih Periode Bulan...</option>
-                    {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
-                      <option key={m} value={`${m} ${new Date().getFullYear()}`}>
-                        {m} {new Date().getFullYear()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Periode Pengatur Waktu Transaksi */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Periode *</label>
+                <select
+                  required
+                  value={formData.periode}
+                  onChange={e => setFormData({ ...formData, periode: e.target.value })}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
+                >
+                  <option value="">Pilih Periode Bulan...</option>
+                  {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
+                    <option key={m} value={`${m} ${new Date().getFullYear()}`}>
+                      {m} {new Date().getFullYear()}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Row: Kategori Dokumen & Bank (Tetap & Tidak Perlu Diganti) */}

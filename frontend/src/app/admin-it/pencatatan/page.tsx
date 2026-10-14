@@ -168,7 +168,6 @@ export default function AdminpencatatanPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tanggal</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Periode</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kategori</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Satker</th>
@@ -177,9 +176,8 @@ export default function AdminpencatatanPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 text-sm">
-                {loading ? <tr><td colSpan={6} className="p-4 text-center text-gray-500">Loading...</td></tr> : filteredTransaksi.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-gray-500">Tidak ada data transaksi.</td></tr> : filteredTransaksi.map(t => (
+                {loading ? <tr><td colSpan={5} className="p-4 text-center text-gray-500">Loading...</td></tr> : filteredTransaksi.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-gray-500">Tidak ada data transaksi.</td></tr> : filteredTransaksi.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded text-xs">
                         {t.periode || '-'}
