@@ -196,10 +196,12 @@ async def create_akuntansi(
             cat_res = cursor.fetchone()
             nama_kategori = cat_res["nama"].lower() if cat_res else ""
             
+            final_tanggal = tanggal.strip() if tanggal and str(tanggal).strip() else datetime.date.today().isoformat()
+            
             # Resolve nominal / saldo_akhir
             final_nominal = float(saldo_akhir if saldo_akhir is not None else (nominal if nominal is not None else 0))
             # Resolve periode (jika kosong, ambil nama bulan dan tahun dari final_tanggal)
-            final_periode = periode.strip() if periode and periode.strip() else None
+            final_periode = periode.strip() if periode and str(periode).strip() else None
             if not final_periode and final_tanggal:
                 nama_bulan = {
                     1: "Januari", 2: "Februari", 3: "Maret", 4: "April",

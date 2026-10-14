@@ -29,10 +29,14 @@ async def get_rekening_koran(user: dict = Depends(get_current_user), db=Depends(
             
     with db.cursor(dictionary=True) as cursor:
         query = f"""
-            SELECT k.*, u.nama AS uploader_nama, s.nama AS nama_satker, s.NO_Satker AS kode_satker 
+            SELECT k.*, 
+                   COALESCE(NULLIF(k.periode, '1'), p.periode, k.periode) AS periode,
+                   u.nama AS uploader_nama, s.nama AS nama_satker, s.NO_Satker AS kode_satker 
             FROM rekening_koran k
             LEFT JOIN users u ON u.id = k.uploaded_by
             LEFT JOIN satkers s ON s.id = k.satker_id
+            LEFT JOIN dokumen d ON d.id = k.dokumen_id
+            LEFT JOIN pencatatan p ON p.bukti_file COLLATE utf8mb4_general_ci LIKE CONCAT('%', SUBSTRING_INDEX(d.file_path, '/', -1))
             WHERE {where}
             ORDER BY k.created_at DESC
         """
