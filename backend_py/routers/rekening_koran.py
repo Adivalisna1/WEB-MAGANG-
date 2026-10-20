@@ -158,9 +158,33 @@ async def create_rekening_koran(request: dict, user: dict = Depends(get_current_
         db.commit()
         return {"success": True, "message": "Data berhasil ditambahkan", "data": {"id": cursor.lastrowid}}
 
+def _check_rekening_koran_access(cursor, id: int, user: dict):
+    cursor.execute("""
+        SELECT k.id, k.satker_id, k.uploaded_by, s.eselon_1_id
+        FROM rekening_koran k
+        LEFT JOIN satkers s ON s.id = k.satker_id
+        WHERE k.id = %s
+    """, (id,))
+    row = cursor.fetchone()
+    if not row:
+        raise HTTPException(404, "Data tidak ditemukan")
+
+    if user.get("is_it") or user.get("role") in ["it", "admin_it"] or user.get("tingkat") == "kl":
+        return row
+
+    if user.get("tingkat") == "satker":
+        if user.get("satker_id") and row["satker_id"] != user.get("satker_id"):
+            raise HTTPException(403, "Akses ditolak: Data rekening koran ini milik Satker lain")
+    elif user.get("tingkat") == "eselon_1":
+        if user.get("eselon_1_id") and row.get("eselon_1_id") and row["eselon_1_id"] != user.get("eselon_1_id"):
+            raise HTTPException(403, "Akses ditolak: Data rekening koran ini di luar Satker binaan Eselon 1 Anda")
+
+    return row
+
 @router.put("/{id}")
 async def update_rekening_koran(id: int, request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
+        _check_rekening_koran_access(cursor, id, user)
         query = """
             UPDATE rekening_koran SET 
                 nama_bank = %s, nomor_rekening_bank = %s, nama_rekening = %s, 
@@ -176,16 +200,13 @@ async def update_rekening_koran(id: int, request: dict, user: dict = Depends(get
             request.get("saldo_rpl_lpj", 0), request.get("keterangan"), request.get("tahun", 2026), request.get("periode", "1"),
             id
         ))
-        if cursor.rowcount == 0:
-            raise HTTPException(404, "Data tidak ditemukan")
         db.commit()
         return {"success": True, "message": "Data berhasil diupdate"}
 
 @router.delete("/{id}")
 async def delete_rekening_koran(id: int, user: dict = Depends(get_current_user), db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
+        _check_rekening_koran_access(cursor, id, user)
         cursor.execute("DELETE FROM rekening_koran WHERE id = %s", (id,))
-        if cursor.rowcount == 0:
-            raise HTTPException(404, "Data tidak ditemukan")
         db.commit()
         return {"success": True, "message": "Data berhasil dihapus"}

@@ -79,8 +79,6 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:5000/api
       # Server Next.js mengakses backend lewat nama service Docker (antar container)
       API_URL_INTERNAL: http://backend_py:5000/api
-      # Webhook n8n untuk AI (diakses antar container)
-      NEXT_PUBLIC_N8N_AI_WEBHOOK: http://n8n:5678/webhook/baca-dokumen
     ports:
       - "3000:3000"
     networks:
@@ -107,27 +105,6 @@ services:
     networks:
       - web_laporan_net
 
-  # ============================================================
-  # n8n - Workflow Automation
-  # ============================================================
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    container_name: web_laporan_n8n
-    restart: unless-stopped
-    environment:
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - NODE_ENV=production
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=Asia/Jakarta
-    ports:
-      - "5678:5678"
-    volumes:
-      - n8n_data:/home/node/.n8n
-    networks:
-      - web_laporan_net
-
 # ============================================================
 # Volumes & Networks
 # ============================================================
@@ -135,8 +112,6 @@ volumes:
   db_data:
     driver: local
   uploads_data:
-    driver: local
-  n8n_data:
     driver: local
 
 networks:

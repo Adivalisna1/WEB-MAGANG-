@@ -78,7 +78,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
                 has_it_perms = bool(perms.get('can_manage_users'))
                 is_it = (
                     user['role'] in ['it', 'admin_it']
-                    or user.get('username') in ['it_admin', 'naufal']
+                    or user.get('username') == 'it_admin'
                     or (user['role'] == 'operator' and user['tingkat'] == 'kl' and has_it_perms)
                 )
                 payload['is_it'] = is_it

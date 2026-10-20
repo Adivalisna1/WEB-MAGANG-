@@ -6,6 +6,10 @@
 .env.production
 .env.staging
 backend/.env.railway
+*service-account*.json
+decisive-clover-*.json
+apk pembantu/*.json
+repomix-output.xml
 README.md
 readme.md
 

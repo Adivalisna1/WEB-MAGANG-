@@ -637,7 +637,8 @@ async def bot_upload(
     x_bot_api_key: str = Header(None),
     db=Depends(get_db)
 ):
-    if x_bot_api_key != os.getenv("BOT_API_KEY", "N8N_SECRET_BOT_KEY_2026"):
+    expected_bot_key = os.getenv("BOT_API_KEY")
+    if not expected_bot_key or x_bot_api_key != expected_bot_key:
         raise HTTPException(401, "Unauthorized")
         
     with db.cursor(dictionary=True) as cursor:
