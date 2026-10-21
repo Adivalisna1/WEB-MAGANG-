@@ -32,12 +32,13 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         with db.cursor(dictionary=True) as cursor:
             cursor.execute("""
                 SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.permissions,
-                       r.nama AS role, t.kode AS tingkat, t.nama AS tingkat_nama,
+                       COALESCE(r.nama, 'operator') AS role,
+                       COALESCE(t.kode, 'satker') AS tingkat, COALESCE(t.nama, 'Tingkat Satker') AS tingkat_nama,
                        s.nama AS satker_nama, s.NO_Satker AS satker_kode,
                        ue.id AS unit_eselon_id, ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
                 FROM users u
-                JOIN roles r ON r.id = u.role_id
-                JOIN tingkats t ON t.id = u.tingkat_id
+                LEFT JOIN roles r ON r.id = u.role_id
+                LEFT JOIN tingkats t ON t.id = u.tingkat_id
                 LEFT JOIN satkers s ON s.id = u.satker_id
                 LEFT JOIN unit_eselon_1 ue ON ue.id = COALESCE(u.eselon_1_id, s.eselon_1_id)
                 WHERE u.id = %s

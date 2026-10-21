@@ -40,13 +40,13 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     cursor.execute("""
         SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
                u.password_hash, u.is_active, u.permissions,
-               r.nama AS role,
-               t.kode AS tingkat, t.nama AS tingkat_nama,
+               COALESCE(r.nama, 'operator') AS role,
+               COALESCE(t.kode, 'satker') AS tingkat, COALESCE(t.nama, 'Tingkat Satker') AS tingkat_nama,
                s.nama AS satker_nama, s.NO_Satker AS satker_kode,
                ue.id AS unit_eselon_id, ue.kode AS eselon_1_kode, ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan
         FROM users u
-        JOIN roles r ON r.id = u.role_id
-        JOIN tingkats t ON t.id = u.tingkat_id
+        LEFT JOIN roles r ON r.id = u.role_id
+        LEFT JOIN tingkats t ON t.id = u.tingkat_id
         LEFT JOIN satkers s ON s.id = u.satker_id
         LEFT JOIN unit_eselon_1 ue ON ue.id = COALESCE(u.eselon_1_id, s.eselon_1_id)
         WHERE u.username = %s OR u.email = %s
@@ -56,12 +56,15 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     user = cursor.fetchone()
     
     async def log_failed_attempt():
-        loc = await get_location(ip)
-        cursor.execute(
-            "INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (%s, %s, %s, %s)",
-            (ip, data.username, 'failed', loc)
-        )
-        db.commit()
+        try:
+            loc = await get_location(ip)
+            cursor.execute(
+                "INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (%s, %s, %s, %s)",
+                (ip, data.username, 'failed', loc)
+            )
+            db.commit()
+        except Exception:
+            pass
 
     if not user:
         await log_failed_attempt()
@@ -76,11 +79,14 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Username atau password salah")
     
     # Success
-    loc = await get_location(ip)
-    cursor.execute(
-        "INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (%s, %s, %s, %s)",
-        (ip, data.username, 'success', loc)
-    )
+    try:
+        loc = await get_location(ip)
+        cursor.execute(
+            "INSERT INTO login_attempts (ip_address, username_tried, status, location) VALUES (%s, %s, %s, %s)",
+            (ip, data.username, 'success', loc)
+        )
+    except Exception:
+        pass
     
     # Close old sessions
     cursor.execute("UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE user_id = %s AND is_online = 1", (user['id'],))
