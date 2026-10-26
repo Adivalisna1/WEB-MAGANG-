@@ -31,7 +31,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
         # Fetch the latest user data with full role, tingkat, satker, and eselon 1 info
         with db.cursor(dictionary=True) as cursor:
             cursor.execute("""
-                SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.permissions,
+                SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email, u.is_active, u.permissions,
                        COALESCE(r.nama, 'operator') AS role,
                        COALESCE(t.kode, 'satker') AS tingkat, COALESCE(t.nama, 'Tingkat Satker') AS tingkat_nama,
                        s.nama AS satker_nama, s.NO_Satker AS satker_kode,
@@ -44,48 +44,52 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
                 WHERE u.id = %s
             """, (payload['id'],))
             user = cursor.fetchone()
-            if user:
-                payload['role_id'] = user['role_id']
-                payload['role'] = user['role']
-                payload['tingkat_id'] = user['tingkat_id']
-                payload['tingkat'] = user['tingkat']
-                payload['tingkat_nama'] = user['tingkat_nama']
-                payload['satker_id'] = user['satker_id']
-                payload['satker_nama'] = user['satker_nama']
-                payload['satker_kode'] = user['satker_kode']
-                payload['eselon_1_id'] = user['unit_eselon_id'] or user['eselon_1_id']
-                payload['eselon_1_kode'] = user['eselon_1_kode']
-                payload['eselon_1_nama'] = user['eselon_1_nama']
-                payload['eselon_1_singkatan'] = user['eselon_1_singkatan']
-                
-                # Permissions parsing
-                perms = user.get('permissions')
-                import json
-                if isinstance(perms, str):
-                    try:
-                        perms = json.loads(perms)
-                    except Exception:
-                        perms = {}
-                elif not isinstance(perms, dict):
+            if not user:
+                raise HTTPException(status_code=401, detail="Sesi tidak valid: Akun tidak ditemukan di sistem")
+            if not user.get('is_active', 1):
+                raise HTTPException(status_code=401, detail="Sesi berakhir: Akun telah dinonaktifkan oleh Administrator")
+            
+            payload['role_id'] = user['role_id']
+            payload['role'] = user['role']
+            payload['tingkat_id'] = user['tingkat_id']
+            payload['tingkat'] = user['tingkat']
+            payload['tingkat_nama'] = user['tingkat_nama']
+            payload['satker_id'] = user['satker_id']
+            payload['satker_nama'] = user['satker_nama']
+            payload['satker_kode'] = user['satker_kode']
+            payload['eselon_1_id'] = user['unit_eselon_id'] or user['eselon_1_id']
+            payload['eselon_1_kode'] = user['eselon_1_kode']
+            payload['eselon_1_nama'] = user['eselon_1_nama']
+            payload['eselon_1_singkatan'] = user['eselon_1_singkatan']
+            
+            # Permissions parsing
+            perms = user.get('permissions')
+            import json
+            if isinstance(perms, str):
+                try:
+                    perms = json.loads(perms)
+                except Exception:
                     perms = {}
-                payload['permissions'] = perms
-                
-                # Flag shortcuts for convenient checks
-                payload['is_operator'] = (user['role'] == 'operator')
-                payload['is_manajemen'] = (user['role'] in ['manajemen', 'administrasi'])
-                payload['is_administrasi'] = payload['is_manajemen']  # Backwards compatibility
-                
-                # IT Admin: Operator tingkat K/L dengan izin can_manage_users, atau legacy role IT
-                has_it_perms = bool(perms.get('can_manage_users'))
-                is_it = (
-                    user['role'] in ['it', 'admin_it']
-                    or user.get('username') == 'it_admin'
-                    or (user['role'] == 'operator' and user['tingkat'] == 'kl' and has_it_perms)
-                )
-                payload['is_it'] = is_it
-                payload['is_satker'] = (user['tingkat'] == 'satker')
-                payload['is_eselon1'] = (user['tingkat'] == 'eselon_1')
-                payload['is_kl'] = (user['tingkat'] == 'kl')
+            elif not isinstance(perms, dict):
+                perms = {}
+            payload['permissions'] = perms
+            
+            # Flag shortcuts for convenient checks
+            payload['is_operator'] = (user['role'] == 'operator')
+            payload['is_manajemen'] = (user['role'] in ['manajemen', 'administrasi'])
+            payload['is_administrasi'] = payload['is_manajemen']  # Backwards compatibility
+            
+            # IT Admin: Operator tingkat K/L dengan izin can_manage_users, atau legacy role IT
+            has_it_perms = bool(perms.get('can_manage_users'))
+            is_it = (
+                user['role'] in ['it', 'admin_it']
+                or user.get('username') == 'it_admin'
+                or (user['role'] == 'operator' and user['tingkat'] == 'kl' and has_it_perms)
+            )
+            payload['is_it'] = is_it
+            payload['is_satker'] = (user['tingkat'] == 'satker')
+            payload['is_eselon1'] = (user['tingkat'] == 'eselon_1')
+            payload['is_kl'] = (user['tingkat'] == 'kl')
                 
         return payload
     except jwt.ExpiredSignatureError:

@@ -358,11 +358,25 @@ async def reset_password(
     db=Depends(get_db)
 ):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT id, nama, username FROM users WHERE id = %s", (user_id,))
+        cursor.execute("""
+            SELECT u.id, u.nama, u.username, u.role_id, u.tingkat_id, u.satker_id, s.eselon_1_id
+            FROM users u
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE u.id = %s
+        """, (user_id,))
         user_row = cursor.fetchone()
         
         if not user_row:
             return {"success": False, "message": "User tidak ditemukan"}
+            
+        # Proteksi: Tidak boleh reset akun IT Admin atau Tingkat K/L
+        if user_row.get("role_id") == 3 or user_row.get("tingkat_id") == 3:
+            return {"success": False, "message": "Akses ditolak: Anda tidak memiliki wewenang mereset akun IT Administrator atau Tingkat K/L"}
+            
+        # Proteksi: Harus merupakan user di Satker binaan Eselon 1 terkait
+        if current_user.get("eselon_1_id"):
+            if not user_row.get("eselon_1_id") or user_row["eselon_1_id"] != current_user["eselon_1_id"]:
+                return {"success": False, "message": "Akses ditolak: User ini bukan bagian dari Satker binaan Eselon 1 Anda"}
             
         chars = string.ascii_letters + string.digits
         pass_rand = ''.join(random.choice(chars) for i in range(8))

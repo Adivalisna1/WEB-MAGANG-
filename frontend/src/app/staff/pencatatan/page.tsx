@@ -127,7 +127,7 @@ export default function StaffpencatatanPage() {
       if (jTx.success) setTransaksi(jTx.data);
       if (jCat.success) setKategori(jCat.data);
     } catch (err) {
-      toast.error('Gagal mengambil data');
+      toast.error('Gagal memuat daftar pencatatan. Silakan periksa koneksi atau klik Refresh.');
     } finally {
       setLoading(false);
     }
@@ -627,15 +627,23 @@ export default function StaffpencatatanPage() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
                   <input
-                    type="number"
-                    step="any"
-                    min="0"
+                    type="text"
                     required
-                    value={formData.saldo_akhir || formData.nominal}
-                    onChange={e => setFormData({ ...formData, saldo_akhir: e.target.value, nominal: e.target.value })}
+                    value={formData.saldo_akhir ? Number(formData.saldo_akhir).toLocaleString('id-ID') : (formData.nominal ? Number(formData.nominal).toLocaleString('id-ID') : '')}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, saldo_akhir: raw, nominal: raw });
+                    }}
                     className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
-                    placeholder="Contoh: 1500000000"
+                    placeholder="Contoh: 15.000.000"
+                    title="Ketik angka, titik ribuan otomatis diformat"
                   />
+                  {Boolean(formData.saldo_akhir || formData.nominal) && (
+                    <p className="text-xs text-blue-600 font-bold mt-1.5 flex items-center gap-1">
+                      <span>Terbaca:</span>
+                      <span className="bg-blue-50 px-2 py-0.5 rounded text-blue-700">Rp {Number(formData.saldo_akhir || formData.nominal).toLocaleString('id-ID')}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 

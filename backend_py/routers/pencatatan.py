@@ -173,6 +173,11 @@ async def create_akuntansi(
     if not is_allowed:
         raise HTTPException(403, "Forbidden: Akses khusus Operator dan Manajemen Satker")
         
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    allowed_exts = {'.pdf', '.xlsx', '.xls', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
+    if ext not in allowed_exts:
+        raise HTTPException(400, f"Format file bukti '{ext}' tidak didukung. Harap unggah PDF, Excel, Word, atau Gambar.")
+
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{file.filename}"
     file_path = os.path.join(UPLOAD_DIR, filename)
@@ -185,7 +190,10 @@ async def create_akuntansi(
     try:
         with db.cursor(dictionary=True) as cursor:
             created_by = user["id"]
-            final_satker_id = satker_id or user.get("satker_id")
+            if user.get("tingkat") == "satker" and not user.get("is_it"):
+                final_satker_id = user.get("satker_id")
+            else:
+                final_satker_id = satker_id or user.get("satker_id")
 
             if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id") and final_satker_id:
                 cursor.execute("SELECT id FROM satkers WHERE id = %s AND eselon_1_id = %s", (final_satker_id, user["eselon_1_id"]))

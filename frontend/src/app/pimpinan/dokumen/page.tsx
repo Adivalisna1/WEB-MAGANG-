@@ -81,6 +81,7 @@ function DokumenContent() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [previewError, setPreviewError] = useState('');
+  const [showBarModal, setShowBarModal] = useState(false);
 
   const isPdf = selectedDok ? /\.pdf$/i.test(selectedDok.file_nama) : false;
   const isExcel = selectedDok ? /\.(xls|xlsx)$/i.test(selectedDok.file_nama) : false;
@@ -932,11 +933,11 @@ function DokumenContent() {
                       </div>
                     )}
 
-                    {/* Ringkasan Nilai Keuangan */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    {/* Ringkasan Nilai Keuangan Standar Akuntansi */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                       <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Nilai Rekening Koran
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Saldo Bank (Rekening Koran)
                         </span>
                         <span className="text-sm font-black text-slate-800 mt-1 block">
                           {selectedDok.nilai_rekening_koran != null
@@ -946,8 +947,8 @@ function DokumenContent() {
                       </div>
 
                       <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Nilai Realisasi LPJ
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Saldo Buku (Kas / LPJ)
                         </span>
                         <span className="text-sm font-black text-slate-800 mt-1 block">
                           {selectedDok.nilai_excel != null
@@ -956,6 +957,44 @@ function DokumenContent() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Status Rekonsiliasi Otomatis (Balance Check) */}
+                    {selectedDok.nilai_rekening_koran != null && selectedDok.nilai_excel != null && (
+                      <div className={clsx(
+                        "p-3 rounded-xl border mb-4 flex items-center justify-between gap-3",
+                        Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                          : "bg-rose-50 border-rose-200 text-rose-900"
+                      )}>
+                        <div className="flex items-center gap-2.5">
+                          {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0 ? (
+                            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                          )}
+                          <div>
+                            <p className="font-bold text-xs uppercase tracking-wide">
+                              {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
+                                ? "Rekonsiliasi: Cocok / Nihil Selisih (Balance)"
+                                : "Rekonsiliasi: Terdapat Selisih Kas"}
+                            </p>
+                            <p className="text-[11px] opacity-80 mt-0.5">
+                              {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
+                                ? "Saldo Bank klir dan sesuai dengan Saldo Buku LPJ Satker."
+                                : `Deviasi kas tercatat sebesar Rp ${Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)).toLocaleString('id-ID')}`}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={clsx(
+                          "font-black text-xs px-2.5 py-1 rounded-lg shrink-0",
+                          Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-rose-100 text-rose-800"
+                        )}>
+                          Selisih: Rp {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Catatan Riwayat jika ada */}
                     {selectedDok.catatan && (
@@ -976,10 +1015,19 @@ function DokumenContent() {
                     )}
 
                     {/* Aksi Tambahan */}
-                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => setShowBarModal(true)}
+                        className="px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
+                        title="Cetak Berita Acara Rekonsiliasi Resmi untuk Arsip Audit BPK/Itjen"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                        Cetak Berita Acara (BAR)
+                      </button>
+
                       <button
                         onClick={handleDownload}
-                        className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1.5"
+                        className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1.5"
                       >
                         <Download className="w-3.5 h-3.5" />
                         Unduh Berkas
@@ -988,7 +1036,7 @@ function DokumenContent() {
                       <button
                         onClick={() => handleRescan(selectedDok.id)}
                         disabled={rescanning}
-                        className="px-4 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5"
+                        className="px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5"
                       >
                         <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
                         {rescanning ? 'Memindai...' : 'Audit Ulang Rekonsiliasi'}
@@ -1013,6 +1061,124 @@ function DokumenContent() {
         </div>
 
       </div>
+
+      {/* MODAL CETAK BERITA ACARA REKONSILIASI (BAR) RESMI PEMERINTAH */}
+      {showBarModal && selectedDok && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 border border-slate-200">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-emerald-800">
+                <Printer className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-base text-slate-800">Pratinjau Berita Acara Rekonsiliasi (BAR)</h3>
+              </div>
+              <button
+                onClick={() => setShowBarModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* FORMULIR RESMI BAR */}
+            <div id="printable-bar" className="my-5 p-6 border border-slate-300 rounded-xl bg-white text-slate-900 font-serif">
+              {/* Kop Instansi */}
+              <div className="text-center border-b-2 border-slate-900 pb-4 mb-5">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900 leading-snug">
+                  KEMENTERIAN PENDIDIKAN TINGGI, SAINS, DAN TEKNOLOGI
+                </h2>
+                <h3 className="text-sm font-extrabold uppercase mt-1 tracking-wider">
+                  BERITA ACARA REKONSILIASI SALDO KAS & BANK
+                </h3>
+                <p className="text-[11px] text-slate-600 font-sans mt-1">
+                  Nomor: {selectedDok.nomor_laporan || `BAR/${selectedDok.tahun}/${String(selectedDok.id).padStart(3, '0')}`}
+                </p>
+              </div>
+
+              <div className="text-xs font-sans space-y-3 leading-relaxed">
+                <p>
+                  Pada hari ini, tanggal <strong>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>, telah dilakukan pencocokan dan rekonsiliasi data mutasi keuangan berkas <strong>{selectedDok.judul}</strong> untuk periode <strong>{periodLabel(selectedDok)}</strong> dengan rincian sebagai berikut:
+                </p>
+
+                <table className="w-full border-collapse border border-slate-300 my-4 text-xs font-sans">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 text-left font-bold">
+                      <th className="border border-slate-300 p-2.5">Uraian Pembukuan</th>
+                      <th className="border border-slate-300 p-2.5 text-right">Saldo Terverifikasi (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-slate-300 p-2.5">1. Saldo Menurut Bank (Rekening Koran)</td>
+                      <td className="border border-slate-300 p-2.5 text-right font-mono font-bold">
+                        {selectedDok.nilai_rekening_koran != null ? `Rp ${Number(selectedDok.nilai_rekening_koran).toLocaleString('id-ID')}` : 'Rp 0'}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 p-2.5">2. Saldo Menurut Buku / LPJ Satker</td>
+                      <td className="border border-slate-300 p-2.5 text-right font-mono font-bold">
+                        {selectedDok.nilai_excel != null ? `Rp ${Number(selectedDok.nilai_excel).toLocaleString('id-ID')}` : 'Rp 0'}
+                      </td>
+                    </tr>
+                    <tr className="bg-slate-50 font-bold">
+                      <td className="border border-slate-300 p-2.5">3. Selisih Rekonsiliasi Kas</td>
+                      <td className="border border-slate-300 p-2.5 text-right font-mono text-emerald-800">
+                        Rp {Math.abs(Number(selectedDok.nilai_rekening_koran || 0) - Number(selectedDok.nilai_excel || 0)).toLocaleString('id-ID')}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+                  <span className="font-bold block text-[10px] uppercase text-slate-500 mb-0.5">Kesimpulan Audit:</span>
+                  <span className="font-semibold text-slate-800">
+                    {Math.abs(Number(selectedDok.nilai_rekening_koran || 0) - Number(selectedDok.nilai_excel || 0)) === 0
+                      ? 'Dinyatakan NIHIL SELISIH (BALANCE). Seluruh mutasi kas telah klir dan terverifikasi sesuai standar akuntansi pemerintah.'
+                      : `Terdapat selisih pembukuan kas sebesar Rp ${Math.abs(Number(selectedDok.nilai_rekening_koran || 0) - Number(selectedDok.nilai_excel || 0)).toLocaleString('id-ID')} yang memerlukan penjelasan rincian mutasi bank.`}
+                  </span>
+                </div>
+
+                {/* Kolom Tanda Tangan */}
+                <div className="grid grid-cols-2 gap-8 pt-6 text-center font-sans">
+                  <div>
+                    <p className="text-[11px] text-slate-500">Pihak Pengunggah / Bendahara:</p>
+                    <div className="h-16 flex items-center justify-center">
+                      <span className="text-slate-300 italic text-[11px]">[Tanda Tangan & Cap]</span>
+                    </div>
+                    <p className="font-bold underline text-xs">{selectedDok.uploaded_by || 'Bendahara Pengeluaran'}</p>
+                    <p className="text-[10px] text-slate-500">Satuan Kerja Pengaju</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-500">Pejabat Verifikator / Pimpinan Satker:</p>
+                    <div className="h-16 flex items-center justify-center">
+                      <span className="text-slate-300 italic text-[11px]">[Tanda Tangan & Cap]</span>
+                    </div>
+                    <p className="font-bold underline text-xs">Pimpinan Satker Terkait</p>
+                    <p className="text-[10px] text-slate-500">NIP. Pejabat Berwenang</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setShowBarModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl flex items-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
+              >
+                <Printer className="w-4 h-4" />
+                Cetak Lembar BAR (PDF)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

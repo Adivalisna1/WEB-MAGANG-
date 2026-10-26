@@ -54,7 +54,10 @@ async def bulk_insert_rekening_koran(request: dict, user: dict = Depends(get_cur
     if not data or not isinstance(data, list) or len(data) == 0:
         raise HTTPException(400, "Data excel kosong atau tidak valid")
         
-    satker_id = payload_satker_id or user.get("satker_id")
+    if user.get("tingkat") == "satker" and not user.get("is_it"):
+        satker_id = user.get("satker_id")
+    else:
+        satker_id = payload_satker_id or user.get("satker_id")
     uploaded_by = user.get("id")
     values = []
     

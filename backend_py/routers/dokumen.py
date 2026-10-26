@@ -12,6 +12,8 @@ from utils import catat_log, buat_notifikasi, save_file, delete_file, UPLOAD_DIR
 import jwt
 from services.reconciliation import scan_uploaded_file, reconcile_documents
 
+ALLOWED_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
+
 router = APIRouter(prefix="/api/dokumen", tags=["dokumen"])
 
 def buat_nomor_laporan(slug: str, tahun: int, doc_id: int) -> str:
@@ -242,8 +244,10 @@ async def upload_dokumen(
     bulan_final = None if semester else (int(bulan) if bulan else None)
     semester_final = int(semester) if semester else None
     
-    filename = file.filename
+    filename = file.filename or ""
     ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Format file '{ext}' tidak diizinkan. Hanya file dokumen (.pdf, .xlsx, .xls, .docx, .doc, .jpg, .png) yang didukung.")
     base_name = os.path.splitext(filename)[0].replace(' ', '-').lower()
     unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
     
@@ -616,9 +620,14 @@ async def delete_dokumen(id: int, request: Request, user: dict = Depends(get_cur
     )
     if not is_authorized: raise HTTPException(403, "Akses ditolak")
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT file_path, judul FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("SELECT d.file_path, d.judul, u.satker_id FROM dokumen d JOIN users u ON u.id = d.uploaded_by WHERE d.id = %s", (id,))
         dok = cursor.fetchone()
-        if not dok: raise HTTPException(404, "Not found")
+        if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
+        
+        # Proteksi isolasi Satker: Pimpinan tingkat Satker hanya boleh menghapus dokumen satkernya sendiri
+        if user.get("tingkat") == "satker" and not user.get("is_it"):
+            if user.get("satker_id") and dok.get("satker_id") != user.get("satker_id"):
+                raise HTTPException(403, "Akses ditolak: Dokumen bukan milik Satker Anda")
         
         if dok["file_path"]: delete_file(dok["file_path"])
         cursor.execute("DELETE FROM dokumen WHERE id = %s", (id,))
