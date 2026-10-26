@@ -269,7 +269,7 @@ async def create_akuntansi(
             insert_id = cursor.lastrowid
             
         db.commit()
-        return {"success": True, "message": "Data pencatatan berhasil disimpan", "insertId": insert_id}
+        return {"success": True, "message": "Berkas bukti transaksi berhasil disimpan", "insertId": insert_id}
     except Exception as e:
         db.rollback()
         raise HTTPException(500, f"Server error: {str(e)}")
@@ -283,4 +283,4 @@ async def update_metadata(id: int, request: dict, user: dict = Depends(require_a
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("UPDATE pencatatan SET id_kategori = %s, updated_by = %s WHERE id = %s", (id_kategori, user["id"], id))
         db.commit()
-        return {"success": True, "message": "Kategori akuntansi berhasil diubah oleh Admin IT"}
+        return {"success": True, "message": "Kategori bukti transaksi berhasil diubah oleh Admin IT"}

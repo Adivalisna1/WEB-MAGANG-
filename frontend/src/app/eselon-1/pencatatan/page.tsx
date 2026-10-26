@@ -292,7 +292,7 @@ export default function Eselon1PencatatanPage() {
       });
       const j = await res.json();
       if (j.success) {
-        toast.success('Pencatatan berhasil ditambahkan');
+        toast.success('Berkas bukti transaksi berhasil ditambahkan');
         setShowForm(false);
         setFormData({
           tanggal: todayDate,
@@ -341,8 +341,8 @@ export default function Eselon1PencatatanPage() {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pencatatan Eselon 1');
-    XLSX.writeFile(wb, `Pencatatan_Kas_${user?.eselon_1_singkatan || 'Eselon1'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Bukti Kas Eselon 1');
+    XLSX.writeFile(wb, `Rekap_Bukti_Kas_${user?.eselon_1_singkatan || 'Eselon1'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   return (
@@ -351,10 +351,10 @@ export default function Eselon1PencatatanPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-            {isOperator ? 'Pencatatan Kas Satker Binaan' : 'Rekap Pencatatan Kas Satker'}
+            {isOperator ? 'Bukti Kas Satker Binaan' : 'Monitoring Bukti Kas Satker'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Data transaksi kas, penerimaan, dan mutasi perbankan dari seluruh Satker binaan {user?.eselon_1_singkatan || 'Ditjen Pembina'}.
+            Berkas bukti transaksi kas, penerimaan, dan mutasi perbankan dari seluruh Satker binaan {user?.eselon_1_singkatan || 'Ditjen Pembina'}.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -389,7 +389,7 @@ export default function Eselon1PencatatanPage() {
               }}
               className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20"
             >
-              <Plus className="w-4 h-4" /> Tambah Pencatatan
+              <Plus className="w-4 h-4" /> Unggah Bukti Baru
             </button>
           )}
         </div>
@@ -425,7 +425,7 @@ export default function Eselon1PencatatanPage() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari uraian pencatatan..."
+            placeholder="Cari keterangan bukti transaksi..."
             value={searchUraian}
             onChange={e => setSearchUraian(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
@@ -507,7 +507,7 @@ export default function Eselon1PencatatanPage() {
           </div>
         ) : filteredData.length === 0 ? (
           <div className="py-20 text-center text-slate-400 text-sm">
-            Tidak ada data pencatatan yang sesuai filter.
+            Tidak ada berkas bukti yang sesuai filter.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -595,8 +595,8 @@ export default function Eselon1PencatatanPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Tambah Pencatatan Kas Baru</h2>
-                <p className="text-xs text-slate-500">Lengkapi formulir transaksi kas Satker binaan</p>
+                <h2 className="text-lg font-bold text-slate-800">Unggah Bukti Kas Baru</h2>
+                <p className="text-xs text-slate-500">Unggah berkas bukti transaksi kas dan lengkapi rincian Satker binaan</p>
               </div>
               <button onClick={() => setShowForm(false)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg">
                 <X className="w-5 h-5" />
@@ -784,7 +784,7 @@ export default function Eselon1PencatatanPage() {
                   className="flex items-center gap-2 px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
                 >
                   {submitLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {submitLoading ? 'Menyimpan...' : 'Simpan Pencatatan'}
+                  {submitLoading ? 'Menyimpan...' : 'Unggah & Simpan Bukti'}
                 </button>
               </div>
             </form>
@@ -799,7 +799,7 @@ export default function Eselon1PencatatanPage() {
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-base font-bold text-slate-800">Detail Pencatatan Kas</h2>
+                <h2 className="text-base font-bold text-slate-800">Detail Bukti Transaksi Kas</h2>
               </div>
               <button onClick={() => setSelectedDetail(null)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg">
                 <X className="w-5 h-5" />

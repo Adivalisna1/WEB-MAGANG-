@@ -127,7 +127,7 @@ export default function ForgotPasswordPage() {
             Pemulihan Akses Aman & Terverifikasi
           </h1>
           <p className="text-white/75 text-sm sm:text-base leading-relaxed mb-8">
-            Kendala lupa kata sandi akun pelaporan rekening koran dan pencatatan satker dapat diselesaikan dengan 3 langkah mudah berikut:
+            Kendala lupa kata sandi akun pelaporan rekening koran dan bukti kas satker dapat diselesaikan dengan 3 langkah mudah berikut:
           </p>
 
           {/* 3 Step Card Timeline Kiri */}

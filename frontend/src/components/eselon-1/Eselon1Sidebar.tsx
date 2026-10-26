@@ -27,14 +27,14 @@ export default function Eselon1Sidebar({ isMobileOpen, setIsMobileOpen, isCollap
     ? [
         { href: '/eselon-1',                icon: LayoutDashboard,    label: 'Dashboard',           exact: true },
         { href: '/eselon-1/dokumen',        icon: FileSearch,          label: 'Dokumen Satker' },
-        { href: '/eselon-1/pencatatan',     icon: BookOpen,            label: 'Pencatatan Kas' },
+        { href: '/eselon-1/pencatatan',     icon: BookOpen,            label: 'Bukti Kas Satker' },
         { href: '/eselon-1/rekening-koran', icon: FileSpreadsheet,     label: 'Rekening Koran' },
         { href: '/eselon-1/profil',         icon: User,                label: 'Profil' },
       ]
     : [
         { href: '/eselon-1',                icon: LayoutDashboard,    label: 'Dashboard Eksekutif', exact: true },
         { href: '/eselon-1/dokumen',        icon: FileSearch,          label: 'Verifikasi Dokumen' },
-        { href: '/eselon-1/pencatatan',     icon: BookOpen,            label: 'Pencatatan Kas Satker' },
+        { href: '/eselon-1/pencatatan',     icon: BookOpen,            label: 'Monitoring Bukti Satker' },
         { href: '/eselon-1/rekening-koran', icon: FileSpreadsheet,     label: 'Rekening Koran Satker' },
         { href: '/eselon-1/users',          icon: Users,               label: 'Manajemen User Satker' },
         { href: '/eselon-1/logs',           icon: Activity,            label: 'Log Aktivitas' },

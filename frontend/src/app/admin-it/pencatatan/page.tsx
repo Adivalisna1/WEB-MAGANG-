@@ -128,8 +128,8 @@ export default function AdminpencatatanPage() {
     <div className="w-full px-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Pencatatan</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola data transaksi dan master kategori pencatatan.</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Master Bukti & Transaksi</h1>
+          <p className="text-sm text-gray-500 mt-1">Kelola data transaksi dan master kategori bukti transaksi satker.</p>
         </div>
       </div>
 
@@ -152,7 +152,7 @@ export default function AdminpencatatanPage() {
               activeTab === 'kategori' ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
             )}
           >
-            <Tags className="w-4 h-4" /> Kategori Pencatatan
+            <Tags className="w-4 h-4" /> Kategori Bukti Transaksi
           </button>
         </div>
 

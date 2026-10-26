@@ -803,7 +803,7 @@ export default function MonitoringSatkerSection() {
                                 )}
                                 {doc.nilai_excel > 0 && (
                                   <span className="text-slate-600">
-                                    LPJ/Pencatatan: <strong>{formatRupiah(doc.nilai_excel)}</strong>
+                                    LPJ/Bukti Kas: <strong>{formatRupiah(doc.nilai_excel)}</strong>
                                   </span>
                                 )}
                               </div>

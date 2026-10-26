@@ -5,14 +5,14 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   FileText, Upload, LayoutDashboard,
-  LogOut, User, ChevronRight, Home, Settings, Bell, FileSpreadsheet, Calculator, X, ChevronLeft
+  LogOut, User, ChevronRight, Home, Settings, Bell, FileSpreadsheet, FileUp, X, ChevronLeft
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const StaffMenu = [
   { href: '/staff/dokumen',        icon: LayoutDashboard, label: 'Dokumen' },
   { href: '/staff/rekening-koran', icon: FileSpreadsheet, label: 'Rekening Koran' },
-  { href: '/staff/pencatatan',      icon: Calculator,      label: 'Pencatatan' },
+  { href: '/staff/pencatatan',      icon: FileUp,          label: 'Upload Bukti' },
   { href: '/staff/profil',         icon: User,            label: 'Profil' },
 ];
 

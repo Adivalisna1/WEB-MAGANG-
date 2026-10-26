@@ -279,7 +279,7 @@ export default function PimpinanpencatatanPage() {
       });
       const j = await res.json();
       if (j.success) {
-        toast.success('Data berhasil ditambahkan');
+        toast.success('Berkas bukti transaksi berhasil ditambahkan');
         setShowForm(false);
         resetForm();
         fetchData();
@@ -329,12 +329,12 @@ export default function PimpinanpencatatanPage() {
 
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data Pencatatan');
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Bukti Kas');
 
     const katStr = filterKategori ? `_${kategori.find(k => String(k.id) === filterKategori)?.nama_kategori || ''}` : '';
     const jenisStr = filterJenis ? `_${filterJenis === 'debit' ? 'Pemasukan' : 'Pengeluaran'}` : '';
     const perStr = filterPeriode ? `_${filterPeriode}` : '';
-    const fileName = `Pencatatan${perStr}${jenisStr}${katStr}.xlsx`.replace(/\s+/g, '_');
+    const fileName = `Bukti_Kas_Satker${perStr}${jenisStr}${katStr}.xlsx`.replace(/\s+/g, '_');
 
     XLSX.writeFile(wb, fileName);
   };
@@ -343,15 +343,15 @@ export default function PimpinanpencatatanPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Pencatatan & Audit</h1>
-          <p className="text-sm text-gray-500 mt-1">Pemantauan dan pengelolaan transaksi pencatatan seluruh satker.</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Verifikasi Bukti Kas & Audit</h1>
+          <p className="text-sm text-gray-500 mt-1">Pemantauan dan verifikasi berkas bukti transaksi kas seluruh satker.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportToExcel} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Download className="w-4 h-4" /> Export
           </button>
           <button onClick={() => { resetForm(); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Tambah Data
+            <Plus className="w-4 h-4" /> Unggah Bukti Baru
           </button>
         </div>
       </div>
@@ -385,7 +385,7 @@ export default function PimpinanpencatatanPage() {
             <div className="px-6 py-4 md:px-8 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <span>Tambah Transaksi</span>
+                  <span>Unggah Bukti Transaksi</span>
                   {aiScanning && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 animate-pulse">
                       <Loader2 className="w-3 h-3 animate-spin" />
@@ -596,7 +596,7 @@ export default function PimpinanpencatatanPage() {
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm shadow-blue-500/20 disabled:opacity-50 transition-all flex items-center gap-2"
                 >
                   {submitLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {submitLoading ? 'Menyimpan...' : 'Simpan Transaksi'}
+                  {submitLoading ? 'Menyimpan...' : 'Unggah & Simpan Bukti'}
                 </button>
               </div>
             </form>
@@ -614,12 +614,12 @@ export default function PimpinanpencatatanPage() {
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Bank</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Saldo Akhir</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Keterangan</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-center">File</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Berkas Bukti</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
               {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Memuat data...</td></tr> : 
-                filteredData.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Belum ada data transaksi.</td></tr> :
+                filteredData.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Belum ada berkas bukti yang diunggah.</td></tr> :
                 filteredData.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 whitespace-nowrap">

@@ -3,14 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, LayoutDashboard, Users, Tags, Activity, Building2, Calculator, X, ChevronLeft, ChevronRight, Database, FileSpreadsheet, Home } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Tags, Activity, Building2, FileUp, X, ChevronLeft, ChevronRight, Database, FileSpreadsheet, Home } from 'lucide-react';
 
 const MENU_ITEMS = [
   { href: '/admin-it', label: 'System Overview', icon: LayoutDashboard },
   { href: '/admin-it/satker', label: 'Manajemen Satker', icon: Building2 },
   { href: '/admin-it/users', label: 'User Management', icon: Users },
   { href: '/admin-it/kategori', label: 'Kategori Dokumen', icon: Tags },
-  { href: '/admin-it/pencatatan', label: 'Pencatatan', icon: Calculator },
+  { href: '/admin-it/pencatatan', label: 'Master Bukti & Transaksi', icon: FileUp },
   { href: '/admin-it/rekening-koran', label: 'Rekening Koran', icon: FileSpreadsheet },
 
   { href: '/admin-it/logs', label: 'Real-Time Logs', icon: Activity },
