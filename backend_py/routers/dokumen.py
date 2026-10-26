@@ -35,13 +35,15 @@ async def get_stats(satker: Optional[int] = None, db=Depends(get_db)):
         params.append(satker)
         
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE {where}", tuple(params))
+        sql_dok = "SELECT COUNT(*) AS totalDokumen FROM dokumen WHERE " + where
+        cursor.execute(sql_dok, tuple(params))
         total_dokumen = cursor.fetchone()["totalDokumen"]
         
         cursor.execute("SELECT COUNT(*) AS totalKategori FROM kategori_dokumen WHERE is_active = 1")
         total_kategori = cursor.fetchone()["totalKategori"]
         
-        cursor.execute(f"SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen WHERE {where}", tuple(params))
+        sql_dl = "SELECT COALESCE(SUM(download_count), 0) AS totalDownload FROM dokumen WHERE " + where
+        cursor.execute(sql_dl, tuple(params))
         total_download = cursor.fetchone()["totalDownload"]
         
     return {"success": True, "data": {"totalDokumen": total_dokumen, "totalKategori": total_kategori, "totalDownload": int(total_download)}}
@@ -79,27 +81,28 @@ async def get_dokumen_publik(
         params.extend([f"%{escaped}%", f"%{escaped}%"])
         
     with db.cursor(dictionary=True) as cursor:
-        query = f"""
-            SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.semester,
-                   d.nomor_laporan, d.file_nama, d.file_size, d.file_mime,
-                   d.download_count, d.created_at,
-                   k.nama AS kategori, k.slug AS kategori_slug
-            FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            LEFT JOIN users u ON d.uploaded_by = u.id
-            WHERE {where}
-            ORDER BY d.tahun DESC, d.bulan DESC, d.created_at DESC
-            LIMIT %s OFFSET %s
-        """
+        query = (
+            "SELECT d.id, d.judul, d.deskripsi, d.tahun, d.bulan, d.semester, "
+            "       d.nomor_laporan, d.file_nama, d.file_size, d.file_mime, "
+            "       d.download_count, d.created_at, "
+            "       k.nama AS kategori, k.slug AS kategori_slug "
+            "FROM dokumen d "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "LEFT JOIN users u ON d.uploaded_by = u.id "
+            "WHERE " + where + " "
+            "ORDER BY d.tahun DESC, d.bulan DESC, d.created_at DESC "
+            "LIMIT %s OFFSET %s"
+        )
         cursor.execute(query, tuple(params + [limit, offset]))
         rows = cursor.fetchall()
         
-        cursor.execute(f"""
-            SELECT COUNT(*) AS total FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            LEFT JOIN users u ON d.uploaded_by = u.id
-            WHERE {where}
-        """, tuple(params))
+        sql_count = (
+            "SELECT COUNT(*) AS total FROM dokumen d "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "LEFT JOIN users u ON d.uploaded_by = u.id "
+            "WHERE " + where
+        )
+        cursor.execute(sql_count, tuple(params))
         total = cursor.fetchone()["total"]
         
     return {
@@ -165,32 +168,33 @@ async def get_all_dokumen(
         params.append(tahun)
         
     with db.cursor(dictionary=True) as cursor:
-        query = f"""
-            SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
-                   d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size,
-                   d.download_count, d.is_public, d.created_at, d.updated_at,
-                   d.nilai_rekening_koran, d.nilai_excel,
-                   k.nama AS kategori, k.perlu_nominal, 
-                   u.nama AS uploaded_by, u.username AS uploaded_username,
-                   s.NO_Satker AS no_satker, s.nama AS satker_nama
-            FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-            ORDER BY d.created_at DESC
-            LIMIT %s OFFSET %s
-        """
+        query = (
+            "SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+            "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, "
+            "       d.download_count, d.is_public, d.created_at, d.updated_at, "
+            "       d.nilai_rekening_koran, d.nilai_excel, "
+            "       k.nama AS kategori, k.perlu_nominal, "
+            "       u.nama AS uploaded_by, u.username AS uploaded_username, "
+            "       s.NO_Satker AS no_satker, s.nama AS satker_nama "
+            "FROM dokumen d "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "WHERE " + where + " "
+            "ORDER BY d.created_at DESC "
+            "LIMIT %s OFFSET %s"
+        )
         cursor.execute(query, tuple(params + [limit, offset]))
         rows = cursor.fetchall()
         
-        cursor.execute(f"""
-            SELECT COUNT(*) AS total FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-        """, tuple(params))
+        sql_count = (
+            "SELECT COUNT(*) AS total FROM dokumen d "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "WHERE " + where
+        )
+        cursor.execute(sql_count, tuple(params))
         total = cursor.fetchone()["total"]
         
     return {

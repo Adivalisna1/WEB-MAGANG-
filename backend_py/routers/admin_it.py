@@ -396,12 +396,12 @@ async def get_logs(
         where_clause += " AND u.satker_id = %s"
         params.append(satker_id)
         
-    query = f"""
-        SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username, u.satker_id
-        FROM aktivitas_log l
-        LEFT JOIN users u ON u.id = l.user_id
-        WHERE {where_clause}
-    """
+    query = (
+        "SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username, u.satker_id "
+        "FROM aktivitas_log l "
+        "LEFT JOIN users u ON u.id = l.user_id "
+        "WHERE " + where_clause
+    )
     
     if not satker_id:
         query += """
@@ -412,14 +412,14 @@ async def get_logs(
             WHERE status = 'failed'
         """
         
-    count_query = f"SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE {where_clause}"
+    count_query = "SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE " + where_clause
     if not satker_id:
-        count_query = f"""
-            SELECT (
-              (SELECT COUNT(*) FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE {where_clause}) + 
-              (SELECT COUNT(*) FROM login_attempts WHERE status = 'failed')
-            ) AS total
-        """
+        count_query = (
+            "SELECT ( "
+            "  (SELECT COUNT(*) FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE " + where_clause + ") + "
+            "  (SELECT COUNT(*) FROM login_attempts WHERE status = 'failed') "
+            ") AS total"
+        )
         
     with db.cursor(dictionary=True) as cursor:
         cursor.execute(count_query, tuple(params))

@@ -1,11 +1,31 @@
 const fs = require('fs');
 const path = require('path');
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
+
+/**
+ * Validasi keamanan path untuk mencegah Path / Directory Traversal.
+ * Memastikan target file tidak keluar dari UPLOAD_DIR.
+ */
+function getSafePath(relativePath) {
+  const safeBaseDir = path.resolve(UPLOAD_DIR);
+  // Hindari null-byte injection dan normalisasi path
+  const sanitizedPath = String(relativePath).replace(/\0/g, '');
+  const targetPath = path.resolve(safeBaseDir, sanitizedPath);
+
+  if (!targetPath.startsWith(safeBaseDir + path.sep) && targetPath !== safeBaseDir) {
+    throw new Error('Access denied: Path traversal detected');
+  }
+
+  return targetPath;
+}
 
 async function uploadToR2(buffer, fileName, mimeType, tahun) {
-  const key = `${tahun}/${fileName}`;
-  const filePath = path.join(UPLOAD_DIR, key);
+  // Sanitasi parameter nama file dan tahun
+  const cleanTahun = String(tahun).replace(/[^a-zA-Z0-9_-]/g, '');
+  const cleanFileName = path.basename(fileName).replace(/\0/g, '');
+  const key = `${cleanTahun}/${cleanFileName}`;
+  const filePath = getSafePath(key);
   
   // Ensure directory exists
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -15,7 +35,7 @@ async function uploadToR2(buffer, fileName, mimeType, tahun) {
 }
 
 async function downloadFromR2(key) {
-  const filePath = path.join(UPLOAD_DIR, key);
+  const filePath = getSafePath(key);
   if (!fs.existsSync(filePath)) {
     throw new Error('File not found locally');
   }
@@ -23,7 +43,7 @@ async function downloadFromR2(key) {
 }
 
 async function deleteFromR2(key) {
-  const filePath = path.join(UPLOAD_DIR, key);
+  const filePath = getSafePath(key);
   try {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);

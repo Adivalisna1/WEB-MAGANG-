@@ -1,10 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 
+const ROOT_DIR = path.resolve(__dirname);
+
+function toSafePath(baseDir, targetRel) {
+  const safeBase = path.resolve(baseDir);
+  const target = path.resolve(safeBase, String(targetRel).replace(/\0/g, ''));
+  return target;
+}
+
 function checkImports(dir) {
-  const files = fs.readdirSync(dir);
+  const safeDir = path.resolve(dir);
+  const files = fs.readdirSync(safeDir);
   for (const file of files) {
-    const fullPath = path.join(dir, file);
+    const fullPath = toSafePath(safeDir, file);
     const stat = fs.statSync(fullPath);
     if (stat.isDirectory()) {
       checkImports(fullPath);
@@ -19,11 +28,11 @@ function checkImports(dir) {
           const importPath = match[1];
           if (importPath.startsWith('@/')) {
             // resolve @/ to src/
-            const resolvedPath = path.join(__dirname, 'src', importPath.slice(2));
+            const resolvedPath = toSafePath(path.join(ROOT_DIR, 'src'), importPath.slice(2));
             // check if exists with exact case
             checkExactCase(resolvedPath, fullPath, i + 1, importPath);
           } else if (importPath.startsWith('./') || importPath.startsWith('../')) {
-            const resolvedPath = path.join(path.dirname(fullPath), importPath);
+            const resolvedPath = toSafePath(path.dirname(fullPath), importPath);
             checkExactCase(resolvedPath, fullPath, i + 1, importPath);
           }
         }

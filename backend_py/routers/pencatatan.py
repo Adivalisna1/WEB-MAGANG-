@@ -107,17 +107,17 @@ async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_d
             params.extend([eselon_1_id, eselon_1_id])
             
     with db.cursor(dictionary=True) as cursor:
-        query = f"""
-            SELECT a.*, k.nama as nama_kategori, u.nama as pembuat, u2.nama as pengedit,
-                   COALESCE(a.satker_id, u.satker_id) as satker_id, s.nama as satker_nama
-            FROM pencatatan a
-            LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id
-            LEFT JOIN users u ON a.created_by = u.id
-            LEFT JOIN users u2 ON a.updated_by = u2.id
-            LEFT JOIN satkers s ON COALESCE(a.satker_id, u.satker_id) = s.id
-            WHERE {where}
-            ORDER BY a.tanggal DESC, a.created_at DESC
-        """
+        query = (
+            "SELECT a.*, k.nama as nama_kategori, u.nama as pembuat, u2.nama as pengedit, "
+            "       COALESCE(a.satker_id, u.satker_id) as satker_id, s.nama as satker_nama "
+            "FROM pencatatan a "
+            "LEFT JOIN kategori_dokumen k ON a.id_kategori = k.id "
+            "LEFT JOIN users u ON a.created_by = u.id "
+            "LEFT JOIN users u2 ON a.updated_by = u2.id "
+            "LEFT JOIN satkers s ON COALESCE(a.satker_id, u.satker_id) = s.id "
+            "WHERE " + where + " "
+            "ORDER BY a.tanggal DESC, a.created_at DESC"
+        )
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
 

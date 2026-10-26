@@ -1,13 +1,23 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import satker, auth, pencatatan, rekening_koran, dokumen, pimpinan, eselon_1, admin_it, stats, export
 
 app = FastAPI(title="Pencatatan Keuangan API", version="1.0.0")
 
-# Setup CORS biar Next.js bisa connect
+# Setup CORS aman (mendukung localhost dev & domain kustom via ENV)
+raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()] if raw_origins else [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:80",
+    "http://localhost",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

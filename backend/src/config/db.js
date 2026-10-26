@@ -12,7 +12,15 @@ function getPoolConfig() {
       user:     decodeURIComponent(u.username),
       password: decodeURIComponent(u.password),
       database: u.pathname.replace(/^\//, '') || undefined,
-      ...(u.hostname.endsWith('.tidbcloud.com') || u.hostname.endsWith('.aivencloud.com') ? { ssl: { rejectUnauthorized: false } } : {}),
+      ...(u.hostname.endsWith('.tidbcloud.com') || u.hostname.endsWith('.aivencloud.com') 
+        ? { 
+            ssl: { 
+              minVersion: 'TLSv1.2',
+              rejectUnauthorized: true,
+              ...(process.env.DB_CA ? { ca: process.env.DB_CA } : {})
+            } 
+          } 
+        : {}),
       waitForConnections: true,
       connectionLimit:    10,
       queueLimit:         0,

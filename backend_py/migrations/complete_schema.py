@@ -93,3 +93,4 @@ conn.commit()
 cur.close()
 conn.close()
 print("🎉 All database updates applied successfully!")
+

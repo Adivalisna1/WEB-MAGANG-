@@ -23,4 +23,4 @@ RUN mkdir -p /app/uploads /tmp/lo_preview
 
 EXPOSE 5000
 
-CMD ["node", "src/index.js"]
+USER non-root CMD ["node", "src/index.js"]

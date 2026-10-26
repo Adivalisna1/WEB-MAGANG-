@@ -3,6 +3,16 @@ const { sendTelegramNotification } = require('../services/telegramService');
 const { broadcastTelegramNotification } = require('../bots/bot_telegram');
 const { broadcastWhatsAppNotification } = require('../bots/bot_whatsapp');
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Middleware factory untuk log aktivitas ke tabel aktivitas_log
 // Contoh: activityLogger('upload', 'dokumen')
 function activityLogger(aksi, entitas = null) {
@@ -29,28 +39,31 @@ function activityLogger(aksi, entitas = null) {
           );
 
           // ======== TELEGRAM NOTIFICATION ========
-          const username = req.user?.username || 'System';
-          const role = req.user?.role || 'User';
+          const username = escapeHtml(req.user?.username || 'System');
+          const role = escapeHtml(req.user?.role || 'User');
+          const safeEntitas = escapeHtml(entitas || '');
+          const safeAksi = escapeHtml(aksi);
           
           let actionText = '';
           const nominalStr = req.body?.nominal ? ` senilai <b>Rp ${Number(req.body.nominal).toLocaleString('id-ID')}</b>` : '';
-          const uraianStr = req.body?.uraian ? ` (<i>${req.body.uraian}</i>)` : '';
+          const safeUraian = req.body?.uraian ? ` (<i>${escapeHtml(req.body.uraian)}</i>)` : '';
           
           switch (aksi) {
             case 'login': actionText = 'baru saja <b>Login</b> ke dalam sistem'; break;
             case 'logout': actionText = 'baru saja <b>Logout</b>'; break;
-            case 'upload': actionText = `mengunggah data <b>${entitas || 'file'}</b> baru`; break;
+            case 'upload': actionText = `mengunggah data <b>${safeEntitas || 'file'}</b> baru`; break;
             case 'create': 
               if (entitas === 'akuntansi') {
-                actionText = `menambahkan Pencatatan <b>${req.body?.jenis || 'Transaksi'}</b>${nominalStr}${uraianStr}`;
+                const safeJenis = escapeHtml(req.body?.jenis || 'Transaksi');
+                actionText = `menambahkan Pencatatan <b>${safeJenis}</b>${nominalStr}${safeUraian}`;
               } else {
-                actionText = `membuat data <b>${entitas || ''}</b> baru`; 
+                actionText = `membuat data <b>${safeEntitas}</b> baru`; 
               }
               break;
-            case 'update': actionText = `memperbarui data <b>${entitas || ''}</b>`; break;
-            case 'delete': actionText = `menghapus data <b>${entitas || ''}</b>`; break;
-            case 'download': actionText = `mengunduh laporan <b>${entitas || ''}</b>`; break;
-            default: actionText = `melakukan aksi <b>${aksi}</b> pada <b>${entitas || ''}</b>`;
+            case 'update': actionText = `memperbarui data <b>${safeEntitas}</b>`; break;
+            case 'delete': actionText = `menghapus data <b>${safeEntitas}</b>`; break;
+            case 'download': actionText = `mengunduh laporan <b>${safeEntitas}</b>`; break;
+            default: actionText = `melakukan aksi <b>${safeAksi}</b> pada <b>${safeEntitas}</b>`;
           }
 
           const tgMessage = `🚨 <b>Notifikasi Sistem</b>\n\n👤 <b>User:</b> ${username} (${role})\n📝 <b>Aktivitas:</b> ${username} ${actionText}.\n⏰ <b>Waktu:</b> ${new Date().toLocaleString('id-ID')}`;

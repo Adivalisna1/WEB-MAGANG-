@@ -8,6 +8,8 @@ services:
     image: mysql:8.0
     container_name: web_laporan_db
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -37,6 +39,8 @@ services:
       dockerfile: Dockerfile
     container_name: web_laporan_backend_py
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       db:
         condition: service_healthy
@@ -72,6 +76,8 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     container_name: web_laporan_frontend
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       - backend_py
     environment:
@@ -92,6 +98,8 @@ services:
     image: phpmyadmin:5.2
     container_name: web_laporan_pma
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       db:
         condition: service_healthy

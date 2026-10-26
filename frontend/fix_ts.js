@@ -1,8 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
+const ROOT_DIR = path.resolve(__dirname);
+
+function getSafePath(relativePath) {
+  const target = path.resolve(ROOT_DIR, String(relativePath).replace(/\0/g, ''));
+  if (!target.startsWith(ROOT_DIR + path.sep) && target !== ROOT_DIR) {
+    throw new Error('Path traversal detected');
+  }
+  return target;
+}
+
 function replaceInFile(filePath, search, replace) {
-  const fullPath = path.join(__dirname, filePath);
+  const fullPath = getSafePath(filePath);
   let content = fs.readFileSync(fullPath, 'utf8');
   content = content.replace(search, replace);
   fs.writeFileSync(fullPath, content);
@@ -17,7 +27,8 @@ replaceInFile(
 );
 
 // 2. staff/layout.tsx (if it exists)
-if (fs.existsSync(path.join(__dirname, 'src/app/staff/layout.tsx'))) {
+const staffLayoutPath = getSafePath('src/app/staff/layout.tsx');
+if (fs.existsSync(staffLayoutPath)) {
   replaceInFile(
     'src/app/staff/layout.tsx',
     "requireRole('satker')",
@@ -26,7 +37,8 @@ if (fs.existsSync(path.join(__dirname, 'src/app/staff/layout.tsx'))) {
 }
 
 // 3. satker/layout.tsx (if it exists)
-if (fs.existsSync(path.join(__dirname, 'src/app/satker/layout.tsx'))) {
+const satkerLayoutPath = getSafePath('src/app/satker/layout.tsx');
+if (fs.existsSync(satkerLayoutPath)) {
   replaceInFile(
     'src/app/satker/layout.tsx',
     "requireRole('satker')",
@@ -37,7 +49,8 @@ if (fs.existsSync(path.join(__dirname, 'src/app/satker/layout.tsx'))) {
 // 4. Object.keys(jsonData[0]) -> Object.keys(jsonData[0] as object)
 ['admin-it', 'staff', 'pimpinan', 'eselon-1'].forEach(role => {
   const file = `src/app/${role}/rekening-koran/page.tsx`;
-  if (fs.existsSync(path.join(__dirname, file))) {
+  const safeFile = getSafePath(file);
+  if (fs.existsSync(safeFile)) {
     replaceInFile(
       file,
       "setExcelHeaders(Object.keys(jsonData[0]));",
@@ -55,8 +68,9 @@ const newInitialState = `const initialRowState = {
 
 ['admin-it', 'staff'].forEach(role => {
   const file = `src/app/${role}/rekening-koran/page.tsx`;
-  if (fs.existsSync(path.join(__dirname, file))) {
-    let content = fs.readFileSync(path.join(__dirname, file), 'utf8');
+  const safeFile = getSafePath(file);
+  if (fs.existsSync(safeFile)) {
+    let content = fs.readFileSync(safeFile, 'utf8');
     // We need to add tahun and periode to setEditRowData
     content = content.replace(
       /setEditRowData\(\{[\s\S]*?saldo_rpl_lpj: d\.saldo_rpl_lpj \|\| 0,\s*keterangan: d\.keterangan \|\| ''\s*\}\);/,
@@ -75,7 +89,7 @@ const newInitialState = `const initialRowState = {
       periode: d.periode || '1'
     });`
     );
-    fs.writeFileSync(path.join(__dirname, file), content);
+    fs.writeFileSync(safeFile, content);
     console.log('Fixed initialRowState in', file);
   }
 });

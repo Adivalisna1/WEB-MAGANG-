@@ -85,19 +85,20 @@ async def get_stats(
             doc_where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
             doc_params = [eselon_id, eselon_id]
             
-        cursor.execute(f"""
-            SELECT COUNT(*) AS totalDokumen,
-                   SUM(d.status = 'terverifikasi') AS terverifikasi,
-                   SUM(d.status = 'menunggu_verifikasi') AS menunggu,
-                   SUM(d.status = 'lolos_admin') AS lolosPimpinan,
-                   SUM(d.status = 'revisi') AS revisi,
-                   COALESCE(SUM(CASE WHEN d.status = 'terverifikasi' THEN d.nilai_rekening_koran ELSE 0 END), 0) AS totalBudget,
-                   COALESCE(SUM(CASE WHEN d.status = 'terverifikasi' THEN d.nilai_excel ELSE 0 END), 0) AS totalExpenditure
-            FROM dokumen d
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            {doc_where}
-        """, tuple(doc_params))
+        sql_summary = (
+            "SELECT COUNT(*) AS totalDokumen, "
+            "       SUM(d.status = 'terverifikasi') AS terverifikasi, "
+            "       SUM(d.status = 'menunggu_verifikasi') AS menunggu, "
+            "       SUM(d.status = 'lolos_admin') AS lolosPimpinan, "
+            "       SUM(d.status = 'revisi') AS revisi, "
+            "       COALESCE(SUM(CASE WHEN d.status = 'terverifikasi' THEN d.nilai_rekening_koran ELSE 0 END), 0) AS totalBudget, "
+            "       COALESCE(SUM(CASE WHEN d.status = 'terverifikasi' THEN d.nilai_excel ELSE 0 END), 0) AS totalExpenditure "
+            "FROM dokumen d "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            + doc_where
+        )
+        cursor.execute(sql_summary, tuple(doc_params))
         doc_summary = cursor.fetchone() or {}
         
         total_dokumen = doc_summary.get("totalDokumen") or 0
@@ -117,50 +118,54 @@ async def get_stats(
             branch_where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
             branch_params = [eselon_id, eselon_id]
             
-        cursor.execute(f"""
-            SELECT COUNT(DISTINCT u.satker_id) AS activeBranches 
-            FROM users u
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            {branch_where}
-        """, tuple(branch_params))
+        sql_branches = (
+            "SELECT COUNT(DISTINCT u.satker_id) AS activeBranches "
+            "FROM users u "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            + branch_where
+        )
+        cursor.execute(sql_branches, tuple(branch_params))
         active_branches = cursor.fetchone()["activeBranches"]
         
-        cursor.execute(f"""
-            SELECT u.nama,
-                   COUNT(d.id) AS total,
-                   SUM(d.status = 'terverifikasi') AS terverifikasi,
-                   SUM(d.status = 'revisi') AS revisi
-            FROM users u
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            LEFT JOIN dokumen d ON d.uploaded_by = u.id
-            {branch_where}
-            GROUP BY u.id, u.nama
-            ORDER BY total DESC
-        """, tuple(branch_params))
+        sql_staff = (
+            "SELECT u.nama, "
+            "       COUNT(d.id) AS total, "
+            "       SUM(d.status = 'terverifikasi') AS terverifikasi, "
+            "       SUM(d.status = 'revisi') AS revisi "
+            "FROM users u "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "LEFT JOIN dokumen d ON d.uploaded_by = u.id "
+            + branch_where + " "
+            "GROUP BY u.id, u.nama "
+            "ORDER BY total DESC"
+        )
+        cursor.execute(sql_staff, tuple(branch_params))
         per_staff = cursor.fetchall()
         
-        cursor.execute(f"""
-            SELECT DATE_FORMAT(d.created_at, '%Y-%m-%d') AS tanggal, 
-                   COALESCE(SUM(d.nilai_rekening_koran), 0) AS budget, 
-                   COALESCE(SUM(d.nilai_excel), 0) AS expenditure
-            FROM dokumen d
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            {doc_where} AND d.created_at >= CURDATE() - INTERVAL 13 DAY
-              AND d.status = 'terverifikasi'
-            GROUP BY tanggal
-            ORDER BY tanggal ASC
-        """, tuple(doc_params))
+        sql_hari = (
+            "SELECT DATE_FORMAT(d.created_at, '%Y-%m-%d') AS tanggal, "
+            "       COALESCE(SUM(d.nilai_rekening_koran), 0) AS budget, "
+            "       COALESCE(SUM(d.nilai_excel), 0) AS expenditure "
+            "FROM dokumen d "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            + doc_where + " AND d.created_at >= CURDATE() - INTERVAL 13 DAY "
+            "  AND d.status = 'terverifikasi' "
+            "GROUP BY tanggal "
+            "ORDER BY tanggal ASC"
+        )
+        cursor.execute(sql_hari, tuple(doc_params))
         per_hari = cursor.fetchall()
         
-        cursor.execute(f"""
-            SELECT d.status, COUNT(*) AS total 
-            FROM dokumen d
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            {doc_where}
-            GROUP BY d.status
-        """, tuple(doc_params))
+        sql_status = (
+            "SELECT d.status, COUNT(*) AS total "
+            "FROM dokumen d "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            + doc_where + " "
+            "GROUP BY d.status"
+        )
+        cursor.execute(sql_status, tuple(doc_params))
         status_dist = cursor.fetchall()
         
         cursor.execute("""
@@ -210,20 +215,21 @@ async def get_users(
         params = [eselon_id, eselon_id]
         
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT u.id, u.nama, u.username, u.email, u.is_active,
-                   u.last_login, u.password_reset_at, u.created_at, r.nama AS role, t.kode AS tingkat,
-                   (SELECT is_online FROM user_sessions s
-                    WHERE s.user_id = u.id AND s.is_online = 1
-                    ORDER BY s.last_active_at DESC LIMIT 1) AS is_online,
-                   st.nama AS satker_nama
-            FROM users u
-            JOIN roles r ON r.id = u.role_id
-            JOIN tingkats t ON t.id = u.tingkat_id
-            LEFT JOIN satkers st ON st.id = u.satker_id
-            {where}
-            ORDER BY u.created_at DESC
-        """, tuple(params))
+        sql_users = (
+            "SELECT u.id, u.nama, u.username, u.email, u.is_active, "
+            "       u.last_login, u.password_reset_at, u.created_at, r.nama AS role, t.kode AS tingkat, "
+            "       (SELECT is_online FROM user_sessions s "
+            "        WHERE s.user_id = u.id AND s.is_online = 1 "
+            "        ORDER BY s.last_active_at DESC LIMIT 1) AS is_online, "
+            "       st.nama AS satker_nama "
+            "FROM users u "
+            "JOIN roles r ON r.id = u.role_id "
+            "JOIN tingkats t ON t.id = u.tingkat_id "
+            "LEFT JOIN satkers st ON st.id = u.satker_id "
+            + where + " "
+            "ORDER BY u.created_at DESC"
+        )
+        cursor.execute(sql_users, tuple(params))
         rows = cursor.fetchall()
         return {"success": True, "data": rows}
 
@@ -249,19 +255,20 @@ async def get_dokumen(
         params.append(status)
         
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan,
-                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
-                   k.nama AS kategori, u.nama AS uploaded_by, u.username AS uploaded_username,
-                   s.NO_Satker AS no_satker, s.nama AS satker_nama
-            FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-            ORDER BY d.created_at DESC
-            LIMIT %s
-        """, tuple(params + [limit]))
+        sql_dok = (
+            "SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan, "
+            "       d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
+            "       k.nama AS kategori, u.nama AS uploaded_by, u.username AS uploaded_username, "
+            "       s.NO_Satker AS no_satker, s.nama AS satker_nama "
+            "FROM dokumen d "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "WHERE " + where + " "
+            "ORDER BY d.created_at DESC "
+            "LIMIT %s"
+        )
+        cursor.execute(sql_dok, tuple(params + [limit]))
         rows = cursor.fetchall()
         return {"success": True, "data": rows}
 
@@ -279,20 +286,21 @@ async def get_dokumen_menunggu(
         params.extend([eselon_id, eselon_id])
         
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
-                   d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
-                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
-                   k.nama AS kategori, k.slug AS kategori_slug,
-                   u.nama AS uploaded_by, u.username AS uploaded_username,
-                   s.NO_Satker AS no_satker, s.nama AS satker_nama
-            FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-            ORDER BY d.updated_at ASC
-        """, tuple(params))
+        sql_wait = (
+            "SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+            "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime, "
+            "       d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
+            "       k.nama AS kategori, k.slug AS kategori_slug, "
+            "       u.nama AS uploaded_by, u.username AS uploaded_username, "
+            "       s.NO_Satker AS no_satker, s.nama AS satker_nama "
+            "FROM dokumen d "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "WHERE " + where + " "
+            "ORDER BY d.updated_at ASC"
+        )
+        cursor.execute(sql_wait, tuple(params))
         rows = cursor.fetchall()
         return {"success": True, "data": rows}
 
@@ -465,21 +473,23 @@ async def get_logs(
         params.append(aksi)
         
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail,
-                   l.ip_address, l.created_at, 
-                   CONCAT(u.nama, IFNULL(CONCAT(' (', s.nama, ')'), '')) AS user_nama, 
-                   u.username
-            FROM aktivitas_log l
-            LEFT JOIN users u ON u.id = l.user_id
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-            ORDER BY l.created_at DESC
-            LIMIT %s OFFSET %s
-        """, tuple(params + [limit, offset]))
+        sql_log = (
+            "SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, "
+            "       l.ip_address, l.created_at, "
+            "       CONCAT(u.nama, IFNULL(CONCAT(' (', s.nama, ')'), '')) AS user_nama, "
+            "       u.username "
+            "FROM aktivitas_log l "
+            "LEFT JOIN users u ON u.id = l.user_id "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "WHERE " + where + " "
+            "ORDER BY l.created_at DESC "
+            "LIMIT %s OFFSET %s"
+        )
+        cursor.execute(sql_log, tuple(params + [limit, offset]))
         rows = cursor.fetchall()
         
-        cursor.execute(f"SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE {where}", tuple(params))
+        sql_total = "SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE " + where
+        cursor.execute(sql_total, tuple(params))
         total = cursor.fetchone()["total"]
         
         return {
@@ -545,29 +555,30 @@ async def get_monitoring_satker(
             satker_where += " AND s.eselon_1_id = %s"
             satker_params.append(eselon_id)
 
-        cursor.execute(f"""
-            SELECT 
-                s.id, 
-                s.NO_Satker, 
-                s.nama,
-                s.eselon_1_id,
-                ue.nama AS eselon_nama,
-                ue.singkatan AS eselon_singkatan,
-                u.id AS user_id,
-                u.nama AS user_nama,
-                u.username AS user_username,
-                u.email AS user_email
-            FROM satkers s
-            LEFT JOIN unit_eselon_1 ue ON ue.id = s.eselon_1_id
-            LEFT JOIN (
-                SELECT satker_id, MIN(id) as id, MIN(nama) as nama, MIN(username) as username, MIN(email) as email
-                FROM users
-                WHERE role_id IN (1, 2)
-                GROUP BY satker_id
-            ) u ON u.satker_id = s.id
-            {satker_where}
-            ORDER BY s.nama ASC
-        """, tuple(satker_params))
+        sql_satkers = (
+            "SELECT "
+            "    s.id, "
+            "    s.NO_Satker, "
+            "    s.nama, "
+            "    s.eselon_1_id, "
+            "    ue.nama AS eselon_nama, "
+            "    ue.singkatan AS eselon_singkatan, "
+            "    u.id AS user_id, "
+            "    u.nama AS user_nama, "
+            "    u.username AS user_username, "
+            "    u.email AS user_email "
+            "FROM satkers s "
+            "LEFT JOIN unit_eselon_1 ue ON ue.id = s.eselon_1_id "
+            "LEFT JOIN ( "
+            "    SELECT satker_id, MIN(id) as id, MIN(nama) as nama, MIN(username) as username, MIN(email) as email "
+            "    FROM users "
+            "    WHERE role_id IN (1, 2) "
+            "    GROUP BY satker_id "
+            ") u ON u.satker_id = s.id "
+            + satker_where + " "
+            "ORDER BY s.nama ASC"
+        )
+        cursor.execute(sql_satkers, tuple(satker_params))
         all_satkers = cursor.fetchall()
 
         # 3. Query documents matching this period
@@ -577,41 +588,42 @@ async def get_monitoring_satker(
             doc_where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
             doc_params.extend([eselon_id, eselon_id])
 
-        cursor.execute(f"""
-            SELECT 
-                d.id,
-                d.judul,
-                d.status,
-                d.tahun,
-                d.bulan,
-                d.created_at,
-                d.nomor_laporan,
-                d.file_nama,
-                d.file_path,
-                d.file_size,
-                d.file_mime,
-                d.nilai_excel,
-                d.nilai_rekening_koran,
-                k.nama AS kategori_nama,
-                u.satker_id
-            FROM dokumen d
-            JOIN users u ON u.id = d.uploaded_by
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            LEFT JOIN rekening_koran rk ON rk.dokumen_id = d.id
-            {doc_where}
-              AND (
-                  rk.periode = %s
-                  OR (
-                      d.tahun = %s 
-                      AND (
-                          d.bulan = %s 
-                          OR (d.bulan IS NULL AND MONTH(d.created_at) = %s)
-                      )
-                  )
-              )
-            ORDER BY d.created_at DESC
-        """, tuple(doc_params + [active_periode, tahun_val, bulan_num, bulan_num]))
+        sql_docs_period = (
+            "SELECT "
+            "    d.id, "
+            "    d.judul, "
+            "    d.status, "
+            "    d.tahun, "
+            "    d.bulan, "
+            "    d.created_at, "
+            "    d.nomor_laporan, "
+            "    d.file_nama, "
+            "    d.file_path, "
+            "    d.file_size, "
+            "    d.file_mime, "
+            "    d.nilai_excel, "
+            "    d.nilai_rekening_koran, "
+            "    k.nama AS kategori_nama, "
+            "    u.satker_id "
+            "FROM dokumen d "
+            "JOIN users u ON u.id = d.uploaded_by "
+            "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+            "LEFT JOIN satkers s ON s.id = u.satker_id "
+            "LEFT JOIN rekening_koran rk ON rk.dokumen_id = d.id "
+            + doc_where + " "
+            "  AND ( "
+            "      rk.periode = %s "
+            "      OR ( "
+            "          d.tahun = %s "
+            "          AND ( "
+            "              d.bulan = %s "
+            "              OR (d.bulan IS NULL AND MONTH(d.created_at) = %s) "
+            "          ) "
+            "      ) "
+            "  ) "
+            "ORDER BY d.created_at DESC"
+        )
+        cursor.execute(sql_docs_period, tuple(doc_params + [active_periode, tahun_val, bulan_num, bulan_num]))
         docs_rows = cursor.fetchall()
 
         # Group documents by satker_id

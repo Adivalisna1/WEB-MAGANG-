@@ -78,7 +78,8 @@ async def get_dashboard_stats(
         kk_params_year = list(kk_params) + [target_tahun]
 
         # 1. Total User
-        cursor.execute(f"SELECT COUNT(id) AS total FROM users {user_filter}", tuple(params))
+        sql_users = "SELECT COUNT(id) AS total FROM users " + user_filter
+        cursor.execute(sql_users, tuple(params))
         total_user = cursor.fetchone()["total"]
 
         # 1.2 Total Satker (Khusus Eselon 1, KL & Admin IT)
@@ -102,11 +103,16 @@ async def get_dashboard_stats(
             doc_filter_year = "WHERE d.tahun = %s"
         doc_params_year.append(target_tahun)
             
-        cursor.execute(f"SELECT COUNT(d.id) AS total FROM dokumen d {doc_filter_year}", tuple(doc_params_year))
+        sql_doc = "SELECT COUNT(d.id) AS total FROM dokumen d " + doc_filter_year
+        cursor.execute(sql_doc, tuple(doc_params_year))
         total_dokumen = cursor.fetchone()["total"]
 
         # 2. Total Saldo (Sesuai Tahun Terpilih)
-        cursor.execute(f"SELECT SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total_saldo FROM rekening_koran {kk_filter_year}", tuple(kk_params_year))
+        sql_saldo = (
+            "SELECT SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total_saldo "
+            "FROM rekening_koran " + kk_filter_year
+        )
+        cursor.execute(sql_saldo, tuple(kk_params_year))
         saldo_res = cursor.fetchone()
         total_saldo = float(saldo_res["total_saldo"] or 0) if saldo_res else 0.0
 
@@ -144,14 +150,15 @@ async def get_dashboard_stats(
                 ]
         else:
             kk_filter_satker = kk_filter.replace("satker_id", "k.satker_id").replace("WHERE 1=1", "WHERE 1=1 AND k.satker_id IS NOT NULL")
-            cursor.execute(f"""
-                SELECT s.nama, SUM(IFNULL(k.saldo_akhir_bulan, 0) + IFNULL(k.saldo_rk, 0) + IFNULL(k.saldo_rekening, 0) + IFNULL(k.saldo_rpl_lpj, 0)) AS value 
-                FROM rekening_koran k 
-                JOIN satkers s ON k.satker_id = s.id 
-                {kk_filter_satker}
-                GROUP BY s.id 
-                ORDER BY value DESC
-            """, tuple(kk_params))
+            sql_satker = (
+                "SELECT s.nama, SUM(IFNULL(k.saldo_akhir_bulan, 0) + IFNULL(k.saldo_rk, 0) + IFNULL(k.saldo_rekening, 0) + IFNULL(k.saldo_rpl_lpj, 0)) AS value "
+                "FROM rekening_koran k "
+                "JOIN satkers s ON k.satker_id = s.id "
+                + kk_filter_satker + " "
+                "GROUP BY s.id "
+                "ORDER BY value DESC"
+            )
+            cursor.execute(sql_satker, tuple(kk_params))
             
             satker_res = cursor.fetchall()
             formatted_satker = [
@@ -160,13 +167,14 @@ async def get_dashboard_stats(
             ]
 
         # 4. Tren Saldo Per Tahun & Periode
-        cursor.execute(f"""
-            SELECT tahun, periode, SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total 
-            FROM rekening_koran 
-            {kk_filter}
-            GROUP BY tahun, periode 
-            ORDER BY tahun ASC, periode ASC
-        """, tuple(kk_params))
+        sql_tren = (
+            "SELECT tahun, periode, SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total "
+            "FROM rekening_koran "
+            + kk_filter + " "
+            "GROUP BY tahun, periode "
+            "ORDER BY tahun ASC, periode ASC"
+        )
+        cursor.execute(sql_tren, tuple(kk_params))
         
         periode_res = cursor.fetchall()
         tren_map = {}
@@ -182,14 +190,15 @@ async def get_dashboard_stats(
         formatted_tren = sorted(list(tren_map.values()), key=lambda x: int(x["tahun"]))
 
         # 5. Dokumen Terakhir (Real-Time)
-        cursor.execute(f"""
-            SELECT d.id, d.judul, k.nama AS kategori, d.status, d.created_at, d.bulan, d.tahun
-            FROM dokumen d
-            LEFT JOIN kategori_dokumen k ON d.kategori_id = k.id
-            {doc_filter}
-            ORDER BY d.created_at DESC
-            LIMIT 1
-        """, tuple(doc_params))
+        sql_latest = (
+            "SELECT d.id, d.judul, k.nama AS kategori, d.status, d.created_at, d.bulan, d.tahun "
+            "FROM dokumen d "
+            "LEFT JOIN kategori_dokumen k ON d.kategori_id = k.id "
+            + doc_filter + " "
+            "ORDER BY d.created_at DESC "
+            "LIMIT 1"
+        )
+        cursor.execute(sql_latest, tuple(doc_params))
         latest_doc_row = cursor.fetchone()
         latest_dokumen = None
         bulan_names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
@@ -216,12 +225,13 @@ async def get_dashboard_stats(
             }
 
         # 6. Aktivitas Dokumen Bulanan 12 Bulan (Real-Time)
-        cursor.execute(f"""
-            SELECT MONTH(d.created_at) AS bln, d.status, COUNT(d.id) AS count
-            FROM dokumen d
-            {doc_filter}
-            GROUP BY MONTH(d.created_at), d.status
-        """, tuple(doc_params))
+        sql_monthly = (
+            "SELECT MONTH(d.created_at) AS bln, d.status, COUNT(d.id) AS count "
+            "FROM dokumen d "
+            + doc_filter + " "
+            "GROUP BY MONTH(d.created_at), d.status"
+        )
+        cursor.execute(sql_monthly, tuple(doc_params))
         monthly_docs = cursor.fetchall()
         
         current_month_idx = datetime.datetime.now().month  # 1 to 12
@@ -267,11 +277,14 @@ async def get_dashboard_stats(
 
         # 7. Real-Time KPI Sub-Details
         # 7a. Dokumen Bulan Ini
-        cursor.execute(f"""
-            SELECT COUNT(d.id) AS cnt 
-            FROM dokumen d 
-            {doc_filter} {"AND" if doc_filter else "WHERE"} MONTH(d.created_at) = MONTH(CURRENT_DATE()) AND YEAR(d.created_at) = YEAR(CURRENT_DATE())
-        """, tuple(doc_params))
+        connector = " AND " if doc_filter else " WHERE "
+        sql_docs_month = (
+            "SELECT COUNT(d.id) AS cnt "
+            "FROM dokumen d "
+            + doc_filter + connector +
+            "MONTH(d.created_at) = MONTH(CURRENT_DATE()) AND YEAR(d.created_at) = YEAR(CURRENT_DATE())"
+        )
+        cursor.execute(sql_docs_month, tuple(doc_params))
         docs_this_month = cursor.fetchone()["cnt"]
 
         # 7b. Kategori Aktif Preview
@@ -284,12 +297,13 @@ async def get_dashboard_stats(
             kategori_preview = ", ".join(all_kats) if all_kats else "Tidak ada kategori"
 
         # 7c. Status Kepatuhan Riil
-        cursor.execute(f"""
-            SELECT d.status, COUNT(d.id) as cnt
-            FROM dokumen d
-            {doc_filter}
-            GROUP BY d.status
-        """, tuple(doc_params))
+        sql_status = (
+            "SELECT d.status, COUNT(d.id) as cnt "
+            "FROM dokumen d "
+            + doc_filter + " "
+            "GROUP BY d.status"
+        )
+        cursor.execute(sql_status, tuple(doc_params))
         status_rows = cursor.fetchall()
         cnt_verified = sum(r["cnt"] for r in status_rows if r["status"] == "terverifikasi")
         cnt_revisi = sum(r["cnt"] for r in status_rows if r["status"] == "revisi")
@@ -308,14 +322,15 @@ async def get_dashboard_stats(
             kepatuhan_desc = "Belum ada dokumen diunggah"
 
         # 7d. Saldo Growth Riil
-        cursor.execute(f"""
-            SELECT tahun, SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total
-            FROM rekening_koran
-            {kk_filter}
-            GROUP BY tahun
-            ORDER BY tahun DESC
-            LIMIT 2
-        """, tuple(kk_params))
+        sql_growth = (
+            "SELECT tahun, SUM(IFNULL(saldo_akhir_bulan, 0) + IFNULL(saldo_rk, 0) + IFNULL(saldo_rekening, 0) + IFNULL(saldo_rpl_lpj, 0)) AS total "
+            "FROM rekening_koran "
+            + kk_filter + " "
+            "GROUP BY tahun "
+            "ORDER BY tahun DESC "
+            "LIMIT 2"
+        )
+        cursor.execute(sql_growth, tuple(kk_params))
         yr_rows = cursor.fetchall()
         saldo_growth_pct = 4.2
         if len(yr_rows) >= 2 and yr_rows[1]["total"] and float(yr_rows[1]["total"]) > 0:
@@ -324,14 +339,15 @@ async def get_dashboard_stats(
             saldo_growth_pct = round(((s_curr - s_prev) / s_prev) * 100, 1)
 
         # 8. Rekonsiliasi Keuangan Bulanan (Real-Time Dual Bar Chart Sesuai Tahun Terpilih)
-        cursor.execute(f"""
-            SELECT periode,
-                   SUM(IFNULL(saldo_akhir_bulan, 0)) as bank,
-                   SUM(IFNULL(saldo_rekening, 0)) as buku
-            FROM rekening_koran
-            {kk_filter_year}
-            GROUP BY periode
-        """, tuple(kk_params_year))
+        sql_recon_rk = (
+            "SELECT periode, "
+            "       SUM(IFNULL(saldo_akhir_bulan, 0)) as bank, "
+            "       SUM(IFNULL(saldo_rekening, 0)) as buku "
+            "FROM rekening_koran "
+            + kk_filter_year + " "
+            "GROUP BY periode"
+        )
+        cursor.execute(sql_recon_rk, tuple(kk_params_year))
         rk_periode_rows = cursor.fetchall()
 
         recon_monthly_map = {i: {"bank": 0.0, "buku": 0.0} for i in range(1, 13)}
@@ -350,14 +366,15 @@ async def get_dashboard_stats(
                     recon_monthly_map[m]["bank"] += round(b_val / 6, 2)
                     recon_monthly_map[m]["buku"] += round(bk_val / 6, 2)
 
-        cursor.execute(f"""
-            SELECT MONTH(d.created_at) as bln, 
-                   SUM(IFNULL(d.nilai_rekening_koran, 0)) as bank, 
-                   SUM(IFNULL(d.nilai_excel, 0)) as buku
-            FROM dokumen d
-            {doc_filter_year}
-            GROUP BY MONTH(d.created_at)
-        """, tuple(doc_params_year))
+        sql_recon_doc = (
+            "SELECT MONTH(d.created_at) as bln, "
+            "       SUM(IFNULL(d.nilai_rekening_koran, 0)) as bank, "
+            "       SUM(IFNULL(d.nilai_excel, 0)) as buku "
+            "FROM dokumen d "
+            + doc_filter_year + " "
+            "GROUP BY MONTH(d.created_at)"
+        )
+        cursor.execute(sql_recon_doc, tuple(doc_params_year))
         doc_recon_rows = cursor.fetchall()
 
         for r in doc_recon_rows:
@@ -386,14 +403,15 @@ async def get_dashboard_stats(
             })
 
         # 9. Proporsi Kategori Riil (Donut Chart)
-        cursor.execute(f"""
-            SELECT COALESCE(k.nama, 'Lainnya') AS nama, COUNT(d.id) as count
-            FROM dokumen d
-            LEFT JOIN kategori_dokumen k ON d.kategori_id = k.id
-            {doc_filter}
-            GROUP BY k.id, k.nama
-            ORDER BY count DESC
-        """, tuple(doc_params))
+        sql_cat_doc = (
+            "SELECT COALESCE(k.nama, 'Lainnya') AS nama, COUNT(d.id) as count "
+            "FROM dokumen d "
+            "LEFT JOIN kategori_dokumen k ON d.kategori_id = k.id "
+            + doc_filter + " "
+            "GROUP BY k.id, k.nama "
+            "ORDER BY count DESC"
+        )
+        cursor.execute(sql_cat_doc, tuple(doc_params))
         cat_doc_rows = cursor.fetchall()
         total_cat_docs = sum(r["count"] for r in cat_doc_rows) or 1
         proporsi_kategori = [

@@ -32,22 +32,23 @@ async def get_satker_dokumen(
     if status and status != 'all':
         where += " AND d.status = %s"
         params.append(status)
+    sql = (
+        "SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+        "d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime, "
+        "d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
+        "k.nama AS kategori, k.slug AS kategori_slug, "
+        "u.nama AS uploaded_by, u.username AS uploaded_username, "
+        "s.NO_Satker AS no_satker, s.nama AS satker_nama "
+        "FROM dokumen d "
+        "JOIN kategori_dokumen k ON k.id = d.kategori_id "
+        "JOIN users u ON u.id = d.uploaded_by "
+        "LEFT JOIN satkers s ON s.id = u.satker_id "
+        "WHERE " + where + " "
+        "ORDER BY d.created_at DESC "
+        "LIMIT %s"
+    )
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan,
-                   d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime,
-                   d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at,
-                   k.nama AS kategori, k.slug AS kategori_slug,
-                   u.nama AS uploaded_by, u.username AS uploaded_username,
-                   s.NO_Satker AS no_satker, s.nama AS satker_nama
-            FROM dokumen d
-            JOIN kategori_dokumen k ON k.id = d.kategori_id
-            JOIN users u ON u.id = d.uploaded_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-            ORDER BY d.created_at DESC
-            LIMIT %s
-        """, tuple(params + [min(limit, 250)]))
+        cursor.execute(sql, tuple(params + [min(limit, 250)]))
         return {"success": True, "data": cursor.fetchall()}
 
 @router.get("/dokumen/menunggu")
@@ -234,18 +235,20 @@ async def get_logs(
             where_clause += " AND l.aksi = %s"
             params.append(aksi)
             
-        cursor.execute(f"""
-            SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail,
-                   l.ip_address, l.created_at, u.nama AS user_nama, u.username
-            FROM aktivitas_log l
-            LEFT JOIN users u ON u.id = l.user_id
-            WHERE {where_clause}
-            ORDER BY l.created_at DESC
-            LIMIT %s OFFSET %s
-        """, tuple(params + [limit, offset]))
+        sql_log = (
+            "SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, "
+            "l.ip_address, l.created_at, u.nama AS user_nama, u.username "
+            "FROM aktivitas_log l "
+            "LEFT JOIN users u ON u.id = l.user_id "
+            "WHERE " + where_clause + " "
+            "ORDER BY l.created_at DESC "
+            "LIMIT %s OFFSET %s"
+        )
+        cursor.execute(sql_log, tuple(params + [limit, offset]))
         rows = cursor.fetchall()
         
-        cursor.execute(f"SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE {where_clause}", tuple(params))
+        sql_total = "SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE " + where_clause
+        cursor.execute(sql_total, tuple(params))
         total = cursor.fetchone()["total"]
         
         return {

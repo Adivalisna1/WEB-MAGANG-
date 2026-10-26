@@ -1,6 +1,6 @@
 // Global error handler — selalu pasang paling bawah di index.js
 function errorHandler(err, req, res, next) {
-  console.error(`[ERROR] ${req.method} ${req.path} →`, err.message);
+  console.error('[ERROR]', req.method, req.path, '→', err.message);
 
   // Error dari multer (upload file)
   if (err.code === 'LIMIT_FILE_SIZE') {

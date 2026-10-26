@@ -58,29 +58,30 @@ async def export_rekening_koran(
         where += " AND r.periode = %s"
         params.append(periode)
 
+    sql_query = (
+        "SELECT "
+        "s.nama AS satker, "
+        "s.NO_Satker AS kode_satker, "
+        "r.nama_bank, "
+        "r.nomor_rekening_bank, "
+        "r.nama_rekening, "
+        "r.tahun, "
+        "r.periode, "
+        "r.saldo_akhir_bulan, "
+        "r.saldo_rk, "
+        "r.saldo_rekening, "
+        "r.saldo_rpl_lpj, "
+        "r.keterangan, "
+        "u.nama AS diinput_oleh, "
+        "r.created_at "
+        "FROM rekening_koran r "
+        "LEFT JOIN satkers s ON s.id = r.satker_id "
+        "LEFT JOIN users u ON u.id = r.uploaded_by "
+        "WHERE " + where + " "
+        "ORDER BY s.nama ASC, r.tahun DESC, r.periode ASC"
+    )
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT 
-                s.nama AS satker,
-                s.NO_Satker AS kode_satker,
-                r.nama_bank,
-                r.nomor_rekening_bank,
-                r.nama_rekening,
-                r.tahun,
-                r.periode,
-                r.saldo_akhir_bulan,
-                r.saldo_rk,
-                r.saldo_rekening,
-                r.saldo_rpl_lpj,
-                r.keterangan,
-                u.nama AS diinput_oleh,
-                r.created_at
-            FROM rekening_koran r
-            LEFT JOIN satkers s ON s.id = r.satker_id
-            LEFT JOIN users u ON u.id = r.uploaded_by
-            WHERE {where}
-            ORDER BY s.nama ASC, r.tahun DESC, r.periode ASC
-        """, tuple(params))
+        cursor.execute(sql_query, tuple(params))
         rows = cursor.fetchall()
 
     if not rows:
@@ -179,28 +180,29 @@ async def export_pencatatan(
         where += " AND a.jenis = %s"
         params.append(jenis)
 
+    sql_query = (
+        "SELECT "
+        "a.tanggal, "
+        "s.nama AS satker, "
+        "k.nama AS kategori, "
+        "a.jenis, "
+        "a.uraian, "
+        "a.nominal, "
+        "a.nama_bank, "
+        "a.nomor_rekening, "
+        "a.nama_rekening, "
+        "a.catatan_audit, "
+        "u.nama AS diinput_oleh, "
+        "a.created_at "
+        "FROM pencatatan a "
+        "LEFT JOIN kategori_dokumen k ON k.id = a.id_kategori "
+        "LEFT JOIN users u ON u.id = a.created_by "
+        "LEFT JOIN satkers s ON s.id = u.satker_id "
+        "WHERE " + where + " "
+        "ORDER BY a.tanggal DESC"
+    )
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT
-                a.tanggal,
-                s.nama AS satker,
-                k.nama AS kategori,
-                a.jenis,
-                a.uraian,
-                a.nominal,
-                a.nama_bank,
-                a.nomor_rekening,
-                a.nama_rekening,
-                a.catatan_audit,
-                u.nama AS diinput_oleh,
-                a.created_at
-            FROM pencatatan a
-            LEFT JOIN kategori_dokumen k ON k.id = a.id_kategori
-            LEFT JOIN users u ON u.id = a.created_by
-            LEFT JOIN satkers s ON s.id = u.satker_id
-            WHERE {where}
-            ORDER BY a.tanggal DESC
-        """, tuple(params))
+        cursor.execute(sql_query, tuple(params))
         rows = cursor.fetchall()
 
     if not rows:
@@ -271,28 +273,29 @@ async def export_rekening_koran_all_satker(
         where += " AND r.tahun = %s"
         params.append(tahun)
 
+    sql_query = (
+        "SELECT "
+        "s.nama AS satker, "
+        "r.nama_bank, "
+        "r.nomor_rekening_bank, "
+        "r.nama_rekening, "
+        "r.tahun, "
+        "r.periode, "
+        "r.saldo_akhir_bulan, "
+        "r.saldo_rk, "
+        "r.saldo_rekening, "
+        "r.saldo_rpl_lpj, "
+        "r.keterangan, "
+        "u.nama AS diinput_oleh, "
+        "r.created_at "
+        "FROM rekening_koran r "
+        "LEFT JOIN satkers s ON s.id = r.satker_id "
+        "LEFT JOIN users u ON u.id = r.uploaded_by "
+        "WHERE " + where + " "
+        "ORDER BY s.nama ASC, r.tahun DESC"
+    )
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute(f"""
-            SELECT 
-                s.nama AS satker,
-                r.nama_bank,
-                r.nomor_rekening_bank,
-                r.nama_rekening,
-                r.tahun,
-                r.periode,
-                r.saldo_akhir_bulan,
-                r.saldo_rk,
-                r.saldo_rekening,
-                r.saldo_rpl_lpj,
-                r.keterangan,
-                u.nama AS diinput_oleh,
-                r.created_at
-            FROM rekening_koran r
-            LEFT JOIN satkers s ON s.id = r.satker_id
-            LEFT JOIN users u ON u.id = r.uploaded_by
-            WHERE {where}
-            ORDER BY s.nama ASC, r.tahun DESC
-        """, tuple(params))
+        cursor.execute(sql_query, tuple(params))
         rows = cursor.fetchall()
 
     if not rows:

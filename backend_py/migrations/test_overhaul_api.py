@@ -13,6 +13,10 @@ def log(msg, status="INFO"):
     print(f"{symbol} [{status}] {msg}")
 
 def request_json(url, method="GET", data=None, headers=None):
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or parsed.hostname not in ("localhost", "127.0.0.1"):
+        raise ValueError(f"Invalid target host '{parsed.hostname}' for test runner")
+
     if headers is None:
         headers = {}
     

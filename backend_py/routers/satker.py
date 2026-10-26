@@ -41,7 +41,8 @@ def get_satkers(
         where += " AND eselon_1_id = %s"
         params.append(eselon_1_id)
 
-    cursor.execute(f"SELECT id, NO_Satker, nama, eselon_1_id, created_at FROM satkers WHERE {where} ORDER BY nama ASC", tuple(params))
+    sql = "SELECT id, NO_Satker, nama, eselon_1_id, created_at FROM satkers WHERE " + where + " ORDER BY nama ASC"
+    cursor.execute(sql, tuple(params))
     rows = cursor.fetchall()
     cursor.close()
     return {"success": True, "data": rows}
