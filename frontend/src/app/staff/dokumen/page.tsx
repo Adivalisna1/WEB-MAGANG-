@@ -53,7 +53,6 @@ export default function StaffDokumenPage() {
   const [filterKategori, setFilterKategori] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [tableSearch, setTableSearch] = useState('');
-  const [previewState, setPreviewState] = useState<'normal' | 'skeleton' | 'empty'>('normal');
 
   // Dropzone & Upload Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -322,28 +321,6 @@ export default function StaffDokumenPage() {
             <div className="staff-table-toolbar">
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="staff-card-title mb-0">Daftar Pengajuan Terbaru</h2>
-                
-                {/* State Switcher Pills */}
-                <div className="staff-state-pills" title="Ganti Mode Tampilan Pratinjau Tabel">
-                  <button
-                    className={clsx('staff-state-pill-btn', previewState === 'normal' && 'active')}
-                    onClick={() => setPreviewState('normal')}
-                  >
-                    Data Normal
-                  </button>
-                  <button
-                    className={clsx('staff-state-pill-btn', previewState === 'skeleton' && 'active')}
-                    onClick={() => setPreviewState('skeleton')}
-                  >
-                    Skeleton
-                  </button>
-                  <button
-                    className={clsx('staff-state-pill-btn', previewState === 'empty' && 'active')}
-                    onClick={() => setPreviewState('empty')}
-                  >
-                    Kosong
-                  </button>
-                </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
@@ -413,8 +390,8 @@ export default function StaffDokumenPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* SKELETON STATE */}
-                  {(loading || previewState === 'skeleton') && (
+                  {/* SKELETON STATE SAAT LOADING */}
+                  {loading && (
                     <>
                       {[1, 2, 3, 4].map(idx => (
                         <tr key={`skel-${idx}`} className="animate-pulse">
@@ -438,32 +415,19 @@ export default function StaffDokumenPage() {
                   )}
 
                   {/* EMPTY STATE */}
-                  {!loading && previewState === 'empty' && (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400">
-                        <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                        <h4 className="font-bold text-slate-700 text-base">Tidak Ada Dokumen</h4>
-                        <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
-                          Belum ada pengajuan dokumen keuangan pada kategori atau filter ini.
-                        </p>
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* NORMAL DATA STATE */}
-                  {!loading && previewState === 'normal' && filteredDokumenList.length === 0 && (
+                  {!loading && filteredDokumenList.length === 0 && (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400">
                         <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
                         <h4 className="font-bold text-slate-700 text-base">Tidak Ada Dokumen Ditemukan</h4>
                         <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
-                          Coba ganti kata kunci pencarian atau sesuaikan pilihan filter kategori dan status di atas.
+                          Belum ada dokumen pengajuan atau kata kunci pencarian tidak cocok.
                         </p>
                       </td>
                     </tr>
                   )}
 
-                  {!loading && previewState === 'normal' && filteredDokumenList.map(dok => {
+                  {!loading && filteredDokumenList.map(dok => {
                     const fileBadge = getFileBadge(dok.file_nama);
                     const cfg = statusConfig[dok.status] || {
                       label: dok.status,
