@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, FormEvent, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, FormEvent, useEffect } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,18 +20,18 @@ import {
   FileText,
   BadgeCheck,
   HelpCircle,
-  ExternalLink
-} from 'lucide-react';
+  ExternalLink,
+} from "lucide-react";
 
-const steps = ['Masukkan Email', 'Cek Inbox', 'Sandi Baru'];
+const steps = ["Masukkan Email", "Cek Inbox", "Sandi Baru"];
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [testUrl, setTestUrl] = useState('');
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [testUrl, setTestUrl] = useState("");
   const [countdown, setCountdown] = useState(60);
 
   useEffect(() => {
@@ -47,28 +47,34 @@ export default function ForgotPasswordPage() {
     if (!email) return;
 
     setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    setTestUrl('');
+    setErrorMsg("");
+    setSuccessMsg("");
+    setTestUrl("");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/auth/forgot-password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+      );
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.detail || data.message || 'Gagal mengirim email verifikasi');
+      if (!res.ok)
+        throw new Error(
+          data.detail || data.message || "Gagal mengirim email verifikasi",
+        );
 
-      setSuccessMsg(data.message || 'Tautan pemulihan berhasil dikirim');
+      setSuccessMsg(data.message || "Tautan pemulihan berhasil dikirim");
       if (data.testUrl) {
         setTestUrl(data.testUrl);
       }
       setIsSent(true);
       setCountdown(60);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Terjadi kesalahan jaringan');
+      setErrorMsg(err.message || "Terjadi kesalahan jaringan");
     } finally {
       setLoading(false);
     }
@@ -82,18 +88,17 @@ export default function ForgotPasswordPage() {
 
   return (
     <main className="min-h-screen w-full flex flex-col lg:flex-row bg-[#0A192F] text-slate-900">
-      
       {/* ============================================================ */}
       {/* ── SISI KIRI (HERO & SOP VISUAL LAYAR PENUH 50-52%) ──      */}
       {/* ============================================================ */}
       <section className="relative w-full lg:w-[50%] xl:w-[52%] bg-gradient-to-br from-[#071325] via-[#0D2447] to-[#143B73] p-8 sm:p-12 lg:p-16 flex flex-col justify-between overflow-hidden text-white border-b lg:border-b-0 lg:border-r border-white/10">
-        
         {/* Glowing Orbs & Ambient Background Mesh */}
-        <div 
+        <div
           className="pointer-events-none absolute inset-0 opacity-20 [mask-image:linear-gradient(to_bottom,black,transparent_90%)]"
           style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.2) 1.2px, transparent 1.2px)',
-            backgroundSize: '28px 28px',
+            backgroundImage:
+              "radial-gradient(circle, rgba(255,255,255,0.2) 1.2px, transparent 1.2px)",
+            backgroundSize: "28px 28px",
           }}
         />
         <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl" />
@@ -127,7 +132,8 @@ export default function ForgotPasswordPage() {
             Pemulihan Akses Aman & Terverifikasi
           </h1>
           <p className="text-white/75 text-sm sm:text-base leading-relaxed mb-8">
-            Kendala lupa kata sandi akun pelaporan rekening koran dan bukti kas satker dapat diselesaikan dengan 3 langkah mudah berikut:
+            Kendala lupa kata sandi akun pelaporan rekening koran dan bukti kas
+            satker dapat diselesaikan dengan 3 langkah mudah berikut:
           </p>
 
           {/* 3 Step Card Timeline Kiri */}
@@ -138,9 +144,12 @@ export default function ForgotPasswordPage() {
                 1
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Verifikasi Email Kedinasan</h4>
+                <h4 className="text-sm font-bold text-white">
+                  Verifikasi Email Kedinasan
+                </h4>
                 <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                  Ketikkan alamat email aktif yang terdaftar di akun instansi / Satker Anda.
+                  Ketikkan alamat email aktif yang terdaftar di akun instansi /
+                  Satker Anda.
                 </p>
               </div>
             </div>
@@ -151,9 +160,12 @@ export default function ForgotPasswordPage() {
                 2
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Terima Tautan Reset (15 Menit)</h4>
+                <h4 className="text-sm font-bold text-white">
+                  Terima Tautan Reset (15 Menit)
+                </h4>
                 <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                  Sistem otomatis mengirimkan token unik yang terenkripsi langsung ke kotak masuk email.
+                  Sistem otomatis mengirimkan token unik yang terenkripsi
+                  langsung ke kotak masuk email.
                 </p>
               </div>
             </div>
@@ -164,9 +176,12 @@ export default function ForgotPasswordPage() {
                 3
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Buat Kata Sandi Baru</h4>
+                <h4 className="text-sm font-bold text-white">
+                  Buat Kata Sandi Baru
+                </h4>
                 <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                  Perbarui sandi baru Anda dan langsung masuk kembali ke dashboard aplikasi.
+                  Perbarui sandi baru Anda dan langsung masuk kembali ke
+                  dashboard aplikasi.
                 </p>
               </div>
             </div>
@@ -186,19 +201,20 @@ export default function ForgotPasswordPage() {
               153 Satker Terdata
             </span>
           </div>
-          <Link href="/" className="hover:text-white transition-colors flex items-center gap-1">
+          <Link
+            href="/"
+            className="hover:text-white transition-colors flex items-center gap-1"
+          >
             <span>Portal Publik</span>
             <ExternalLink size={12} />
           </Link>
         </div>
-
       </section>
 
       {/* ============================================================ */}
       {/* ── SISI KANAN (FORMULIR INTERAKTIF LAYAR PENUH 48-50%) ──    */}
       {/* ============================================================ */}
       <section className="w-full lg:w-[50%] xl:w-[48%] bg-[#F8FAFC] flex flex-col justify-between p-6 sm:p-10 lg:p-14 xl:p-16 relative">
-        
         {/* Top Navbar Kanan: Tombol Kembali ke Login */}
         <div className="flex items-center justify-between mb-8">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -216,7 +232,6 @@ export default function ForgotPasswordPage() {
         {/* Kartu Formulir Tengah Kanan */}
         <div className="my-auto max-w-md w-full mx-auto">
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-7 sm:p-9 relative overflow-hidden">
-            
             {/* Top Blue Accent Line */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-[#1D64EC] to-indigo-600" />
 
@@ -238,7 +253,8 @@ export default function ForgotPasswordPage() {
                     </div>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    Ketikkan alamat email kedinasan Anda yang terdaftar untuk menerima tautan aktivasi password baru.
+                    Ketikkan alamat email kedinasan Anda yang terdaftar untuk
+                    menerima tautan aktivasi password baru.
                   </p>
                 </div>
 
@@ -249,15 +265,15 @@ export default function ForgotPasswordPage() {
                       key={step}
                       className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-center text-[10px] font-semibold sm:text-xs ${
                         index === 0
-                          ? 'bg-white text-[#1D64EC] shadow-xs ring-1 ring-slate-200/70'
-                          : 'text-slate-400'
+                          ? "bg-white text-[#1D64EC] shadow-xs ring-1 ring-slate-200/70"
+                          : "text-slate-400"
                       }`}
                     >
                       <span
                         className={`flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] ${
                           index === 0
-                            ? 'bg-[#1D64EC] text-white font-bold'
-                            : 'border border-slate-300 bg-white text-slate-400'
+                            ? "bg-[#1D64EC] text-white font-bold"
+                            : "border border-slate-300 bg-white text-slate-400"
                         }`}
                       >
                         {index + 1}
@@ -273,7 +289,10 @@ export default function ForgotPasswordPage() {
                     role="alert"
                     className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs sm:text-sm text-red-700 leading-snug"
                   >
-                    <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-600" />
+                    <AlertCircle
+                      size={18}
+                      className="mt-0.5 shrink-0 text-red-600"
+                    />
                     <span>{errorMsg}</span>
                   </div>
                 )}
@@ -300,7 +319,7 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
-                        setErrorMsg('');
+                        setErrorMsg("");
                       }}
                       placeholder="nama.staf@instansi.go.id"
                       className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-xs sm:text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-[#1D64EC] focus:ring-4 focus:ring-blue-100"
@@ -308,8 +327,12 @@ export default function ForgotPasswordPage() {
                   </div>
 
                   <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-4 text-slate-500">
-                    <Lock size={12} className="mt-0.5 shrink-0 text-slate-400" />
-                    Pastikan menggunakan email yang terdaftar pada akun Satker Anda.
+                    <Lock
+                      size={12}
+                      className="mt-0.5 shrink-0 text-slate-400"
+                    />
+                    Pastikan menggunakan email yang terdaftar pada akun Satker
+                    Anda.
                   </p>
 
                   <button
@@ -359,12 +382,15 @@ export default function ForgotPasswordPage() {
 
                 <div className="my-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left">
                   <div className="flex items-start gap-2.5">
-                    <Mail size={16} className="mt-0.5 shrink-0 text-[#1D64EC]" />
+                    <Mail
+                      size={16}
+                      className="mt-0.5 shrink-0 text-[#1D64EC]"
+                    />
                     <p className="text-xs leading-relaxed text-slate-600">
-                      Belum menemukan emailnya? Periksa folder{' '}
+                      Belum menemukan emailnya? Periksa folder{" "}
                       <strong className="font-semibold text-slate-800">
                         spam, junk,
-                      </strong>{' '}
+                      </strong>{" "}
                       atau promosi. Pastikan alamat email di atas sudah benar.
                     </p>
                   </div>
@@ -372,9 +398,13 @@ export default function ForgotPasswordPage() {
 
                 {testUrl && (
                   <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-left">
-                    <p className="text-xs font-bold text-emerald-800 mb-1">Mode Pengujian / Development:</p>
+                    <p className="text-xs font-bold text-emerald-800 mb-1">
+                      Mode Pengujian / Development:
+                    </p>
                     <p className="text-[11px] text-emerald-700 leading-relaxed mb-2.5">
-                      Karena provider email (Brevo) belum disetel di server lokal, tautan pemulihan dibuat langsung untuk pengujian. Silakan klik tombol berikut:
+                      Karena provider email (Brevo) belum disetel di server
+                      lokal, tautan pemulihan dibuat langsung untuk pengujian.
+                      Silakan klik tombol berikut:
                     </p>
                     <a
                       href={testUrl}
@@ -399,14 +429,14 @@ export default function ForgotPasswordPage() {
                   )}
                   {countdown > 0
                     ? `Kirim Ulang Email (${countdown}s)`
-                    : 'Kirim Ulang Email'}
+                    : "Kirim Ulang Email"}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
                     setIsSent(false);
-                    setErrorMsg('');
+                    setErrorMsg("");
                   }}
                   className="mt-3 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-[#1D64EC] hover:text-blue-700 transition hover:bg-blue-50 cursor-pointer"
                 >
@@ -421,17 +451,16 @@ export default function ForgotPasswordPage() {
                 <div className="flex items-center gap-2">
                   <ShieldCheck size={18} className="shrink-0 text-[#1D64EC]" />
                   <p className="text-[11px] sm:text-xs text-slate-600">
-                    Tautan reset berlaku selama{' '}
+                    Tautan reset berlaku selama{" "}
                     <strong className="font-semibold text-slate-800">
                       15 menit
-                    </strong>{' '}
+                    </strong>{" "}
                     demi keamanan akun.
                   </p>
                 </div>
                 <Clock size={14} className="shrink-0 text-blue-400" />
               </div>
             </div>
-
           </div>
         </div>
 
@@ -443,7 +472,7 @@ export default function ForgotPasswordPage() {
           >
             <CircleHelp size={15} />
             <span>
-              Kendala akses akun?{' '}
+              Kendala akses akun?{" "}
               <strong className="font-semibold text-slate-700">
                 Hubungi Admin Satker atau Helpdesk IT
               </strong>
@@ -453,9 +482,7 @@ export default function ForgotPasswordPage() {
             © 2026 Direktorat Jenderal Pendidikan Tinggi · Kemdiktisaintek
           </p>
         </div>
-
       </section>
-
     </main>
   );
 }

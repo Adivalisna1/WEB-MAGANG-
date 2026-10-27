@@ -1,17 +1,35 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getSession } from '@/lib/auth';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { getSession } from "@/lib/auth";
+import toast from "react-hot-toast";
 import {
-  Building2, CheckCircle2, AlertCircle, Clock, Search,
-  Calendar, RefreshCw, FileText, ExternalLink, Download,
-  Send, X, ChevronLeft, ChevronRight, Copy, Check,
-  AlertTriangle, ShieldCheck, Mail, User, Eye, ArrowUpDown
-} from 'lucide-react';
-import clsx from 'clsx';
+  Building2,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Search,
+  Calendar,
+  RefreshCw,
+  FileText,
+  ExternalLink,
+  Download,
+  Send,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Check,
+  AlertTriangle,
+  ShieldCheck,
+  Mail,
+  User,
+  Eye,
+  ArrowUpDown,
+} from "lucide-react";
+import clsx from "clsx";
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 interface KontakUser {
   nama?: string | null;
@@ -43,7 +61,7 @@ interface SatkerMonitoringItem {
   eselon_1_id: number;
   eselon_nama?: string;
   eselon_singkatan?: string;
-  status: 'sudah' | 'belum';
+  status: "sudah" | "belum";
   total_dokumen: number;
   terakhir_upload: string | null;
   dokumen_terakhir_judul?: string | null;
@@ -62,37 +80,37 @@ interface MonitoringSummary {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  terverifikasi:       'bg-emerald-50 text-emerald-700 border-emerald-200',
-  menunggu_verifikasi: 'bg-amber-50 text-amber-700 border-amber-200',
-  lolos_admin:         'bg-blue-50 text-blue-700 border-blue-200',
-  revisi:              'bg-rose-50 text-rose-700 border-rose-200',
-  draft:               'bg-slate-50 text-slate-600 border-slate-200',
+  terverifikasi: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  menunggu_verifikasi: "bg-amber-50 text-amber-700 border-amber-200",
+  lolos_admin: "bg-blue-50 text-blue-700 border-blue-200",
+  revisi: "bg-rose-50 text-rose-700 border-rose-200",
+  draft: "bg-slate-50 text-slate-600 border-slate-200",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  terverifikasi:       'Terverifikasi',
-  menunggu_verifikasi: 'Menunggu Verifikasi',
-  lolos_admin:         'Menunggu Eselon 1',
-  revisi:              'Perlu Revisi',
-  draft:               'Draft Pengajuan',
+  terverifikasi: "Terverifikasi",
+  menunggu_verifikasi: "Menunggu Verifikasi",
+  lolos_admin: "Menunggu Eselon 1",
+  revisi: "Perlu Revisi",
+  draft: "Draft Pengajuan",
 };
 
 function formatRupiah(val: number | null | undefined): string {
-  if (val == null || val === 0) return '—';
-  const ribuan = Math.round(val).toLocaleString('id-ID');
+  if (val == null || val === 0) return "—";
+  const ribuan = Math.round(val).toLocaleString("id-ID");
   return `Rp ${ribuan}`;
 }
 
 function formatDate(isoStr: string | null | undefined): string {
-  if (!isoStr) return '—';
+  if (!isoStr) return "—";
   try {
     const d = new Date(isoStr);
-    return d.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
     return isoStr;
@@ -103,50 +121,58 @@ export default function MonitoringSatkerSection() {
   const [data, setData] = useState<SatkerMonitoringItem[]>([]);
   const [summary, setSummary] = useState<MonitoringSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   // Controls
-  const [selectedPeriode, setSelectedPeriode] = useState<string>('');
-  const [tabFilter, setTabFilter] = useState<'all' | 'sudah' | 'belum'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPeriode, setSelectedPeriode] = useState<string>("");
+  const [tabFilter, setTabFilter] = useState<"all" | "sudah" | "belum">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Modal State
-  const [selectedSatker, setSelectedSatker] = useState<SatkerMonitoringItem | null>(null);
+  const [selectedSatker, setSelectedSatker] =
+    useState<SatkerMonitoringItem | null>(null);
   const [isReminding, setIsReminding] = useState(false);
-  const [remindSuccessMessage, setRemindSuccessMessage] = useState('');
+  const [remindSuccessMessage, setRemindSuccessMessage] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const fetchMonitoring = useCallback(async (periodeOverride?: string) => {
-    try {
-      setLoading(true);
-      const session = getSession();
-      const periodeParam = periodeOverride !== undefined ? periodeOverride : selectedPeriode;
-      const url = new URL(`${API}/eselon-1/monitoring-satker`);
-      if (periodeParam) url.searchParams.set('periode', periodeParam);
+  const fetchMonitoring = useCallback(
+    async (periodeOverride?: string) => {
+      try {
+        setLoading(true);
+        const session = getSession();
+        const periodeParam =
+          periodeOverride !== undefined ? periodeOverride : selectedPeriode;
+        const url = new URL(`${API}/eselon-1/monitoring-satker`);
+        if (periodeParam) url.searchParams.set("periode", periodeParam);
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || 'Gagal memuat monitoring dokumen satker');
+        const res = await fetch(url.toString(), {
+          headers: { Authorization: `Bearer ${session?.token}` },
+        });
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(
+            json.message || "Gagal memuat monitoring dokumen satker",
+          );
 
-      setData(json.data || []);
-      setSummary(json.summary || null);
-      if (!selectedPeriode && json.summary?.periode_aktif) {
-        setSelectedPeriode(json.summary.periode_aktif);
+        setData(json.data || []);
+        setSummary(json.summary || null);
+        if (!selectedPeriode && json.summary?.periode_aktif) {
+          setSelectedPeriode(json.summary.periode_aktif);
+        }
+        setError("");
+      } catch (err: any) {
+        setError(err.message || "Terjadi kesalahan sistem");
+        toast.error(err.message || "Gagal memuat monitoring satker");
+      } finally {
+        setLoading(false);
       }
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan sistem');
-      toast.error(err.message || 'Gagal memuat monitoring satker');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedPeriode]);
+    },
+    [selectedPeriode],
+  );
 
   useEffect(() => {
     fetchMonitoring();
@@ -170,7 +196,7 @@ export default function MonitoringSatkerSection() {
   const filteredSatkers = useMemo(() => {
     return data.filter((s) => {
       // 1. Tab filter (sudah / belum)
-      if (tabFilter !== 'all' && s.status !== tabFilter) {
+      if (tabFilter !== "all" && s.status !== tabFilter) {
         return false;
       }
       // 2. Search query (NO_Satker or Nama)
@@ -197,36 +223,52 @@ export default function MonitoringSatkerSection() {
     try {
       setIsReminding(true);
       const session = getSession();
-      const periodeTarget = summary?.periode_aktif || selectedPeriode || 'periode aktif';
-      const res = await fetch(`${API}/eselon-1/monitoring-satker/remind/${satkerId}?periode=${encodeURIComponent(periodeTarget)}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session?.token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const periodeTarget =
+        summary?.periode_aktif || selectedPeriode || "periode aktif";
+      const res = await fetch(
+        `${API}/eselon-1/monitoring-satker/remind/${satkerId}?periode=${encodeURIComponent(periodeTarget)}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session?.token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
       const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || json.message || 'Gagal mengirim pengingat');
+      if (!res.ok)
+        throw new Error(
+          json.detail || json.message || "Gagal mengirim pengingat",
+        );
 
-      setRemindSuccessMessage(json.message || 'Pengingat berhasil dikirim ke Satker');
-      toast.success('Pengingat berhasil dikirim ke akun Satker!');
+      setRemindSuccessMessage(
+        json.message || "Pengingat berhasil dikirim ke Satker",
+      );
+      toast.success("Pengingat berhasil dikirim ke akun Satker!");
     } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat mengirim pengingat');
+      toast.error(err.message || "Terjadi kesalahan saat mengirim pengingat");
     } finally {
       setIsReminding(false);
     }
   };
 
   // Open Document file
-  const handleOpenFile = (filePath: string, fileNama: string, docId?: number) => {
+  const handleOpenFile = (
+    filePath: string,
+    fileNama: string,
+    docId?: number,
+  ) => {
     const session = getSession();
     if (docId) {
       const url = `${API}/dokumen/${docId}/preview?token=${session?.token}`;
-      window.open(url, '_blank');
-    } else if (filePath.startsWith('/api/')) {
-      window.open(filePath, '_blank');
+      window.open(url, "_blank");
+    } else if (filePath.startsWith("/api/")) {
+      window.open(filePath, "_blank");
     } else {
-      window.open(`${API}/pencatatan/file/${filePath.replace('akuntansi/', '')}`, '_blank');
+      window.open(
+        `${API}/pencatatan/file/${filePath.replace("akuntansi/", "")}`,
+        "_blank",
+      );
     }
   };
 
@@ -248,7 +290,8 @@ export default function MonitoringSatkerSection() {
               Monitoring Kepatuhan Dokumen Satker Binaan
             </h2>
             <p className="text-xs md:text-sm text-slate-500 mt-0.5">
-              Pantau kelengkapan, riwayat pengumpulan, serta status belum melampirkan berkas per periode.
+              Pantau kelengkapan, riwayat pengumpulan, serta status belum
+              melampirkan berkas per periode.
             </p>
           </div>
 
@@ -256,7 +299,10 @@ export default function MonitoringSatkerSection() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs">
               <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
-              <label htmlFor="periode-select" className="text-xs font-bold text-slate-600 uppercase tracking-wider shrink-0">
+              <label
+                htmlFor="periode-select"
+                className="text-xs font-bold text-slate-600 uppercase tracking-wider shrink-0"
+              >
                 Periode:
               </label>
               <select
@@ -265,15 +311,16 @@ export default function MonitoringSatkerSection() {
                 onChange={(e) => handlePeriodeChange(e.target.value)}
                 className="text-xs font-semibold text-slate-900 bg-transparent border-none focus:outline-hidden focus:ring-0 cursor-pointer pr-4"
               >
-                {summary?.available_periods && summary.available_periods.length > 0 ? (
+                {summary?.available_periods &&
+                summary.available_periods.length > 0 ? (
                   summary.available_periods.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>
                   ))
                 ) : (
-                  <option value={selectedPeriode || 'Oktober 2026'}>
-                    {selectedPeriode || 'Oktober 2026'}
+                  <option value={selectedPeriode || "Oktober 2026"}>
+                    {selectedPeriode || "Oktober 2026"}
                   </option>
                 )}
               </select>
@@ -285,7 +332,12 @@ export default function MonitoringSatkerSection() {
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:bg-slate-100 rounded-xl border border-slate-200 transition-colors shadow-xs disabled:opacity-50"
               title="Perbarui Data Monitoring"
             >
-              <RefreshCw className={clsx('w-3.5 h-3.5', loading && 'animate-spin text-blue-600')} />
+              <RefreshCw
+                className={clsx(
+                  "w-3.5 h-3.5",
+                  loading && "animate-spin text-blue-600",
+                )}
+              />
               <span>Refresh</span>
             </button>
           </div>
@@ -307,19 +359,26 @@ export default function MonitoringSatkerSection() {
               <span className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
                 {summary?.total_satker ?? data.length}
               </span>
-              <span className="text-xs font-semibold text-slate-400">Satker</span>
+              <span className="text-xs font-semibold text-slate-400">
+                Satker
+              </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">Dinaungi oleh unit Eselon 1</p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Dinaungi oleh unit Eselon 1
+            </p>
           </div>
 
           {/* Card 2: Sudah Melampirkan Dokumen (Fitur 2) */}
-          <div 
-            onClick={() => { setTabFilter('sudah'); setCurrentPage(1); }}
+          <div
+            onClick={() => {
+              setTabFilter("sudah");
+              setCurrentPage(1);
+            }}
             className={clsx(
               "p-4 rounded-xl border transition-all cursor-pointer shadow-2xs",
-              tabFilter === 'sudah' 
-                ? "bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-500/20" 
-                : "bg-white border-slate-200/90 hover:border-emerald-200 hover:bg-emerald-50/30"
+              tabFilter === "sudah"
+                ? "bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-500/20"
+                : "bg-white border-slate-200/90 hover:border-emerald-200 hover:bg-emerald-50/30",
             )}
           >
             <div className="flex items-center justify-between mb-2">
@@ -334,7 +393,9 @@ export default function MonitoringSatkerSection() {
               <span className="text-2xl md:text-3xl font-extrabold text-emerald-700 tracking-tight">
                 {summary?.sudah_melampirkan ?? 0}
               </span>
-              <span className="text-xs font-semibold text-emerald-600">Satker</span>
+              <span className="text-xs font-semibold text-emerald-600">
+                Satker
+              </span>
             </div>
             <p className="text-[11px] text-emerald-600 mt-1 font-medium">
               Periode {summary?.periode_aktif || selectedPeriode}
@@ -342,13 +403,16 @@ export default function MonitoringSatkerSection() {
           </div>
 
           {/* Card 3: Belum Mengumpulkan Dokumen (Fitur 3) */}
-          <div 
-            onClick={() => { setTabFilter('belum'); setCurrentPage(1); }}
+          <div
+            onClick={() => {
+              setTabFilter("belum");
+              setCurrentPage(1);
+            }}
             className={clsx(
               "p-4 rounded-xl border transition-all cursor-pointer shadow-2xs",
-              tabFilter === 'belum' 
-                ? "bg-rose-50/70 border-rose-300 ring-2 ring-rose-500/20" 
-                : "bg-white border-slate-200/90 hover:border-rose-200 hover:bg-rose-50/30"
+              tabFilter === "belum"
+                ? "bg-rose-50/70 border-rose-300 ring-2 ring-rose-500/20"
+                : "bg-white border-slate-200/90 hover:border-rose-200 hover:bg-rose-50/30",
             )}
           >
             <div className="flex items-center justify-between mb-2">
@@ -363,9 +427,13 @@ export default function MonitoringSatkerSection() {
               <span className="text-2xl md:text-3xl font-extrabold text-rose-700 tracking-tight">
                 {summary?.belum_mengumpulkan ?? 0}
               </span>
-              <span className="text-xs font-semibold text-rose-600">Satker</span>
+              <span className="text-xs font-semibold text-rose-600">
+                Satker
+              </span>
             </div>
-            <p className="text-[11px] text-rose-600 mt-1 font-medium">Perlu ditindaklanjuti Eselon 1</p>
+            <p className="text-[11px] text-rose-600 mt-1 font-medium">
+              Perlu ditindaklanjuti Eselon 1
+            </p>
           </div>
 
           {/* Card 4: Tingkat Kepatuhan */}
@@ -386,7 +454,9 @@ export default function MonitoringSatkerSection() {
             <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
               <div
                 className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, summary?.persentase_kepatuhan || 0)}%` }}
+                style={{
+                  width: `${Math.min(100, summary?.persentase_kepatuhan || 0)}%`,
+                }}
               />
             </div>
           </div>
@@ -398,12 +468,15 @@ export default function MonitoringSatkerSection() {
         {/* Quick Filter Tabs */}
         <div className="inline-flex p-1 bg-slate-200/70 rounded-xl shrink-0">
           <button
-            onClick={() => { setTabFilter('all'); setCurrentPage(1); }}
+            onClick={() => {
+              setTabFilter("all");
+              setCurrentPage(1);
+            }}
             className={clsx(
-              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all',
-              tabFilter === 'all'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+              tabFilter === "all"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             <span>Semua Satker</span>
@@ -413,39 +486,53 @@ export default function MonitoringSatkerSection() {
           </button>
 
           <button
-            onClick={() => { setTabFilter('sudah'); setCurrentPage(1); }}
+            onClick={() => {
+              setTabFilter("sudah");
+              setCurrentPage(1);
+            }}
             className={clsx(
-              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all',
-              tabFilter === 'sudah'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-emerald-700'
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+              tabFilter === "sudah"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-emerald-700",
             )}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Sudah Melampirkan</span>
-            <span className={clsx(
-              "px-1.5 py-0.2 rounded-md text-[10px] font-bold",
-              tabFilter === 'sudah' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
-            )}>
+            <span
+              className={clsx(
+                "px-1.5 py-0.2 rounded-md text-[10px] font-bold",
+                tabFilter === "sudah"
+                  ? "bg-emerald-700 text-white"
+                  : "bg-emerald-100 text-emerald-800",
+              )}
+            >
               {summary?.sudah_melampirkan ?? 0}
             </span>
           </button>
 
           <button
-            onClick={() => { setTabFilter('belum'); setCurrentPage(1); }}
+            onClick={() => {
+              setTabFilter("belum");
+              setCurrentPage(1);
+            }}
             className={clsx(
-              'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all',
-              tabFilter === 'belum'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-rose-700'
+              "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+              tabFilter === "belum"
+                ? "bg-rose-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-rose-700",
             )}
           >
             <AlertCircle className="w-3.5 h-3.5" />
             <span>Belum Mengumpulkan</span>
-            <span className={clsx(
-              "px-1.5 py-0.2 rounded-md text-[10px] font-bold",
-              tabFilter === 'belum' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'
-            )}>
+            <span
+              className={clsx(
+                "px-1.5 py-0.2 rounded-md text-[10px] font-bold",
+                tabFilter === "belum"
+                  ? "bg-rose-700 text-white"
+                  : "bg-rose-100 text-rose-800",
+              )}
+            >
               {summary?.belum_mengumpulkan ?? 0}
             </span>
           </button>
@@ -457,13 +544,19 @@ export default function MonitoringSatkerSection() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Cari Kode atau Nama Satker..."
             className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder:text-slate-400 transition-all"
           />
           {searchQuery && (
             <button
-              onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
+              onClick={() => {
+                setSearchQuery("");
+                setCurrentPage(1);
+              }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
             >
               <X className="w-3.5 h-3.5" />
@@ -477,7 +570,9 @@ export default function MonitoringSatkerSection() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-slate-400">
             <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mb-3" />
-            <p className="text-sm font-medium">Memuat data monitoring satker...</p>
+            <p className="text-sm font-medium">
+              Memuat data monitoring satker...
+            </p>
           </div>
         ) : error ? (
           <div className="p-8 text-center">
@@ -488,9 +583,12 @@ export default function MonitoringSatkerSection() {
         ) : paginatedSatkers.length === 0 ? (
           <div className="text-center py-20 px-4">
             <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-700">Tidak Ada Data Satker yang Cocok</h3>
+            <h3 className="text-sm font-bold text-slate-700">
+              Tidak Ada Data Satker yang Cocok
+            </h3>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Tidak ditemukan satker dengan filter atau kata kunci pencarian &quot;{searchQuery}&quot;.
+              Tidak ditemukan satker dengan filter atau kata kunci pencarian
+              &quot;{searchQuery}&quot;.
             </p>
           </div>
         ) : (
@@ -508,7 +606,7 @@ export default function MonitoringSatkerSection() {
             <tbody className="divide-y divide-slate-100 text-xs">
               {paginatedSatkers.map((satker, idx) => {
                 const rowNo = (currentPage - 1) * pageSize + idx + 1;
-                const isSudah = satker.status === 'sudah';
+                const isSudah = satker.status === "sudah";
 
                 return (
                   <tr
@@ -580,15 +678,26 @@ export default function MonitoringSatkerSection() {
                           <p className="font-semibold text-slate-800 text-[11px]">
                             {formatDate(satker.terakhir_upload)}
                           </p>
-                          <p className="text-[10px] text-slate-400 truncate max-w-[200px]" title={satker.dokumen_terakhir_judul || undefined}>
-                            {satker.dokumen_terakhir_judul || 'Bukti Dokumen'}
+                          <p
+                            className="text-[10px] text-slate-400 truncate max-w-[200px]"
+                            title={satker.dokumen_terakhir_judul || undefined}
+                          >
+                            {satker.dokumen_terakhir_judul || "Bukti Dokumen"}
                           </p>
                         </div>
                       ) : (
                         <div>
                           {satker.global_last_upload ? (
-                            <span className="text-[11px] text-slate-500" title="Pernah upload di periode lain">
-                              Pernah upload: {formatDate(satker.global_last_upload).split(',')[0]}
+                            <span
+                              className="text-[11px] text-slate-500"
+                              title="Pernah upload di periode lain"
+                            >
+                              Pernah upload:{" "}
+                              {
+                                formatDate(satker.global_last_upload).split(
+                                  ",",
+                                )[0]
+                              }
                             </span>
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">
@@ -603,7 +712,10 @@ export default function MonitoringSatkerSection() {
                     <td className="py-3.5 px-4 text-right">
                       {isSudah ? (
                         <button
-                          onClick={() => { setSelectedSatker(satker); setRemindSuccessMessage(''); }}
+                          onClick={() => {
+                            setSelectedSatker(satker);
+                            setRemindSuccessMessage("");
+                          }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all shadow-2xs hover:shadow-xs active:scale-95"
                           title="Lihat rincian dokumen yang dilampirkan satker"
                         >
@@ -615,7 +727,10 @@ export default function MonitoringSatkerSection() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => { setSelectedSatker(satker); setRemindSuccessMessage(''); }}
+                          onClick={() => {
+                            setSelectedSatker(satker);
+                            setRemindSuccessMessage("");
+                          }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-all shadow-2xs hover:shadow-xs active:scale-95"
                           title="Cek status satker yang belum mengumpulkan dokumen"
                         >
@@ -637,15 +752,21 @@ export default function MonitoringSatkerSection() {
         <div className="p-4 px-6 border-t border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <div className="flex items-center gap-3">
             <span>
-              Menampilkan <strong>{Math.min((currentPage - 1) * pageSize + 1, totalItems)}</strong> -{' '}
-              <strong>{Math.min(currentPage * pageSize, totalItems)}</strong> dari{' '}
-              <strong>{totalItems}</strong> Satker
+              Menampilkan{" "}
+              <strong>
+                {Math.min((currentPage - 1) * pageSize + 1, totalItems)}
+              </strong>{" "}
+              - <strong>{Math.min(currentPage * pageSize, totalItems)}</strong>{" "}
+              dari <strong>{totalItems}</strong> Satker
             </span>
             <div className="flex items-center gap-1.5">
               <span>Per halaman:</span>
               <select
                 value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
                 className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-hidden cursor-pointer"
               >
                 <option value={10}>10</option>
@@ -685,7 +806,7 @@ export default function MonitoringSatkerSection() {
            Menangani Kasus 2 (Sudah Melampirkan) & Kasus 3 (Belum Mengumpulkan)
            ================================================================ */}
       {selectedSatker && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in"
           onClick={() => setSelectedSatker(null)}
         >
@@ -694,18 +815,24 @@ export default function MonitoringSatkerSection() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className={clsx(
-              "p-5 md:p-6 border-b flex items-center justify-between",
-              selectedSatker.status === 'sudah'
-                ? "bg-gradient-to-r from-emerald-50 via-white to-blue-50 border-emerald-100"
-                : "bg-gradient-to-r from-amber-50 via-white to-rose-50 border-amber-100"
-            )}>
+            <div
+              className={clsx(
+                "p-5 md:p-6 border-b flex items-center justify-between",
+                selectedSatker.status === "sudah"
+                  ? "bg-gradient-to-r from-emerald-50 via-white to-blue-50 border-emerald-100"
+                  : "bg-gradient-to-r from-amber-50 via-white to-rose-50 border-amber-100",
+              )}
+            >
               <div className="flex items-center gap-3">
-                <div className={clsx(
-                  "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shrink-0 shadow-xs",
-                  selectedSatker.status === 'sudah' ? "bg-emerald-600" : "bg-amber-600"
-                )}>
-                  {selectedSatker.status === 'sudah' ? (
+                <div
+                  className={clsx(
+                    "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shrink-0 shadow-xs",
+                    selectedSatker.status === "sudah"
+                      ? "bg-emerald-600"
+                      : "bg-amber-600",
+                  )}
+                >
+                  {selectedSatker.status === "sudah" ? (
                     <FileText className="w-5 h-5" />
                   ) : (
                     <AlertTriangle className="w-5 h-5" />
@@ -716,20 +843,25 @@ export default function MonitoringSatkerSection() {
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
                       Satker {selectedSatker.no_satker}
                     </span>
-                    <span className={clsx(
-                      "text-xs font-bold px-2.5 py-0.5 rounded-full border",
-                      selectedSatker.status === 'sudah'
-                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                        : "bg-rose-100 text-rose-800 border-rose-300"
-                    )}>
-                      {selectedSatker.status === 'sudah' ? 'Sudah Melampirkan' : 'Belum Mengumpulkan'}
+                    <span
+                      className={clsx(
+                        "text-xs font-bold px-2.5 py-0.5 rounded-full border",
+                        selectedSatker.status === "sudah"
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                          : "bg-rose-100 text-rose-800 border-rose-300",
+                      )}
+                    >
+                      {selectedSatker.status === "sudah"
+                        ? "Sudah Melampirkan"
+                        : "Belum Mengumpulkan"}
                     </span>
                   </div>
                   <h3 className="text-base md:text-lg font-extrabold text-slate-900 mt-1 leading-snug">
                     {selectedSatker.nama}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Periode Monitoring: <strong>{summary?.periode_aktif || selectedPeriode}</strong>
+                    Periode Monitoring:{" "}
+                    <strong>{summary?.periode_aktif || selectedPeriode}</strong>
                   </p>
                 </div>
               </div>
@@ -746,15 +878,17 @@ export default function MonitoringSatkerSection() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               {/* KASUS 1: SATKER SUDAH MELAMPIRKAN DOKUMEN (FITUR #2) */}
-              {selectedSatker.status === 'sudah' ? (
+              {selectedSatker.status === "sudah" ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">
-                        Daftar Dokumen Dilampirkan ({selectedSatker.dokumen_list.length})
+                        Daftar Dokumen Dilampirkan (
+                        {selectedSatker.dokumen_list.length})
                       </h4>
                       <p className="text-xs text-slate-500">
-                        Berkas laporan dan rekening koran yang telah diunggah untuk periode ini.
+                        Berkas laporan dan rekening koran yang telah diunggah
+                        untuk periode ini.
                       </p>
                     </div>
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -775,15 +909,25 @@ export default function MonitoringSatkerSection() {
                               <span className="text-xs font-bold text-slate-900 truncate">
                                 {doc.judul}
                               </span>
-                              <span className={clsx('px-2 py-0.5 rounded-full text-[10px] font-bold border', STATUS_BADGE[doc.status] || 'bg-slate-100 text-slate-700')}>
+                              <span
+                                className={clsx(
+                                  "px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                                  STATUS_BADGE[doc.status] ||
+                                    "bg-slate-100 text-slate-700",
+                                )}
+                              >
                                 {STATUS_LABEL[doc.status] || doc.status}
                               </span>
                             </div>
 
                             <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-slate-700">Kategori: {doc.kategori}</span>
+                              <span className="font-medium text-slate-700">
+                                Kategori: {doc.kategori}
+                              </span>
                               <span>&bull;</span>
-                              <span>Diunggah: {formatDate(doc.created_at)}</span>
+                              <span>
+                                Diunggah: {formatDate(doc.created_at)}
+                              </span>
                               {doc.nomor_laporan && (
                                 <>
                                   <span>&bull;</span>
@@ -794,16 +938,23 @@ export default function MonitoringSatkerSection() {
                               )}
                             </p>
 
-                            {(doc.nilai_rekening_koran > 0 || doc.nilai_excel > 0) && (
+                            {(doc.nilai_rekening_koran > 0 ||
+                              doc.nilai_excel > 0) && (
                               <div className="flex items-center gap-3 pt-1 text-xs">
                                 {doc.nilai_rekening_koran > 0 && (
                                   <span className="text-slate-600">
-                                    Saldo Bank: <strong>{formatRupiah(doc.nilai_rekening_koran)}</strong>
+                                    Saldo Bank:{" "}
+                                    <strong>
+                                      {formatRupiah(doc.nilai_rekening_koran)}
+                                    </strong>
                                   </span>
                                 )}
                                 {doc.nilai_excel > 0 && (
                                   <span className="text-slate-600">
-                                    LPJ/Bukti Kas: <strong>{formatRupiah(doc.nilai_excel)}</strong>
+                                    LPJ/Bukti Kas:{" "}
+                                    <strong>
+                                      {formatRupiah(doc.nilai_excel)}
+                                    </strong>
                                   </span>
                                 )}
                               </div>
@@ -813,7 +964,13 @@ export default function MonitoringSatkerSection() {
                           {/* Tombol Preview / Buka File */}
                           <div className="shrink-0 flex items-center gap-2">
                             <button
-                              onClick={() => handleOpenFile(doc.file_path, doc.file_nama, doc.id)}
+                              onClick={() =>
+                                handleOpenFile(
+                                  doc.file_path,
+                                  doc.file_nama,
+                                  doc.id,
+                                )
+                              }
                               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors shadow-2xs"
                               title="Buka atau lihat berkas dokumen"
                             >
@@ -838,7 +995,13 @@ export default function MonitoringSatkerSection() {
                         Satker Belum Melampirkan Dokumen
                       </h4>
                       <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                        Hingga saat ini Satker <strong>{selectedSatker.nama}</strong> belum mengunggah berkas dokumen atau rekening koran untuk periode <strong>{summary?.periode_aktif || selectedPeriode}</strong>.
+                        Hingga saat ini Satker{" "}
+                        <strong>{selectedSatker.nama}</strong> belum mengunggah
+                        berkas dokumen atau rekening koran untuk periode{" "}
+                        <strong>
+                          {summary?.periode_aktif || selectedPeriode}
+                        </strong>
+                        .
                       </p>
                     </div>
                   </div>
@@ -851,35 +1014,45 @@ export default function MonitoringSatkerSection() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div className="bg-white p-3 rounded-lg border border-slate-200/70">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Unit Pembina Eselon 1</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          Unit Pembina Eselon 1
+                        </span>
                         <p className="font-bold text-slate-800 mt-0.5">
-                          {selectedSatker.eselon_nama || selectedSatker.eselon_singkatan || 'Ditjen Pembina'}
+                          {selectedSatker.eselon_nama ||
+                            selectedSatker.eselon_singkatan ||
+                            "Ditjen Pembina"}
                         </p>
                       </div>
 
                       <div className="bg-white p-3 rounded-lg border border-slate-200/70">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Kode Satker</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          Kode Satker
+                        </span>
                         <p className="font-mono font-bold text-slate-800 mt-0.5">
                           {selectedSatker.no_satker}
                         </p>
                       </div>
 
                       <div className="bg-white p-3 rounded-lg border border-slate-200/70">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Akun Pengelola / PIC</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          Akun Pengelola / PIC
+                        </span>
                         <p className="font-semibold text-slate-800 mt-0.5">
-                          {selectedSatker.kontak?.nama || 'Operator Satker'}
+                          {selectedSatker.kontak?.nama || "Operator Satker"}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          Username: {selectedSatker.kontak?.username || '—'}
+                          Username: {selectedSatker.kontak?.username || "—"}
                         </p>
                       </div>
 
                       <div className="bg-white p-3 rounded-lg border border-slate-200/70">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Riwayat Terakhir di Sistem</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          Riwayat Terakhir di Sistem
+                        </span>
                         <p className="font-semibold text-slate-800 mt-0.5">
                           {selectedSatker.global_last_upload
                             ? formatDate(selectedSatker.global_last_upload)
-                            : 'Belum pernah ada riwayat unggahan'}
+                            : "Belum pernah ada riwayat unggahan"}
                         </p>
                       </div>
                     </div>
@@ -900,7 +1073,8 @@ export default function MonitoringSatkerSection() {
                         Ingatkan Satker untuk Segera Melampirkan Dokumen
                       </h5>
                       <p className="text-[11px] text-blue-700 mt-0.5">
-                        Kirim notifikasi pengingat resmi langsung ke lonceng notifikasi dan akun pengelola satker ini.
+                        Kirim notifikasi pengingat resmi langsung ke lonceng
+                        notifikasi dan akun pengelola satker ini.
                       </p>
                     </div>
 
