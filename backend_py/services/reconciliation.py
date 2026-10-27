@@ -149,26 +149,42 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
 
     # 4. Saldo Akhir / Nominal
     nominal = None
-    saldo_patterns = [
-        r"(?:Closing\s*Balance|Ending\s*Balance|Saldo\s*Akhir\s*(?:Periode|Bulan)?|Total\s*Saldo)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
-        r"(?:Saldo\s*Akhir|Ending\s*Balance|Saldo\s*Efektif|Saldo\s*Buku\s*Kas|Total\s*Realisasi|Jumlah\s*Realisasi)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
-        r"(?:Total\s*Pengeluaran|Total\s*Belanja|Total\s*Penerimaan)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
-        r"(?:Saldo\s*Akhir\s*Bulan)[:\s]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]+)",
-        r"(?:Rp\.?\s*)([\d\.,]{6,})",
-    ]
 
-    for sp in saldo_patterns:
-        # Cari semua kecocokan. Pada dokumen dengan banyak halaman atau berulang,
-        # ambil kemunculan paling akhir (posisi saldo penutup/akhir)
-        matches = re.findall(sp, text, re.IGNORECASE)
-        if matches:
-            for cand in reversed(matches):
-                val = parse_indonesian_number(cand)
-                if val is not None and val > 0:
-                    nominal = val
+    # Cek khusus pattern multi-kolom ringkasan (Saldo Awal ... Saldo Akhir \n num1 num2 num3 num4)
+    grid_m = re.search(r"SALDO\s*AWAL.*SALDO\s*AKHIR\s*\n\s*([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)", text, re.IGNORECASE)
+    if grid_m:
+        val = parse_indonesian_number(grid_m.group(4))
+        if val is not None and val > 0:
+            nominal = val
+
+    if nominal is None:
+        saldo_patterns = [
+            # 1. Saldo per tanggal / Saldo Akhir per 30 Juni 2026 / Saldo per 30/06/2026
+            r"Saldo\s*(?:Akhir|Buku|Bank|Kas)?\s*(?:per|s/?d)?\s*(?:[0-9]{1,2}[-\s/]+(?:[A-Za-z]+|\d{1,2})[-\s/]+\d{2,4}|[A-Za-z]+\s*\d{4})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
+            # 2. Saldo Akhir / Ending Balance / Saldo Buku / Saldo Bank / Saldo Kas / Total Saldo
+            r"(?:Saldo\s*(?:Akhir|Penutupan|Buku|Bank|Kas|Giro|Efektif|Mutasi|Berjalan)?|Ending\s*Balance|Closing\s*Balance|Total\s*Saldo|Jumlah\s*Saldo)(?:[^\n:]{0,40})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
+            # 3. Baris mutasi dengan flag CR / DB di belakang angka (format Bank Mandiri, BCA, BRI)
+            r"(?:^|\s)([\d\.,]{4,})\s*(?:CR|DB)\b",
+            # 4. Total Realisasi / Belanja / Pengeluaran / Penerimaan
+            r"(?:Total\s*(?:Realisasi|Belanja|Pengeluaran|Penerimaan|Kas)|Jumlah\s*(?:Realisasi|Belanja|Pengeluaran))[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
+            # 5. Saldo Akhir Bulan eksplisit
+            r"(?:Saldo\s*Akhir\s*Bulan)[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
+            # 6. Fallback Rp angka
+            r"(?:Rp\.?\s*)([\d\.,]{5,})",
+        ]
+
+        for sp in saldo_patterns:
+            matches = re.findall(sp, text, re.IGNORECASE | re.MULTILINE)
+            if matches:
+                for cand in reversed(matches):
+                    if isinstance(cand, tuple):
+                        cand = cand[-1]
+                    val = parse_indonesian_number(cand)
+                    if val is not None and val > 0:
+                        nominal = val
+                        break
+                if nominal is not None:
                     break
-            if nominal is not None:
-                break
 
     return {
         "tahun": tahun,
@@ -211,11 +227,14 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     # periksa halaman terakhir (last page) untuk mengambil baris mutasi paling akhir
     if meta["nominal"] is None and pages_text:
         last_page_text = pages_text[-1]
-        tx_balances = re.findall(r"(?:DB|CR)\s+([\d\.,]+)", last_page_text)
+        tx_balances = re.findall(r"(?:(?:DB|CR)\s+([\d\.,]{4,})|([\d\.,]{4,})\s*(?:DB|CR)\b)", last_page_text, re.IGNORECASE)
         if tx_balances:
-            last_bal = parse_indonesian_number(tx_balances[-1])
-            if last_bal is not None and last_bal > 0:
-                meta["nominal"] = last_bal
+            for item in reversed(tx_balances):
+                cand = item[0] or item[1]
+                last_bal = parse_indonesian_number(cand)
+                if last_bal is not None and last_bal > 0:
+                    meta["nominal"] = last_bal
+                    break
 
     # Jika nominal belum ditemukan dari teks biasa, cari di tabel secara mundur
     if meta["nominal"] is None and tables_data:

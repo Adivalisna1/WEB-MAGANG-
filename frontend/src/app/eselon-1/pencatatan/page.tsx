@@ -248,13 +248,62 @@ export default function Eselon1PencatatanPage() {
               updated.nama_bank = matchedBank || "";
             }
 
-            if (result.nominal !== undefined && result.nominal !== null) {
-              updated.nominal = String(result.nominal);
-              updated.saldo_akhir = String(result.nominal);
+            const extractedNominal =
+              result.nominal ?? result.saldo_rekening ?? result.saldo_akhir;
+            if (
+              extractedNominal !== undefined &&
+              extractedNominal !== null &&
+              Number(extractedNominal) > 0
+            ) {
+              updated.nominal = String(extractedNominal);
+              updated.saldo_akhir = String(extractedNominal);
             }
 
-            if (result.nomor_rekening && !prev.nomor_rekening_bank) {
+            if (result.nomor_rekening) {
               updated.nomor_rekening_bank = String(result.nomor_rekening);
+            }
+
+            // Auto deteksi Bulan & Periode Transaksi dari berkas / nama file
+            const namaBulanList = [
+              "Januari",
+              "Februari",
+              "Maret",
+              "April",
+              "Mei",
+              "Juni",
+              "Juli",
+              "Agustus",
+              "September",
+              "Oktober",
+              "November",
+              "Desember",
+            ];
+            let detectedBulanName = "";
+            if (
+              result.bulan &&
+              typeof result.bulan === "number" &&
+              result.bulan >= 1 &&
+              result.bulan <= 12
+            ) {
+              detectedBulanName = namaBulanList[result.bulan - 1];
+            } else if (result.bulan && typeof result.bulan === "string") {
+              const matched = namaBulanList.find((b) =>
+                b.toLowerCase().includes(result.bulan.toLowerCase())
+              );
+              if (matched) detectedBulanName = matched;
+            } else {
+              const lowerName = selectedFile.name.toLowerCase();
+              const matched = namaBulanList.find(
+                (b) =>
+                  lowerName.includes(b.toLowerCase()) ||
+                  lowerName.includes(b.toLowerCase().slice(0, 3))
+              );
+              if (matched) detectedBulanName = matched;
+            }
+
+            if (detectedBulanName) {
+              const detectedTahun = result.tahun || new Date().getFullYear();
+              updated.periode = `${detectedBulanName} ${detectedTahun}`;
             }
 
             return updated;

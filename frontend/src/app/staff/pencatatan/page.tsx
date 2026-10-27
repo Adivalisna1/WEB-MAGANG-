@@ -229,21 +229,67 @@ export default function StaffpencatatanPage() {
               updated.nama_bank = matchedBank || "";
             }
 
-            // 3. Auto isi nominal saldo jika terdeteksi dan belum diisi manual
+            // 3. Auto isi nominal saldo akhir jika terdeteksi
+            const extractedNominal =
+              result.nominal ?? result.saldo_rekening ?? result.saldo_akhir;
             if (
-              result.nominal !== undefined &&
-              result.nominal !== null &&
-              !prev.nominal
+              extractedNominal !== undefined &&
+              extractedNominal !== null &&
+              Number(extractedNominal) > 0
             ) {
-              updated.nominal = String(result.nominal);
+              updated.nominal = String(extractedNominal);
+              updated.saldo_akhir = String(extractedNominal);
             }
 
             // 4. Auto isi nomor rekening jika terdeteksi
-            if (result.nomor_rekening && !prev.nomor_rekening_bank) {
+            if (result.nomor_rekening) {
               updated.nomor_rekening_bank = String(result.nomor_rekening);
             }
 
-            // 5. Auto isi uraian jika masih kosong
+            // 5. Auto deteksi Bulan & Periode Transaksi dari berkas / nama file
+            const namaBulanList = [
+              "Januari",
+              "Februari",
+              "Maret",
+              "April",
+              "Mei",
+              "Juni",
+              "Juli",
+              "Agustus",
+              "September",
+              "Oktober",
+              "November",
+              "Desember",
+            ];
+            let detectedBulanName = "";
+            if (
+              result.bulan &&
+              typeof result.bulan === "number" &&
+              result.bulan >= 1 &&
+              result.bulan <= 12
+            ) {
+              detectedBulanName = namaBulanList[result.bulan - 1];
+            } else if (result.bulan && typeof result.bulan === "string") {
+              const matched = namaBulanList.find((b) =>
+                b.toLowerCase().includes(result.bulan.toLowerCase())
+              );
+              if (matched) detectedBulanName = matched;
+            } else {
+              const lowerName = selectedFile.name.toLowerCase();
+              const matched = namaBulanList.find(
+                (b) =>
+                  lowerName.includes(b.toLowerCase()) ||
+                  lowerName.includes(b.toLowerCase().slice(0, 3))
+              );
+              if (matched) detectedBulanName = matched;
+            }
+
+            if (detectedBulanName) {
+              const detectedTahun = result.tahun || new Date().getFullYear();
+              updated.periode = `${detectedBulanName} ${detectedTahun}`;
+            }
+
+            // 6. Auto isi uraian jika masih kosong
             if (!prev.uraian) {
               if (result.bank) {
                 updated.uraian = `Pencatatan Rekening Koran ${result.bank}`;
@@ -575,12 +621,15 @@ export default function StaffpencatatanPage() {
                             dideteksi.{" "}
                           </span>
                         )}
-                        {aiResult.nominal != null && (
+                        {(aiResult.nominal != null ||
+                          aiResult.saldo_rekening != null) && (
                           <span>
-                            Saldo:{" "}
+                            Saldo Akhir:{" "}
                             <strong>
                               Rp{" "}
-                              {Number(aiResult.nominal).toLocaleString("id-ID")}
+                              {Number(
+                                aiResult.nominal ?? aiResult.saldo_rekening
+                              ).toLocaleString("id-ID")}
                             </strong>
                             .{" "}
                           </span>
