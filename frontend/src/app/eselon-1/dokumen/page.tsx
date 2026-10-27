@@ -268,12 +268,12 @@ export default function KetuaDokumenPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isOperator ? 'Dokumen Satker Binaan' : 'Monitor & Verifikasi Dokumen'}
+            {isOperator ? 'Dokumen Satker Binaan' : 'Pengawasan & Audit Dokumen Satker'}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             {isOperator
               ? 'Kelola, unggah berkas, dan pantau status dokumen dari seluruh Satker binaan'
-              : 'Pantau status verifikasi dokumen dan berikan persetujuan final dokumen yang lolos Pimpinan Satker'}
+              : 'Pantau dokumen satker binaan, verifikasi saldo akhir rekening bank, dan lakukan audit kepatuhan non-blocking'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -318,10 +318,10 @@ export default function KetuaDokumenPage() {
           <div className="px-5 py-4 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
             <div>
               <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                <Stamp className="w-4 h-4 text-blue-600" /> Menunggu Persetujuan Saya
+                <Stamp className="w-4 h-4 text-blue-600" /> Pengawasan & Tinjauan Audit Dokumen Satker
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Dokumen yang sudah lolos penyaringan Pimpinan Satker — persetujuan final ada di Pimpinan Eselon 1
+                Dokumen yang telah disahkan Satker — Eselon 1 memantau kepatuhan saldo dan dapat meminta klarifikasi jika diperlukan
               </p>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-blue-600 text-white text-xs font-semibold">
@@ -346,16 +346,9 @@ export default function KetuaDokumenPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-gray-900 truncate">{dok.judul}</p>
-                        {hasBoth && isCocok && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            <CheckCircle className="w-3 h-3 text-emerald-600" /> Cocok (Rp 0)
-                          </span>
-                        )}
-                        {hasBoth && !isCocok && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                            <AlertCircle className="w-3 h-3 text-rose-600" /> Selisih Rp {selisih?.toLocaleString('id-ID')}
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                          Disahkan Satker
+                        </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
                         <span>{dok.kategori} · {periodeLabel(dok)}</span>
@@ -370,16 +363,9 @@ export default function KetuaDokumenPage() {
                       </p>
                       {(valRek != null || valExc != null) && (
                         <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 flex-wrap">
-                          {valRek != null && (
-                            <span className="bg-slate-100 px-2 py-0.5 rounded">
-                              Bank: <strong className="text-slate-800">{formatRupiah(valRek)}</strong>
-                            </span>
-                          )}
-                          {valExc != null && (
-                            <span className="bg-slate-100 px-2 py-0.5 rounded">
-                              LPJ: <strong className="text-slate-800">{formatRupiah(valExc)}</strong>
-                            </span>
-                          )}
+                          <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-md font-medium">
+                            Saldo Bank: <strong className="text-emerald-950 font-bold">{formatRupiah(valRek || valExc)}</strong>
+                          </span>
                         </div>
                       )}
                       {dok.catatan && (
@@ -408,13 +394,13 @@ export default function KetuaDokumenPage() {
                         onClick={() => { setTarget({ dok, aksi: 'approve' }); setCatatan(''); }}
                         className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
                       >
-                        <CheckCircle className="w-3.5 h-3.5" /> Setujui & Publish
+                        <CheckCircle className="w-3.5 h-3.5" /> Konfirmasi Audit
                       </button>
                       <button
                         onClick={() => { setTarget({ dok, aksi: 'reject' }); setCatatan(''); }}
                         className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
                       >
-                        <Undo2 className="w-3.5 h-3.5" /> Kembalikan Revisi
+                        <Undo2 className="w-3.5 h-3.5" /> Minta Klarifikasi / Revisi
                       </button>
                     </div>
                   </div>

@@ -141,7 +141,7 @@ async def bulk_insert_rekening_koran(request: dict, user: dict = Depends(get_cur
 
 @router.post("")
 async def create_rekening_koran(request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    satker_id = user.get("satker_id")
+    satker_id = user.get("satker_id") or request.get("satker_id")
     uploaded_by = user.get("id")
     
     with db.cursor(dictionary=True) as cursor:

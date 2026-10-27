@@ -319,7 +319,7 @@ function DokumenContent() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || 'Gagal memproses verifikasi');
 
-      toast.success(action === 'lolos' ? 'Dokumen disetujui & diteruskan ke Eselon 1' : 'Dokumen dikembalikan ke Staff untuk direvisi');
+      toast.success(action === 'lolos' ? 'Dokumen berhasil disahkan & berstatus Terverifikasi' : 'Dokumen dikembalikan ke Staff untuk direvisi');
       await fetchDokumen();
     } catch (err: any) {
       toast.error(err.message || 'Terjadi kesalahan sistem');
@@ -565,19 +565,11 @@ function DokumenContent() {
                         Oleh: <strong className="text-slate-600 font-medium">{dok.uploaded_by || 'Staff'}</strong>
                       </span>
 
-                      {isMatch && (
-                        <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200/80">
-                          ✓ Cocok (Rp 0)
+                      {dok.nilai_rekening_koran != null || dok.nilai_excel != null ? (
+                        <span className="font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200/80">
+                          Saldo Bank: Rp {Number(dok.nilai_rekening_koran || dok.nilai_excel).toLocaleString('id-ID')}
                         </span>
-                      )}
-
-                      {hasDiff && (
-                        <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded text-[10px] border border-rose-200/80">
-                          ⚠ Selisih
-                        </span>
-                      )}
-
-                      {!hasNomRek && !hasNomExc && (
+                      ) : (
                         <span className="text-slate-400">
                           {dok.nomor_laporan || '-'}
                         </span>
@@ -748,82 +740,47 @@ function DokumenContent() {
                       </button>
                     </div>
 
-                    {/* Data Rekonsiliasi Otomatis */}
-                    {(() => {
-                      const numRek = editNilaiRek ? Number(editNilaiRek.replace(/\./g, '').replace(/,/g, '.')) : null;
-                      const numExcel = editNilaiExcel ? Number(editNilaiExcel.replace(/\./g, '').replace(/,/g, '.')) : null;
-                      const hasBoth = numRek !== null && !isNaN(numRek) && numExcel !== null && !isNaN(numExcel);
-                      const selisih = hasBoth ? Math.round(Math.abs(numRek - numExcel) * 100) / 100 : 0;
-                      const isCocok = hasBoth && selisih === 0;
-
-                      return (
-                        <div className="space-y-4 mb-5">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                                Nilai Rekening Koran (Hasil Ekstraksi / Bank)
-                              </label>
-                              <div className="relative flex items-center">
-                                <span className="absolute left-3.5 text-xs text-slate-400 font-bold">Rp</span>
-                                <input
-                                  type="text"
-                                  value={editNilaiRek}
-                                  onChange={e => {
-                                    const val = e.target.value.replace(/[^0-9,]/g, '');
-                                    const parts = val.split(',');
-                                    if (parts.length > 2) return;
-                                    const ribuan = parts[0].replace(/\./g, '');
-                                    const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
-                                    setEditNilaiRek(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
-                                  }}
-                                  placeholder="0"
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold text-xs rounded-xl pl-10 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                                Nilai Realisasi LPJ yang Dilaporkan
-                              </label>
-                              <div className="relative flex items-center">
-                                <span className="absolute left-3.5 text-xs text-slate-400 font-bold">Rp</span>
-                                <input
-                                  type="text"
-                                  value={editNilaiExcel}
-                                  readOnly
-                                  tabIndex={-1}
-                                  placeholder="0"
-                                  className="w-full bg-slate-100/90 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl pl-10 pr-3.5 py-2.5 cursor-not-allowed select-none"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Alert Status Rekonsiliasi */}
-                          {hasBoth && isCocok && (
-                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2.5">
-                              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <p className="font-semibold">
-                                ✓ Nilai Rekening Koran dan Realisasi LPJ telah <strong>Sesuai (Selisih Rp 0)</strong>. Berkas memenuhi syarat persetujuan.
-                              </p>
-                            </div>
-                          )}
-
-                          {hasBoth && !isCocok && (
-                            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2.5">
-                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                              <div>
-                                <p className="font-bold text-rose-900">Peringatan: Ditemukan Selisih Angka Rekonsiliasi</p>
-                                <p className="mt-0.5 text-rose-700 leading-relaxed">
-                                  Terdapat perbedaan sebesar <strong>Rp {selisih.toLocaleString('id-ID')}</strong> antara catatan mutasi bank dan nilai pertanggungjawaban staff. Silakan periksa kembali atau instruksikan perbaikan melalui catatan revisi.
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                    {/* Data Saldo Tunggal & Bukti Berkas Sah */}
+                    <div className="space-y-4 mb-5">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+                          <span>Total Saldo Akhir Rekening Bank (Rp)</span>
+                          <span className="text-[11px] font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            ✓ Berkas Bukti Sah Terlampir
+                          </span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-3.5 text-xs text-slate-400 font-bold">Rp</span>
+                          <input
+                            type="text"
+                            value={editNilaiRek}
+                            onChange={e => {
+                              const val = e.target.value.replace(/[^0-9,]/g, '');
+                              const parts = val.split(',');
+                              if (parts.length > 2) return;
+                              const ribuan = parts[0].replace(/\./g, '');
+                              const formatted = ribuan ? Number(ribuan).toLocaleString('id-ID') : '';
+                              setEditNilaiRek(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
+                            }}
+                            placeholder="0"
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold text-sm rounded-xl pl-10 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs"
+                          />
                         </div>
-                      );
-                    })()}
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Nominal saldo kas riil pada rekening bank satker per penutupan periode pelaporan.
+                        </p>
+                      </div>
+
+                      <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl text-xs text-blue-900 flex items-start gap-2.5">
+                        <FileCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-blue-950">Verifikasi Bukti Fisik Rekening Koran</p>
+                          <p className="mt-0.5 text-blue-800 leading-relaxed text-[11px]">
+                            Berkas dokumen <strong>{selectedDok.file_nama}</strong> bertindak sebagai bukti voucher fisik resmi. Pengesahan pimpinan langsung menetapkan status dokumen menjadi <strong>Terverifikasi</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Input Catatan */}
                     <div className="mb-5">
@@ -859,7 +816,7 @@ function DokumenContent() {
                         className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-xs shadow-sm shadow-emerald-600/20"
                       >
                         {processing === selectedDok.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                        Setujui & Teruskan ke Eselon 1
+                        Sahkan & Terbitkan Dokumen (Sah)
                       </button>
                     </div>
                   </>
@@ -901,9 +858,9 @@ function DokumenContent() {
                       <div className="p-3.5 bg-emerald-50 border border-emerald-200/90 rounded-xl text-xs text-emerald-800 flex items-start gap-2.5 mb-4">
                         <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                         <div>
-                          <p className="font-bold text-emerald-950">Dokumen Telah Disahkan Sepenuhnya (Selesai)</p>
+                          <p className="font-bold text-emerald-950">Dokumen Telah Disahkan Sepenuhnya (Terverifikasi)</p>
                           <p className="mt-0.5 text-emerald-700">
-                            Pengajuan berkas telah lolos verifikasi Pimpinan Satker dan telah disetujui secara resmi oleh verifikator Eselon 1. Berkas tersimpan sebagai arsip aktif yang sah.
+                            Pengajuan berkas telah diverifikasi dan disahkan oleh Pimpinan Satker. Berkas sah secara hukum dan tersimpan sebagai arsip aktif.
                           </p>
                         </div>
                       </div>
@@ -913,9 +870,9 @@ function DokumenContent() {
                       <div className="p-3.5 bg-blue-50 border border-blue-200/90 rounded-xl text-xs text-blue-800 flex items-start gap-2.5 mb-4">
                         <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                         <div>
-                          <p className="font-bold text-blue-950">Dalam Antrean Verifikasi Eselon 1</p>
+                          <p className="font-bold text-blue-950">Disahkan Satker / Siap Ditinjau Eselon 1</p>
                           <p className="mt-0.5 text-blue-700">
-                            Anda telah menyetujui dokumen ini. Saat ini dokumen sedang dalam proses validasi akhir oleh tim pemeriksa di level Eselon 1.
+                            Dokumen telah disahkan oleh Satker dan siap ditinjau dalam pengawasan kepatuhan oleh unit Eselon 1.
                           </p>
                         </div>
                       </div>
@@ -933,68 +890,31 @@ function DokumenContent() {
                       </div>
                     )}
 
-                    {/* Ringkasan Nilai Keuangan Standar Akuntansi */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                    {/* Ringkasan Saldo Akhir Kas Bank & Bukti Voucher */}
+                    <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                          Saldo Bank (Rekening Koran)
+                          Total Saldo Akhir Rekening Bank
                         </span>
-                        <span className="text-sm font-black text-slate-800 mt-1 block">
-                          {selectedDok.nilai_rekening_koran != null
-                            ? `Rp ${Number(selectedDok.nilai_rekening_koran).toLocaleString('id-ID')}`
+                        <span className="text-lg font-black text-slate-900 mt-1 block">
+                          {(selectedDok.nilai_rekening_koran != null || selectedDok.nilai_excel != null)
+                            ? `Rp ${Number(selectedDok.nilai_rekening_koran || selectedDok.nilai_excel).toLocaleString('id-ID')}`
                             : '-'}
                         </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Saldo kas riil per akhir periode berdasarkan mutasi bank
+                        </p>
                       </div>
 
-                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                      <div className="sm:text-right shrink-0">
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                          Saldo Buku (Kas / LPJ)
+                          Bukti Fisik Rekening Koran
                         </span>
-                        <span className="text-sm font-black text-slate-800 mt-1 block">
-                          {selectedDok.nilai_excel != null
-                            ? `Rp ${Number(selectedDok.nilai_excel).toLocaleString('id-ID')}`
-                            : '-'}
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-3 py-1 rounded-lg mt-1">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Bukti Sah Terverifikasi
                         </span>
                       </div>
                     </div>
-
-                    {/* Status Rekonsiliasi Otomatis (Balance Check) */}
-                    {selectedDok.nilai_rekening_koran != null && selectedDok.nilai_excel != null && (
-                      <div className={clsx(
-                        "p-3 rounded-xl border mb-4 flex items-center justify-between gap-3",
-                        Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                          : "bg-rose-50 border-rose-200 text-rose-900"
-                      )}>
-                        <div className="flex items-center gap-2.5">
-                          {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0 ? (
-                            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                          ) : (
-                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-                          )}
-                          <div>
-                            <p className="font-bold text-xs uppercase tracking-wide">
-                              {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
-                                ? "Rekonsiliasi: Cocok / Nihil Selisih (Balance)"
-                                : "Rekonsiliasi: Terdapat Selisih Kas"}
-                            </p>
-                            <p className="text-[11px] opacity-80 mt-0.5">
-                              {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
-                                ? "Saldo Bank klir dan sesuai dengan Saldo Buku LPJ Satker."
-                                : `Deviasi kas tercatat sebesar Rp ${Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)).toLocaleString('id-ID')}`}
-                            </p>
-                          </div>
-                        </div>
-                        <span className={clsx(
-                          "font-black text-xs px-2.5 py-1 rounded-lg shrink-0",
-                          Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)) === 0
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-rose-100 text-rose-800"
-                        )}>
-                          Selisih: Rp {Math.abs(Number(selectedDok.nilai_rekening_koran) - Number(selectedDok.nilai_excel)).toLocaleString('id-ID')}
-                        </span>
-                      </div>
-                    )}
 
                     {/* Catatan Riwayat jika ada */}
                     {selectedDok.catatan && (

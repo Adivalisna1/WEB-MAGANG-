@@ -526,17 +526,18 @@ async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_cur
             if up_row and up_row.get("satker_id") and up_row["satker_id"] != user["satker_id"]:
                 raise HTTPException(403, "Akses ditolak. Dokumen bukan dari Satker Anda.")
         
-        new_status = 'lolos_admin' if aksi == 'lolos' else 'revisi'
+        new_status = 'terverifikasi' if aksi == 'lolos' else 'revisi'
+        is_pub = 1 if aksi == 'lolos' else 0
         n_rk = body.get("nilai_rekening_koran", dok["nilai_rekening_koran"])
         n_ex = body.get("nilai_excel", dok["nilai_excel"])
         
         cursor.execute("""
-            UPDATE dokumen SET status = %s, is_public = 0, catatan = %s, catatan_oleh = 'admin',
+            UPDATE dokumen SET status = %s, is_public = %s, catatan = %s, catatan_oleh = 'admin',
             nilai_rekening_koran = %s, nilai_excel = %s, verified_by = %s, verified_at = NOW() WHERE id = %s
-        """, (new_status, catatan, n_rk, n_ex, user["id"], id))
+        """, (new_status, is_pub, catatan, n_rk, n_ex, user["id"], id))
         
         if aksi == 'lolos':
-            await buat_notifikasi(db, dok["uploaded_by"], "lolos_admin", dok["judul"], f"Dokumen \"{dok['judul']}\" lolos tinjauan manajemen Satker", id)
+            await buat_notifikasi(db, dok["uploaded_by"], "terverifikasi", dok["judul"], f"Dokumen \"{dok['judul']}\" telah disahkan oleh manajemen Satker dan berstatus Terverifikasi", id)
             # Notifikasi ke Tim Eselon 1 Pembina satker tersebut
             satker_target_id = user.get("satker_id")
             cursor.execute("""
@@ -551,13 +552,13 @@ async def verify_dokumen(id: int, request: Request, user: dict = Depends(get_cur
                 ) AND u.is_active = 1
             """, (satker_target_id,))
             for ketua in cursor.fetchall():
-                await buat_notifikasi(db, ketua["id"], "submit", dok["judul"], f"Dokumen \"{dok['judul']}\" diloloskan manajemen Satker dan menunggu persetujuan Eselon 1", id)
+                await buat_notifikasi(db, ketua["id"], "submit", dok["judul"], f"Dokumen \"{dok['judul']}\" telah disahkan manajemen Satker dan siap ditinjau Eselon 1", id)
         else:
             await buat_notifikasi(db, dok["uploaded_by"], "reject", dok["judul"], f"Dokumen perlu direvisi: {catatan}", id)
             
         db.commit()
-    await catat_log(db, user["id"], f"admin_{'loloskan' if aksi=='lolos' else 'revisi'}", "dokumen", id, {"aksi": aksi}, request.client.host)
-    return {"success": True, "message": "Dokumen diproses", "data": {"id": id}}
+    await catat_log(db, user["id"], f"admin_{'sahkan' if aksi=='lolos' else 'revisi'}", "dokumen", id, {"aksi": aksi}, request.client.host)
+    return {"success": True, "message": "Dokumen berhasil disahkan dan terverifikasi" if aksi=='lolos' else "Dokumen dikembalikan untuk revisi", "data": {"id": id}}
 
 @router.patch("/{id}/eselon-1-verify")
 async def verify_eselon(id: int, request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
@@ -581,7 +582,7 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
         cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
-        if dok["status"] != 'lolos_admin': raise HTTPException(400, "Belum diloloskan admin Satker")
+        if dok["status"] not in ['lolos_admin', 'terverifikasi']: raise HTTPException(400, "Dokumen belum disahkan satker atau status tidak valid untuk ditinjau")
         
         # Validasi bahwa satker uploader berada di bawah eselon 1 user (jika user tingkat eselon_1)
         if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):

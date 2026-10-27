@@ -3,11 +3,84 @@ import toast from 'react-hot-toast';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { getSession } from '@/lib/auth';
-import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X, Building2, CreditCard } from 'lucide-react';
+import { FileSpreadsheet, Upload, Download, ArrowLeft, Search, Loader2, Table2, Save, Trash2, Edit, Plus, X, Building2, CreditCard, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+const BULAN_OPTIONS = [
+  { val: '1', label: 'Januari' },
+  { val: '2', label: 'Februari' },
+  { val: '3', label: 'Maret' },
+  { val: '4', label: 'April' },
+  { val: '5', label: 'Mei' },
+  { val: '6', label: 'Juni' },
+  { val: '7', label: 'Juli' },
+  { val: '8', label: 'Agustus' },
+  { val: '9', label: 'September' },
+  { val: '10', label: 'Oktober' },
+  { val: '11', label: 'November' },
+  { val: '12', label: 'Desember' },
+];
+
+const TRIWULAN_OPTIONS = [
+  { val: 'TW1', label: 'Triwulan I (Jan - Mar)', months: [1, 2, 3] },
+  { val: 'TW2', label: 'Triwulan II (Apr - Jun)', months: [4, 5, 6] },
+  { val: 'TW3', label: 'Triwulan III (Jul - Sep)', months: [7, 8, 9] },
+  { val: 'TW4', label: 'Triwulan IV (Okt - Des)', months: [10, 11, 12] },
+];
+
+const TAHUN_OPTIONS = ['2026', '2025', '2024'];
+
+const BULAN_NAMES = [
+  'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+  'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+];
+
+function getRecordMonth(periode?: string | number, created_at?: string): number | null {
+  if (periode != null) {
+    const s = String(periode).trim().toLowerCase();
+    const asNum = parseInt(s, 10);
+    if (!isNaN(asNum) && asNum >= 1 && asNum <= 12) return asNum;
+    for (let i = 0; i < BULAN_NAMES.length; i++) {
+      if (s.includes(BULAN_NAMES[i])) return i + 1;
+    }
+  }
+  if (created_at) {
+    const d = new Date(created_at);
+    if (!isNaN(d.getTime())) return d.getMonth() + 1;
+  }
+  return null;
+}
+
+function getRecordYear(tahun?: number | string, periode?: string | number, created_at?: string): number {
+  if (tahun) {
+    const y = parseInt(String(tahun), 10);
+    if (!isNaN(y) && y > 2000) return y;
+  }
+  if (periode) {
+    const match = String(periode).match(/\b(202[0-9])\b/);
+    if (match) return parseInt(match[1], 10);
+  }
+  if (created_at) {
+    const d = new Date(created_at);
+    if (!isNaN(d.getTime())) return d.getFullYear();
+  }
+  return 2026;
+}
+
+const formatPeriodeDisplay = (periode?: string | number, tahun?: number) => {
+  if (!periode && !tahun) return '-';
+  const pStr = String(periode || '').trim();
+  const found = BULAN_OPTIONS.find(b => b.val === pStr || b.label.toLowerCase() === pStr.toLowerCase());
+  const namaBulan = found ? found.label : pStr;
+  if (!namaBulan && tahun) return `${tahun}`;
+  if (tahun && !namaBulan.includes(String(tahun))) {
+    return `${namaBulan} ${tahun}`;
+  }
+  return namaBulan || '-';
+};
 
 interface KertasKerja {
   id: number;
@@ -24,6 +97,8 @@ interface KertasKerja {
   saldo_rekening: number;
   saldo_rpl_lpj: number;
   keterangan: string | null;
+  periode?: string;
+  tahun?: number;
   created_at: string;
 }
 
@@ -47,6 +122,10 @@ export default function KertasKerjaPage() {
   const [searchQ, setSearchQ] = useState('');
   const [filterSatker, setFilterSatker] = useState('');
   const [filterBank, setFilterBank] = useState('');
+  const [modeFilter, setModeFilter] = useState<'bulan' | 'triwulan' | 'tahun'>('bulan');
+  const [filterBulan, setFilterBulan] = useState<string>('all');
+  const [filterTriwulan, setFilterTriwulan] = useState<string>('TW1');
+  const [filterTahun, setFilterTahun] = useState<string>('2026');
   const [satkerList, setSatkerList] = useState<Satker[]>([]);
   
   const [userRole, setUserRole] = useState('');
@@ -162,36 +241,72 @@ export default function KertasKerjaPage() {
     finally { setIsSavingRow(null); }
   };
 
-  const exportToExcel = async () => {
+  const exportToExcel = () => {
     try {
-      const session = getSession();
-      const params = new URLSearchParams();
-      if (filterSatker) params.set('satker', filterSatker);
-      const res = await fetch(`${API}/export/rekening-koran?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      if (!res.ok) throw new Error('Gagal export');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Rekening_Koran_${new Date().toISOString().slice(0,10)}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      let filterLabel = '';
+      if (modeFilter === 'bulan') {
+        const bLabel = filterBulan !== 'all' ? (BULAN_OPTIONS.find(b => b.val === filterBulan)?.label || filterBulan) : 'Semua_Bulan';
+        filterLabel = `${bLabel}_${filterTahun || '2026'}`;
+      } else if (modeFilter === 'triwulan') {
+        const tw = TRIWULAN_OPTIONS.find(t => t.val === filterTriwulan);
+        filterLabel = `${tw?.val || filterTriwulan}_${filterTahun || '2026'}`;
+      } else {
+        filterLabel = `Tahunan_${filterTahun || '2026'}`;
+      }
+
+      const filename = `Rekap_Saldo_Bank_${filterLabel}.xlsx`;
+
+      const rows = filteredData.map((d, idx) => ({
+        'No': idx + 1,
+        'Satker': d.nama_satker || '-',
+        'Kode Satker': d.kode_satker || '-',
+        'Mitra Bank': d.nama_bank || '-',
+        'Nomor Rekening': d.nomor_rekening_bank || '-',
+        'Nama Rekening': d.nama_rekening || '-',
+        'Periode': formatPeriodeDisplay(d.periode, d.tahun),
+        'Total Saldo Kas Bank (Rp)': Number(d.saldo_akhir_bulan || 0),
+        'Keterangan': d.keterangan || '-'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rekening_Koran");
+      XLSX.writeFile(wb, filename);
+      toast.success(`Berhasil mengunduh ${filename}`);
     } catch (err) {
       toast.error('Gagal export Excel. Coba lagi.');
     }
   };
 
-
   const filteredData = useMemo(() => {
     return dataList.filter(d => {
-      const matchSearch = !searchQ || d.nama_bank?.toLowerCase().includes(searchQ.toLowerCase()) || d.nomor_rekening_bank?.includes(searchQ) || d.nama_rekening?.toLowerCase().includes(searchQ.toLowerCase());
+      const matchSearch = !searchQ || 
+        d.nama_bank?.toLowerCase().includes(searchQ.toLowerCase()) || 
+        d.nomor_rekening_bank?.includes(searchQ) || 
+        d.nama_rekening?.toLowerCase().includes(searchQ.toLowerCase());
       const matchSatker = !filterSatker || d.satker_id === Number(filterSatker);
       const matchBank = !filterBank || (d.nama_bank || '').trim().toLowerCase() === filterBank.trim().toLowerCase();
-      return matchSearch && matchSatker && matchBank;
+
+      const recMonth = getRecordMonth(d.periode, d.created_at);
+      const recYear = getRecordYear(d.tahun, d.periode, d.created_at);
+
+      let matchWaktu = true;
+      if (modeFilter === 'bulan') {
+        const matchTahun = !filterTahun || filterTahun === 'all' || recYear === Number(filterTahun);
+        const matchBulan = !filterBulan || filterBulan === 'all' || recMonth === Number(filterBulan);
+        matchWaktu = matchTahun && matchBulan;
+      } else if (modeFilter === 'triwulan') {
+        const tw = TRIWULAN_OPTIONS.find(t => t.val === filterTriwulan);
+        const matchTahun = !filterTahun || filterTahun === 'all' || recYear === Number(filterTahun);
+        const matchBulan = tw ? (recMonth !== null && tw.months.includes(recMonth)) : true;
+        matchWaktu = matchTahun && matchBulan;
+      } else if (modeFilter === 'tahun') {
+        matchWaktu = !filterTahun || filterTahun === 'all' || recYear === Number(filterTahun);
+      }
+
+      return matchSearch && matchSatker && matchBank && matchWaktu;
     });
-  }, [dataList, searchQ, filterSatker, filterBank]);
+  }, [dataList, searchQ, filterSatker, filterBank, modeFilter, filterBulan, filterTriwulan, filterTahun]);
 
   // Agregasi per Bank: 1. Nama per Bank, 2. No Rek per Bank, 3. Saldo per Rek, 4. Total Saldo per Bank
   const bankSummary = useMemo(() => {
@@ -378,6 +493,112 @@ export default function KertasKerjaPage() {
         </div>
       </div>
 
+      {/* Filter Rentang Waktu 3 Mode (Per Bulan, Per 3 Bulan / Triwulan, 1 Tahun Penuh) */}
+      <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Mode Switcher Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+            <button
+              type="button"
+              onClick={() => setModeFilter('bulan')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                modeFilter === 'bulan'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Per Bulan (1 Bulan)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModeFilter('triwulan')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                modeFilter === 'triwulan'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Table2 className="w-3.5 h-3.5" />
+              <span>Per 3 Bulan (Triwulan)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModeFilter('tahun')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                modeFilter === 'tahun'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>1 Tahun Penuh</span>
+            </button>
+          </div>
+
+          {/* Current Active Filter Indicator */}
+          <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+            <span>Filter Aktif:</span>
+            <span className="font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+              {modeFilter === 'bulan' && (filterBulan === 'all' ? `Semua Bulan ${filterTahun}` : `${BULAN_OPTIONS.find(b => b.val === filterBulan)?.label} ${filterTahun}`)}
+              {modeFilter === 'triwulan' && `${TRIWULAN_OPTIONS.find(t => t.val === filterTriwulan)?.label} ${filterTahun}`}
+              {modeFilter === 'tahun' && `Tahun ${filterTahun}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Controls Dropdown based on active Mode */}
+        <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100">
+          {modeFilter === 'bulan' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 font-medium">Bulan:</span>
+              <select
+                value={filterBulan}
+                onChange={e => setFilterBulan(e.target.value)}
+                className="text-xs font-semibold border border-gray-300 rounded-xl px-3 py-1.5 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="all">Semua Bulan (12 Bulan)</option>
+                {BULAN_OPTIONS.map(b => (
+                  <option key={b.val} value={b.val}>{b.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {modeFilter === 'triwulan' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 font-medium">Triwulan:</span>
+              <select
+                value={filterTriwulan}
+                onChange={e => setFilterTriwulan(e.target.value)}
+                className="text-xs font-semibold border border-gray-300 rounded-xl px-3 py-1.5 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20"
+              >
+                {TRIWULAN_OPTIONS.map(tw => (
+                  <option key={tw.val} value={tw.val}>{tw.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Tahun selector (available across modes) */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 font-medium">Tahun:</span>
+            <select
+              value={filterTahun}
+              onChange={e => setFilterTahun(e.target.value)}
+              className="text-xs font-semibold border border-gray-300 rounded-xl px-3 py-1.5 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20"
+            >
+              {TAHUN_OPTIONS.map(th => (
+                <option key={th} value={th}>{th}</option>
+              ))}
+              {modeFilter === 'bulan' && <option value="all">Semua Tahun</option>}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 flex-1">
@@ -406,7 +627,7 @@ export default function KertasKerjaPage() {
           </div>
           
           <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shadow-xs">
-            <Download className="w-4 h-4" /> Export Excel
+            <Download className="w-4 h-4" /> Export Excel ({filteredData.length})
           </button>
         </div>
 
@@ -414,12 +635,12 @@ export default function KertasKerjaPage() {
           <table className="w-full text-xs text-left min-w-[1100px]">
             <thead className="bg-gray-50/90 border-b border-gray-200 text-gray-600 uppercase font-bold tracking-wider">
               <tr>
-                <th className="px-4 py-3.5 w-[100px]">Satker</th>
-                <th className="px-4 py-3.5 w-[180px]">1. Bank</th>
-                <th className="px-4 py-3.5 w-[160px]">2. No Rekening</th>
+                <th className="px-4 py-3.5 w-[130px]">Periode</th>
+                <th className="px-4 py-3.5 w-[180px]">Mitra Bank</th>
+                <th className="px-4 py-3.5 w-[160px]">No. Rekening</th>
                 <th className="px-4 py-3.5">Nama Rekening</th>
-                <th className="px-4 py-3.5 text-right w-[160px]">3. Saldo Rekening</th>
-                <th className="px-4 py-3.5 text-right w-[180px] text-blue-700">4. Total Saldo Bank</th>
+                <th className="px-4 py-3.5 text-right w-[160px]">Saldo Rekening</th>
+                <th className="px-4 py-3.5 text-right w-[180px] text-blue-700 font-extrabold">Total Saldo Bank</th>
                 <th className="px-4 py-3.5 w-[160px]">Keterangan</th>
                 {!isEselon1 && <th className="px-4 py-3.5 text-right w-[80px]">Aksi</th>}
               </tr>
@@ -435,7 +656,7 @@ export default function KertasKerjaPage() {
                     <tr key={d.id} className="hover:bg-blue-50/30 transition-colors group">
                         {isEditing ? (
                           <>
-                            <td className="px-3 py-2 text-gray-500 truncate max-w-[100px]">{d.kode_satker || '-'}</td>
+                            <td className="px-3 py-2 text-gray-700 font-semibold">{formatPeriodeDisplay(d.periode, d.tahun)}</td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({...editRowData, nama_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-semibold"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({...editRowData, nomor_rekening_bank: e.target.value})} className="w-full text-xs font-mono border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({...editRowData, nama_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"/></td>
@@ -455,7 +676,7 @@ export default function KertasKerjaPage() {
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3 text-gray-600 truncate max-w-[100px]" title={d.nama_satker || ''}>{d.kode_satker || '-'}</td>
+                            <td className="px-4 py-3 text-gray-700 font-semibold">{formatPeriodeDisplay(d.periode, d.tahun)}</td>
                             {/* 1. Nama per Bank */}
                             <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-900 font-semibold cursor-pointer">
                               <div className="flex items-center gap-1.5">

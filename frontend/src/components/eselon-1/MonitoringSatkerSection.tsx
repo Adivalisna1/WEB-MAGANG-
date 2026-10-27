@@ -90,7 +90,7 @@ const STATUS_BADGE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   terverifikasi: "Terverifikasi",
   menunggu_verifikasi: "Menunggu Verifikasi",
-  lolos_admin: "Menunggu Eselon 1",
+  lolos_admin: "Disahkan Satker",
   revisi: "Perlu Revisi",
   draft: "Draft Pengajuan",
 };
@@ -940,23 +940,14 @@ export default function MonitoringSatkerSection() {
 
                             {(doc.nilai_rekening_koran > 0 ||
                               doc.nilai_excel > 0) && (
-                              <div className="flex items-center gap-3 pt-1 text-xs">
-                                {doc.nilai_rekening_koran > 0 && (
-                                  <span className="text-slate-600">
-                                    Saldo Bank:{" "}
-                                    <strong>
-                                      {formatRupiah(doc.nilai_rekening_koran)}
-                                    </strong>
-                                  </span>
-                                )}
-                                {doc.nilai_excel > 0 && (
-                                  <span className="text-slate-600">
-                                    LPJ/Bukti Kas:{" "}
-                                    <strong>
-                                      {formatRupiah(doc.nilai_excel)}
-                                    </strong>
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-2 pt-1 text-xs">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/70 font-medium">
+                                  <span>💳</span>
+                                  <span>Total Saldo Akhir Kas Bank:</span>
+                                  <strong className="font-bold text-emerald-900">
+                                    {formatRupiah(doc.nilai_rekening_koran || doc.nilai_excel)}
+                                  </strong>
+                                </span>
                               </div>
                             )}
                           </div>
