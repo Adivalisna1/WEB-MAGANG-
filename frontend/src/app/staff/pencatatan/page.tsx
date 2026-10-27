@@ -370,7 +370,7 @@ export default function StaffpencatatanPage() {
   const exportToExcel = () => {
     const wsData = filteredData.map((t, index) => ({
       No: index + 1,
-      Periode: t.periode || "-",
+      Bulan: t.periode || "-",
       "Kategori Dokumen": t.nama_kategori,
       Bank: t.nama_bank || "-",
       "Saldo Akhir": Number(t.saldo_akhir || t.nominal || 0),
@@ -498,7 +498,7 @@ export default function StaffpencatatanPage() {
           onChange={(e) => setFilterPeriode(e.target.value)}
           className="text-sm border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
         >
-          <option value="">Semua Periode</option>
+          <option value="">Semua Bulan</option>
           {uniquePeriode.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -681,7 +681,7 @@ export default function StaffpencatatanPage() {
               {/* Row 2: Periode Pengatur Waktu Transaksi */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                  <span>Periode *</span>
+                  <span>Bulan Transaksi *</span>
                   <span className="text-[11px] font-normal text-gray-400">
                     Pengatur waktu pelaporan transaksi
                   </span>
@@ -694,7 +694,7 @@ export default function StaffpencatatanPage() {
                   }
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
                 >
-                  <option value="">Pilih Periode Bulan...</option>
+                  <option value="">Pilih Bulan...</option>
                   {[
                     "Januari",
                     "Februari",
@@ -870,7 +870,7 @@ export default function StaffpencatatanPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Periode
+                  Bulan
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
                   Kategori Dokumen

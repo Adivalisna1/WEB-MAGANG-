@@ -573,7 +573,7 @@ export default function Eselon1PencatatanPage() {
           onChange={(e) => setFilterPeriode(e.target.value)}
           className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
         >
-          <option value="">Semua Periode</option>
+          <option value="">Semua Bulan</option>
           {uniquePeriode.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -616,7 +616,7 @@ export default function Eselon1PencatatanPage() {
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="px-5 py-3.5">Periode</th>
+                  <th className="px-5 py-3.5">Bulan</th>
                   <th className="px-5 py-3.5">Satker Binaan</th>
                   <th className="px-5 py-3.5">Kategori Dokumen</th>
                   <th className="px-5 py-3.5">Bank</th>
@@ -837,7 +837,7 @@ export default function Eselon1PencatatanPage() {
               {/* Periode Pengatur Waktu Transaksi */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Periode *
+                  Bulan Transaksi *
                 </label>
                 <select
                   required
@@ -847,7 +847,7 @@ export default function Eselon1PencatatanPage() {
                   }
                   className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
                 >
-                  <option value="">Pilih Periode Bulan...</option>
+                  <option value="">Pilih Bulan...</option>
                   {[
                     "Januari",
                     "Februari",
@@ -1032,7 +1032,7 @@ export default function Eselon1PencatatanPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">
-                    Periode Laporan
+                    Bulan Laporan
                   </span>
                   <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                     {getDisplayPeriode(
