@@ -10,9 +10,7 @@ import {
   Paperclip,
   Search,
   DollarSign,
-  TrendingUp,
   Building2,
-  Clock,
   X,
   Loader2,
   CheckCircle2,
@@ -399,13 +397,10 @@ export default function StaffpencatatanPage() {
     XLSX.writeFile(wb, fileName);
   };
 
-  const totalDebit = transaksi
-    .filter((t) => t.jenis === "debit")
-    .reduce((acc, t) => acc + (Number(t.nominal) || 0), 0);
-  const totalKredit = transaksi
-    .filter((t) => t.jenis === "kredit")
-    .reduce((acc, t) => acc + (Number(t.nominal) || 0), 0);
-  const saldoKas = totalDebit - totalKredit;
+  const totalNominal = transaksi.reduce(
+    (acc, t) => acc + (Number(t.nominal) || 0),
+    0
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -438,7 +433,7 @@ export default function StaffpencatatanPage() {
         </div>
       </div>
 
-      {/* Stats Summary Strip (Prototype Design) */}
+      {/* Stats Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="staff-mini-card">
           <div className="staff-mini-label">
@@ -446,47 +441,10 @@ export default function StaffpencatatanPage() {
             <DollarSign className="w-4 h-4 text-blue-500" />
           </div>
           <div className="staff-mini-val text-blue-600">
-            Rp {(totalDebit + totalKredit).toLocaleString("id-ID")}
+            Rp {totalNominal.toLocaleString("id-ID")}
           </div>
           <span className="text-xs font-semibold text-emerald-600">
             +{transaksi.length} Transaksi Tercatat
-          </span>
-        </div>
-
-        <div className="staff-mini-card">
-          <div className="staff-mini-label">
-            <span>Realisasi Belanja</span>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="staff-mini-val text-emerald-600">
-            Rp {totalKredit.toLocaleString("id-ID")}
-          </div>
-          <span className="text-xs text-slate-500">Pengeluaran terdata</span>
-        </div>
-
-        <div className="staff-mini-card">
-          <div className="staff-mini-label">
-            <span>Saldo Kas Berjalan</span>
-            <Building2 className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="staff-mini-val text-slate-900">
-            Rp {saldoKas.toLocaleString("id-ID")}
-          </div>
-          <span className="text-xs text-blue-600 font-medium">
-            Buku Kas Pembantu
-          </span>
-        </div>
-
-        <div className="staff-mini-card">
-          <div className="staff-mini-label">
-            <span>Pemasukan / Setoran</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="staff-mini-val text-indigo-600">
-            Rp {totalDebit.toLocaleString("id-ID")}
-          </div>
-          <span className="text-xs text-indigo-600 font-medium">
-            Total Debet Masuk
           </span>
         </div>
       </div>
