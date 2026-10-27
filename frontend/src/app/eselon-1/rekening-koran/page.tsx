@@ -696,7 +696,6 @@ export default function KertasKerjaPage() {
                 <th className="px-4 py-3.5 w-[180px]">Mitra Bank</th>
                 <th className="px-4 py-3.5 w-[160px]">No. Rekening</th>
                 <th className="px-4 py-3.5">Nama Rekening</th>
-                <th className="px-4 py-3.5 text-right w-[160px]">Saldo Rekening</th>
                 <th className="px-4 py-3.5 text-right w-[180px] text-blue-700 font-extrabold">Total Saldo Bank</th>
                 <th className="px-4 py-3.5 w-[160px]">Keterangan</th>
                 {!isPimpinan && <th className="px-4 py-3.5 text-right w-[80px]">Aksi</th>}
@@ -718,10 +717,7 @@ export default function KertasKerjaPage() {
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_bank} onChange={e => setEditRowData({...editRowData, nama_bank: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none font-semibold"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nomor_rekening_bank} onChange={e => setEditRowData({...editRowData, nomor_rekening_bank: e.target.value})} className="w-full text-xs font-mono border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.nama_rekening} onChange={e => setEditRowData({...editRowData, nama_rekening: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-1.5 py-2"><input type="number" step="any" value={editRowData.saldo_akhir_bulan} onChange={e => setEditRowData({...editRowData, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg text-right font-bold focus:ring-1 focus:ring-blue-500 outline-none"/></td>
-                            <td className="px-3 py-2 text-right text-xs font-bold text-blue-700 bg-blue-50/40">
-                              Rp {Number(bankTotalMap[editRowData.nama_bank?.trim()?.toUpperCase()] || totalBankSaldo).toLocaleString('id-ID')}
-                            </td>
+                            <td className="px-1.5 py-2"><input type="text" placeholder="Rp 0" value={editRowData.saldo_akhir_bulan ? Number(editRowData.saldo_akhir_bulan).toLocaleString('id-ID') : ''} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditRowData({...editRowData, saldo_akhir_bulan: raw ? parseInt(raw, 10) : 0}); }} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg text-right font-bold focus:ring-1 focus:ring-blue-500 outline-none" title="Pemisah ribuan titik otomatis"/></td>
                             <td className="px-1.5 py-2"><input type="text" value={editRowData.keterangan} onChange={e => setEditRowData({...editRowData, keterangan: e.target.value})} className="w-full text-xs border border-blue-300 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Keterangan..."/></td>
                             <td className="px-2 py-2 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -750,13 +746,9 @@ export default function KertasKerjaPage() {
                             <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>
                               {d.nama_rekening || '-'}
                             </td>
-                            {/* 3. Saldo per Rek */}
-                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap cursor-pointer">
+                            {/* Total Saldo Bank */}
+                            <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-right font-black text-blue-700 bg-blue-50/40 whitespace-nowrap cursor-pointer">
                               Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}
-                            </td>
-                            {/* 4. Total Saldo per Bank */}
-                            <td className="px-4 py-3 text-right font-black text-blue-700 bg-blue-50/40 whitespace-nowrap">
-                              Rp {Number(totalBankSaldo).toLocaleString('id-ID')}
                             </td>
                             <td onDoubleClick={() => !isPimpinan && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs truncate max-w-[160px] cursor-pointer" title={d.keterangan || ''}>
                               {d.keterangan || '-'}
@@ -781,8 +773,7 @@ export default function KertasKerjaPage() {
                     <td className="px-1.5 py-2"><input type="text" placeholder="1. Nama Bank..." value={newRow.nama_bank} onChange={e => setNewRow({...newRow, nama_bank: e.target.value})} className="w-full text-xs font-semibold border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
                     <td className="px-1.5 py-2"><input type="text" placeholder="2. No Rekening..." value={newRow.nomor_rekening_bank} onChange={e => setNewRow({...newRow, nomor_rekening_bank: e.target.value})} className="w-full text-xs font-mono border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
                     <td className="px-1.5 py-2"><input type="text" placeholder="Nama Rekening..." value={newRow.nama_rekening} onChange={e => setNewRow({...newRow, nama_rekening: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                    <td className="px-1.5 py-2"><input type="number" step="any" placeholder="3. Saldo Rek..." value={newRow.saldo_akhir_bulan} onChange={e => setNewRow({...newRow, saldo_akhir_bulan: parseFloat(e.target.value) || 0})} className="w-full text-xs font-bold border border-emerald-200 px-2 py-1.5 rounded-lg text-right focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
-                    <td className="px-3 py-2 text-right text-xs text-gray-400 bg-emerald-50/20 italic">- (Otomatis)</td>
+                    <td className="px-1.5 py-2"><input type="text" placeholder="Saldo Bank (Rp)..." value={newRow.saldo_akhir_bulan ? Number(newRow.saldo_akhir_bulan).toLocaleString('id-ID') : ''} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setNewRow({...newRow, saldo_akhir_bulan: raw ? parseInt(raw, 10) : 0}); }} className="w-full text-xs font-bold border border-emerald-200 px-2 py-1.5 rounded-lg text-right focus:ring-1 focus:ring-emerald-500 outline-none" title="Pemisah ribuan titik otomatis"/></td>
                     <td className="px-1.5 py-2"><input type="text" placeholder="Keterangan..." value={newRow.keterangan} onChange={e => setNewRow({...newRow, keterangan: e.target.value})} className="w-full text-xs border border-emerald-200 px-2 py-1.5 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"/></td>
                     <td className="px-2 py-2 text-right">
                       <button onClick={saveNewRow} disabled={isSavingRow === 'new'} className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium ml-auto disabled:opacity-50 transition-colors shadow-xs">
@@ -794,11 +785,8 @@ export default function KertasKerjaPage() {
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-bold text-gray-800">
                 <tr>
-                  <td colSpan={4} className="px-4 py-3 text-right uppercase tracking-wider text-xs text-gray-600">
+                  <td colSpan={5} className="px-4 py-3 text-right uppercase tracking-wider text-xs text-gray-600">
                     Total Keseluruhan Saldo ({filteredData.length} Rekening):
-                  </td>
-                  <td className="px-4 py-3 text-right font-black text-gray-900 text-sm whitespace-nowrap">
-                    Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
                   </td>
                   <td className="px-4 py-3 text-right font-black text-blue-700 text-sm whitespace-nowrap bg-blue-50/50">
                     Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
