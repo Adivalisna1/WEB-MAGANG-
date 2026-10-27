@@ -479,19 +479,24 @@ export default function StaffpencatatanPage() {
         </div>
       </div>
 
-      {/* Stats Summary Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="staff-mini-card">
-          <div className="staff-mini-label">
-            <span>Total Transaksi Tercatat</span>
-            <DollarSign className="w-4 h-4 text-blue-500" />
+      {/* Stats Summary Banner (Full Width) */}
+      <div className="w-full">
+        <div className="staff-mini-card w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="staff-mini-label">
+              <span>Total Transaksi Tercatat</span>
+              <DollarSign className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="staff-mini-val text-blue-600 text-2xl sm:text-3xl mt-1">
+              Rp {totalNominal.toLocaleString("id-ID")}
+            </div>
           </div>
-          <div className="staff-mini-val text-blue-600">
-            Rp {totalNominal.toLocaleString("id-ID")}
+          <div className="self-start sm:self-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-600">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              +{transaksi.length} Transaksi Tercatat
+            </span>
           </div>
-          <span className="text-xs font-semibold text-emerald-600">
-            +{transaksi.length} Transaksi Tercatat
-          </span>
         </div>
       </div>
 
