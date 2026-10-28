@@ -53,7 +53,7 @@ export default function Eselon1Sidebar({
         {
           href: "/eselon-1/pencatatan",
           icon: BookOpen,
-          label: "Bukti Kas Satker",
+          label: "Bukti Rekening Koran Satker",
         },
         {
           href: "/eselon-1/rekening-koran",
@@ -77,7 +77,7 @@ export default function Eselon1Sidebar({
         {
           href: "/eselon-1/pencatatan",
           icon: BookOpen,
-          label: "Monitoring Bukti Satker",
+          label: "Bukti Rekening Koran Satker",
         },
         {
           href: "/eselon-1/rekening-koran",

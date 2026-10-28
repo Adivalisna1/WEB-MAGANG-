@@ -463,11 +463,11 @@ export default function Eselon1PencatatanPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
             {isOperator
-              ? "Bukti Kas Satker Binaan"
-              : "Monitoring Bukti Kas Satker"}
+              ? "Bukti Rekening Koran Satker Binaan"
+              : "Monitoring Bukti Rekening Koran Satker"}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Berkas bukti transaksi kas, penerimaan, dan mutasi perbankan dari
+            Berkas bukti rekening koran, saldo akhir, dan mutasi perbankan dari
             seluruh Satker binaan {user?.eselon_1_singkatan || "Ditjen Pembina"}
             .
           </p>
@@ -764,10 +764,10 @@ export default function Eselon1PencatatanPage() {
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
                 <h2 className="text-lg font-bold text-slate-800">
-                  Unggah Bukti Kas Baru
+                  Unggah Bukti Rekening Koran Satker Baru
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Unggah berkas bukti transaksi kas dan lengkapi rincian Satker
+                  Unggah berkas bukti rekening koran dan lengkapi rincian Satker
                   binaan
                 </p>
               </div>
