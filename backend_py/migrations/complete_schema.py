@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS rekening_koran (
     satker_id INT UNSIGNED NULL,
     uploaded_by INT UNSIGNED NOT NULL,
     dokumen_id INT UNSIGNED NULL,
+    kode_bank VARCHAR(20) NULL,
     nama_bank VARCHAR(100) NULL,
     nomor_rekening_bank VARCHAR(100) NULL,
     nama_rekening VARCHAR(255) NULL,
@@ -84,9 +85,20 @@ CREATE TABLE IF NOT EXISTS rekening_koran (
     keterangan TEXT NULL,
     tahun INT NULL DEFAULT 2026,
     periode VARCHAR(50) NULL DEFAULT '1',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """)
+for alter_sql in [
+    "ALTER TABLE rekening_koran ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1",
+    "ALTER TABLE rekening_koran ADD COLUMN kode_bank VARCHAR(20) NULL",
+    "ALTER TABLE pencatatan ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1",
+    "ALTER TABLE pencatatan ADD COLUMN kode_bank VARCHAR(20) NULL",
+]:
+    try:
+        cur.execute(alter_sql)
+    except Exception:
+        pass
 print("✅ rekening_koran table ready")
 
 conn.commit()
