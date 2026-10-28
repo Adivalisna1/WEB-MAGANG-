@@ -5,8 +5,8 @@ from routers import satker, auth, pencatatan, rekening_koran, dokumen, pimpinan,
 
 app = FastAPI(title="Pencatatan Keuangan API", version="1.0.0")
 
-# Setup CORS aman (mendukung localhost dev & domain kustom via ENV)
-raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+# Setup CORS aman (mendukung localhost dev, domain kustom, & jaringan lokal Wi-Fi)
+raw_origins = os.getenv("ALLOWED_ORIGINS", "") or os.getenv("CORS_ORIGIN", "")
 allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()] if raw_origins else [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -16,8 +16,8 @@ allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()] if ra
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=allowed_origins if allowed_origins else ["*"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

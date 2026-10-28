@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+﻿const getClientApi = () => { if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") { return `${window.location.protocol}//${window.location.hostname}:5000/api`; } return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"; };
+const API_URL = getClientApi();
 
 export interface User {
   id: number;
@@ -32,7 +33,7 @@ export interface LoginResponse {
   };
 }
 
-// Login — simpan token ke localStorage
+// Login â€” simpan token ke localStorage
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
@@ -44,7 +45,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   return data;
 }
 
-// Logout — hapus token
+// Logout â€” hapus token
 export async function logout(token: string): Promise<void> {
   await fetch(`${API_URL}/auth/logout`, {
     method: 'POST',
@@ -99,3 +100,4 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
   return res;
 }
+

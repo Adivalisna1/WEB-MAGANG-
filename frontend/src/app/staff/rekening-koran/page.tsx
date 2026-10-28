@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import toast from 'react-hot-toast';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 const BANK_CODE_MAP: Record<string, string> = {
   'bank mandiri': '008',
@@ -283,8 +283,8 @@ export default function KertasKerjaPage() {
       if (j.success) {
         toast.success(
           nextActive === 1
-            ? `Bukti diaktifkan — Saldo dimasukkan ke Total Saldo ${item.nama_bank || 'Bank'}`
-            : `Bukti dinonaktifkan — Saldo dikecualikan dari Total Saldo ${item.nama_bank || 'Bank'}`
+            ? `Bukti diaktifkan â€” Saldo dimasukkan ke Total Saldo ${item.nama_bank || 'Bank'}`
+            : `Bukti dinonaktifkan â€” Saldo dikecualikan dari Total Saldo ${item.nama_bank || 'Bank'}`
         );
       } else {
         setDataList(prev =>
@@ -1018,7 +1018,7 @@ export default function KertasKerjaPage() {
                           )}
                         </div>
                         <p className="text-xs font-mono text-gray-700 pt-0.5">
-                          No. Rek: <strong>{item.nomor_rekening_bank || '-'}</strong> • Kode Bank: <strong>#{getKodeBank(item.nama_bank, item.kode_bank)}</strong>
+                          No. Rek: <strong>{item.nomor_rekening_bank || '-'}</strong> â€¢ Kode Bank: <strong>#{getKodeBank(item.nama_bank, item.kode_bank)}</strong>
                         </p>
                         <p className="text-xs text-gray-500 truncate">
                           {item.keterangan || item.nama_rekening || 'Laporan Rekening Koran'}
@@ -1087,3 +1087,4 @@ export default function KertasKerjaPage() {
     </div>
   );
 }
+

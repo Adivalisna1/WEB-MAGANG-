@@ -1,6 +1,7 @@
-// NEXT_PUBLIC_API_URL  → dipakai browser (client-side)
-// API_URL_INTERNAL     → dipakai server Next.js di dalam Docker (server-side fetch)
-const API_URL         = process.env.NEXT_PUBLIC_API_URL    || 'http://localhost:5000/api';
+﻿// NEXT_PUBLIC_API_URL  â†’ dipakai browser (client-side)
+// API_URL_INTERNAL     â†’ dipakai server Next.js di dalam Docker (server-side fetch)
+const getClientApi = () => { if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") { return `${window.location.protocol}//${window.location.hostname}:5000/api`; } return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"; };
+const API_URL = getClientApi();
 const SERVER_API_URL  = process.env.API_URL_INTERNAL       || API_URL;
 
 export interface Dokumen {
@@ -49,7 +50,7 @@ export interface DokumenParams {
   limit?: number;
 }
 
-// Ambil daftar dokumen publik (server-side — pakai hostname internal Docker)
+// Ambil daftar dokumen publik (server-side â€” pakai hostname internal Docker)
 export async function getDokumen(params: DokumenParams = {}): Promise<ApiResponse<Dokumen[]>> {
   const query = new URLSearchParams();
   if (params.kategori) query.set('kategori', params.kategori);
@@ -69,7 +70,7 @@ export async function getDokumen(params: DokumenParams = {}): Promise<ApiRespons
 // Ambil daftar kategori (server-side)
 export async function getKategori(): Promise<ApiResponse<Kategori[]>> {
   const res = await fetch(`${SERVER_API_URL}/dokumen/kategori`, {
-    cache: 'no-store', // selalu fresh — supaya kategori baru langsung muncul
+    cache: 'no-store', // selalu fresh â€” supaya kategori baru langsung muncul
   });
   if (!res.ok) throw new Error('Gagal mengambil kategori');
   return res.json();
@@ -106,7 +107,7 @@ export function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// URL download — bisa diakses publik (tanpa token) atau internal (dengan token untuk draft)
+// URL download â€” bisa diakses publik (tanpa token) atau internal (dengan token untuk draft)
 export function getDownloadUrl(id: number): string {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('token');
@@ -127,9 +128,10 @@ export interface StatsPublik {
 export async function getStatsPublik(satker?: string): Promise<ApiResponse<StatsPublik>> {
   const url = satker ? `${SERVER_API_URL}/dokumen/stats?satker=${satker}` : `${SERVER_API_URL}/dokumen/stats`;
   const res = await fetch(url, {
-    cache: 'no-store', // selalu fresh — supaya stats dokumen baru langsung update
+    cache: 'no-store', // selalu fresh â€” supaya stats dokumen baru langsung update
   });
   if (!res.ok) throw new Error('Gagal mengambil statistik');
   return res.json();
 }
+
 

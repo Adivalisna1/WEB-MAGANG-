@@ -82,8 +82,8 @@ services:
       - backend_py
     environment:
       NODE_ENV: production
-      # Browser mengakses backend lewat localhost (dari luar Docker)
-      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+      # Browser mengakses backend lewat IP WiFi (dari luar Docker / HP / Laptop lain)
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
       # Server Next.js mengakses backend lewat nama service Docker (antar container)
       API_URL_INTERNAL: http://backend_py:5000/api
     ports:

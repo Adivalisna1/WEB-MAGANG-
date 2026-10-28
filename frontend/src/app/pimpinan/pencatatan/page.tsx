@@ -23,7 +23,7 @@ import {
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API = typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 // Daftar Bank BUMN & Persepsi beserta Kode Bank Indonesia (Relasi No Bank - Nama Bank)
 const BANK_BUMN_LIST = [
@@ -253,8 +253,8 @@ export default function PimpinanpencatatanPage() {
       if (j.success) {
         toast.success(
           nextActive === 1
-            ? `Bukti diaktifkan — Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
-            : `Bukti dinonaktifkan — Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
+            ? `Bukti diaktifkan â€” Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
+            : `Bukti dinonaktifkan â€” Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
         );
       } else {
         setTransaksi((prev) =>
@@ -537,17 +537,8 @@ export default function PimpinanpencatatanPage() {
     0,
   );
 
-  interface BankGroupItem {
-    nama_bank: string;
-    kode_bank: string;
-    nomor_rekening_set: Set<string>;
-    items: any[];
-    activeTotal: number;
-    activeCount: number;
-  }
-
-  const bankGroupsMap: Record<string, BankGroupItem> = transaksi.reduce(
-    (acc: Record<string, BankGroupItem>, t: any) => {
+  const bankGroupsMap = transaksi.reduce(
+    (acc, t) => {
       if (!t.nama_bank) return acc;
       const key = normalizeBankKey(t.nama_bank);
       if (!acc[key]) {
@@ -570,7 +561,17 @@ export default function PimpinanpencatatanPage() {
       }
       return acc;
     },
-    {} as Record<string, BankGroupItem>,
+    {} as Record<
+      string,
+      {
+        nama_bank: string;
+        kode_bank: string;
+        nomor_rekening_set: Set<string>;
+        items: any[];
+        activeTotal: number;
+        activeCount: number;
+      }
+    >,
   );
 
   const selectedBankGroup = selectedBankDrawer
@@ -630,7 +631,7 @@ export default function PimpinanpencatatanPage() {
 
         {Object.values(bankGroupsMap).length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.values(bankGroupsMap).map((bg) => {
+            {Object.values(bankGroupsMap).map((bg: any) => {
               const noRekArr = Array.from(bg.nomor_rekening_set);
               return (
                 <div
@@ -785,7 +786,10 @@ export default function PimpinanpencatatanPage() {
                       "November",
                       "Desember",
                     ].map((m) => (
-                      <option key={m} value={`${m} ${new Date().getFullYear()}`}>
+                      <option
+                        key={m}
+                        value={`${m} ${new Date().getFullYear()}`}
+                      >
                         {m} {new Date().getFullYear()}
                       </option>
                     ))}
@@ -817,9 +821,7 @@ export default function PimpinanpencatatanPage() {
                     <option value="">Pilih Bank...</option>
                     {BANK_BUMN_LIST.map((b) => (
                       <option key={b} value={b}>
-                        {b === "Bank Lainnya"
-                          ? b
-                          : `[${getKodeBank(b)}] ${b}`}
+                        {b === "Bank Lainnya" ? b : `[${getKodeBank(b)}] ${b}`}
                       </option>
                     ))}
                   </select>
@@ -923,7 +925,7 @@ export default function PimpinanpencatatanPage() {
                   Kategori Dokumen
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Relasi Bank (No. Bank • Nama Bank • No. Rek) & Daftar Bukti
+                  Relasi Bank (No. Bank â€¢ Nama Bank â€¢ No. Rek) & Daftar Bukti
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                   Saldo Akhir
@@ -1128,7 +1130,7 @@ export default function PimpinanpencatatanPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-gray-50/50">
-              {selectedBankGroup.items.map((item, idx) => {
+              {selectedBankGroup.items.map((item: any, idx: number) => {
                 const isActive = item.is_active !== 0;
                 const nominalVal = Number(
                   item.saldo_akhir || item.nominal || 0,
@@ -1159,7 +1161,7 @@ export default function PimpinanpencatatanPage() {
                         </div>
                         <p className="text-xs font-mono text-gray-600">
                           No. Rek:{" "}
-                          <strong>{item.nomor_rekening_bank || "-"}</strong> •
+                          <strong>{item.nomor_rekening_bank || "-"}</strong> â€¢
                           Kode Bank:{" "}
                           <strong>
                             #{getKodeBank(item.nama_bank, item.kode_bank)}
@@ -1225,3 +1227,4 @@ export default function PimpinanpencatatanPage() {
     </div>
   );
 }
+

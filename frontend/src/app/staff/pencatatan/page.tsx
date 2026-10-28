@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import toast from "react-hot-toast";
 
 import { useState, useEffect, useRef } from "react";
@@ -24,7 +24,7 @@ import {
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API = typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 // Daftar Bank BUMN & Persepsi beserta Kode Bank Indonesia (Relasi No Bank - Nama Bank)
 const BANK_BUMN_LIST = [
@@ -129,7 +129,7 @@ const formatTanggalIndo = (tanggal?: string) => {
   return String(tanggal).split("T")[0];
 };
 
-// Helper buka file: PDF/DOCX → preview tab baru, Excel → auto download
+// Helper buka file: PDF/DOCX â†’ preview tab baru, Excel â†’ auto download
 const openFile = async (bukti_file: string, token: string) => {
   const url = bukti_file.startsWith("http")
     ? bukti_file
@@ -256,8 +256,8 @@ export default function StaffpencatatanPage() {
       if (j.success) {
         toast.success(
           nextActive === 1
-            ? `Bukti diaktifkan — Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
-            : `Bukti dinonaktifkan — Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
+            ? `Bukti diaktifkan â€” Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
+            : `Bukti dinonaktifkan â€” Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
         );
       } else {
         // Rollback jika gagal
@@ -835,7 +835,7 @@ export default function StaffpencatatanPage() {
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <div className="font-bold text-emerald-800 flex items-center gap-2 flex-wrap">
-                        <span>✨ Analisis Berkas Berhasil:</span>
+                        <span>âœ¨ Analisis Berkas Berhasil:</span>
                         {aiResult.bank && (
                           <span className="bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
                             [{getKodeBank(aiResult.bank)}] {aiResult.bank}
@@ -998,7 +998,7 @@ export default function StaffpencatatanPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
                     <Building2 className="w-4 h-4 text-blue-600" />
-                    Relasi Identitas Bank (No. Bank • Nama Bank • No. Rekening)
+                    Relasi Identitas Bank (No. Bank â€¢ Nama Bank â€¢ No. Rekening)
                   </span>
                   {formData.nama_bank && (
                     <span className="text-xs font-mono font-bold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">
@@ -1115,7 +1115,7 @@ export default function StaffpencatatanPage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
                   <span>Saldo Akhir (Rp) *</span>
                   <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    Kunci Utama #2 • Menentukan Total Saldo Bank
+                    Kunci Utama #2 â€¢ Menentukan Total Saldo Bank
                   </span>
                 </label>
                 <div className="relative">
@@ -1196,7 +1196,7 @@ export default function StaffpencatatanPage() {
                   Kategori Dokumen
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Relasi Bank (No. Bank • Nama Bank • No. Rek) & Daftar Bukti
+                  Relasi Bank (No. Bank â€¢ Nama Bank â€¢ No. Rek) & Daftar Bukti
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                   Saldo Akhir
@@ -1473,7 +1473,7 @@ export default function StaffpencatatanPage() {
                           <strong className="text-gray-800">
                             {item.nomor_rekening_bank || "-"}
                           </strong>{" "}
-                          • Kode Bank:{" "}
+                          â€¢ Kode Bank:{" "}
                           <strong className="text-gray-800">
                             #{getKodeBank(item.nama_bank, item.kode_bank)}
                           </strong>
@@ -1577,3 +1577,4 @@ export default function StaffpencatatanPage() {
     </div>
   );
 }
+
