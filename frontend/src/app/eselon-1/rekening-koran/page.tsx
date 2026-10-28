@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import toast from 'react-hot-toast';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -509,10 +509,10 @@ export default function KertasKerjaPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileSpreadsheet className="w-7 h-7 text-emerald-600" />
-            Rekening Koran
+            Rekening Koran Internal Eselon 1
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Rekapitulasi Relasi Kode Bank, Nama Bank, Nomor Rekening, dan Total Saldo Aktif.
+            Rekapitulasi rekening koran khusus internal Eselon 1. Untuk monitoring dan kelola bukti seluruh satker binaan, gunakan menu <strong>Bukti Rekening Koran Satker</strong>.
           </p>
         </div>
       </div>
@@ -758,12 +758,7 @@ export default function KertasKerjaPage() {
               ))}
             </select>
             
-            {['eselon_1', 'pimpinan_satker', 'admin_it'].includes(userRole) && (
-              <select value={filterSatker} onChange={e => setFilterSatker(e.target.value)} className="text-xs font-medium border border-gray-300 rounded-xl px-3 py-2 bg-white shadow-xs">
-                <option value="">Semua Satker</option>
-                {satkerList.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
-              </select>
-            )}
+            {/* Filter Satker ditiadakan di Rekening Koran Eselon 1 karena halaman ini khusus internal Eselon 1, bukti seluruh satker ada di menu Bukti Rekening Koran Satker */}
           </div>
           
           <button onClick={exportToExcel} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shadow-xs">

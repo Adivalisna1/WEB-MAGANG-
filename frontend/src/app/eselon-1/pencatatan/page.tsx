@@ -5,40 +5,99 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   Plus,
-  Edit,
   Download,
   Paperclip,
   Search,
   DollarSign,
-  TrendingUp,
   Building2,
-  Clock,
   X,
   Loader2,
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  Landmark,
-  Filter,
   Eye,
   FileText,
+  Calendar,
+  CreditCard,
+  Layers,
+  ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API =
+  typeof window !== "undefined" &&
+  window.location.hostname &&
+  window.location.hostname !== "localhost" &&
+  window.location.hostname !== "127.0.0.1"
+    ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-// Daftar Bank BUMN di Indonesia
 const BANK_BUMN_LIST = [
   "Bank Mandiri",
   "Bank BRI",
   "Bank BNI",
   "Bank BTN",
   "Bank BSI (Bank Syariah Indonesia)",
+  "Bank BCA",
   "Bank Lainnya",
 ];
 
-// Helper urutkan kategori sesuai ID di database, dengan 'Lainnya' selalu paling bawah
+const BANK_CODE_MAP: Record<string, string> = {
+  "bank mandiri": "008",
+  mandiri: "008",
+  "bank bri": "002",
+  bri: "002",
+  "bank rakyat indonesia": "002",
+  "bank bni": "009",
+  bni: "009",
+  "bank negara indonesia": "009",
+  "bank btn": "200",
+  btn: "200",
+  "bank tabungan negara": "200",
+  "bank bsi (bank syariah indonesia)": "451",
+  "bank bsi": "451",
+  bsi: "451",
+  "bank syariah indonesia": "451",
+  "bank bca": "014",
+  bca: "014",
+  "bank central asia": "014",
+};
+
+const getKodeBank = (namaBank?: string, kodeBankDb?: string) => {
+  if (
+    kodeBankDb &&
+    kodeBankDb.trim() &&
+    kodeBankDb !== "000" &&
+    kodeBankDb !== "999"
+  ) {
+    return kodeBankDb.trim();
+  }
+  if (!namaBank) return "-";
+  const lower = namaBank.toLowerCase().trim();
+  for (const [k, v] of Object.entries(BANK_CODE_MAP)) {
+    if (lower.includes(k)) return v;
+  }
+  return "999";
+};
+
+const normalizeBankKey = (namaBank?: string) => {
+  if (!namaBank) return "";
+  const lower = namaBank.toLowerCase().trim();
+  if (lower.includes("mandiri")) return "Bank Mandiri";
+  if (lower.includes("bri") || lower.includes("rakyat indonesia"))
+    return "Bank BRI";
+  if (lower.includes("bni") || lower.includes("negara indonesia"))
+    return "Bank BNI";
+  if (lower.includes("btn") || lower.includes("tabungan negara"))
+    return "Bank BTN";
+  if (lower.includes("bsi") || lower.includes("syariah indonesia"))
+    return "Bank BSI (Bank Syariah Indonesia)";
+  if (lower.includes("bca") || lower.includes("central asia"))
+    return "Bank BCA";
+  return namaBank.trim();
+};
+
 const sortKategoriDokumen = (cats: any[]) => {
   return [...cats].sort((a, b) => {
     const aIsLainnya =
@@ -53,7 +112,6 @@ const sortKategoriDokumen = (cats: any[]) => {
   });
 };
 
-// Helper tampilkan periode (fallback otomatis dari tanggal jika kolom periode kosong)
 const getDisplayPeriode = (periode?: string, tanggal?: string) => {
   if (periode && periode.trim() && periode !== "-" && periode !== "None")
     return periode;
@@ -70,7 +128,21 @@ const getDisplayPeriode = (periode?: string, tanggal?: string) => {
   return "-";
 };
 
-// Helper buka file: PDF/DOCX → preview tab baru, Excel → auto download
+const formatTanggalIndo = (tanggal?: string) => {
+  if (!tanggal) return "-";
+  try {
+    const d = new Date(tanggal);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+  } catch {}
+  return String(tanggal).split("T")[0];
+};
+
 const openFile = async (bukti_file: string, token: string) => {
   const url = bukti_file.startsWith("http")
     ? bukti_file
@@ -106,9 +178,14 @@ export default function Eselon1PencatatanPage() {
   // Filter State
   const [filterSatker, setFilterSatker] = useState("");
   const [filterKategori, setFilterKategori] = useState("");
-  const [filterJenis, setFilterJenis] = useState("");
   const [filterPeriode, setFilterPeriode] = useState("");
   const [searchUraian, setSearchUraian] = useState("");
+
+  // Slide-over Bar / Drawer State per Bank
+  const [selectedBankDrawer, setSelectedBankDrawer] = useState<string | null>(
+    null,
+  );
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   // Form State
   const currentMonthName = new Date().toLocaleDateString("id-ID", {
@@ -128,6 +205,7 @@ export default function Eselon1PencatatanPage() {
     uraian: "",
     jenis: "debit",
     id_kategori: "",
+    kode_bank: "",
     nominal: "",
     saldo_akhir: "",
     catatan_audit: "",
@@ -173,7 +251,7 @@ export default function Eselon1PencatatanPage() {
         setSatkerList(binaan);
       }
     } catch {
-      toast.error("Gagal mengambil data pencatatan");
+      toast.error("Gagal mengambil data bukti rekening koran");
     } finally {
       setLoading(false);
     }
@@ -185,7 +263,51 @@ export default function Eselon1PencatatanPage() {
 
   const sortedKategori = sortKategoriDokumen(kategori);
 
-  // Handle otomatis scan berkas ketika user memilih file
+  const handleToggleStatus = async (item: any) => {
+    const currentActive = item.is_active !== 0;
+    const nextActive = currentActive ? 0 : 1;
+    setTogglingId(item.id);
+
+    setTransaksi((prev) =>
+      prev.map((t) => (t.id === item.id ? { ...t, is_active: nextActive } : t)),
+    );
+
+    try {
+      const res = await fetch(`${API}/pencatatan/${item.id}/toggle-status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      const j = await res.json();
+      if (j.success) {
+        toast.success(
+          nextActive === 1
+            ? `Bukti diaktifkan — Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
+            : `Bukti dinonaktifkan — Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
+        );
+      } else {
+        setTransaksi((prev) =>
+          prev.map((t) =>
+            t.id === item.id ? { ...t, is_active: currentActive ? 1 : 0 } : t,
+          ),
+        );
+        toast.error(j.message || "Gagal mengubah status bukti");
+      }
+    } catch {
+      setTransaksi((prev) =>
+        prev.map((t) =>
+          t.id === item.id ? { ...t, is_active: currentActive ? 1 : 0 } : t,
+        ),
+      );
+      toast.error("Gagal menghubungi server");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
     setFile(selectedFile);
@@ -193,9 +315,6 @@ export default function Eselon1PencatatanPage() {
     setAiError("");
 
     if (!selectedFile) return;
-
-    // Tanggal otomatis diset ke tanggal saat berkas diimport
-    const nowIso = new Date().toISOString().split("T")[0];
 
     const ext = selectedFile.name.split(".").pop()?.toLowerCase();
     if (["pdf", "xlsx", "xls"].includes(ext || "")) {
@@ -212,26 +331,24 @@ export default function Eselon1PencatatanPage() {
           setAiResult(result);
 
           const isRekeningKoran =
-            result.kategori?.toLowerCase().includes("rekening") ||
-            result.kategori?.toLowerCase().includes("koran") ||
+            (result.kategori &&
+              result.kategori.toLowerCase().includes("rekening")) ||
+            Boolean(result.bank) ||
+            Boolean(result.nomor_rekening) ||
+            selectedFile.name.toLowerCase().includes("rekening") ||
             selectedFile.name.toLowerCase().includes("rk") ||
             selectedFile.name.toLowerCase().includes("koran");
 
           setFormData((prev) => {
             const updated = { ...prev };
-            updated.tanggal = nowIso;
-
             if (isRekeningKoran) {
               const rkCat = sortedKategori.find(
                 (k) =>
                   k.nama_kategori?.toLowerCase().includes("rekening koran") ||
                   k.nama_kategori?.toLowerCase().includes("rekening_koran"),
               );
-              if (rkCat) {
-                updated.id_kategori = String(rkCat.id);
-              }
+              if (rkCat) updated.id_kategori = String(rkCat.id);
             }
-
             if (result.bank) {
               const bName = result.bank.toLowerCase().trim();
               let matchedBank = BANK_BUMN_LIST.find((b) => {
@@ -242,12 +359,10 @@ export default function Eselon1PencatatanPage() {
                   (bName.includes("bsi") && b.toLowerCase().includes("bsi"))
                 );
               });
-              if (!matchedBank) {
-                matchedBank = result.bank || "";
-              }
+              if (!matchedBank) matchedBank = result.bank || "";
               updated.nama_bank = matchedBank || "";
+              updated.kode_bank = getKodeBank(matchedBank);
             }
-
             const extractedNominal =
               result.nominal ?? result.saldo_rekening ?? result.saldo_akhir;
             if (
@@ -258,64 +373,13 @@ export default function Eselon1PencatatanPage() {
               updated.nominal = String(extractedNominal);
               updated.saldo_akhir = String(extractedNominal);
             }
-
             if (result.nomor_rekening) {
               updated.nomor_rekening_bank = String(result.nomor_rekening);
             }
-
-            // Auto deteksi Bulan & Periode Transaksi dari berkas / nama file
-            const namaBulanList = [
-              "Januari",
-              "Februari",
-              "Maret",
-              "April",
-              "Mei",
-              "Juni",
-              "Juli",
-              "Agustus",
-              "September",
-              "Oktober",
-              "November",
-              "Desember",
-            ];
-            let detectedBulanName = "";
-            if (
-              result.bulan &&
-              typeof result.bulan === "number" &&
-              result.bulan >= 1 &&
-              result.bulan <= 12
-            ) {
-              detectedBulanName = namaBulanList[result.bulan - 1];
-            } else if (result.bulan && typeof result.bulan === "string") {
-              const matched = namaBulanList.find((b) =>
-                b.toLowerCase().includes(result.bulan.toLowerCase())
-              );
-              if (matched) detectedBulanName = matched;
-            } else {
-              const lowerName = selectedFile.name.toLowerCase();
-              const matched = namaBulanList.find(
-                (b) =>
-                  lowerName.includes(b.toLowerCase()) ||
-                  lowerName.includes(b.toLowerCase().slice(0, 3))
-              );
-              if (matched) detectedBulanName = matched;
-            }
-
-            if (detectedBulanName) {
-              const detectedTahun = result.tahun || new Date().getFullYear();
-              updated.periode = `${detectedBulanName} ${detectedTahun}`;
-            }
-
             return updated;
           });
-
-          if (result.bank) {
-            toast.success(`AI: Berkas terbaca dari ${result.bank}!`);
-          } else {
-            toast.success("AI: Analisis berkas selesai!");
-          }
         }
-      } catch (err: any) {
+      } catch {
         setAiError("Gagal menganalisis otomatis berkas.");
       } finally {
         setAiScanning(false);
@@ -323,26 +387,27 @@ export default function Eselon1PencatatanPage() {
     }
   };
 
-  // Filtered data
   const filteredData = transaksi.filter((t) => {
-    const matchSatker = !filterSatker || t.satker_nama === filterSatker;
+    const matchSatker =
+      !filterSatker ||
+      t.satker_nama === filterSatker ||
+      String(t.satker_id) === filterSatker;
     const matchKategori =
       !filterKategori || String(t.id_kategori) === filterKategori;
-    const matchJenis = !filterJenis || t.jenis === filterJenis;
     const tPeriode = getDisplayPeriode(t.periode, t.tanggal);
     const matchPeriode =
       !filterPeriode || tPeriode.toLowerCase() === filterPeriode.toLowerCase();
-    const matchUraian =
+    const matchSearch =
       !searchUraian ||
-      t.uraian?.toLowerCase().includes(searchUraian.toLowerCase());
-    return (
-      matchSatker && matchKategori && matchJenis && matchPeriode && matchUraian
-    );
+      (t.uraian &&
+        t.uraian.toLowerCase().includes(searchUraian.toLowerCase())) ||
+      (t.nama_bank &&
+        t.nama_bank.toLowerCase().includes(searchUraian.toLowerCase())) ||
+      (t.satker_nama &&
+        t.satker_nama.toLowerCase().includes(searchUraian.toLowerCase()));
+    return matchSatker && matchKategori && matchPeriode && matchSearch;
   });
 
-  const uniqueSatker = Array.from(
-    new Set(transaksi.map((t) => t.satker_nama).filter(Boolean)),
-  ).sort();
   const uniquePeriode = Array.from(
     new Set(
       transaksi
@@ -351,13 +416,9 @@ export default function Eselon1PencatatanPage() {
     ),
   ).sort();
 
-  const totalDebit = filteredData
-    .filter((t) => t.jenis === "debit")
-    .reduce((acc, t) => acc + Number(t.nominal || 0), 0);
-  const totalKredit = filteredData
-    .filter((t) => t.jenis === "kredit")
-    .reduce((acc, t) => acc + Number(t.nominal || 0), 0);
-  const saldoNetto = totalDebit - totalKredit;
+  const uniqueSatker = Array.from(
+    new Set(transaksi.map((t) => t.satker_nama).filter(Boolean)),
+  ).sort();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -369,9 +430,10 @@ export default function Eselon1PencatatanPage() {
       formData.nama_bank === "Bank Lainnya" && customBank.trim()
         ? customBank.trim()
         : formData.nama_bank;
+    const finalKodeBank = getKodeBank(finalBank, formData.kode_bank);
     const finalUraian =
       formData.uraian?.trim() ||
-      `Pencatatan ${katName} - ${finalBank || "Bank"} (${formData.periode})`;
+      `Bukti Rekening Koran ${katName} - ${finalBank || "Bank"} (${formData.periode})`;
     const finalTanggal = formData.tanggal || todayDate;
     const finalNominal = formData.saldo_akhir || formData.nominal || "0";
 
@@ -379,95 +441,118 @@ export default function Eselon1PencatatanPage() {
       const data = new FormData();
       data.append("tanggal", finalTanggal);
       data.append("periode", formData.periode);
-      if (formData.satker_id) data.append("satker_id", formData.satker_id);
+      data.append("satker_id", formData.satker_id);
       data.append("uraian", finalUraian);
       data.append("jenis", "debit");
       data.append("id_kategori", formData.id_kategori);
       data.append("nominal", finalNominal);
       data.append("saldo_akhir", finalNominal);
-      data.append("catatan_audit", formData.catatan_audit);
-      data.append("nomor_rekening_bank", formData.nomor_rekening_bank);
-      data.append("nama_rekening", formData.nama_rekening);
+      data.append("catatan_audit", formData.catatan_audit || "");
+      data.append("nomor_rekening_bank", formData.nomor_rekening_bank || "");
+      data.append("nama_rekening", formData.nama_rekening || "");
       data.append("nama_bank", finalBank);
+      data.append("kode_bank", finalKodeBank);
       if (file) data.append("file", file);
 
-      const url = `${API}/pencatatan`;
-      const res = await fetch(url, {
+      const res = await fetch(`${API}/pencatatan`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: data,
       });
       const j = await res.json();
       if (j.success) {
-        toast.success("Berkas bukti transaksi berhasil ditambahkan");
+        toast.success("Bukti rekening koran satker berhasil disimpan!");
         setShowForm(false);
-        setFormData({
-          tanggal: todayDate,
-          periode: defaultPeriode,
-          satker_id: "",
-          uraian: "",
-          jenis: "debit",
-          id_kategori: "",
-          nominal: "",
-          saldo_akhir: "",
-          catatan_audit: "",
-          nomor_rekening_bank: "",
-          nama_rekening: "",
-          nama_bank: "",
-        });
-        setCustomBank("");
-        setFile(null);
-        setAiResult(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
         fetchData();
       } else {
-        toast.error(j.message || "Gagal menyimpan data");
+        toast.error(j.message || "Gagal menyimpan bukti");
       }
     } catch {
-      toast.error("Terjadi kesalahan sistem");
+      toast.error("Terjadi kesalahan server saat menyimpan");
     } finally {
       setSubmitLoading(false);
     }
   };
 
   const exportExcel = () => {
-    const rows = filteredData.map((t, idx) => ({
+    const wsData = filteredData.map((t, idx) => ({
       No: idx + 1,
-      Tanggal: t.tanggal ? new Date(t.tanggal).toLocaleDateString("id-ID") : "",
-      "Satker Binaan": t.satker_nama || "Pusat",
-      "Kategori Dokumen": t.nama_kategori || "",
-      Bank: t.nama_bank || "",
-      "Nomor Rekening": t.nomor_rekening || "",
-      "Nama Rekening": t.nama_rekening || "",
-      Uraian: t.uraian,
-      Jenis:
-        t.jenis === "debit" ? "Penerimaan (Debit)" : "Pengeluaran (Kredit)",
-      Nominal: Number(t.nominal || 0),
-      Pembuat: t.pembuat || "",
-      "Catatan Audit": t.catatan_audit || "",
+      "Satker Binaan": t.satker_nama || "—",
+      Tanggal: formatTanggalIndo(t.tanggal),
+      Bulan: getDisplayPeriode(t.periode, t.tanggal),
+      "Kode Bank": getKodeBank(t.nama_bank, t.kode_bank),
+      "Nama Bank": t.nama_bank || "—",
+      "Nomor Rekening": t.nomor_rekening_bank || "—",
+      "Kategori Dokumen": t.nama_kategori || "—",
+      "Saldo Akhir": Number(t.saldo_akhir || t.nominal || 0),
+      Status: t.is_active === 0 ? "Nonaktif" : "Aktif",
+      Keterangan: t.uraian || "—",
+      "Diinput Oleh": t.pembuat || "—",
     }));
-
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Bukti Kas Eselon 1");
-    XLSX.writeFile(
-      wb,
-      `Rekap_Bukti_Kas_${user?.eselon_1_singkatan || "Eselon1"}_${new Date().toISOString().slice(0, 10)}.xlsx`,
-    );
+    XLSX.utils.book_append_sheet(wb, ws, "Bukti Rekening Koran Satker");
+    XLSX.writeFile(wb, "Bukti_Rekening_Koran_Satker_Eselon1.xlsx");
   };
+
+  interface BankGroupItem {
+    nama_bank: string;
+    kode_bank: string;
+    nomor_rekening_set: Set<string>;
+    items: any[];
+    activeTotal: number;
+    activeCount: number;
+  }
+
+  const bankGroupsMap: Record<string, BankGroupItem> = transaksi.reduce(
+    (acc: Record<string, BankGroupItem>, t: any) => {
+      if (!t.nama_bank) return acc;
+      const key = normalizeBankKey(t.nama_bank);
+      if (!acc[key]) {
+        acc[key] = {
+          nama_bank: key,
+          kode_bank: getKodeBank(key, t.kode_bank),
+          nomor_rekening_set: new Set<string>(),
+          items: [] as any[],
+          activeTotal: 0,
+          activeCount: 0,
+        };
+      }
+      if (t.nomor_rekening_bank && String(t.nomor_rekening_bank).trim()) {
+        acc[key].nomor_rekening_set.add(String(t.nomor_rekening_bank).trim());
+      }
+      acc[key].items.push(t);
+      if (t.is_active !== 0) {
+        acc[key].activeTotal += Number(t.saldo_akhir || t.nominal || 0);
+        acc[key].activeCount += 1;
+      }
+      return acc;
+    },
+    {} as Record<string, BankGroupItem>,
+  );
+
+  const activeTransaksi = filteredData.filter((t) => t.is_active !== 0);
+  const totalNominal = activeTransaksi.reduce(
+    (acc, t) => acc + (Number(t.saldo_akhir || t.nominal) || 0),
+    0,
+  );
+
+  const selectedBankGroup = selectedBankDrawer
+    ? bankGroupsMap[normalizeBankKey(selectedBankDrawer)] || null
+    : null;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
             {isOperator
               ? "Bukti Rekening Koran Satker Binaan"
               : "Monitoring Bukti Rekening Koran Satker"}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Berkas bukti rekening koran, saldo akhir, dan mutasi perbankan dari
+            Seluruh berkas bukti rekening koran, saldo akhir, dan mutasi dari
             seluruh Satker binaan {user?.eselon_1_singkatan || "Ditjen Pembina"}
             .
           </p>
@@ -490,6 +575,7 @@ export default function Eselon1PencatatanPage() {
                   uraian: "",
                   jenis: "debit",
                   id_kategori: "",
+                  kode_bank: "",
                   nominal: "",
                   saldo_akhir: "",
                   catatan_audit: "",
@@ -510,52 +596,73 @@ export default function Eselon1PencatatanPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            Total Transaksi
+      {/* Summary Banner */}
+      <div className="w-full space-y-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <span>Total Saldo Bukti Rekening Koran Aktif</span>
+              <DollarSign className="w-4 h-4 text-indigo-500" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 mt-1">
+              Rp {totalNominal.toLocaleString("id-ID")}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Akumulasi dari {activeTransaksi.length} bukti aktif di{" "}
+              {uniqueSatker.length} Satker Binaan
+            </p>
           </div>
-          <div className="text-2xl font-extrabold text-slate-800 mt-2">
-            {filteredData.length} Data
-          </div>
-          <div className="text-xs text-slate-500 mt-1">
-            Dari {uniqueSatker.length} Satker Binaan
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200/80 shadow-xs bg-gradient-to-br from-white to-emerald-50/30">
-          <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-            Total Penerimaan (Debit)
-          </div>
-          <div className="text-2xl font-extrabold text-emerald-700 mt-2">
-            Rp {totalDebit.toLocaleString("id-ID")}
-          </div>
-          <div className="text-xs text-emerald-600 mt-1">
-            Uang Masuk / Mutasi Tambah
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-rose-200/80 shadow-xs bg-gradient-to-br from-white to-rose-50/30">
-          <div className="text-xs font-bold text-rose-600 uppercase tracking-wider">
-            Total Pengeluaran (Kredit)
-          </div>
-          <div className="text-2xl font-extrabold text-rose-700 mt-2">
-            Rp {totalKredit.toLocaleString("id-ID")}
-          </div>
-          <div className="text-xs text-rose-600 mt-1">
-            Belanja / Mutasi Kurang
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              {activeTransaksi.length} Bukti Aktif
+            </span>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs bg-gradient-to-br from-white to-blue-50/30">
-          <div className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-            Saldo Netto Kas
+
+        {/* Ringkasan Saldo Per Bank */}
+        {Object.values(bankGroupsMap).length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.values(bankGroupsMap).map((bg: any) => {
+              const noRekArr = Array.from(bg.nomor_rekening_set);
+              return (
+                <div
+                  key={bg.nama_bank}
+                  onClick={() => setSelectedBankDrawer(bg.nama_bank)}
+                  className="bg-white border border-slate-200 hover:border-indigo-400 rounded-xl p-3.5 shadow-xs hover:shadow transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 rounded">
+                        #{bg.kode_bank}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 truncate">
+                        {bg.nama_bank}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-mono text-slate-400 truncate">
+                      No. Rek: {noRekArr.length > 0 ? noRekArr.join(", ") : "-"}
+                    </p>
+                    <p className="text-sm font-extrabold text-emerald-700">
+                      Rp {bg.activeTotal.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedBankDrawer(bg.nama_bank);
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white text-xs font-semibold transition-colors"
+                  >
+                    <span>{bg.items.length} Bukti</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
-          <div className="text-2xl font-extrabold text-blue-700 mt-2">
-            Rp {saldoNetto.toLocaleString("id-ID")}
-          </div>
-          <div className="text-xs text-blue-600 mt-1">
-            Penerimaan - Pengeluaran
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Filter Bar */}
@@ -564,7 +671,7 @@ export default function Eselon1PencatatanPage() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari keterangan bukti transaksi..."
+            placeholder="Cari satker, bank, atau keterangan..."
             value={searchUraian}
             onChange={(e) => setSearchUraian(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
@@ -608,16 +715,6 @@ export default function Eselon1PencatatanPage() {
         </select>
 
         <select
-          value={filterJenis}
-          onChange={(e) => setFilterJenis(e.target.value)}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-        >
-          <option value="">Semua Jenis</option>
-          <option value="debit">Penerimaan (Debit)</option>
-          <option value="kredit">Pengeluaran (Kredit)</option>
-        </select>
-
-        <select
           value={filterPeriode}
           onChange={(e) => setFilterPeriode(e.target.value)}
           className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
@@ -632,14 +729,12 @@ export default function Eselon1PencatatanPage() {
 
         {(filterSatker ||
           filterKategori ||
-          filterJenis ||
           filterPeriode ||
           searchUraian) && (
           <button
             onClick={() => {
               setFilterSatker("");
               setFilterKategori("");
-              setFilterJenis("");
               setFilterPeriode("");
               setSearchUraian("");
             }}
@@ -650,7 +745,7 @@ export default function Eselon1PencatatanPage() {
         )}
       </div>
 
-      {/* Main Table */}
+      {/* Main Table: Menampilkan Seluruh Bukti Rekening Koran Satker Binaan */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         {loading ? (
           <div className="py-20 flex justify-center items-center">
@@ -658,106 +753,181 @@ export default function Eselon1PencatatanPage() {
           </div>
         ) : filteredData.length === 0 ? (
           <div className="py-20 text-center text-slate-400 text-sm">
-            Tidak ada berkas bukti yang sesuai filter.
+            Tidak ada berkas bukti rekening koran yang sesuai filter.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="w-full text-xs text-left min-w-[1100px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider">
-                  <th className="px-5 py-3.5">Bulan</th>
-                  <th className="px-5 py-3.5">Satker Binaan</th>
-                  <th className="px-5 py-3.5">Kategori Dokumen</th>
-                  <th className="px-5 py-3.5">Bank</th>
-                  <th className="px-5 py-3.5 text-right">Saldo Akhir</th>
-                  <th className="px-5 py-3.5">Keterangan</th>
-                  <th className="px-5 py-3.5 text-center">Bukti</th>
-                  <th className="px-5 py-3.5 text-center">Aksi</th>
+                  <th className="px-4 py-3.5 w-[140px]">Bulan & Tanggal</th>
+                  <th className="px-4 py-3.5">Satker Binaan</th>
+                  <th className="px-4 py-3.5">Kategori Dokumen</th>
+                  <th className="px-4 py-3.5 w-[280px]">
+                    Relasi Bank (No • Nama • No. Rek) & Bukti
+                  </th>
+                  <th className="px-4 py-3.5 text-right w-[150px]">Saldo Akhir</th>
+                  <th className="px-4 py-3.5 text-center w-[100px]">Status</th>
+                  <th className="px-4 py-3.5 text-center w-[90px]">Bukti</th>
+                  <th className="px-4 py-3.5 text-center w-[90px]">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredData.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-slate-50/80 transition-colors"
-                  >
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded text-[11px]">
-                        {getDisplayPeriode(row.periode, row.tanggal)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div
-                        className="font-bold text-slate-800 max-w-[180px] truncate"
-                        title={row.satker_nama || "Satker"}
-                      >
-                        {row.satker_nama || "—"}
-                      </div>
-                      {row.pembuat && (
-                        <div
-                          className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[180px]"
-                          title={`Diinput oleh: ${row.pembuat}`}
-                        >
-                          Oleh: {row.pembuat}
-                        </div>
+                {filteredData.map((row) => {
+                  const isActive = row.is_active !== 0;
+                  const bankKey = normalizeBankKey(row.nama_bank);
+                  const bankGroup = bankGroupsMap[bankKey];
+                  const kodeBank = getKodeBank(row.nama_bank, row.kode_bank);
+
+                  return (
+                    <tr
+                      key={row.id}
+                      className={clsx(
+                        "transition-colors",
+                        isActive
+                          ? "hover:bg-slate-50/80"
+                          : "bg-gray-50/60 opacity-70",
                       )}
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">
-                      <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-semibold">
-                        {row.nama_kategori || "—"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      {row.nama_bank ? (
-                        <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded">
-                          {row.nama_bank}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-bold text-slate-900 whitespace-nowrap">
-                      Rp{" "}
-                      {Number(
-                        row.saldo_akhir || row.nominal || 0,
-                      ).toLocaleString("id-ID")}
-                    </td>
-                    <td
-                      className="px-5 py-3.5 text-slate-800 max-w-[200px] truncate"
-                      title={row.uraian}
                     >
-                      {row.uraian || "—"}
-                    </td>
-                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                      {row.bukti_file ? (
-                        <button
-                          onClick={() => openFile(row.bukti_file, token || "")}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded text-[11px]">
+                            {getDisplayPeriode(row.periode, row.tanggal)}
+                          </span>
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatTanggalIndo(row.tanggal)}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <div
+                          className="font-bold text-slate-800 max-w-[200px] truncate"
+                          title={row.satker_nama || "Satker"}
                         >
-                          <Paperclip className="w-3.5 h-3.5" /> Lihat
+                          {row.satker_nama || "—"}
+                        </div>
+                        {row.pembuat && (
+                          <div
+                            className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]"
+                            title={`Diinput oleh: ${row.pembuat}`}
+                          >
+                            Oleh: {row.pembuat}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                        <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-semibold">
+                          {row.nama_kategori || "—"}
+                        </span>
+                      </td>
+
+                      {/* Relasi Bank & Tombol di Ujung Nama Bank */}
+                      <td className="px-4 py-3.5">
+                        {row.nama_bank ? (
+                          <div className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 rounded">
+                                  #{kodeBank}
+                                </span>
+                                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                <span className="font-bold text-slate-800 truncate">
+                                  {row.nama_bank}
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
+                                No. Rek: {row.nomor_rekening || row.nomor_rekening_bank || "—"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBankDrawer(row.nama_bank)}
+                              className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
+                              title={`Lihat seluruh bukti rekening koran ${row.nama_bank}`}
+                            >
+                              <Layers className="w-3 h-3" />
+                              <span>Bukti ({bankGroup ? bankGroup.items.length : 1})</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <div
+                          className={clsx(
+                            "font-bold",
+                            isActive
+                              ? "text-slate-900"
+                              : "line-through text-slate-400",
+                          )}
+                        >
+                          Rp{" "}
+                          {Number(
+                            row.saldo_akhir || row.nominal || 0,
+                          ).toLocaleString("id-ID")}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          disabled={togglingId === row.id}
+                          onClick={() => handleToggleStatus(row)}
+                          className={clsx(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer",
+                            isActive
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                              : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200",
+                          )}
+                        >
+                          <span
+                            className={clsx(
+                              "w-1.5 h-1.5 rounded-full",
+                              isActive ? "bg-emerald-500" : "bg-slate-400",
+                            )}
+                          />
+                          {isActive ? "Aktif" : "Nonaktif"}
                         </button>
-                      ) : (
-                        <span className="text-slate-300 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => setSelectedDetail(row)}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-colors"
-                        title="Lihat Detail Transaksi"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Detail
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        {row.bukti_file ? (
+                          <button
+                            onClick={() => openFile(row.bukti_file, token || "")}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" /> Lihat
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedDetail(row)}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-colors"
+                          title="Lihat Detail Transaksi"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Detail
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Modal Tambah Pencatatan (Untuk Staff Eselon 1) */}
+      {/* Modal Unggah Bukti Rekening Koran Satker Baru (Operator Eselon 1) */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -783,12 +953,11 @@ export default function Eselon1PencatatanPage() {
               onSubmit={handleSubmit}
               className="p-6 overflow-y-auto space-y-4 text-xs"
             >
-              {/* Berkas Upload with AI Scanner */}
               <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-700 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-indigo-600" />
-                    Upload Bukti Berkas / Import PDF Rekening Koran *
+                    Upload Bukti Berkas Rekening Koran *
                   </label>
                   {aiScanning && (
                     <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
@@ -805,60 +974,8 @@ export default function Eselon1PencatatanPage() {
                   onChange={handleFileChange}
                   className="w-full text-xs border border-slate-200 rounded-lg p-2 bg-white"
                 />
-                <p className="text-[11px] text-slate-500">
-                  Format PDF atau Excel akan dipindai otomatis oleh AI untuk
-                  mendeteksi Bank, Saldo Akhir, dan Nomor Rekening.
-                </p>
               </div>
 
-              {/* AI Auto Extraction Result Banner */}
-              {aiResult && (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 animate-fade-in">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <div className="text-xs space-y-1">
-                    <div className="font-bold text-emerald-800 flex items-center gap-2">
-                      <span>AI Berhasil Mengekstrak Data Berkas</span>
-                      {aiResult.confidence && (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
-                          Akurasi: {aiResult.confidence}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-emerald-700 leading-relaxed">
-                      {aiResult.bank && (
-                        <span>
-                          Bank: <strong>{aiResult.bank}</strong>.{" "}
-                        </span>
-                      )}
-                      {aiResult.nominal != null && (
-                        <span>
-                          Saldo Akhir:{" "}
-                          <strong>
-                            Rp{" "}
-                            {Number(aiResult.nominal).toLocaleString("id-ID")}
-                          </strong>
-                          .{" "}
-                        </span>
-                      )}
-                      {aiResult.nomor_rekening && (
-                        <span>
-                          No Rekening:{" "}
-                          <strong>{aiResult.nomor_rekening}</strong>.{" "}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {aiError && !aiScanning && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>{aiError}</span>
-                </div>
-              )}
-
-              {/* Satker Binaan Selector */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
                   Satker Binaan *
@@ -883,157 +1000,142 @@ export default function Eselon1PencatatanPage() {
                 </select>
               </div>
 
-              {/* Periode Pengatur Waktu Transaksi */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Bulan Transaksi *
-                </label>
-                <select
-                  required
-                  value={formData.periode}
-                  onChange={(e) =>
-                    setFormData({ ...formData, periode: e.target.value })
-                  }
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
-                >
-                  <option value="">Pilih Bulan...</option>
-                  {[
-                    "Januari",
-                    "Februari",
-                    "Maret",
-                    "April",
-                    "Mei",
-                    "Juni",
-                    "Juli",
-                    "Agustus",
-                    "September",
-                    "Oktober",
-                    "November",
-                    "Desember",
-                  ].map((m) => (
-                    <option key={m} value={`${m} ${new Date().getFullYear()}`}>
-                      {m} {new Date().getFullYear()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Row: Kategori Dokumen & Bank (Tetap & Tidak Perlu Diganti) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Kategori Dokumen *
+                    Tanggal Bukti *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.tanggal}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tanggal: e.target.value })
+                    }
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Bulan Transaksi *
                   </label>
                   <select
                     required
-                    value={formData.id_kategori}
+                    value={formData.periode}
                     onChange={(e) =>
-                      setFormData({ ...formData, id_kategori: e.target.value })
+                      setFormData({ ...formData, periode: e.target.value })
                     }
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
                   >
-                    <option value="">Pilih Kategori Dokumen</option>
-                    {sortedKategori.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.nama_kategori}
+                    <option value="">Pilih Bulan...</option>
+                    {[
+                      "Januari",
+                      "Februari",
+                      "Maret",
+                      "April",
+                      "Mei",
+                      "Juni",
+                      "Juli",
+                      "Agustus",
+                      "September",
+                      "Oktober",
+                      "November",
+                      "Desember",
+                    ].map((m) => (
+                      <option key={m} value={`${m} ${new Date().getFullYear()}`}>
+                        {m} {new Date().getFullYear()}
                       </option>
                     ))}
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
                     Bank *
                   </label>
                   <select
                     required
-                    value={
-                      BANK_BUMN_LIST.includes(formData.nama_bank)
-                        ? formData.nama_bank
-                        : formData.nama_bank
-                          ? formData.nama_bank
-                          : ""
-                    }
+                    value={formData.nama_bank}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setFormData({ ...formData, nama_bank: val });
-                      if (val !== "Bank Lainnya") setCustomBank("");
+                      setFormData({
+                        ...formData,
+                        nama_bank: val,
+                        kode_bank: getKodeBank(val),
+                      });
                     }}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-semibold"
                   >
-                    <option value="">Pilih Bank Persepsi</option>
-                    {formData.nama_bank &&
-                      !BANK_BUMN_LIST.includes(formData.nama_bank) && (
-                        <option value={formData.nama_bank}>
-                          {formData.nama_bank}
-                        </option>
-                      )}
+                    <option value="">Pilih Bank</option>
                     {BANK_BUMN_LIST.map((b) => (
                       <option key={b} value={b}>
-                        {b}
+                        {b === "Bank Lainnya"
+                          ? b
+                          : `[${getKodeBank(b)}] ${b}`}
                       </option>
                     ))}
                   </select>
-                  {formData.nama_bank === "Bank Lainnya" && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ketikkan nama bank..."
-                      value={customBank}
-                      onChange={(e) => setCustomBank(e.target.value)}
-                      className="mt-2 w-full p-2 border border-slate-200 rounded-lg"
-                    />
-                  )}
                 </div>
-              </div>
-
-              {/* Row: Saldo Akhir (Menggantikan Nominal) */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
-                  <span>Saldo Akhir (Rp) *</span>
-                  <span className="text-[11px] font-normal text-slate-400">
-                    Nominal saldo akhir kas/rekening
-                  </span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                    Rp
-                  </span>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Nomor Rekening *
+                  </label>
                   <input
-                    type="number"
-                    step="any"
-                    min="0"
+                    type="text"
                     required
-                    placeholder="Contoh: 50000000"
-                    value={formData.saldo_akhir || formData.nominal}
+                    placeholder="Nomor rekening..."
+                    value={formData.nomor_rekening_bank}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        saldo_akhir: e.target.value,
-                        nominal: e.target.value,
+                        nomor_rekening_bank: e.target.value,
                       })
                     }
-                    className="w-full pl-10 pr-3 p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-mono font-bold text-slate-800"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-mono font-semibold"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Saldo Akhir (Rp) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: 50.000.000"
+                  value={
+                    formData.saldo_akhir
+                      ? Number(formData.saldo_akhir).toLocaleString("id-ID")
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    setFormData({
+                      ...formData,
+                      saldo_akhir: raw,
+                      nominal: raw,
+                    });
+                  }}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white font-mono font-bold text-slate-800"
+                />
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                  className="px-4 py-2 font-bold text-slate-600 bg-slate-100 rounded-xl"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submitLoading || aiScanning}
-                  className="flex items-center gap-2 px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl disabled:opacity-50"
                 >
-                  {submitLoading && (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  )}
                   {submitLoading ? "Menyimpan..." : "Unggah & Simpan Bukti"}
                 </button>
               </div>
@@ -1042,17 +1144,178 @@ export default function Eselon1PencatatanPage() {
         </div>
       )}
 
-      {/* Modal Detail Pencatatan (History Satker Binaan) */}
+      {/* SLIDE-OVER BAR / DRAWER BUKTI PER BANK */}
+      {selectedBankDrawer && selectedBankGroup && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs">
+          <div
+            className="fixed inset-0"
+            onClick={() => setSelectedBankDrawer(null)}
+          />
+          <div className="relative z-10 w-full max-w-xl bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col overflow-hidden">
+            <div className="px-6 py-5 bg-gradient-to-r from-indigo-900 to-blue-900 text-white flex items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/30 border border-indigo-300/30 text-xs font-mono font-bold text-indigo-100">
+                    KODE BANK: #{selectedBankGroup.kode_bank}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-300/30 text-xs font-semibold text-emerald-200">
+                    {selectedBankGroup.activeCount} Aktif /{" "}
+                    {selectedBankGroup.items.length} Total Bukti
+                  </span>
+                </div>
+                <h3 className="text-xl font-extrabold flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-300" />
+                  <span>{selectedBankGroup.nama_bank}</span>
+                </h3>
+                <p className="text-xs text-indigo-200 font-mono">
+                  Daftar Seluruh Bukti Rekening Koran Satker Binaan
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedBankDrawer(null)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 bg-indigo-50/80 border-b border-indigo-100">
+              <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wider">
+                Total Saldo Aktif ({selectedBankGroup.nama_bank})
+              </p>
+              <p className="text-2xl font-black text-indigo-700 mt-0.5">
+                Rp {selectedBankGroup.activeTotal.toLocaleString("id-ID")}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-slate-50/50">
+              {selectedBankGroup.items.map((item: any, idx: number) => {
+                const isActive = item.is_active !== 0;
+                const saldoVal = Number(item.saldo_akhir || item.nominal || 0);
+
+                return (
+                  <div
+                    key={item.id}
+                    className={clsx(
+                      "rounded-2xl border p-4 bg-white shadow-xs transition-all",
+                      isActive
+                        ? "border-slate-200"
+                        : "border-slate-200/70 bg-slate-50 opacity-75",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-400">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded">
+                            {item.satker_nama || "Satker"}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold">
+                            <Calendar className="w-3 h-3" />
+                            {formatTanggalIndo(item.tanggal)}
+                          </span>
+                        </div>
+                        <p className="text-xs font-mono text-slate-600 pt-0.5">
+                          No. Rek:{" "}
+                          <strong>
+                            {item.nomor_rekening || item.nomor_rekening_bank || "—"}
+                          </strong>
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {item.uraian || "Bukti Rekening Koran"}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={togglingId === item.id}
+                          onClick={() => handleToggleStatus(item)}
+                          className={clsx(
+                            "relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                            isActive ? "bg-emerald-600" : "bg-slate-300",
+                          )}
+                        >
+                          <span
+                            className={clsx(
+                              "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition",
+                              isActive ? "translate-x-7" : "translate-x-0",
+                            )}
+                          />
+                        </button>
+                        <span
+                          className={clsx(
+                            "text-[11px] font-bold",
+                            isActive ? "text-emerald-700" : "text-slate-500",
+                          )}
+                        >
+                          {isActive ? "Status: Aktif" : "Status: Nonaktif"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[11px] text-slate-400 block">
+                          Saldo Akhir:
+                        </span>
+                        <span
+                          className={clsx(
+                            "text-base font-extrabold",
+                            isActive
+                              ? "text-slate-900"
+                              : "line-through text-slate-400",
+                          )}
+                        >
+                          Rp {saldoVal.toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                      {item.bukti_file && (
+                        <button
+                          type="button"
+                          onClick={() => openFile(item.bukti_file, token || "")}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Lihat Berkas</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
+              <div className="text-xs text-slate-500">
+                Total Saldo Aktif:{" "}
+                <strong className="text-slate-900">
+                  Rp {selectedBankGroup.activeTotal.toLocaleString("id-ID")}
+                </strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedBankDrawer(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl"
+              >
+                Tutup Bar Bukti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail */}
       {selectedDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-base font-bold text-slate-800">
-                  Detail Bukti Transaksi Kas
-                </h2>
-              </div>
+              <h2 className="text-base font-bold text-slate-800">
+                Detail Bukti Rekening Koran Satker
+              </h2>
               <button
                 onClick={() => setSelectedDetail(null)}
                 className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg"
@@ -1060,130 +1323,43 @@ export default function Eselon1PencatatanPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                <div className="flex justify-between items-start">
-                  <span className="text-slate-500 font-medium">
-                    Satker Binaan
-                  </span>
-                  <span className="font-bold text-slate-900 text-right max-w-[280px]">
-                    {selectedDetail.satker_nama || "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">
-                    Kategori Dokumen
-                  </span>
-                  <span className="font-semibold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
-                    {selectedDetail.nama_kategori || "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">
-                    Bulan Laporan
-                  </span>
-                  <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                    {getDisplayPeriode(
-                      selectedDetail.periode,
-                      selectedDetail.tanggal,
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-medium">
-                    Tanggal Transaksi
-                  </span>
-                  <span className="font-mono text-slate-800 font-medium">
-                    {selectedDetail.tanggal
-                      ? new Date(selectedDetail.tanggal).toLocaleDateString(
-                          "id-ID",
-                          { dateStyle: "long" },
-                        )
-                      : "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-200/60">
-                  <span className="text-slate-500 font-medium">
-                    Saldo Akhir
-                  </span>
-                  <span className="text-base font-extrabold text-slate-900">
+            <div className="p-6 overflow-y-auto space-y-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl space-y-2">
+                <p>
+                  Satker: <strong>{selectedDetail.satker_nama || "—"}</strong>
+                </p>
+                <p>
+                  Bank: <strong>{selectedDetail.nama_bank || "—"}</strong> (No.
+                  Rek:{" "}
+                  {selectedDetail.nomor_rekening ||
+                    selectedDetail.nomor_rekening_bank ||
+                    "—"}
+                  )
+                </p>
+                <p>
+                  Saldo Akhir:{" "}
+                  <strong>
                     Rp{" "}
                     {Number(
                       selectedDetail.saldo_akhir || selectedDetail.nominal || 0,
                     ).toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <div className="text-slate-400 font-semibold mb-1">
-                    Uraian Transaksi
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-800 leading-relaxed font-medium">
-                    {selectedDetail.uraian || "—"}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-slate-400 font-semibold mb-1">
-                      Bank Persepsi
-                    </div>
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-slate-800 font-semibold">
-                      {selectedDetail.nama_bank || "—"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-slate-400 font-semibold mb-1">
-                      Nomor Rekening
-                    </div>
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-slate-800 font-mono">
-                      {selectedDetail.nomor_rekening || "—"}
-                    </div>
-                  </div>
-                </div>
-
-                {selectedDetail.catatan_audit && (
-                  <div>
-                    <div className="text-slate-400 font-semibold mb-1">
-                      Catatan Audit
-                    </div>
-                    <div className="p-3 bg-amber-50/60 border border-amber-200/60 rounded-xl text-amber-900">
-                      {selectedDetail.catatan_audit}
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-2 flex justify-between items-center text-slate-400 text-[11px]">
-                  <span>
-                    Diinput oleh:{" "}
-                    <strong className="text-slate-600">
-                      {selectedDetail.pembuat || "—"}
-                    </strong>
-                  </span>
-                  {selectedDetail.created_at && (
-                    <span>
-                      {new Date(selectedDetail.created_at).toLocaleDateString(
-                        "id-ID",
-                      )}
-                    </span>
+                  </strong>
+                </p>
+                <p>
+                  Bulan:{" "}
+                  {getDisplayPeriode(
+                    selectedDetail.periode,
+                    selectedDetail.tanggal,
                   )}
-                </div>
+                </p>
               </div>
-
               {selectedDetail.bukti_file && (
-                <div className="pt-2">
-                  <button
-                    onClick={() =>
-                      openFile(selectedDetail.bukti_file, token || "")
-                    }
-                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm"
-                  >
-                    <Paperclip className="w-4 h-4" /> Buka Bukti Berkas
-                  </button>
-                </div>
+                <button
+                  onClick={() => openFile(selectedDetail.bukti_file, token || "")}
+                  className="w-full py-2 bg-indigo-600 text-white font-bold rounded-xl"
+                >
+                  Buka Berkas Bukti
+                </button>
               )}
             </div>
           </div>

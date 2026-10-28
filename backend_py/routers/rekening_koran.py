@@ -61,7 +61,7 @@ def _ensure_rk_columns(cursor, db):
         pass
 
 @router.get("")
-async def get_rekening_koran(user: dict = Depends(get_current_user), db=Depends(get_db)):
+async def get_rekening_koran(request: Request, user: dict = Depends(get_current_user), db=Depends(get_db)):
     tingkat = user.get("tingkat")
     satker_id = user.get("satker_id")
     eselon_1_id = user.get("eselon_1_id")
@@ -77,9 +77,22 @@ async def get_rekening_koran(user: dict = Depends(get_current_user), db=Depends(
         else:
             where += " AND k.satker_id IS NULL"
     elif tingkat == "eselon_1":
-        if eselon_1_id:
-            where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
-            params.extend([eselon_1_id, eselon_1_id])
+        filter_satker = request.query_params.get("satker_id")
+        include_satkers = request.query_params.get("include_satkers")
+        if filter_satker and str(filter_satker).strip() not in ["", "all", "0"]:
+            where += " AND k.satker_id = %s"
+            params.append(filter_satker)
+        elif include_satkers == "true":
+            if eselon_1_id:
+                where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+                params.extend([eselon_1_id, eselon_1_id])
+        else:
+            # Sesuai aturan: Rekening Koran Eselon 1 HANYA menampilkan file milik Eselon 1 sendiri (bukan satker binaan)
+            if eselon_1_id:
+                where += " AND k.satker_id IS NULL AND (u.eselon_1_id = %s OR k.uploaded_by = %s)"
+                params.extend([eselon_1_id, user.get("id")])
+            else:
+                where += " AND k.satker_id IS NULL"
             
     with db.cursor(dictionary=True) as cursor:
         _ensure_rk_columns(cursor, db)
