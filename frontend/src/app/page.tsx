@@ -6,7 +6,7 @@ import { LogIn, Building2, Eye, CheckCircle, LayoutDashboard } from 'lucide-reac
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 export default function LandingPage() {
   const { user, loading } = useAuth();

@@ -1,7 +1,19 @@
-﻿// NEXT_PUBLIC_API_URL  â†’ dipakai browser (client-side)
+// NEXT_PUBLIC_API_URL  â†’ dipakai browser (client-side)
 // API_URL_INTERNAL     â†’ dipakai server Next.js di dalam Docker (server-side fetch)
-const getClientApi = () => { if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") { return `${window.location.protocol}//${window.location.hostname}:5000/api`; } return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"; };
-const API_URL = getClientApi();
+export const getClientApi = (): string => {
+  if (typeof window !== "undefined" && window.location.hostname) {
+    const { protocol, hostname } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)
+    ) {
+      return `${protocol}//${hostname}:5000/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+};
+export const API_URL = getClientApi();
 const SERVER_API_URL  = process.env.API_URL_INTERNAL       || API_URL;
 
 export interface Dokumen {

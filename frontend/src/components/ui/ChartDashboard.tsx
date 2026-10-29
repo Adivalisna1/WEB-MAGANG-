@@ -29,7 +29,7 @@ import {
   CartesianGrid 
 } from 'recharts';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 const DONUT_COLORS = ['#1D64EC', '#93C5FD', '#06B6D4', '#F59E0B', '#8B5CF6'];
 

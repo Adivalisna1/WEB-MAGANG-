@@ -19,11 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the code
 COPY . .
 
-# Buat direktori upload dan user non-root untuk keamanan kontainer
-RUN mkdir -p /app/uploads/akuntansi /app/uploads/dokumen \
-    && addgroup --system appgroup && adduser --system --group appuser \
-    && chown -R appuser:appgroup /app /app/uploads \
-    && chmod -R 777 /app/uploads
+# Buat user non-root untuk keamanan kontainer
+RUN addgroup --system appgroup && adduser --system --group appuser \
+    && chown -R appuser:appgroup /app
 
 USER appuser
 

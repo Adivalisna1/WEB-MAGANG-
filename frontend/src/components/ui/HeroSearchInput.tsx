@@ -51,7 +51,7 @@ export default function HeroSearchInput({
     if (kategoriList && kategoriList.length > 0) {
       setKategoriItems(kategoriList);
     } else {
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
       fetch(`${API}/dokumen/kategori`)
         .then(res => res.json())
         .then(res => {
@@ -65,7 +65,7 @@ export default function HeroSearchInput({
     if (satkerList && satkerList.length > 0) {
       setSatkerItems(satkerList);
     } else {
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
       fetch(`${API}/satker`)
         .then(res => res.json())
         .then(res => {

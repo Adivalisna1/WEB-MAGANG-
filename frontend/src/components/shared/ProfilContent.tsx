@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getSession } from '@/lib/auth';
 import { User, Lock, Loader2, AlertCircle, CheckCircle, Mail, AtSign, Clock, Eye, EyeOff } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 export default function ProfilContent() {
   const { user } = useAuth();

@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth';
 import { Activity, Loader2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/dateUtils';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 interface Log {
   id: number;

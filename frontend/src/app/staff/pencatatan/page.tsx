@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import toast from "react-hot-toast";
 
 import { useState, useEffect, useRef } from "react";
@@ -24,7 +24,7 @@ import {
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 
-const API = typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 // Daftar Bank BUMN & Persepsi beserta Kode Bank Indonesia (Relasi No Bank - Nama Bank)
 const BANK_BUMN_LIST = [

@@ -13,7 +13,7 @@ import { Loader2, Search, X, FileText, ChevronRight, Menu, Plus, LogOut } from '
 import { SearchContext } from '@/context/SearchContext';
 import './staff.css';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const { loading } = useRequireAuth('staff_satker');

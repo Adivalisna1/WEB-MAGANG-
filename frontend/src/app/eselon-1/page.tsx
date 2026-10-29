@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import MonitoringSatkerSection from '@/components/eselon-1/MonitoringSatkerSection';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 const POLL_INTERVAL = 30_000; // 30 detik
 
 interface SatkerStat { nama: string; total: number; terverifikasi: number; revisi: number; }

@@ -1,5 +1,17 @@
-﻿const getClientApi = () => { if (typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") { return `${window.location.protocol}//${window.location.hostname}:5000/api`; } return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"; };
-const API_URL = getClientApi();
+export const getClientApi = (): string => {
+  if (typeof window !== "undefined" && window.location.hostname) {
+    const { protocol, hostname } = window.location;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)
+    ) {
+      return `${protocol}//${hostname}:5000/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+};
+export const API_URL = getClientApi();
 
 export interface User {
   id: number;
@@ -35,7 +47,8 @@ export interface LoginResponse {
 
 // Login â€” simpan token ke localStorage
 export async function login(username: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${API_URL}/auth/login`, {
+  const apiUrl = getClientApi();
+  const res = await fetch(`${apiUrl}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
@@ -47,7 +60,8 @@ export async function login(username: string, password: string): Promise<LoginRe
 
 // Logout â€” hapus token
 export async function logout(token: string): Promise<void> {
-  await fetch(`${API_URL}/auth/logout`, {
+  const apiUrl = getClientApi();
+  await fetch(`${apiUrl}/auth/logout`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });

@@ -8,7 +8,7 @@ import { Plus, Trash2, Edit, Building2, Download, Upload } from 'lucide-react';
 import { useRef } from 'react';
 import * as XLSX from 'xlsx';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 export default function SatkerManagementPage() {
   const { token } = useAuth();

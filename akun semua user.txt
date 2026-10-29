@@ -1,0 +1,8 @@
+	Username	Password	Tingkat & Satker	Keterangan Role
+	operator_satker	Password@123	Satker (UGM)	Operator pelaksana input kas & rekening koran satker.
+	admin_satker	Password@123	Satker (UGM)	Pimpinan kampus pelaksana verifikasi.
+	operator_eselon1 Password@123	Eselon 1 (Dikti)	Operator unit eselon 1 pembina universitas.
+ 	admin_eselon1	Password@123	Eselon 1 (Dikti)	Pejabat pimpinan monitoring satker dikti.
+	operator_kl	Password@123	K/L (Pusat)	Operator rekonsiliasi tingkat kementerian nasional.
+	admin_kl	Password@123	K/L (Pusat)	Dashboard eksekutif menteri / sekjen kementerian.
+	naufal	       Password@123	K/L (Pusat)	           Lead IT Administrator.
