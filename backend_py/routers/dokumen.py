@@ -171,11 +171,11 @@ async def get_all_dokumen(
         
     with db.cursor(dictionary=True) as cursor:
         query = (
-            "SELECT d.id, d.judul, d.nama_rekening, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
             "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, "
             "       d.download_count, d.is_public, d.created_at, d.updated_at, "
             "       d.nilai_rekening_koran, d.nilai_excel, "
-            "       k.nama AS kategori, k.perlu_nominal, "
+            "       k.nama AS kategori, k.slug AS kategori_slug, k.perlu_nominal, "
             "       u.nama AS uploaded_by, u.username AS uploaded_username, "
             "       s.NO_Satker AS no_satker, s.nama AS satker_nama "
             "FROM dokumen d "
@@ -216,6 +216,9 @@ async def upload_dokumen(
     semester: Optional[int] = Form(None),
     nilai_rekening_koran: Optional[float] = Form(None),
     nilai_excel: Optional[float] = Form(None),
+    nama_bank: Optional[str] = Form(None),
+    nomor_rekening: Optional[str] = Form(None),
+    tanggal_surat: Optional[str] = Form(None),
     nama_rekening: Optional[str] = Form(None),
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user),
@@ -239,11 +242,26 @@ async def upload_dokumen(
         if cursor.fetchone():
             raise HTTPException(409, "Dokumen duplikat (judul, kategori, tahun sama)")
             
-        cursor.execute('SELECT slug FROM kategori_dokumen WHERE id = %s', (kategori_id,))
+        cursor.execute('SELECT slug, nama FROM kategori_dokumen WHERE id = %s', (kategori_id,))
         kat_row = cursor.fetchone()
         
     bulan_final = None if semester else (int(bulan) if bulan else None)
     semester_final = int(semester) if semester else None
+    
+    is_surat_rek = bool(kat_row and kat_row.get("slug") in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"])
+    status_awal = 'menunggu_verifikasi' if is_surat_rek else 'draft'
+    
+    # Validasi format tanggal_surat jika dikirim
+    tgl_surat_final = None
+    if tanggal_surat and str(tanggal_surat).strip():
+        try:
+            tgl_surat_final = str(tanggal_surat).strip()[:10]
+        except Exception:
+            tgl_surat_final = None
+
+    if is_surat_rek:
+        nilai_rekening_koran = None
+        nilai_excel = None
     
     filename = file.filename or ""
     ext = os.path.splitext(filename)[1].lower()
@@ -259,24 +277,52 @@ async def upload_dokumen(
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             INSERT INTO dokumen
-             (kategori_id, uploaded_by, judul, nama_rekening, deskripsi, tahun, bulan, semester,
+             (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, deskripsi, tahun, bulan, semester,
               file_nama, file_path, file_size, file_mime, status, is_public,
               nilai_rekening_koran, nilai_excel)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', 0, %s, %s)
-        """, (kategori_id, user["id"], judul, nama_rekening, deskripsi, tahun, bulan_final, semester_final,
-              filename, r2_key, file_size, file.content_type,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+        """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, deskripsi, tahun, bulan_final, semester_final,
+              filename, r2_key, file_size, file.content_type, status_awal,
               nilai_rekening_koran, nilai_excel))
         insert_id = cursor.lastrowid
         
         nomor_laporan = buat_nomor_laporan(kat_row["slug"] if kat_row else "", tahun, insert_id)
         cursor.execute('UPDATE dokumen SET nomor_laporan = %s WHERE id = %s', (nomor_laporan, insert_id))
+        
+        # Jika Surat Pembukaan / Penutupan, langsung kirim notifikasi ke Admin Eselon 1
+        if is_surat_rek:
+            satker_target_id = user.get("satker_id")
+            cursor.execute("""
+                SELECT u.id FROM users u
+                JOIN roles r ON r.id = u.role_id
+                JOIN tingkats t ON t.id = u.tingkat_id
+                LEFT JOIN satkers s ON s.id = %s
+                WHERE (
+                    (t.kode = 'eselon_1' AND (u.eselon_1_id = s.eselon_1_id OR u.eselon_1_id IS NULL))
+                    OR t.kode = 'kl'
+                    OR r.nama IN ('it', 'admin_it')
+                ) AND u.is_active = 1
+            """, (satker_target_id,))
+            surat_label = "Pembukaan" if kat_row.get("slug") == "surat-pembukaan-rekening-koran" else "Penutupan"
+            for ketua in cursor.fetchall():
+                await buat_notifikasi(
+                    db, ketua["id"], "submit", judul,
+                    f"Pengajuan Surat {surat_label} Rekening Koran ({nama_bank or 'Bank'} - {nomor_rekening or '-'}) siap ditinjau dan disetujui",
+                    insert_id
+                )
+
         db.commit()
         
     await catat_log(db, user["id"], "upload", "dokumen", insert_id, {
-        "judul": judul, "tahun": tahun, "kategori_id": kategori_id, "file_nama": filename, "nomor_laporan": nomor_laporan
+        "judul": judul, "tahun": tahun, "kategori_id": kategori_id, "file_nama": filename, "nomor_laporan": nomor_laporan,
+        "nama_bank": nama_bank, "nomor_rekening": nomor_rekening, "status": status_awal
     }, request.client.host)
     
-    return {"success": True, "message": "Dokumen berhasil diupload", "data": {"id": insert_id, "nomor_laporan": nomor_laporan}}
+    return {
+        "success": True, 
+        "message": f"Dokumen berhasil diupload{' dan langsung diajukan ke Admin Eselon 1' if is_surat_rek else ''}", 
+        "data": {"id": insert_id, "nomor_laporan": nomor_laporan, "status": status_awal}
+    }
 
 @router.get("/{id}/download")
 async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_db)):
@@ -580,10 +626,21 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
     if aksi not in ['approve', 'reject']: raise HTTPException(400, "Aksi salah")
     
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.*, k.slug AS kat_slug, u.satker_id, s.nama AS satker_nama
+            FROM dokumen d
+            JOIN kategori_dokumen k ON k.id = d.kategori_id
+            JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
-        if dok["status"] not in ['lolos_admin', 'terverifikasi']: raise HTTPException(400, "Dokumen belum disahkan satker atau status tidak valid untuk ditinjau")
+        
+        is_surat_rek = dok.get("kat_slug") in ['surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran']
+        valid_statuses = ['lolos_admin', 'terverifikasi', 'menunggu_verifikasi'] if is_surat_rek else ['lolos_admin', 'terverifikasi']
+        if dok["status"] not in valid_statuses:
+            raise HTTPException(400, "Dokumen belum disahkan satker atau status tidak valid untuk ditinjau")
         
         # Validasi bahwa satker uploader berada di bawah eselon 1 user (jika user tingkat eselon_1)
         if user.get("tingkat") == "eselon_1" and user.get("eselon_1_id"):
@@ -605,6 +662,68 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
             verified_by = %s, verified_at = NOW() WHERE id = %s
         """, (new_status, is_pub, catatan, user["id"], id))
         
+        # DAMPAK PERSETUJUAN ESELON 1 TERHADAP REKENING KORAN:
+        if aksi == 'approve':
+            target_satker = dok.get("satker_id")
+            nomor_rek = (dok.get("nomor_rekening") or "").strip()
+            nama_b = dok.get("nama_bank") or "Bank Lainnya"
+            nama_r = dok.get("nama_rekening") or "-"
+            tgl_surat = dok.get("tanggal_surat") or datetime.date.today()
+            
+            if dok.get("kat_slug") == "surat-pembukaan-rekening-koran":
+                # 1. Surat Pembukaan: Daftarkan nomor rekening baru ke tabel rekening_koran
+                if nomor_rek:
+                    cursor.execute("""
+                        SELECT id FROM rekening_koran 
+                        WHERE satker_id = %s AND REPLACE(nomor_rekening_bank, ' ', '') = REPLACE(%s, ' ', '')
+                    """, (target_satker, nomor_rek))
+                    existing_rk = cursor.fetchone()
+                    
+                    if not existing_rk:
+                        cursor.execute("""
+                            INSERT INTO rekening_koran (
+                                satker_id, uploaded_by, dokumen_id, nama_bank, nomor_rekening_bank,
+                                nama_rekening, tanggal_pembukaan_rekening, saldo_akhir_bulan,
+                                keterangan, tahun, periode, is_active
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 0.00, %s, %s, %s, 1)
+                        """, (
+                            target_satker,
+                            dok.get("uploaded_by"),
+                            id,
+                            nama_b,
+                            nomor_rek,
+                            nama_r,
+                            tgl_surat,
+                            f"Rekening Baru - Disetujui Eselon 1 via Surat Pembukaan ({dok.get('nomor_laporan') or ''})",
+                            dok.get("tahun") or datetime.datetime.now().year,
+                            f"Bulan {dok.get('bulan')}" if dok.get("bulan") else "Tahunan",
+                        ))
+                    else:
+                        cursor.execute("""
+                            UPDATE rekening_koran 
+                            SET is_active = 1, 
+                                tanggal_pembukaan_rekening = COALESCE(%s, tanggal_pembukaan_rekening),
+                                keterangan = CONCAT(COALESCE(keterangan, ''), ' [Diaktifkan via Surat Pembukaan Eselon 1]')
+                            WHERE id = %s
+                        """, (tgl_surat, existing_rk["id"]))
+                        
+            elif dok.get("kat_slug") == "surat-penutupan-rekening-koran":
+                # 2. Surat Penutupan: Nonaktifkan rekening tersebut di tabel rekening_koran & pencatatan
+                if nomor_rek:
+                    cursor.execute("""
+                        UPDATE rekening_koran 
+                        SET is_active = 0,
+                            tanggal_penutupan_rekening = %s,
+                            keterangan = CONCAT(COALESCE(keterangan, ''), ' [Rekening Resmi Ditutup & Dinonaktifkan via Surat Penutupan disetujui Eselon 1]')
+                        WHERE satker_id = %s AND REPLACE(nomor_rekening_bank, ' ', '') = REPLACE(%s, ' ', '')
+                    """, (tgl_surat, target_satker, nomor_rek))
+                    
+                    cursor.execute("""
+                        UPDATE pencatatan
+                        SET is_active = 0
+                        WHERE satker_id = %s AND REPLACE(nomor_rekening, ' ', '') = REPLACE(%s, ' ', '')
+                    """, (target_satker, nomor_rek))
+
         pesan = "Disetujui dan dipublikasikan" if aksi == 'approve' else f"Perlu direvisi: {catatan}"
         await buat_notifikasi(db, dok["uploaded_by"], aksi, dok["judul"], pesan, id)
         db.commit()

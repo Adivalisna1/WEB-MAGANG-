@@ -954,19 +954,16 @@ export default function KertasKerjaPage() {
                             Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}
                           </td>
                           <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <button
-                              type="button"
-                              disabled={togglingId === d.id}
-                              onClick={() => handleToggleStatus(d)}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-colors ${
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border select-none ${
                                 isActive
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                  : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-gray-100 text-gray-500 border-gray-300'
                               }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                               {isActive ? 'Aktif' : 'Nonaktif'}
-                            </button>
+                            </span>
                           </td>
                           <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs truncate max-w-[150px] cursor-pointer" title={d.keterangan || ''}>
                             {d.keterangan || '-'}
@@ -985,7 +982,7 @@ export default function KertasKerjaPage() {
                 })
               )}
                 
-              {!isEselon1 && (
+              {['admin_it', 'it'].includes(userRole) && (
                 <tr className="bg-emerald-50/30 border-t-2 border-emerald-100">
                   <td className="px-1.5 py-2">
                     <select
@@ -1106,22 +1103,11 @@ export default function KertasKerjaPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          disabled={togglingId === item.id}
-                          onClick={() => handleToggleStatus(item)}
-                          className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                            isActive ? 'bg-emerald-600' : 'bg-gray-300'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition ${
-                              isActive ? 'translate-x-7' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                        <span className={`text-[11px] font-bold ${isActive ? 'text-emerald-700' : 'text-gray-500'}`}>
-                          {isActive ? 'Status: Aktif' : 'Status: Nonaktif'}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border select-none ${
+                          isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-300'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                          {isActive ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </div>
                     </div>

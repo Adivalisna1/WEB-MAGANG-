@@ -24,6 +24,11 @@ interface Dokumen {
   nomor_laporan: string | null;
   status: string;
   kategori: string;
+  kategori_slug?: string;
+  nama_bank?: string;
+  nomor_rekening?: string;
+  tanggal_surat?: string;
+  nama_rekening?: string;
   catatan: string | null;
   uploaded_by: string;
   uploaded_username?: string;
@@ -346,9 +351,19 @@ export default function KetuaDokumenPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-gray-900 truncate">{dok.judul}</p>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
-                          Disahkan Satker
-                        </span>
+                        {dok.kategori_slug === 'surat-pembukaan-rekening-koran' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                            Pengajuan Pembukaan Rekening
+                          </span>
+                        ) : dok.kategori_slug === 'surat-penutupan-rekening-koran' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            Pengajuan Penutupan Rekening
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                            Disahkan Satker
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5 flex-wrap">
                         <span>{dok.kategori} · {periodeLabel(dok)}</span>
@@ -361,6 +376,18 @@ export default function KetuaDokumenPage() {
                           </span>
                         )}
                       </p>
+                      {(dok.nama_bank || dok.nomor_rekening) && (
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-700 flex-wrap">
+                          <span className="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium">
+                            Bank: <strong>{dok.nama_bank || '-'}</strong> • No. Rek: <strong className="font-mono">{dok.nomor_rekening || '-'}</strong>
+                          </span>
+                          {dok.tanggal_surat && (
+                            <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
+                              Tgl: {new Date(dok.tanggal_surat).toLocaleDateString('id-ID')}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {(valRek != null || valExc != null) && (
                         <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 flex-wrap">
                           <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-md font-medium">
@@ -748,9 +775,21 @@ export default function KetuaDokumenPage() {
               {target.dok.judul} — oleh {target.dok.uploaded_by}
             </p>
             {target.aksi === 'approve' ? (
-              <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-3">
-                Dokumen akan berstatus <b>Terverifikasi</b> dan langsung tampil di portal publik.
-              </p>
+              target.dok.kategori_slug === 'surat-pembukaan-rekening-koran' ? (
+                <div className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 space-y-1">
+                  <p className="font-bold">✨ Dampak Persetujuan Pembukaan Rekening:</p>
+                  <p>Nomor rekening <b>{target.dok.nomor_rekening || '-'}</b> ({target.dok.nama_bank || 'Bank'}) akan <b>resmi terdaftar dan aktif</b> di Rekening Koran Satker {target.dok.satker_nama || ''}.</p>
+                </div>
+              ) : target.dok.kategori_slug === 'surat-penutupan-rekening-koran' ? (
+                <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3 space-y-1">
+                  <p className="font-bold">⚠️ Dampak Persetujuan Penutupan Rekening:</p>
+                  <p>Nomor rekening <b>{target.dok.nomor_rekening || '-'}</b> ({target.dok.nama_bank || 'Bank'}) akan <b>dinonaktifkan (Nonaktif)</b> dan dikeluarkan dari Total Saldo Aktif Bank Satker.</p>
+                </div>
+              ) : (
+                <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-3">
+                  Dokumen akan berstatus <b>Terverifikasi</b> dan langsung tampil di portal publik.
+                </p>
+              )
             ) : (
               <p className="text-xs text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mt-3">
                 Dokumen dikembalikan ke Satker untuk diperbaiki. Catatan di bawah akan dilihat Satker.

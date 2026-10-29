@@ -220,6 +220,10 @@ async def bulk_insert_rekening_koran(request: dict, user: dict = Depends(get_cur
 
 @router.post("")
 async def create_rekening_koran(request: dict, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    user_role = user.get("role") or ""
+    if user_role in ["operator", "staff_satker"] and not user.get("is_it"):
+        raise HTTPException(403, "Operator Satker tidak dapat menambah rekening secara manual. Silakan ajukan Surat Pembukaan Rekening Koran untuk diverifikasi Admin Eselon 1.")
+
     satker_id = user.get("satker_id") or request.get("satker_id")
     uploaded_by = user.get("id")
     nama_bank = request.get("nama_bank")
@@ -268,6 +272,10 @@ def _check_rekening_koran_access(cursor, id: int, user: dict):
 
 @router.patch("/{id}/toggle-status")
 async def toggle_status_rekening_koran(id: int, request: dict = None, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    # Operator Satker tidak berwenang mengaktifkan / menonaktifkan rekening secara langsung
+    if user.get("role") in ["operator", "staff_satker"] and not user.get("is_it"):
+        raise HTTPException(403, "Operator Satker tidak berwenang mengubah status aktif/nonaktif rekening secara langsung. Pengaktifan atau penonaktifan rekening dilakukan melalui persetujuan Surat Pembukaan atau Penutupan Rekening Koran oleh Admin Eselon 1.")
+
     with db.cursor(dictionary=True) as cursor:
         _ensure_rk_columns(cursor, db)
         row = _check_rekening_koran_access(cursor, id, user)

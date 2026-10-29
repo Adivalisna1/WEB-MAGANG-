@@ -31,6 +31,9 @@ export default function UploadPage() {
   const [semester,    setSemester]    = useState('');
   const [kategoriId,  setKategoriId]  = useState('');
   const [deskripsi,   setDeskripsi]   = useState('');
+  const [namaBank,    setNamaBank]    = useState('');
+  const [nomorRekening, setNomorRekening] = useState('');
+  const [tanggalSurat, setTanggalSurat] = useState('');
   const [namaRekening, setNamaRekening] = useState('');
   const [file,        setFile]        = useState<File | null>(null);
   const [dragging,    setDragging]    = useState(false);
@@ -123,6 +126,18 @@ export default function UploadPage() {
         setTotalSaldo(formatted);
         filled.push('nominal');
       }
+      if ((result as any).bank) {
+        setNamaBank((result as any).bank);
+        filled.push('nama_bank');
+      }
+      if ((result as any).nomor_rekening) {
+        setNomorRekening((result as any).nomor_rekening);
+        filled.push('nomor_rekening');
+      }
+      if ((result as any).tanggal_surat) {
+        setTanggalSurat((result as any).tanggal_surat);
+        filled.push('tanggal_surat');
+      }
       if (result.nama_rekening) {
         setNamaRekening(result.nama_rekening);
         filled.push('nama_rekening');
@@ -185,6 +200,9 @@ export default function UploadPage() {
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
       if (namaRekening) fd.append('nama_rekening', namaRekening);
+      if (namaBank) fd.append('nama_bank', namaBank);
+      if (nomorRekening) fd.append('nomor_rekening', nomorRekening);
+      if (tanggalSurat) fd.append('tanggal_surat', tanggalSurat);
 
       // Nominal (opsional, tergantung kategori)
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
@@ -208,6 +226,11 @@ export default function UploadPage() {
       setSubmitting(false);
     }
   };
+
+  const selectedKat = kategoriList.find(k => String(k.id) === kategoriId);
+  const isSuratPembukaan = selectedKat?.slug === 'surat-pembukaan-rekening-koran';
+  const isSuratPenutupan = selectedKat?.slug === 'surat-penutupan-rekening-koran';
+  const isSuratRekening = isSuratPembukaan || isSuratPenutupan;
 
   const formatSize = (b: number) => b < 1024 * 1024
     ? `${(b / 1024).toFixed(1)} KB`
@@ -298,26 +321,28 @@ export default function UploadPage() {
           />
         </div>
 
-        {/* Nama Rekening Koran */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Nama Rekening Koran (Atas Nama) <span className="text-gray-400 font-normal">(opsional)</span>
-            {aiFilledFields.includes('nama_rekening') && (
-              <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600 font-normal bg-emerald-50 px-2 py-0.5 rounded-full">
-                <Sparkles className="w-3 h-3" /> Terisi oleh AI
-              </span>
-            )}
-          </label>
-          <input
-            type="text"
-            value={namaRekening}
-            onChange={e => setNamaRekening(e.target.value)}
-            placeholder="Contoh: RPL 029 DITJEN DIKTI UGM OPR"
-            className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-              aiFilledFields.includes('nama_rekening') ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-300'
-            }`}
-          />
-        </div>
+        {/* Nama Rekening Koran (Hanya tampil jika bukan surat pembukaan/penutupan) */}
+        {!isSuratRekening && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Nama Rekening Koran (Atas Nama) <span className="text-gray-400 font-normal">(opsional)</span>
+              {aiFilledFields.includes('nama_rekening') && (
+                <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600 font-normal bg-emerald-50 px-2 py-0.5 rounded-full">
+                  <Sparkles className="w-3 h-3" /> Terisi oleh AI
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={namaRekening}
+              onChange={e => setNamaRekening(e.target.value)}
+              placeholder="Contoh: RPL 029 DITJEN DIKTI UGM OPR"
+              className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                aiFilledFields.includes('nama_rekening') ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-300'
+              }`}
+            />
+          </div>
+        )}
 
         {/* Kategori, Bulan & Tahun */}
         <div className="grid grid-cols-2 gap-4">
@@ -409,6 +434,103 @@ export default function UploadPage() {
             </div>
           </div>
         </div>
+
+        {/* Khusus Surat Pembukaan & Surat Penutupan Rekening Koran: Form Detail & Info Verifikasi Eselon 1 (Tanpa Saldo) */}
+        {isSuratRekening && (
+          <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-200 rounded-xl p-5 space-y-3.5 shadow-xs">
+            <div className="flex items-start gap-3">
+              <div className={`p-2.5 rounded-xl text-white shrink-0 ${isSuratPembukaan ? 'bg-blue-600' : 'bg-amber-600'}`}>
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900">
+                  {isSuratPembukaan ? 'Pengajuan Surat Pembukaan Rekening Koran' : 'Pengajuan Surat Penutupan Rekening Koran'}
+                </h4>
+                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                  {isSuratPembukaan
+                    ? 'Dokumen akan diajukan ke Admin Eselon 1 untuk diverifikasi. Setelah disetujui, nomor rekening ini otomatis terdaftar dan aktif di Rekening Koran.'
+                    : 'Dokumen akan diajukan ke Admin Eselon 1 untuk diverifikasi. Setelah disetujui, nomor rekening ini otomatis dinonaktifkan dari Rekening Koran.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Nama Bank <span className="text-red-500">*</span>
+                  {aiFilledFields.includes('nama_bank') && (
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                      <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={namaBank}
+                  onChange={e => setNamaBank(e.target.value)}
+                  placeholder="Contoh: Bank BNI / Bank Mandiri"
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Nomor Rekening <span className="text-red-500">*</span>
+                  {aiFilledFields.includes('nomor_rekening') && (
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                      <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={nomorRekening}
+                  onChange={e => setNomorRekening(e.target.value)}
+                  placeholder="Contoh: 9892496933191002"
+                  required
+                  className="w-full px-3 py-2 text-xs font-mono border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {isSuratPembukaan ? 'Tanggal Pembukaan Rekening' : 'Tanggal Penutupan Rekening'} <span className="text-red-500">*</span>
+                  {aiFilledFields.includes('tanggal_surat') && (
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                      <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="date"
+                  value={tanggalSurat}
+                  onChange={e => setTanggalSurat(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Nama Rekening (Atas Nama)
+                  {aiFilledFields.includes('nama_rekening') && (
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                      <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={namaRekening}
+                  onChange={e => setNamaRekening(e.target.value)}
+                  placeholder="Contoh: BPP 088 ITJEN KEMDIKTISAINTEK"
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Saldo Akhir (hanya muncul jika kategori butuh nominal) */}
         {kategoriList.find(k => String(k.id) === kategoriId)?.perlu_nominal ? (

@@ -195,44 +195,60 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
             kategori = kat
             break
 
-    # 4. Saldo Akhir / Nominal
+    # Cari tanggal spesifik surat jika ada
+    tanggal_surat = None
+    tgl_match = re.search(r"(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(\d{4})", text, re.IGNORECASE)
+    if tgl_match:
+        d_day = int(tgl_match.group(1))
+        m_str = tgl_match.group(2).capitalize()
+        d_year = int(tgl_match.group(3))
+        m_idx = nama_bulan_list.index(m_str) + 1 if m_str in nama_bulan_list else 1
+        tanggal_surat = f"{d_year:04d}-{m_idx:02d}-{d_day:02d}"
+    else:
+        iso_match = re.search(r"\b(202[0-9])[-/](\d{1,2})[-/](\d{1,2})\b", text)
+        if iso_match:
+            tanggal_surat = f"{iso_match.group(1)}-{int(iso_match.group(2)):02d}-{int(iso_match.group(3)):02d}"
+
+    # 4. Saldo Akhir / Nominal (Untuk Surat Pembukaan/Penutupan TIDAK ADA SALDO)
     nominal = None
+    if kategori in ["Surat Pembukaan Rekening Koran", "Surat Penutupan Rekening Koran"]:
+        nominal = None
+    else:
+        # Cek khusus pattern multi-kolom ringkasan (Saldo Awal ... Saldo Akhir \n num1 num2 num3 num4)
+        grid_m = re.search(r"SALDO\s*AWAL.*SALDO\s*AKHIR\s*\n\s*([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)", text, re.IGNORECASE)
+        if grid_m:
+            val = parse_indonesian_number(grid_m.group(4))
+            if val is not None and val > 0:
+                nominal = val
 
-    # Cek khusus pattern multi-kolom ringkasan (Saldo Awal ... Saldo Akhir \n num1 num2 num3 num4)
-    grid_m = re.search(r"SALDO\s*AWAL.*SALDO\s*AKHIR\s*\n\s*([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)", text, re.IGNORECASE)
-    if grid_m:
-        val = parse_indonesian_number(grid_m.group(4))
-        if val is not None and val > 0:
-            nominal = val
+        if nominal is None:
+            saldo_patterns = [
+                # 1. Saldo per tanggal / Saldo Akhir per 30 Juni 2026 / Saldo per 30/06/2026
+                r"Saldo\s*(?:Akhir|Buku|Bank|Kas)?\s*(?:per|s/?d)?\s*(?:[0-9]{1,2}[-\s/]+(?:[A-Za-z]+|\d{1,2})[-\s/]+\d{2,4}|[A-Za-z]+\s*\d{4})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
+                # 2. Saldo Akhir / Ending Balance / Saldo Buku / Saldo Bank / Saldo Kas / Total Saldo
+                r"(?:Saldo\s*(?:Akhir|Penutupan|Buku|Bank|Kas|Giro|Efektif|Mutasi|Berjalan)?|Ending\s*Balance|Closing\s*Balance|Total\s*Saldo|Jumlah\s*Saldo)(?:[^\n:]{0,40})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
+                # 3. Baris mutasi dengan flag CR / DB di belakang angka (format Bank Mandiri, BCA, BRI)
+                r"(?:^|\s)([\d\.,]{4,})\s*(?:CR|DB)\b",
+                # 4. Total Realisasi / Belanja / Pengeluaran / Penerimaan
+                r"(?:Total\s*(?:Realisasi|Belanja|Pengeluaran|Penerimaan|Kas)|Jumlah\s*(?:Realisasi|Belanja|Pengeluaran))[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
+                # 5. Saldo Akhir Bulan eksplisit
+                r"(?:Saldo\s*Akhir\s*Bulan)[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
+                # 6. Fallback Rp angka
+                r"(?:Rp\.?\s*)([\d\.,]{5,})",
+            ]
 
-    if nominal is None:
-        saldo_patterns = [
-            # 1. Saldo per tanggal / Saldo Akhir per 30 Juni 2026 / Saldo per 30/06/2026
-            r"Saldo\s*(?:Akhir|Buku|Bank|Kas)?\s*(?:per|s/?d)?\s*(?:[0-9]{1,2}[-\s/]+(?:[A-Za-z]+|\d{1,2})[-\s/]+\d{2,4}|[A-Za-z]+\s*\d{4})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
-            # 2. Saldo Akhir / Ending Balance / Saldo Buku / Saldo Bank / Saldo Kas / Total Saldo
-            r"(?:Saldo\s*(?:Akhir|Penutupan|Buku|Bank|Kas|Giro|Efektif|Mutasi|Berjalan)?|Ending\s*Balance|Closing\s*Balance|Total\s*Saldo|Jumlah\s*Saldo)(?:[^\n:]{0,40})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
-            # 3. Baris mutasi dengan flag CR / DB di belakang angka (format Bank Mandiri, BCA, BRI)
-            r"(?:^|\s)([\d\.,]{4,})\s*(?:CR|DB)\b",
-            # 4. Total Realisasi / Belanja / Pengeluaran / Penerimaan
-            r"(?:Total\s*(?:Realisasi|Belanja|Pengeluaran|Penerimaan|Kas)|Jumlah\s*(?:Realisasi|Belanja|Pengeluaran))[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
-            # 5. Saldo Akhir Bulan eksplisit
-            r"(?:Saldo\s*Akhir\s*Bulan)[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
-            # 6. Fallback Rp angka
-            r"(?:Rp\.?\s*)([\d\.,]{5,})",
-        ]
-
-        for sp in saldo_patterns:
-            matches = re.findall(sp, text, re.IGNORECASE | re.MULTILINE)
-            if matches:
-                for cand in reversed(matches):
-                    if isinstance(cand, tuple):
-                        cand = cand[-1]
-                    val = parse_indonesian_number(cand)
-                    if val is not None and val > 0:
-                        nominal = val
+            for sp in saldo_patterns:
+                matches = re.findall(sp, text, re.IGNORECASE | re.MULTILINE)
+                if matches:
+                    for cand in reversed(matches):
+                        if isinstance(cand, tuple):
+                            cand = cand[-1]
+                        val = parse_indonesian_number(cand)
+                        if val is not None and val > 0:
+                            nominal = val
+                            break
+                    if nominal is not None:
                         break
-                if nominal is not None:
-                    break
 
     return {
         "tahun": tahun,
@@ -240,6 +256,7 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         "bulan": bulan,
         "kategori": kategori,
         "nominal": nominal,
+        "tanggal_surat": tanggal_surat,
     }
 
 def extract_chronological_closing_balance(pages_text: List[str], tables_data: List[List[Any]]) -> Optional[float]:
@@ -418,8 +435,9 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
         "bank": bank,
         "nomor_rekening": rek,
         "nama_rekening": nama_rek,
+        "tanggal_surat": meta.get("tanggal_surat"),
         "deskripsi": f"Hasil ekstraksi otomatis dokumen {meta['kategori']} Tahun {meta['tahun']}" + (f" - {bank}" if bank else ""),
-        "confidence": "high" if meta["nominal"] is not None else "medium",
+        "confidence": "high" if meta["nominal"] is not None or meta.get("kategori") in ["Surat Pembukaan Rekening Koran", "Surat Penutupan Rekening Koran"] else "medium",
         "raw_text_snippet": full_text[:400],
     }
 

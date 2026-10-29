@@ -323,6 +323,9 @@ async def create_akuntansi(
 
 @router.patch("/{id}/toggle-status")
 async def toggle_pencatatan_status(id: int, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    if user.get("role") in ["operator", "staff_satker"] and not user.get("is_it"):
+        raise HTTPException(403, "Operator Satker tidak berwenang mengubah status aktif/nonaktif bukti secara langsung.")
+
     with db.cursor(dictionary=True) as cursor:
         _ensure_pencatatan_columns(cursor, db)
         cursor.execute("SELECT id, is_active, bukti_file, nama_bank, periode, nominal, satker_id FROM pencatatan WHERE id = %s", (id,))

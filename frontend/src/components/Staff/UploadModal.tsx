@@ -34,6 +34,9 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
   const [semester,    setSemester]    = useState('');
   const [kategoriId,  setKategoriId]  = useState('');
   const [deskripsi,   setDeskripsi]   = useState('');
+  const [namaBank,    setNamaBank]    = useState('');
+  const [nomorRekening, setNomorRekening] = useState('');
+  const [tanggalSurat, setTanggalSurat] = useState('');
   const [namaRekening, setNamaRekening] = useState('');
   const [file,        setFile]        = useState<File | null>(null);
   
@@ -70,6 +73,9 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       setJudul('');
       setKategoriId('');
       setDeskripsi('');
+      setNamaBank('');
+      setNomorRekening('');
+      setTanggalSurat('');
       setNamaRekening('');
       setTotalSaldo('');
       
@@ -150,6 +156,18 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
         setTotalSaldo(formatted);
         filled.push('nominal');
       }
+      if (result.bank) {
+        setNamaBank(result.bank);
+        filled.push('nama_bank');
+      }
+      if ((result as any).nomor_rekening) {
+        setNomorRekening((result as any).nomor_rekening);
+        filled.push('nomor_rekening');
+      }
+      if ((result as any).tanggal_surat) {
+        setTanggalSurat((result as any).tanggal_surat);
+        filled.push('tanggal_surat');
+      }
       if (result.nama_rekening) {
         setNamaRekening(result.nama_rekening);
         filled.push('nama_rekening');
@@ -212,9 +230,13 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
       if (namaRekening) fd.append('nama_rekening', namaRekening);
+      if (namaBank) fd.append('nama_bank', namaBank);
+      if (nomorRekening) fd.append('nomor_rekening', nomorRekening);
+      if (tanggalSurat) fd.append('tanggal_surat', tanggalSurat);
 
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
-      if (totalSaldo) {
+      const isSuratRek = selKat?.slug === 'surat-pembukaan-rekening-koran' || selKat?.slug === 'surat-penutupan-rekening-koran';
+      if (!isSuratRek && totalSaldo) {
         const cleanNom = totalSaldo.replace(/\./g, '').replace(',', '.');
         fd.append('nilai_rekening_koran', cleanNom);
         fd.append('nilai_excel', cleanNom);
@@ -245,6 +267,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
     : `${(b / (1024 * 1024)).toFixed(1)} MB`;
 
   if (!isOpen) return null;
+
+  const selectedKat = kategoriList.find(k => String(k.id) === kategoriId);
+  const isSuratPembukaan = selectedKat?.slug === 'surat-pembukaan-rekening-koran';
+  const isSuratPenutupan = selectedKat?.slug === 'surat-penutupan-rekening-koran';
+  const isSuratRekening = isSuratPembukaan || isSuratPenutupan;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
@@ -381,26 +408,123 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                    Nama Rekening Koran (Atas Nama)
-                    {aiFilledFields.includes('nama_rekening') && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        <Sparkles className="w-3 h-3" /> Auto-filled
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    value={namaRekening}
-                    onChange={e => setNamaRekening(e.target.value)}
-                    placeholder="Contoh: RPL 029 DITJEN DIKTI UGM OPR"
-                    className={clsx(
-                      "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors",
-                      aiFilledFields.includes('nama_rekening') ? "border-emerald-300 bg-emerald-50/50" : "border-slate-300 bg-white"
-                    )}
-                  />
-                </div>
+                {/* Khusus Surat Pembukaan & Surat Penutupan Rekening Koran: Form Detail & Info Verifikasi Eselon 1 (Tanpa Saldo) */}
+                {isSuratRekening ? (
+                  <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-200 rounded-2xl p-4 space-y-3 shadow-xs">
+                    <div className="flex items-start gap-2.5">
+                      <div className={`p-2 rounded-xl text-white shrink-0 ${isSuratPembukaan ? 'bg-blue-600' : 'bg-amber-600'}`}>
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-800">
+                          {isSuratPembukaan ? 'Pengajuan Surat Pembukaan Rekening Koran' : 'Pengajuan Surat Penutupan Rekening Koran'}
+                        </h4>
+                        <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                          {isSuratPembukaan
+                            ? 'Dokumen akan dikirim ke Admin Eselon 1. Setelah disetujui, nomor rekening ini otomatis terdaftar dan aktif di Rekening Koran.'
+                            : 'Dokumen akan dikirim ke Admin Eselon 1. Setelah disetujui, nomor rekening ini otomatis dinonaktifkan dari Rekening Koran.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Nama Bank <span className="text-rose-500">*</span>
+                          {aiFilledFields.includes('nama_bank') && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                              <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          value={namaBank}
+                          onChange={e => setNamaBank(e.target.value)}
+                          placeholder="Contoh: Bank BNI / Mandiri"
+                          required
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Nomor Rekening <span className="text-rose-500">*</span>
+                          {aiFilledFields.includes('nomor_rekening') && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                              <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          value={nomorRekening}
+                          onChange={e => setNomorRekening(e.target.value)}
+                          placeholder="Contoh: 9892496933191002"
+                          required
+                          className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          {isSuratPembukaan ? 'Tanggal Pembukaan Rekening' : 'Tanggal Penutupan Rekening'} <span className="text-rose-500">*</span>
+                          {aiFilledFields.includes('tanggal_surat') && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                              <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="date"
+                          value={tanggalSurat}
+                          onChange={e => setTanggalSurat(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Nama Rekening (Atas Nama)
+                          {aiFilledFields.includes('nama_rekening') && (
+                            <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                              <Sparkles className="w-2.5 h-2.5" /> Auto-filled
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          value={namaRekening}
+                          onChange={e => setNamaRekening(e.target.value)}
+                          placeholder="Contoh: BPP 088 ITJEN KEMDIKTISAINTEK"
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                      Nama Rekening Koran (Atas Nama)
+                      {aiFilledFields.includes('nama_rekening') && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          <Sparkles className="w-3 h-3" /> Auto-filled
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={namaRekening}
+                      onChange={e => setNamaRekening(e.target.value)}
+                      placeholder="Contoh: RPL 029 DITJEN DIKTI UGM OPR"
+                      className={clsx(
+                        "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors",
+                        aiFilledFields.includes('nama_rekening') ? "border-emerald-300 bg-emerald-50/50" : "border-slate-300 bg-white"
+                      )}
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
