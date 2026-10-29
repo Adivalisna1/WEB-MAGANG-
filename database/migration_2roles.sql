@@ -38,10 +38,10 @@ UPDATE users SET role_id = 1, tingkat_id = 1 WHERE username = 'operator_satker';
 -- admin_satker: Manajemen Satker (role_id=2, tingkat_id=1)
 UPDATE users SET role_id = 2, tingkat_id = 1 WHERE username = 'admin_satker';
 
--- operator_eselon1: Operator Eselon 1 (role_id=1, tingkat_id=2)
-UPDATE users SET role_id = 1, tingkat_id = 2 WHERE username = 'operator_eselon1';
+-- operator_eselon1: Operator Satker (role_id=1, tingkat_id=1)
+UPDATE users SET role_id = 1, tingkat_id = 1, satker_id = 29, nama = 'Operator Satker (Dikti)' WHERE username = 'operator_eselon1';
 
--- admin_eselon1: Manajemen Eselon 1 (role_id=2, tingkat_id=2)
+-- admin_eselon1: Administrasi Eselon 1 (role_id=2, tingkat_id=2)
 UPDATE users SET role_id = 2, tingkat_id = 2 WHERE username = 'admin_eselon1';
 
 -- operator_kl: Operator K/L (role_id=1, tingkat_id=3)

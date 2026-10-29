@@ -99,6 +99,8 @@ export default function UserManagementPage() {
     setFormData(prev => ({
       ...prev,
       tingkat_id: newTingkatId,
+      // Unit Eselon 1 (tingkat_id === 2) hanya memiliki peran Administrasi (role_id: 2)
+      role_id: newTingkatId === 2 ? 2 : prev.role_id,
       satker_id: newTingkatId === 1 ? prev.satker_id : '',
       eselon_1_id: newTingkatId === 2 ? prev.eselon_1_id : ''
     }));
@@ -258,8 +260,7 @@ export default function UserManagementPage() {
     const ws = XLSX.utils.json_to_sheet([
       { role_id: 1, tingkat_id: 1, nama: 'Operator Satker UGM', username: '693439_opr', email: 'opr@ugm.ac.id', password: 'Password@123', kode_satker: '693439' },
       { role_id: 2, tingkat_id: 1, nama: 'Pimpinan Satker UGM', username: '693439_pimp', email: 'pimp@ugm.ac.id', password: 'Password@123', kode_satker: '693439' },
-      { role_id: 1, tingkat_id: 2, nama: 'Operator Ditjen Dikti', username: 'dikti_operator', email: 'opr_dikti@kemdikbud.go.id', password: 'Password@123', eselon_1_id: 1 },
-      { role_id: 2, tingkat_id: 2, nama: 'Pimpinan Ditjen Dikti', username: 'dikti_pimpinan', email: 'pimp_dikti@kemdikbud.go.id', password: 'Password@123', eselon_1_id: 1 },
+      { role_id: 2, tingkat_id: 2, nama: 'Pimpinan / Administrasi Ditjen Dikti', username: 'dikti_pimpinan', email: 'pimp_dikti@kemdikbud.go.id', password: 'Password@123', eselon_1_id: 1 },
       { role_id: 1, tingkat_id: 3, nama: 'IT Administrator K/L', username: 'it_pusat', email: 'admin@kemdikbud.go.id', password: 'Password@123' },
       { role_id: 2, tingkat_id: 3, nama: 'Pimpinan Kementerian (K/L)', username: 'kl_pimpinan', email: 'men_dikbud@kemdikbud.go.id', password: 'Password@123' }
     ]);
@@ -412,13 +413,23 @@ export default function UserManagementPage() {
             Peran (Role)
           </label>
           <select
-            value={formData.role_id}
+            value={formData.tingkat_id === 2 ? 2 : formData.role_id}
             onChange={e => handleRoleChange(Number(e.target.value))}
-            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
+            disabled={formData.tingkat_id === 2}
+            className={`w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium ${
+              formData.tingkat_id === 2 ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'bg-white text-gray-900'
+            }`}
           >
-            <option value={1}>Operator (Pelaksana Teknis / Upload Dokumen / Admin IT pada K/L)</option>
-            <option value={2}>Manajemen (Pimpinan / Verifikator / Pengawas / Kebijakan)</option>
+            {formData.tingkat_id !== 2 && (
+              <option value={1}>Operator (Pelaksana Teknis / Upload Dokumen / Admin IT pada K/L)</option>
+            )}
+            <option value={2}>Manajemen / Administrasi (Pimpinan / Verifikator / Pengawas / Kebijakan)</option>
           </select>
+          {formData.tingkat_id === 2 && (
+            <p className="text-xs text-blue-600 mt-1 font-medium">
+              * Unit Eselon 1 bertindak sebagai Pembina & Verifikator, sehingga hanya memiliki peran Administrasi.
+            </p>
+          )}
         </div>
 
         {/* Pilihan Tingkat (Level Hierarki) */}
