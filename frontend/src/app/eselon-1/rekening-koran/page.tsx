@@ -428,7 +428,53 @@ export default function KertasKerjaPage() {
     });
   }, [dataList, searchQ, filterSatker, filterBank, modeFilter, filterBulan, filterTriwulan, filterTahun]);
 
-  // Agregasi per Bank (Hanya menjumlahkan saldo dari bukti yang statusnya AKTIF: is_active !== 0)
+  // Grouping: Hanya muncul 1 nomor rekening saja di tabel, dengan Total Saldo Bank adalah akumulasi (jumlah) seluruh data yang memiliki no rek yang sama
+  const groupedData = useMemo(() => {
+    const map: Record<string, any> = {};
+
+    filteredData.forEach(item => {
+      const rawNoRek = (item.nomor_rekening_bank || '-').trim();
+      const noRekKey = rawNoRek.replace(/\s+/g, '');
+      const bankKey = (item.nama_bank || 'Bank Lainnya').trim().toUpperCase();
+      const groupKey = noRekKey !== '-' ? `${bankKey}_${noRekKey}` : `UNKNOWN_${item.id}`;
+
+      if (!map[groupKey]) {
+        map[groupKey] = {
+          ...item,
+          saldo_akhir_bulan: 0,
+          raw_items: [],
+          bukti_count: 0,
+          has_active: false,
+        };
+      }
+
+      map[groupKey].raw_items.push(item);
+      map[groupKey].bukti_count += 1;
+      
+      const isActive = item.is_active !== 0;
+      if (isActive) {
+        map[groupKey].has_active = true;
+        map[groupKey].saldo_akhir_bulan += Number(item.saldo_akhir_bulan || 0);
+      }
+
+      if (!map[groupKey].nama_rekening && item.nama_rekening) {
+        map[groupKey].nama_rekening = item.nama_rekening;
+      }
+      if (item.keterangan && (!map[groupKey].keterangan || map[groupKey].keterangan === '-')) {
+        map[groupKey].keterangan = item.keterangan;
+      }
+    });
+
+    return Object.values(map).map(g => ({
+      ...g,
+      is_active: g.has_active ? 1 : 0,
+      saldo_akhir_bulan: g.has_active 
+        ? g.saldo_akhir_bulan 
+        : g.raw_items.reduce((acc: number, curr: any) => acc + Number(curr.saldo_akhir_bulan || 0), 0)
+    }));
+  }, [filteredData]);
+
+  // Agregasi per Bank (Hanya menjumlahkan saldo dari rekening yang statusnya AKTIF)
   const bankSummary = useMemo(() => {
     const groups: Record<string, {
       kode_bank: string;
@@ -439,7 +485,7 @@ export default function KertasKerjaPage() {
       rekening_list: { no_rek: string; nama_rek: string; saldo: number; id: number; is_active: boolean }[];
     }> = {};
 
-    filteredData.forEach(item => {
+    groupedData.forEach(item => {
       const bankName = (item.nama_bank || 'Bank Lainnya').trim();
       const bKey = bankName.toUpperCase();
       if (!groups[bKey]) {
@@ -458,7 +504,7 @@ export default function KertasKerjaPage() {
         groups[bKey].total_saldo += saldo;
         groups[bKey].active_count += 1;
       }
-      groups[bKey].items.push(item);
+      groups[bKey].items.push(...(item.raw_items || [item]));
       groups[bKey].rekening_list.push({
         id: item.id,
         no_rek: item.nomor_rekening_bank || '-',
@@ -469,24 +515,24 @@ export default function KertasKerjaPage() {
     });
 
     return Object.values(groups).sort((a, b) => b.total_saldo - a.total_saldo);
-  }, [filteredData]);
+  }, [groupedData]);
 
   // Lookup map total saldo aktif per bank
   const bankTotalMap = useMemo(() => {
     const map: Record<string, number> = {};
-    filteredData.forEach(item => {
+    groupedData.forEach(item => {
       if (item.is_active === 0) return;
       const b = (item.nama_bank || 'Bank Lainnya').trim().toUpperCase();
       map[b] = (map[b] || 0) + Number(item.saldo_akhir_bulan || 0);
     });
     return map;
-  }, [filteredData]);
+  }, [groupedData]);
 
   const totalSaldoSemuaBank = useMemo(() => {
-    return filteredData
+    return groupedData
       .filter(curr => curr.is_active !== 0)
       .reduce((acc, curr) => acc + Number(curr.saldo_akhir_bulan || 0), 0);
-  }, [filteredData]);
+  }, [groupedData]);
 
   const uniqueBanks = useMemo(() => {
     return Array.from(new Set(dataList.map(d => (d.nama_bank || 'Bank Lainnya').trim()))).filter(Boolean).sort();
@@ -500,8 +546,8 @@ export default function KertasKerjaPage() {
 
   const isEselon1 = userRole === 'eselon_1';
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(groupedData.length / itemsPerPage);
+  const paginatedData = groupedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -930,7 +976,7 @@ export default function KertasKerjaPage() {
             <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-bold text-gray-800">
               <tr>
                 <td colSpan={4} className="px-4 py-3 text-right uppercase tracking-wider text-xs text-gray-600">
-                  Total Keseluruhan Saldo Aktif ({filteredData.filter(d => d.is_active !== 0).length} Rekening Aktif):
+                  Total Keseluruhan Saldo Aktif ({groupedData.filter(d => d.is_active !== 0).length} Rekening Aktif):
                 </td>
                 <td className="px-4 py-3 text-right font-black text-blue-700 text-sm whitespace-nowrap bg-blue-50/50">
                   Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}

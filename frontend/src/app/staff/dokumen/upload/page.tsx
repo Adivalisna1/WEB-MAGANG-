@@ -31,6 +31,7 @@ export default function UploadPage() {
   const [semester,    setSemester]    = useState('');
   const [kategoriId,  setKategoriId]  = useState('');
   const [deskripsi,   setDeskripsi]   = useState('');
+  const [namaRekening, setNamaRekening] = useState('');
   const [file,        setFile]        = useState<File | null>(null);
   const [dragging,    setDragging]    = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
@@ -122,6 +123,10 @@ export default function UploadPage() {
         setTotalSaldo(formatted);
         filled.push('nominal');
       }
+      if (result.nama_rekening) {
+        setNamaRekening(result.nama_rekening);
+        filled.push('nama_rekening');
+      }
       if (result.deskripsi) {
         setDeskripsi(result.deskripsi);
         filled.push('deskripsi');
@@ -179,6 +184,7 @@ export default function UploadPage() {
       if (jenisPeriode === 'semester' && semester) fd.append('semester', semester);
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
+      if (namaRekening) fd.append('nama_rekening', namaRekening);
 
       // Nominal (opsional, tergantung kategori)
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
@@ -288,6 +294,27 @@ export default function UploadPage() {
             required
             className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
               aiFilledFields.includes('judul') ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-300'
+            }`}
+          />
+        </div>
+
+        {/* Nama Rekening Koran */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Nama Rekening Koran (Atas Nama) <span className="text-gray-400 font-normal">(opsional)</span>
+            {aiFilledFields.includes('nama_rekening') && (
+              <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600 font-normal bg-emerald-50 px-2 py-0.5 rounded-full">
+                <Sparkles className="w-3 h-3" /> Terisi oleh AI
+              </span>
+            )}
+          </label>
+          <input
+            type="text"
+            value={namaRekening}
+            onChange={e => setNamaRekening(e.target.value)}
+            placeholder="Contoh: RPL 029 DITJEN DIKTI UGM OPR"
+            className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              aiFilledFields.includes('nama_rekening') ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-300'
             }`}
           />
         </div>

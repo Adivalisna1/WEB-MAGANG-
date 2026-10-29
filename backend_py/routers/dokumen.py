@@ -171,7 +171,7 @@ async def get_all_dokumen(
         
     with db.cursor(dictionary=True) as cursor:
         query = (
-            "SELECT d.id, d.judul, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+            "SELECT d.id, d.judul, d.nama_rekening, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
             "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, "
             "       d.download_count, d.is_public, d.created_at, d.updated_at, "
             "       d.nilai_rekening_koran, d.nilai_excel, "
@@ -216,6 +216,7 @@ async def upload_dokumen(
     semester: Optional[int] = Form(None),
     nilai_rekening_koran: Optional[float] = Form(None),
     nilai_excel: Optional[float] = Form(None),
+    nama_rekening: Optional[str] = Form(None),
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
@@ -258,11 +259,11 @@ async def upload_dokumen(
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             INSERT INTO dokumen
-             (kategori_id, uploaded_by, judul, deskripsi, tahun, bulan, semester,
+             (kategori_id, uploaded_by, judul, nama_rekening, deskripsi, tahun, bulan, semester,
               file_nama, file_path, file_size, file_mime, status, is_public,
               nilai_rekening_koran, nilai_excel)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', 0, %s, %s)
-        """, (kategori_id, user["id"], judul, deskripsi, tahun, bulan_final, semester_final,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', 0, %s, %s)
+        """, (kategori_id, user["id"], judul, nama_rekening, deskripsi, tahun, bulan_final, semester_final,
               filename, r2_key, file_size, file.content_type,
               nilai_rekening_koran, nilai_excel))
         insert_id = cursor.lastrowid

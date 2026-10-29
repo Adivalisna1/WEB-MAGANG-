@@ -34,6 +34,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
   const [semester,    setSemester]    = useState('');
   const [kategoriId,  setKategoriId]  = useState('');
   const [deskripsi,   setDeskripsi]   = useState('');
+  const [namaRekening, setNamaRekening] = useState('');
   const [file,        setFile]        = useState<File | null>(null);
   
   const [dragging,    setDragging]    = useState(false);
@@ -69,6 +70,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       setJudul('');
       setKategoriId('');
       setDeskripsi('');
+      setNamaRekening('');
       setTotalSaldo('');
       
       if (initialFile) {
@@ -148,6 +150,10 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
         setTotalSaldo(formatted);
         filled.push('nominal');
       }
+      if (result.nama_rekening) {
+        setNamaRekening(result.nama_rekening);
+        filled.push('nama_rekening');
+      }
       if (result.deskripsi) {
         setDeskripsi(result.deskripsi);
         filled.push('deskripsi');
@@ -205,6 +211,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       if (jenisPeriode === 'semester' && semester) fd.append('semester', semester);
       fd.append('kategori_id', kategoriId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
+      if (namaRekening) fd.append('nama_rekening', namaRekening);
 
       const selKat = kategoriList.find(k => String(k.id) === kategoriId);
       if (totalSaldo) {
@@ -370,6 +377,27 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
                     className={clsx(
                       "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors",
                       aiFilledFields.includes('judul') ? "border-emerald-300 bg-emerald-50/50" : "border-slate-300 bg-white"
+                    )}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                    Nama Rekening Koran (Atas Nama)
+                    {aiFilledFields.includes('nama_rekening') && (
+                      <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        <Sparkles className="w-3 h-3" /> Auto-filled
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={namaRekening}
+                    onChange={e => setNamaRekening(e.target.value)}
+                    placeholder="Contoh: RPL 029 DITJEN DIKTI UGM OPR"
+                    className={clsx(
+                      "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors",
+                      aiFilledFields.includes('nama_rekening') ? "border-emerald-300 bg-emerald-50/50" : "border-slate-300 bg-white"
                     )}
                   />
                 </div>

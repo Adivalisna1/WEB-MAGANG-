@@ -101,6 +101,7 @@ async def get_rekening_koran(request: Request, user: dict = Depends(get_current_
             "       COALESCE(NULLIF(k.periode, '1'), p.periode, k.periode) AS periode, "
             "       COALESCE(p.bukti_file, d.file_path) AS bukti_file, "
             "       d.file_nama AS nama_file_bukti, "
+            "       COALESCE(k.nama_rekening, d.nama_rekening) AS nama_rekening, "
             "       COALESCE(p.tanggal, k.tanggal_pembukaan_rekening) AS tanggal_transaksi, "
             "       u.nama AS uploader_nama, s.nama AS nama_satker, s.NO_Satker AS kode_satker "
             "FROM rekening_koran k "

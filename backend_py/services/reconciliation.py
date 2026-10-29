@@ -22,6 +22,8 @@ BANK_PATTERNS = [
 
 # Kategori dokumen pemerintah
 KATEGORI_PATTERNS = [
+    (r"PEMBUKAAN\s+REKENING|SURAT\s+(?:IZIN\s+|PERMOHONAN\s+)?PEMBUKAAN|IZIN\s+PEMBUKAAN\s+REKENING", "Surat Pembukaan Rekening Koran"),
+    (r"PENUTUPAN\s+REKENING|SURAT\s+(?:PERSETUJUAN\s+|PERMOHONAN\s+)?PENUTUPAN|IZIN\s+PENUTUPAN\s+REKENING", "Surat Penutupan Rekening Koran"),
     (r"\bLKjIP\b|LAPORAN\s+KINERJA\s+INSTANSI", "LKjIP"),
     (r"\bRENSTRA\b|RENCANA\s+STRATEGIS", "Renstra"),
     (r"\bRENJA\b|RENCANA\s+KERJA\b", "Renja"),
@@ -71,32 +73,78 @@ def parse_indonesian_number(val_str: str) -> Optional[float]:
     except ValueError:
         return None
 
-def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str]]:
-    """Mendeteksi nama bank dan nomor rekening dari teks."""
+def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Mendeteksi nama bank, nomor rekening satker (bukan rekening induk),
+    dan nama rekening dari teks dokumen.
+    """
     detected_bank = None
     for pattern, name in BANK_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
             detected_bank = name
             break
 
-    detected_rek = None
-    # Cari nomor rekening: "No. Rek: 1234567890" atau "Account Number: 0329-01-002841-30-8"
-    rek_match = re.search(r"(?:No\.?\s*(?:Rekening|Rek|Account)|Rekening|Acc(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})", text, re.IGNORECASE)
-    if rek_match:
-        raw_rek = rek_match.group(1).strip()
-        # Bersihkan spasi berlebih
-        cleaned_rek = re.sub(r"\s+", "", raw_rek)
-        if len(re.sub(r"[^\d]", "", cleaned_rek)) >= 8:
-            detected_rek = raw_rek
-    else:
-        # Fallback: cari deretan angka 10-16 digit yang berdiri sendiri
-        standalone_rek = re.search(r"\b(\d{4}[-\s]?\d{4}[-\s]?\d{2,6}[-\s]?\d{0,4})\b", text)
-        if standalone_rek:
-            cand = standalone_rek.group(1).strip()
-            if len(re.sub(r"[^\d]", "", cand)) >= 10:
-                detected_rek = cand
+    # 1. Deteksi nomor rekening induk / master account agar tidak salah diambil
+    induk_match = re.search(
+        r"(?:No\.?\s*(?:Rek(?:ening)?|Account)?\s*(?:Induk|Master|Pooling|Pusat|Penampung)|Master\s*Account(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
+        text,
+        re.IGNORECASE
+    )
+    induk_clean = re.sub(r"[^\d]", "", induk_match.group(1)) if induk_match else None
 
-    return detected_bank, detected_rek
+    # 2. Prioritas 1: Cari nomor rekening yang secara spesifik berlabel Satker / Sub-Account / Giro / Operasional
+    detected_rek = None
+    satker_rek_match = re.search(
+        r"(?:No\.?\s*(?:Rek(?:ening)?|Account)?\s*(?:Satker|Anak|Giro|Operasional|Unit|Pengeluaran|Penerimaan|Sub-Account)|Sub-Account(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
+        text,
+        re.IGNORECASE
+    )
+    if satker_rek_match:
+        cand_satker = satker_rek_match.group(1).strip()
+        if len(re.sub(r"[^\d]", "", cand_satker)) >= 8:
+            detected_rek = cand_satker
+
+    # 3. Prioritas 2: Cari semua nomor rekening dan pastikan BUKAN nomor rekening induk
+    if not detected_rek:
+        all_rek_matches = re.findall(
+            r"(?:No\.?\s*(?:Rekening|Rek|Account)|Rekening|Acc(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
+            text,
+            re.IGNORECASE
+        )
+        for raw_cand in all_rek_matches:
+            cand_clean = re.sub(r"[^\d]", "", raw_cand)
+            if len(cand_clean) >= 8:
+                # Jika sama dengan rekening induk, lewati! Ambil rekening berikutnya (milik Satker)
+                if induk_clean and cand_clean == induk_clean:
+                    continue
+                detected_rek = raw_cand.strip()
+                break
+
+    # 4. Fallback: deretan angka rekening 10-16 digit yang berdiri sendiri
+    if not detected_rek:
+        standalone_matches = re.findall(r"\b(\d{4}[-\s]?\d{4}[-\s]?\d{2,6}[-\s]?\d{0,4})\b", text)
+        for cand in standalone_matches:
+            cand_clean = re.sub(r"[^\d]", "", cand)
+            if len(cand_clean) >= 10:
+                if induk_clean and cand_clean == induk_clean:
+                    continue
+                detected_rek = cand.strip()
+                break
+
+    # 5. Deteksi Nama Rekening / Account Name / Atas Nama
+    detected_nama_rek = None
+    nm_match = re.search(
+        r"(?:Nama\s*(?:Rekening|Rek|Giro|Akun|Pemilik)|Account\s*Name|A/?N|Atas\s*Nama)[:\s]+([A-Za-z0-9\s\.\,\-\/\&]{3,60})",
+        text,
+        re.IGNORECASE
+    )
+    if nm_match:
+        cand_nm = nm_match.group(1).strip().split("\n")[0].strip()
+        # Bersihkan jika terdapat kata kunci header
+        if cand_nm and not any(w in cand_nm.upper() for w in ["IDR", "RUPIAH", "INDONESIA", "PERIODE", "TANGGAL", "NOMOR"]):
+            detected_nama_rek = cand_nm
+
+    return detected_bank, detected_rek, detected_nama_rek
 
 def extract_metadata_from_text(text: str) -> Dict[str, Any]:
     """Ekstraksi metadata judul, tahun, kategori, semester/periode dari teks dokumen."""
@@ -194,9 +242,107 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         "nominal": nominal,
     }
 
+def extract_chronological_closing_balance(pages_text: List[str], tables_data: List[List[Any]]) -> Optional[float]:
+    """
+    Menentukan saldo akhir dari baris transaksi rekening koran dengan membaca
+    isi tabel mutasi, mengurutkan tanggal, waktu, dan urutan baris secara kronologis,
+    lalu mengambil saldo mutasi paling terakhir.
+    """
+    MONTH_MAP = {
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "mei": 5, "may": 5, "jun": 6,
+        "jul": 7, "agu": 8, "aug": 8, "sep": 9, "okt": 10, "oct": 10, "nov": 11, "des": 12, "dec": 12
+    }
+    
+    parsed_transactions = []
+    order_idx = 0
+
+    # 1. Periksa baris-baris pada tabel yang diekstrak (pdfplumber)
+    for row in tables_data:
+        if not row:
+            continue
+        row_str = " ".join([str(c or "") for c in row if c])
+        
+        # Cari tanggal transaksi: DD/MM/YYYY atau DD-MM-YYYY atau DD MMM YYYY
+        date_match = re.search(r"\b(\d{1,2})[-\/\.]([A-Za-z]{3}|\d{1,2})[-\/\.](\d{2,4})\b", row_str)
+        if not date_match:
+            continue
+            
+        day = int(date_match.group(1))
+        m_str = date_match.group(2).lower()
+        month = int(m_str) if m_str.isdigit() else MONTH_MAP.get(m_str[:3], 1)
+        year_str = date_match.group(3)
+        year = int(year_str) if len(year_str) == 4 else int("20" + year_str)
+        
+        # Cari waktu transaksi: HH:MM:SS atau HH:MM
+        time_match = re.search(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b", row_str)
+        time_str = time_match.group(0) if time_match else "00:00:00"
+        
+        # Cari saldo di cell paling kanan / kolom terakhir yang berupa nominal
+        saldo_found = None
+        for cell in reversed(row):
+            if cell is None:
+                continue
+            cand_str = str(cell).strip()
+            # Hindari tanggal atau nomor referensi
+            if re.match(r"^\d{1,2}[-\/\.]\d{1,2}", cand_str) or len(cand_str) < 4:
+                continue
+            val = parse_indonesian_number(cand_str)
+            if val is not None and val >= 0:
+                saldo_found = val
+                break
+                
+        if saldo_found is not None:
+            order_idx += 1
+            parsed_transactions.append({
+                "date": (year, month, day),
+                "time": time_str,
+                "order": order_idx,
+                "saldo": saldo_found
+            })
+
+    # 2. Periksa baris-baris teks halaman (jika format PDF berbentuk teks cetak bukan tabel)
+    if not parsed_transactions and pages_text:
+        for pt in pages_text:
+            lines = pt.split("\n")
+            for line in lines:
+                line_str = line.strip()
+                date_match = re.search(r"\b(\d{1,2})[-\/\.]([A-Za-z]{3}|\d{1,2})[-\/\.](\d{2,4})\b", line_str)
+                if not date_match:
+                    continue
+                day = int(date_match.group(1))
+                m_str = date_match.group(2).lower()
+                month = int(m_str) if m_str.isdigit() else MONTH_MAP.get(m_str[:3], 1)
+                year_str = date_match.group(3)
+                year = int(year_str) if len(year_str) == 4 else int("20" + year_str)
+                
+                time_match = re.search(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b", line_str)
+                time_str = time_match.group(0) if time_match else "00:00:00"
+                
+                # Cari pola running balance di akhir baris transaksi
+                bal_match = re.findall(r"(?:(?:DB|CR)\s*([\d\.,]{4,})|([\d\.,]{4,})\s*(?:DB|CR)?$)", line_str, re.IGNORECASE)
+                if bal_match:
+                    cand_num = bal_match[-1][0] or bal_match[-1][1]
+                    val = parse_indonesian_number(cand_num)
+                    if val is not None and val >= 0:
+                        order_idx += 1
+                        parsed_transactions.append({
+                            "date": (year, month, day),
+                            "time": time_str,
+                            "order": order_idx,
+                            "saldo": val
+                        })
+
+    if parsed_transactions:
+        # Urutkan secara kronologis berdasarkan: (1) Tanggal, (2) Waktu/Jam, (3) Urutan baris di dokumen
+        parsed_transactions.sort(key=lambda t: (t["date"], t["time"], t["order"]))
+        # Ambil transaksi paling akhir
+        return parsed_transactions[-1]["saldo"]
+        
+    return None
+
 def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     """
-    Mengekstrak teks, tabel, saldo akhir, dan metadata dari file PDF.
+    Mengekstrak teks, tabel, saldo akhir (berurutan tanggal & waktu), dan metadata dari file PDF.
     file_source bisa berupa path file (str) atau byte stream (io.BytesIO).
     """
     pages_text: List[str] = []
@@ -204,7 +350,7 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
 
     try:
         with pdfplumber.open(file_source) as pdf:
-            # Baca hingga 30 halaman untuk memastikan halaman terakhir (saldo akhir) terbaca
+            # Baca hingga 30 halaman untuk memastikan seluruh transaksi terbaca
             for page in pdf.pages[:30]:
                 pt = page.extract_text() or ""
                 pages_text.append(pt)
@@ -220,11 +366,15 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     combined_search_text = f"{filename}\n{full_text}" if filename else full_text
 
     meta = extract_metadata_from_text(combined_search_text)
-    bank, rek = extract_bank_info(combined_search_text)
+    bank, rek, nama_rek = extract_bank_info(combined_search_text)
 
-    # Multi-page fallback handling:
-    # Jika nominal belum ditemukan atau jika rekening koran memiliki running balance transaksi,
-    # periksa halaman terakhir (last page) untuk mengambil baris mutasi paling akhir
+    # 1. Prioritas Utama Penentuan Saldo Akhir:
+    # Membaca baris mutasi rekening koran dan mengurutkan berdasarkan Tanggal, Waktu, & Urutan Transaksi
+    chronological_saldo = extract_chronological_closing_balance(pages_text, tables_data)
+    if chronological_saldo is not None:
+        meta["nominal"] = chronological_saldo
+
+    # 2. Multi-page fallback handling: jika belum ditemukan dari urutan transaksi
     if meta["nominal"] is None and pages_text:
         last_page_text = pages_text[-1]
         tx_balances = re.findall(r"(?:(?:DB|CR)\s+([\d\.,]{4,})|([\d\.,]{4,})\s*(?:DB|CR)\b)", last_page_text, re.IGNORECASE)
@@ -236,7 +386,7 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
                     meta["nominal"] = last_bal
                     break
 
-    # Jika nominal belum ditemukan dari teks biasa, cari di tabel secara mundur
+    # 3. Cari di tabel ringkasan secara mundur jika belum ada
     if meta["nominal"] is None and tables_data:
         for row in reversed(tables_data):
             if not row:
@@ -254,7 +404,6 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     # Buat judul dokumen yang informatif jika tidak eksplisit
     lines = [line.strip() for line in full_text.split("\n") if len(line.strip()) > 5]
     first_title = lines[0] if lines else "Dokumen Laporan Keuangan"
-    # Pastikan judul tidak terlalu panjang
     if len(first_title) > 90:
         first_title = first_title[:87] + "..."
 
@@ -268,6 +417,7 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
         "nominal": meta["nominal"],
         "bank": bank,
         "nomor_rekening": rek,
+        "nama_rekening": nama_rek,
         "deskripsi": f"Hasil ekstraksi otomatis dokumen {meta['kategori']} Tahun {meta['tahun']}" + (f" - {bank}" if bank else ""),
         "confidence": "high" if meta["nominal"] is not None else "medium",
         "raw_text_snippet": full_text[:400],
