@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { clearSession } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -28,8 +29,19 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Kalau sudah login, redirect sesuai role & tingkat
+  // Kalau sudah login, redirect sesuai role & tingkat (kecuali jika ada param switch / logout)
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('logout') === 'true') {
+        clearSession();
+        window.location.href = '/login';
+        return;
+      }
+      if (params.get('switch') === 'true') {
+        return;
+      }
+    }
     if (!loading && user) {
       const r = user.role;
       const t = user.tingkat;
@@ -220,6 +232,30 @@ export default function LoginPage() {
           
           {/* Blue accent bar */}
           <div className="w-12 h-1.5 bg-[#1D64EC] rounded-full mb-6"></div>
+
+          {/* Active Session Notice if logged in */}
+          {user && (
+            <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-slate-800 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">Sesi Masih Aktif</span>
+                  <p className="font-extrabold text-sm text-slate-900 truncate">
+                    {user.nama} ({user.satker_nama || user.eselon_1_singkatan || user.role})
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearSession();
+                    if (typeof window !== 'undefined') window.location.href = '/login';
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer text-center"
+                >
+                  Keluar / Ganti Akun
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Heading */}
           <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">

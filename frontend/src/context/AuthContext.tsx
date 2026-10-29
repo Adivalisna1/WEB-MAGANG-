@@ -73,7 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
     setUser(null);
     setToken(null);
-    router.push('/login');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    } else {
+      router.push('/login');
+    }
   }, [token, router]);
 
   const isIt = Boolean(

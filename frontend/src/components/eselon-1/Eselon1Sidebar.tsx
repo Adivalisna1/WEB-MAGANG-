@@ -213,7 +213,15 @@ export default function Eselon1Sidebar({
                 </div>
               )}
             </Link>
-            {!isCollapsed && (
+            {isCollapsed ? (
+              <button
+                onClick={logoutFn}
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mx-auto mt-1"
+                title="Keluar dari Sistem"
+              >
+                <LogOut className="w-4 h-4 text-red-500" />
+              </button>
+            ) : (
               <button
                 onClick={logoutFn}
                 className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"

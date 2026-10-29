@@ -176,7 +176,10 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
 @router.post("/logout")
 async def logout(req: Request, db = Depends(get_db), current_user: dict = Depends(get_current_user)):
     cursor = db.cursor(dictionary=True)
-    cursor.execute("UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE id = %s", (current_user['sessionId'],))
+    session_id = current_user.get('sessionId')
+    if session_id:
+        cursor.execute("UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE id = %s", (session_id,))
+    cursor.execute("UPDATE user_sessions SET is_online = 0, logout_at = NOW() WHERE user_id = %s", (current_user['id'],))
     db.commit()
     
     await catat_log(
