@@ -374,7 +374,7 @@ export default function KertasKerjaPage() {
 
       const filename = `Rekap_Saldo_Bank_${filterLabel}.xlsx`;
 
-      const rows = filteredData.map((d, idx) => ({
+      const rows = groupedData.map((d, idx) => ({
         'No': idx + 1,
         'Satker': d.nama_satker || '-',
         'Kode Satker': d.kode_satker || '-',
@@ -428,15 +428,16 @@ export default function KertasKerjaPage() {
     });
   }, [dataList, searchQ, filterSatker, filterBank, modeFilter, filterBulan, filterTriwulan, filterTahun]);
 
-  // Grouping: Hanya muncul 1 nomor rekening saja di tabel, dengan Total Saldo Bank adalah akumulasi (jumlah) seluruh data yang memiliki no rek yang sama
+  // Grouping: Hanya muncul 1 baris per Mitra Bank di periode/bulan tersebut. Total Saldo Bank adalah akumulasi (jumlah) seluruh bukti/rekening bank tersebut.
   const groupedData = useMemo(() => {
     const map: Record<string, any> = {};
 
     filteredData.forEach(item => {
-      const rawNoRek = (item.nomor_rekening_bank || '-').trim();
-      const noRekKey = rawNoRek.replace(/\s+/g, '');
       const bankKey = (item.nama_bank || 'Bank Lainnya').trim().toUpperCase();
-      const groupKey = noRekKey !== '-' ? `${bankKey}_${noRekKey}` : `UNKNOWN_${item.id}`;
+      const satkerKey = item.satker_id || 'DEFAULT_SATKER';
+      const recMonth = getRecordMonth(item.periode, item.created_at) || (item.periode || '').trim().toLowerCase();
+      const recYear = getRecordYear(item.tahun, item.periode, item.created_at);
+      const groupKey = `${satkerKey}_${bankKey}_${recMonth}_${recYear}`;
 
       if (!map[groupKey]) {
         map[groupKey] = {
@@ -445,11 +446,15 @@ export default function KertasKerjaPage() {
           raw_items: [],
           bukti_count: 0,
           has_active: false,
+          unique_rekenings: new Set<string>(),
         };
       }
 
       map[groupKey].raw_items.push(item);
       map[groupKey].bukti_count += 1;
+      if (item.nomor_rekening_bank) {
+        map[groupKey].unique_rekenings.add(item.nomor_rekening_bank.trim());
+      }
       
       const isActive = item.is_active !== 0;
       if (isActive) {
@@ -460,18 +465,26 @@ export default function KertasKerjaPage() {
       if (!map[groupKey].nama_rekening && item.nama_rekening) {
         map[groupKey].nama_rekening = item.nama_rekening;
       }
+      if (!map[groupKey].nomor_rekening_bank && item.nomor_rekening_bank) {
+        map[groupKey].nomor_rekening_bank = item.nomor_rekening_bank;
+      }
       if (item.keterangan && (!map[groupKey].keterangan || map[groupKey].keterangan === '-')) {
         map[groupKey].keterangan = item.keterangan;
       }
     });
 
-    return Object.values(map).map(g => ({
-      ...g,
-      is_active: g.has_active ? 1 : 0,
-      saldo_akhir_bulan: g.has_active 
-        ? g.saldo_akhir_bulan 
-        : g.raw_items.reduce((acc: number, curr: any) => acc + Number(curr.saldo_akhir_bulan || 0), 0)
-    }));
+    return Object.values(map).map(g => {
+      const rekList = Array.from(g.unique_rekenings as Set<string>);
+      return {
+        ...g,
+        unique_rekening_count: rekList.length,
+        nomor_rekening_bank: rekList[0] || g.nomor_rekening_bank || '-',
+        is_active: g.has_active ? 1 : 0,
+        saldo_akhir_bulan: g.has_active 
+          ? g.saldo_akhir_bulan 
+          : g.raw_items.reduce((acc: number, curr: any) => acc + Number(curr.saldo_akhir_bulan || 0), 0)
+      };
+    });
   }, [filteredData]);
 
   // Agregasi per Bank (Hanya menjumlahkan saldo dari rekening yang statusnya AKTIF)
@@ -505,12 +518,14 @@ export default function KertasKerjaPage() {
         groups[bKey].active_count += 1;
       }
       groups[bKey].items.push(...(item.raw_items || [item]));
-      groups[bKey].rekening_list.push({
-        id: item.id,
-        no_rek: item.nomor_rekening_bank || '-',
-        nama_rek: item.nama_rekening || '-',
-        saldo: saldo,
-        is_active: isActive
+      (item.raw_items || [item]).forEach((raw: any) => {
+        groups[bKey].rekening_list.push({
+          id: raw.id,
+          no_rek: raw.nomor_rekening_bank || '-',
+          nama_rek: raw.nama_rekening || raw.keterangan || '-',
+          saldo: Number(raw.saldo_akhir_bulan || 0),
+          is_active: raw.is_active !== 0
+        });
       });
     });
 
@@ -901,7 +916,7 @@ export default function KertasKerjaPage() {
                                   title={`Buka daftar seluruh bukti rekening koran ${d.nama_bank}`}
                                 >
                                   <Layers className="w-3 h-3" />
-                                  <span>Bukti ({bankGroup ? bankGroup.items.length : 1})</span>
+                                  <span>Bukti ({d.bukti_count || (bankGroup ? bankGroup.items.length : 1)})</span>
                                   <ChevronRight className="w-3 h-3" />
                                 </button>
                               )}
@@ -910,7 +925,14 @@ export default function KertasKerjaPage() {
 
                           {/* 2. No Rek per Bank */}
                           <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-800 font-mono font-medium text-xs cursor-pointer">
-                            {d.nomor_rekening_bank || '-'}
+                            <div className="flex items-center gap-1.5">
+                              <span>{d.nomor_rekening_bank || '-'}</span>
+                              {d.unique_rekening_count > 1 && (
+                                <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-sans font-semibold shrink-0" title={`${d.unique_rekening_count} nomor rekening terdaftar di bank ini`}>
+                                  +{d.unique_rekening_count - 1} rek
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 max-w-[180px] truncate cursor-pointer" title={d.nama_rekening || ''}>
                             {d.nama_rekening || '-'}
