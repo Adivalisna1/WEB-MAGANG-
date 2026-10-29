@@ -149,10 +149,6 @@ async def create_user(
             if not tingkat_id:
                 tingkat_id = 1 if satker_id else (2 if eselon_1_id else 3)
                 
-            # Unit Eselon 1 bertindak sebagai Pembina & Verifikator, sehingga hanya memiliki peran Administrasi (role_id = 2)
-            if tingkat_id == 2:
-                role_id = 2
-                
             cursor.execute("""
                 INSERT INTO users (role_id, tingkat_id, nama, username, email, password_hash, permissions, satker_id, eselon_1_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -216,10 +212,6 @@ async def create_bulk_users(
                             failed_count += 1
                             continue
                             
-                    # Unit Eselon 1 hanya memiliki peran Administrasi (role_id = 2)
-                    if tingkat_id == 2:
-                        role_id = 2
-
                     password_hash = bcrypt.hashpw(str(password).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                     cursor.execute("""
                         INSERT INTO users (role_id, tingkat_id, satker_id, eselon_1_id, nama, username, email, password_hash, permissions)
@@ -283,7 +275,7 @@ async def update_user(
                     
             final_tingkat_id = tingkat_id if tingkat_id is not None else (current_row["tingkat_id"] if current_row else (1 if final_satker_id else 3))
             final_eselon_1_id = eselon_1_id if eselon_1_id is not None else (current_row.get("eselon_1_id") if current_row else None)
-            final_role_id = 2 if final_tingkat_id == 2 else role_id
+            final_role_id = role_id if role_id is not None else (current_row.get("role_id") if current_row else 1)
 
             cursor.execute("""
                 UPDATE users

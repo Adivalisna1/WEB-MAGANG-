@@ -872,25 +872,45 @@ export default function Eselon1PencatatanPage() {
                       </td>
 
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          disabled={togglingId === row.id}
-                          onClick={() => handleToggleStatus(row)}
-                          className={clsx(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer",
-                            isActive
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200",
-                          )}
-                        >
+                        {isOperator ? (
                           <span
                             className={clsx(
-                              "w-1.5 h-1.5 rounded-full",
-                              isActive ? "bg-emerald-500" : "bg-slate-400",
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border select-none",
+                              isActive
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-500 border-slate-300",
                             )}
-                          />
-                          {isActive ? "Aktif" : "Nonaktif"}
-                        </button>
+                          >
+                            <span
+                              className={clsx(
+                                "w-1.5 h-1.5 rounded-full",
+                                isActive ? "bg-emerald-500" : "bg-slate-400",
+                              )}
+                            />
+                            {isActive ? "Aktif" : "Nonaktif"}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={togglingId === row.id}
+                            onClick={() => handleToggleStatus(row)}
+                            className={clsx(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer",
+                              isActive
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200",
+                            )}
+                            title="Klik untuk mematikan / mengaktifkan status bukti ini"
+                          >
+                            <span
+                              className={clsx(
+                                "w-1.5 h-1.5 rounded-full",
+                                isActive ? "bg-emerald-500" : "bg-slate-400",
+                              )}
+                            />
+                            {isActive ? "Aktif" : "Nonaktif"}
+                          </button>
+                        )}
                       </td>
 
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
@@ -1227,30 +1247,56 @@ export default function Eselon1PencatatanPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          disabled={togglingId === item.id}
-                          onClick={() => handleToggleStatus(item)}
-                          className={clsx(
-                            "relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                            isActive ? "bg-emerald-600" : "bg-slate-300",
-                          )}
-                        >
+                        {isOperator ? (
                           <span
                             className={clsx(
-                              "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition",
-                              isActive ? "translate-x-7" : "translate-x-0",
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border select-none",
+                              isActive
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-500 border-slate-300",
                             )}
-                          />
-                        </button>
-                        <span
-                          className={clsx(
-                            "text-[11px] font-bold",
-                            isActive ? "text-emerald-700" : "text-slate-500",
-                          )}
-                        >
-                          {isActive ? "Status: Aktif" : "Status: Nonaktif"}
-                        </span>
+                          >
+                            <span
+                              className={clsx(
+                                "w-1.5 h-1.5 rounded-full",
+                                isActive ? "bg-emerald-500" : "bg-slate-400",
+                              )}
+                            />
+                            {isActive ? "Status: Aktif" : "Status: Nonaktif"}
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={togglingId === item.id}
+                              onClick={() => handleToggleStatus(item)}
+                              className={clsx(
+                                "relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                                isActive ? "bg-emerald-600" : "bg-slate-300",
+                              )}
+                              title={
+                                isActive
+                                  ? "Status Aktif (Klik untuk Nonaktifkan)"
+                                  : "Status Nonaktif (Klik untuk Aktifkan)"
+                              }
+                            >
+                              <span
+                                className={clsx(
+                                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition",
+                                  isActive ? "translate-x-7" : "translate-x-0",
+                                )}
+                              />
+                            </button>
+                            <span
+                              className={clsx(
+                                "text-[11px] font-bold",
+                                isActive ? "text-emerald-700" : "text-slate-500",
+                              )}
+                            >
+                              {isActive ? "Status: Aktif" : "Status: Nonaktif"}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 

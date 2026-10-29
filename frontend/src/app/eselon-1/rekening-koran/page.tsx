@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getSession } from '@/lib/auth';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
+import UploadModal from '@/components/Staff/UploadModal';
 import {
   FileSpreadsheet,
   Download,
@@ -225,6 +226,7 @@ export default function KertasKerjaPage() {
 
   // New Row State
   const [newRow, setNewRow] = useState(initialRowState);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -560,6 +562,7 @@ export default function KertasKerjaPage() {
   }, [selectedBankDrawer, bankSummary]);
 
   const isEselon1 = userRole === 'eselon_1';
+  const isOperator = userRole === 'operator';
 
   const totalPages = Math.ceil(groupedData.length / itemsPerPage);
   const paginatedData = groupedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -576,6 +579,15 @@ export default function KertasKerjaPage() {
             Rekapitulasi rekening koran khusus internal Eselon 1. Untuk monitoring dan kelola bukti seluruh satker binaan, gunakan menu <strong>Bukti Rekening Koran Satker</strong>.
           </p>
         </div>
+        {isOperator && (
+          <button
+            type="button"
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition-colors shadow-xs cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Unggah Rekening Koran
+          </button>
+        )}
       </div>
 
       {/* Ringkasan Saldo Per Bank */}
@@ -937,19 +949,33 @@ export default function KertasKerjaPage() {
                             Rp {Number(d.saldo_akhir_bulan || 0).toLocaleString('id-ID')}
                           </td>
                           <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <button
-                              type="button"
-                              disabled={togglingId === d.id}
-                              onClick={() => handleToggleStatus(d)}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-colors ${
-                                isActive
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                  : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                              {isActive ? 'Aktif' : 'Nonaktif'}
-                            </button>
+                            {isOperator ? (
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border select-none ${
+                                  isActive
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-gray-100 text-gray-500 border-gray-300'
+                                }`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                                {isActive ? 'Aktif' : 'Nonaktif'}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={togglingId === d.id}
+                                onClick={() => handleToggleStatus(d)}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-colors ${
+                                  isActive
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
+                                }`}
+                                title="Klik untuk mematikan / mengaktifkan status rekening ini"
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                                {isActive ? 'Aktif' : 'Nonaktif'}
+                              </button>
+                            )}
                           </td>
                           <td onDoubleClick={() => !isEselon1 && startEdit(d)} className="px-4 py-3 text-gray-600 text-xs truncate max-w-[150px] cursor-pointer" title={d.keterangan || ''}>
                             {d.keterangan || '-'}
@@ -1089,23 +1115,43 @@ export default function KertasKerjaPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          disabled={togglingId === item.id}
-                          onClick={() => handleToggleStatus(item)}
-                          className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                            isActive ? 'bg-emerald-600' : 'bg-gray-300'
-                          }`}
-                        >
+                        {isOperator ? (
                           <span
-                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition ${
-                              isActive ? 'translate-x-7' : 'translate-x-0'
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border select-none ${
+                              isActive
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-gray-100 text-gray-500 border-gray-300'
                             }`}
-                          />
-                        </button>
-                        <span className={`text-[11px] font-bold ${isActive ? 'text-emerald-700' : 'text-gray-500'}`}>
-                          {isActive ? 'Status: Aktif' : 'Status: Nonaktif'}
-                        </span>
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                            {isActive ? 'Status: Aktif' : 'Status: Nonaktif'}
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={togglingId === item.id}
+                              onClick={() => handleToggleStatus(item)}
+                              className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                                isActive ? 'bg-emerald-600' : 'bg-gray-300'
+                              }`}
+                              title={
+                                isActive
+                                  ? 'Status Aktif (Klik untuk Nonaktifkan)'
+                                  : 'Status Nonaktif (Klik untuk Aktifkan)'
+                              }
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition ${
+                                  isActive ? 'translate-x-7' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className={`text-[11px] font-bold ${isActive ? 'text-emerald-700' : 'text-gray-500'}`}>
+                              {isActive ? 'Status: Aktif' : 'Status: Nonaktif'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -1147,6 +1193,15 @@ export default function KertasKerjaPage() {
           </div>
         </div>
       )}
+      {/* Modal Upload Rekening Koran untuk Operator Eselon 1 */}
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={() => {
+          setShowUploadModal(false);
+          fetchData();
+        }}
+      />
     </div>
   );
 }
