@@ -1,12 +1,9 @@
 'use client';
-import toast from 'react-hot-toast';
-
 
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
 import {
-  Users, Loader2, RefreshCw, AlertCircle, KeyRound,
-  Power, Copy, CheckCircle, X, Search
+  Users, Loader2, RefreshCw, AlertCircle, Search
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -23,12 +20,6 @@ interface UserRow {
   last_login: string | null;
   password_reset_at: string | null;
   satker_nama: string | null;
-}
-
-interface ResetResult {
-  nama: string;
-  username: string;
-  password_baru: string;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -65,10 +56,6 @@ export default function KetuaUsersPage() {
   const [users,      setUsers]      = useState<UserRow[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
-  const [processing, setProcessing] = useState<number | null>(null);
-  const [resetting,  setResetting]  = useState<number | null>(null);
-  const [resetResult, setResetResult] = useState<ResetResult | null>(null);
-  const [copied,     setCopied]     = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,58 +80,6 @@ export default function KetuaUsersPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const handleToggle = async (user: UserRow) => {
-    const aksi = user.is_active ? 'menonaktifkan' : 'mengaktifkan';
-    if (!confirm(`Yakin ingin ${aksi} user "${user.nama}"?`)) return;
-
-    setProcessing(user.id);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/eselon-1/users/${user.id}/toggle`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || json.message);
-      await fetchUsers();
-    } catch (e: any) {
-      toast.error(e.message || 'Gagal mengubah status user');
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleReset = async (user: UserRow) => {
-    if (!confirm(`Reset password untuk "${user.nama}"? Password lama langsung tidak berlaku.`)) return;
-
-    setResetting(user.id);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/eselon-1/users/${user.id}/reset-password`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || json.message);
-      setResetResult(json.data);
-      setCopied(false);
-      await fetchUsers();
-    } catch (e: any) {
-      toast.error(e.message || 'Gagal reset password');
-    } finally {
-      setResetting(null);
-    }
-  };
-
-  const copyPassword = async () => {
-    if (!resetResult) return;
-    try {
-      await navigator.clipboard.writeText(resetResult.password_baru);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* clipboard tidak tersedia */ }
-  };
-
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -162,9 +97,9 @@ export default function KetuaUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Pengguna</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Pemantauan Pengguna</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Kelola status akun dan reset password Pimpinan & Satker
+            Memantau status dan riwayat login pengguna Satker & Unit binaan. Pengelolaan akun (reset password & aktivasi) dikelola oleh Staff IT.
           </p>
         </div>
         <button
@@ -208,7 +143,6 @@ export default function KetuaUsersPage() {
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Login Terakhir</th>
                   <th className="px-5 py-3">Reset Password Terakhir</th>
-                  <th className="px-5 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -248,36 +182,6 @@ export default function KetuaUsersPage() {
                     </td>
                     <td className="px-5 py-3 text-gray-600">{formatTanggal(user.last_login)}</td>
                     <td className="px-5 py-3 text-gray-600">{formatTanggal(user.password_reset_at)}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleReset(user)}
-                          disabled={resetting === user.id}
-                          title="Reset password"
-                          className="p-2 rounded-lg text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-50"
-                        >
-                          {resetting === user.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <KeyRound className="w-4 h-4" />}
-                        </button>
-                        {/* Eselon 1 dapat mengaktifkan/menonaktifkan Pimpinan / Manajemen Satker */}
-                        {(user.role === 'pimpinan_satker' || user.role === 'manajemen' || user.role === 'administrasi') && (
-                          <button
-                            onClick={() => handleToggle(user)}
-                            disabled={processing === user.id}
-                            title={user.is_active ? 'Nonaktifkan' : 'Aktifkan'}
-                            className={clsx(
-                              'p-2 rounded-lg transition-colors disabled:opacity-50',
-                              user.is_active ? 'text-red-500 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
-                            )}
-                          >
-                            {processing === user.id
-                              ? <Loader2 className="w-4 h-4 animate-spin" />
-                              : <Power className="w-4 h-4" />}
-                          </button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -298,14 +202,17 @@ export default function KetuaUsersPage() {
                   <button 
                     disabled={currentPage === 1} 
                     onClick={() => setCurrentPage(p => p - 1)} 
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
+                    className="px-3 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Sebelumnya
                   </button>
+                  <span className="text-xs text-gray-500 self-center">
+                    Hal {currentPage} dari {Math.max(1, totalPages)}
+                  </span>
                   <button 
-                    disabled={currentPage === totalPages} 
+                    disabled={currentPage >= totalPages} 
                     onClick={() => setCurrentPage(p => p + 1)} 
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
+                    className="px-3 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Selanjutnya
                   </button>
@@ -315,61 +222,6 @@ export default function KetuaUsersPage() {
           </div>
         )}
       </div>
-
-      {/* Modal hasil reset password — tampil SEKALI */}
-      {resetResult && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">Password Berhasil Direset</h3>
-              <button
-                onClick={() => setResetResult(null)}
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="flex items-start gap-3 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                <p>
-                  Password baru untuk <strong>{resetResult.nama}</strong> (@{resetResult.username}).
-                  Notifikasi juga sudah dikirim ke user tersebut.
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-xs text-gray-400 mb-1">Password baru:</p>
-                <div className="flex items-center justify-between gap-2">
-                  <code className="text-lg font-bold text-gray-900 tracking-wide">
-                    {resetResult.password_baru}
-                  </code>
-                  <button
-                    onClick={copyPassword}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-                  >
-                    {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? 'Tersalin' : 'Salin'}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-start gap-2 text-sm text-orange-700 bg-orange-50 p-3 rounded-lg">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <p>
-                  <strong>Catat sekarang!</strong> Password ini hanya ditampilkan sekali dan tidak
-                  bisa dilihat lagi. Sampaikan ke user melalui jalur yang aman.
-                </p>
-              </div>
-              <button
-                onClick={() => setResetResult(null)}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-

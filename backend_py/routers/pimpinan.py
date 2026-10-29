@@ -131,6 +131,17 @@ async def toggle_user_active(
     current_user: dict = Depends(verify_pimpinan),
     db=Depends(get_db)
 ):
+    # Fitur aktivasi / penonaktifkan akun khusus Staff IT
+    is_it = (
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("is_it") or
+        current_user.get("role_id") == 3
+    )
+    if not is_it:
+        raise HTTPException(
+            status_code=403,
+            detail="Akses ditolak: Fitur kelola status user hanya dapat dilakukan oleh Staff IT"
+        )
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, role_id, is_active, satker_id FROM users WHERE id = %s", (user_id,))
         user_row = cursor.fetchone()
@@ -176,6 +187,17 @@ async def reset_user_password(
     current_user: dict = Depends(verify_pimpinan),
     db=Depends(get_db)
 ):
+    # Fitur reset password user khusus Staff IT
+    is_it = (
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("is_it") or
+        current_user.get("role_id") == 3
+    )
+    if not is_it:
+        raise HTTPException(
+            status_code=403,
+            detail="Akses ditolak: Fitur reset password user hanya dapat dilakukan oleh Staff IT"
+        )
     password_baru = body.get("password_baru")
     if not password_baru or len(password_baru) < 6:
         return {"success": False, "message": "Password baru minimal 6 karakter"}

@@ -312,6 +312,17 @@ async def toggle_user_active(
     current_user: dict = Depends(verify_eselon_1),
     db=Depends(get_db)
 ):
+    # Fitur aktivasi / penonaktifkan akun khusus Staff IT
+    is_it = (
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("is_it") or
+        current_user.get("role_id") == 3
+    )
+    if not is_it:
+        raise HTTPException(
+            status_code=403,
+            detail="Akses ditolak: Fitur kelola status user hanya dapat dilakukan oleh Staff IT"
+        )
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, role_id, nama, is_active FROM users WHERE id = %s", (user_id,))
         user_row = cursor.fetchone()
@@ -358,6 +369,17 @@ async def reset_password(
     current_user: dict = Depends(verify_eselon_1),
     db=Depends(get_db)
 ):
+    # Fitur reset password user khusus Staff IT
+    is_it = (
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("is_it") or
+        current_user.get("role_id") == 3
+    )
+    if not is_it:
+        raise HTTPException(
+            status_code=403,
+            detail="Akses ditolak: Fitur reset password user hanya dapat dilakukan oleh Staff IT"
+        )
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             SELECT u.id, u.nama, u.username, u.role_id, u.tingkat_id, u.satker_id, s.eselon_1_id
