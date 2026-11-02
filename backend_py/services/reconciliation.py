@@ -364,13 +364,19 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     """
     pages_text: List[str] = []
     tables_data = []
+    has_images = False
+    total_pages = 0
 
     try:
         with pdfplumber.open(file_source) as pdf:
+            total_pages = len(pdf.pages)
             # Baca hingga 30 halaman untuk memastikan seluruh transaksi terbaca
             for page in pdf.pages[:30]:
                 pt = page.extract_text() or ""
                 pages_text.append(pt)
+                
+                if hasattr(page, 'images') and len(page.images) > 0:
+                    has_images = True
                 
                 extracted_tables = page.extract_tables()
                 if extracted_tables:
@@ -379,8 +385,15 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": f"Gagal membaca PDF: {str(e)}"}
 
-    full_text = "\n".join(pages_text)
+    full_text = "\n".join(pages_text).strip()
     combined_search_text = f"{filename}\n{full_text}" if filename else full_text
+
+    # Deteksi apakah PDF berupa scan gambar (JPG, JPEG, PNG) tanpa teks digital yang bisa dibaca
+    is_scanned_image = False
+    warning_msg = None
+    if len(full_text) < 30 and (has_images or total_pages > 0):
+        is_scanned_image = True
+        warning_msg = "Dokumen PDF terdeteksi berupa hasil scan atau gambar tanpa teks digital. Sistem tidak dapat membaca data secara otomatis, mohon isi formulir secara manual."
 
     meta = extract_metadata_from_text(combined_search_text)
     bank, rek, nama_rek = extract_bank_info(combined_search_text)
@@ -439,6 +452,8 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
         "deskripsi": f"Hasil ekstraksi otomatis dokumen {meta['kategori']} Tahun {meta['tahun']}" + (f" - {bank}" if bank else ""),
         "confidence": "high" if meta["nominal"] is not None or meta.get("kategori") in ["Surat Pembukaan Rekening Koran", "Surat Penutupan Rekening Koran"] else "medium",
         "raw_text_snippet": full_text[:400],
+        "is_scanned_image": is_scanned_image,
+        "warning": warning_msg,
     }
 
 def extract_from_excel(file_source: Any) -> Dict[str, Any]:
@@ -535,6 +550,20 @@ def scan_uploaded_file(file_bytes: bytes, filename: str) -> Dict[str, Any]:
         result = extract_from_pdf(stream, filename=filename)
     elif ext in [".xlsx", ".xls"]:
         result = extract_from_excel(stream)
+    elif ext in [".jpg", ".jpeg", ".png"]:
+        result = {
+            "success": True,
+            "judul": os.path.splitext(filename)[0].replace("_", " "),
+            "tahun": 2026,
+            "kategori": "Lainnya",
+            "nominal": None,
+            "bank": None,
+            "nomor_rekening": None,
+            "nama_rekening": None,
+            "confidence": "low",
+            "is_scanned_image": True,
+            "warning": "Dokumen berupa gambar (JPG/PNG). Sistem tidak dapat membaca data secara otomatis, mohon isi formulir secara manual."
+        }
     else:
         # Fallback text scan
         result = {
@@ -543,7 +572,9 @@ def scan_uploaded_file(file_bytes: bytes, filename: str) -> Dict[str, Any]:
             "tahun": 2026,
             "kategori": "Lainnya",
             "nominal": None,
-            "confidence": "low"
+            "confidence": "low",
+            "is_scanned_image": False,
+            "warning": None
         }
 
     # Formatkan hasil agar drop-in compatible dengan UploadModal frontend

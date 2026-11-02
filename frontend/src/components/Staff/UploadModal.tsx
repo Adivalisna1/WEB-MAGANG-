@@ -177,6 +177,13 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
         filled.push('deskripsi');
       }
       setAiFilledFields(filled);
+
+      // Jika dokumen berupa scan/gambar (JPG/PNG) atau tidak ada data yang terbaca
+      if (result.is_scanned_image || result.warning || (filled.length === 0 && !result.nominal && !result.bank)) {
+        const warnText = result.warning || 'Web tidak dapat membaca teks dari dokumen ini (berupa hasil scan/gambar JPG/PNG). Mohon isi formulir secara manual.';
+        setAiError(warnText);
+        toast.error('Web tidak bisa membaca dokumen scan/gambar. Mohon isi form secara manual.', { duration: 5000 });
+      }
     } catch (err: any) {
       setAiError(err.message || 'AI tidak bisa membaca file ini');
     } finally {
