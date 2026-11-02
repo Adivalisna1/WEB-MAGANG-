@@ -113,11 +113,11 @@ export default function LoginPage() {
 
         {/* Center Content & Illustration */}
         <div className="relative z-10 my-auto py-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-[36px] xl:text-[40px] font-extrabold text-white leading-[1.25] max-w-xl tracking-tight mb-4">
-            Web untuk Upload, Laporan, Bukti Pembelian dan Penjualan, serta Rekening Koran.
+          <h1 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-extrabold text-white leading-[1.2] max-w-xl tracking-tight mb-4">
+            Pusat Pengelolaan Bukti Transaksi, Rekening Koran, dan Laporan Satker.
           </h1>
           <p className="text-white/90 text-base sm:text-lg max-w-lg leading-relaxed mb-8 sm:mb-10">
-            Masuk untuk mengelola dan memverifikasi seluruh berkas transaksi serta rekening koran dengan cepat dan aman.
+            Sederhanakan arsip bukti pengeluaran, pendapatan, dan pencocokan saldo kas bank dalam satu sistem terintegrasi.
           </p>
 
           {/* Vektor Kartu Data & Verifikasi (Proporsional & Besar sesuai Monitor 1080p) */}
