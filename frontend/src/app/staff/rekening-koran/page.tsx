@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getSession } from '@/lib/auth';
 import { useSearchParams } from 'next/navigation';
 import Pagination from '@/components/ui/Pagination';
+import UploadModal from '@/components/Staff/UploadModal';
 import {
   FileSpreadsheet,
   Download,
@@ -217,6 +218,7 @@ export default function KertasKerjaPage() {
   const itemsPerPage = 40;
 
   const [userRole, setUserRole] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Edit State
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
@@ -588,6 +590,14 @@ export default function KertasKerjaPage() {
             Rekapitulasi Relasi Kode Bank, Nama Bank, Nomor Rekening, dan Total Saldo Aktif.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowUploadModal(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+        >
+          <Plus className="w-4 h-4" /> Unggah Rekening Koran (Satuan / Folder / ZIP)
+        </button>
       </div>
 
       {/* Ringkasan Saldo Per Bank */}
@@ -1150,6 +1160,16 @@ export default function KertasKerjaPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Upload Rekening Koran (Satuan / Folder / ZIP) */}
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={() => {
+          setShowUploadModal(false);
+          fetchData();
+        }}
+      />
     </div>
   );
 }

@@ -3,7 +3,12 @@ import time
 import math
 import asyncio
 import datetime
-from typing import Optional
+import zipfile
+import io
+import uuid
+import shutil
+from typing import Optional, List
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, File, UploadFile, Form, Header
 from fastapi.responses import FileResponse, Response
 from auth import get_current_user, require_admin_it
@@ -945,5 +950,262 @@ async def rescan_dokumen(
             "nilai_excel": val_exc
         }
     }
+
+class BatchSaveItem(BaseModel):
+    temp_filename: str
+    file_nama: str
+    judul: str
+    tahun: int
+    kategori_id: int
+    bulan: Optional[int] = None
+    semester: Optional[int] = None
+    nama_bank: Optional[str] = None
+    nomor_rekening: Optional[str] = None
+    nama_rekening: Optional[str] = None
+    nominal: Optional[float] = None
+    tanggal_surat: Optional[str] = None
+    deskripsi: Optional[str] = None
+
+class BatchSaveRequest(BaseModel):
+    batch_id: str
+    items: List[BatchSaveItem]
+
+@router.post("/batch-scan")
+async def batch_scan_dokumen(
+    zip_file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
+    user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """
+    Scan masal file dari file ZIP atau dari 1 folder (multiple file picker).
+    Mengekstrak bank, no rek, nama rek, dan saldo akhir tiap dokumen secara otomatis.
+    """
+    is_uploader = (
+        user.get("role") in ["operator", "it", "admin_it", "staff_satker"] or
+        user.get("role_id") in [1, 3]
+    )
+    if not is_uploader:
+        raise HTTPException(403, "Hanya Operator Pelaksana yang berhak mengunggah dokumen")
+
+    batch_id = f"batch_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+    batch_dir = os.path.join(UPLOAD_DIR, "temp_batch", batch_id)
+    os.makedirs(batch_dir, exist_ok=True)
+
+    extracted_files = [] # list of (safe_temp_name, original_filename, file_bytes)
+
+    # 1. Dari File ZIP
+    if zip_file:
+        zip_content = await zip_file.read()
+        try:
+            with zipfile.ZipFile(io.BytesIO(zip_content)) as z:
+                idx = 0
+                for info in z.infolist():
+                    if info.is_dir():
+                        continue
+                    fname = os.path.basename(info.filename)
+                    if not fname or fname.startswith(".") or fname.startswith("__MACOSX"):
+                        continue
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext not in ALLOWED_EXTENSIONS:
+                        continue
+                    
+                    idx += 1
+                    file_bytes = z.read(info.filename)
+                    safe_temp_name = f"doc_{idx:03d}_{int(time.time()*1000)}{ext}"
+                    temp_path = os.path.join(batch_dir, safe_temp_name)
+                    with open(temp_path, "wb") as f_out:
+                        f_out.write(file_bytes)
+                    extracted_files.append((safe_temp_name, fname, file_bytes))
+        except Exception as e:
+            shutil.rmtree(batch_dir, ignore_errors=True)
+            raise HTTPException(400, f"Gagal membaca file ZIP: {str(e)}")
+
+    # 2. Dari List File / Folder Picker
+    elif files:
+        idx = 0
+        for f in files:
+            fname = f.filename or ""
+            if not fname or fname.startswith("."):
+                continue
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                continue
+            idx += 1
+            file_bytes = await f.read()
+            safe_temp_name = f"doc_{idx:03d}_{int(time.time()*1000)}{ext}"
+            temp_path = os.path.join(batch_dir, safe_temp_name)
+            with open(temp_path, "wb") as f_out:
+                f_out.write(file_bytes)
+            extracted_files.append((safe_temp_name, fname, file_bytes))
+
+    if not extracted_files:
+        shutil.rmtree(batch_dir, ignore_errors=True)
+        raise HTTPException(400, "Tidak ada file dokumen yang valid ditemukan (.pdf, .xlsx, .xls, .jpg, .png)")
+
+    # 3. Scan tiap file secara mandiri
+    items = []
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, nama, slug FROM kategori_dokumen WHERE is_active = 1")
+        all_kats = cursor.fetchall()
+
+    for idx, (temp_name, orig_name, f_bytes) in enumerate(extracted_files):
+        try:
+            scan_res = scan_uploaded_file(f_bytes, orig_name)
+        except Exception as e:
+            scan_res = {
+                "success": False,
+                "error": str(e),
+                "nominal": None,
+                "confidence": "low"
+            }
+
+        detected_kat_name = scan_res.get("kategori") or "Rekening_koran"
+        matched_kat_id = 1
+        for k in all_kats:
+            if k["slug"].lower() in detected_kat_name.lower() or detected_kat_name.lower() in k["nama"].lower():
+                matched_kat_id = k["id"]
+                break
+
+        bulan_num = scan_res.get("bulan")
+        tahun_num = scan_res.get("tahun") or datetime.date.today().year
+
+        items.append({
+            "temp_id": idx + 1,
+            "temp_filename": temp_name,
+            "file_nama": orig_name,
+            "judul": scan_res.get("judul") or os.path.splitext(orig_name)[0].replace("_", " "),
+            "tahun": tahun_num,
+            "bulan": bulan_num,
+            "kategori_id": matched_kat_id,
+            "nama_bank": scan_res.get("bank") or "",
+            "nomor_rekening": scan_res.get("nomor_rekening") or "",
+            "nama_rekening": scan_res.get("nama_rekening") or "",
+            "nominal": scan_res.get("nominal"),
+            "tanggal_surat": scan_res.get("tanggal_surat") or "",
+            "deskripsi": scan_res.get("deskripsi") or "",
+            "is_scanned_image": scan_res.get("is_scanned_image", False),
+            "warning": scan_res.get("warning"),
+            "file_size": len(f_bytes)
+        })
+
+    return {
+        "success": True,
+        "batch_id": batch_id,
+        "total_files": len(items),
+        "items": items
+    }
+
+@router.post("/batch-save")
+async def batch_save_dokumen(
+    payload: BatchSaveRequest,
+    request: Request,
+    user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """
+    Menyimpan sekaligus seluruh dokumen hasil konfirmasi batch upload ke database dan penyimpanan berkas.
+    """
+    is_uploader = (
+        user.get("role") in ["operator", "it", "admin_it", "staff_satker"] or
+        user.get("role_id") in [1, 3]
+    )
+    if not is_uploader:
+        raise HTTPException(403, "Hanya Operator Pelaksana yang berhak mengunggah dokumen")
+
+    batch_dir = os.path.join(UPLOAD_DIR, "temp_batch", payload.batch_id)
+    if not os.path.exists(batch_dir):
+        raise HTTPException(400, "Sesi batch upload telah kedaluwarsa atau berkas tidak ditemukan")
+
+    saved_items = []
+    created_by = user["id"]
+    satker_id = user.get("satker_id")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, nama, slug FROM kategori_dokumen")
+        kat_map = {k["id"]: k for k in cursor.fetchall()}
+
+        for item in payload.items:
+            temp_path = os.path.join(batch_dir, item.temp_filename)
+            if not os.path.exists(temp_path):
+                continue
+
+            file_size = os.path.getsize(temp_path)
+            ext = os.path.splitext(item.file_nama)[1].lower()
+            base_name = os.path.splitext(item.file_nama)[0].replace(' ', '-').lower()
+            unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
+
+            # Simpan file permanen ke UPLOAD_DIR/{item.tahun}/{unique_name}
+            key = f"{item.tahun}/{unique_name}"
+            perm_path = os.path.join(UPLOAD_DIR, key)
+            os.makedirs(os.path.dirname(perm_path), exist_ok=True)
+            shutil.copyfile(temp_path, perm_path)
+
+            kat_info = kat_map.get(item.kategori_id)
+            is_surat_rek = bool(kat_info and kat_info.get("slug") in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"])
+            status_awal = 'menunggu_verifikasi' if is_surat_rek else 'terverifikasi'
+
+            final_nom = float(item.nominal) if item.nominal is not None and not is_surat_rek else None
+
+            # 1. Insert ke tabel dokumen
+            cursor.execute("""
+                INSERT INTO dokumen
+                (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, deskripsi, tahun, bulan, semester,
+                 file_nama, file_path, file_size, file_mime, status, is_public,
+                 nilai_rekening_koran, nilai_excel)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+            """, (
+                item.kategori_id, created_by, item.judul, item.nama_bank, item.nomor_rekening,
+                item.tanggal_surat or None, item.nama_rekening, item.deskripsi, item.tahun,
+                item.bulan, item.semester, item.file_nama, key, file_size,
+                "application/pdf" if ext == ".pdf" else "application/octet-stream",
+                status_awal, final_nom, final_nom
+            ))
+            doc_id = cursor.lastrowid
+            nomor_laporan = buat_nomor_laporan(kat_info["slug"] if kat_info else "", item.tahun, doc_id)
+            cursor.execute("UPDATE dokumen SET nomor_laporan = %s WHERE id = %s", (nomor_laporan, doc_id))
+
+            # 2. Insert ke rekening_koran jika kategori Rekening Koran
+            BULAN_NAMES_ID = {
+                1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+                5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+                9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+            }
+            final_periode = f"{BULAN_NAMES_ID.get(item.bulan, 'September')} {item.tahun}" if item.bulan else f"{item.tahun}"
+
+            is_rek_koran = bool(
+                item.nama_bank or
+                (kat_info and "rekening" in kat_info["nama"].lower() and not is_surat_rek) or
+                item.kategori_id == 1
+            )
+            if is_rek_koran:
+                cursor.execute("""
+                    INSERT INTO rekening_koran (
+                        satker_id, uploaded_by, dokumen_id, nama_bank, nomor_rekening_bank,
+                        nama_rekening, saldo_akhir_bulan, keterangan, tahun, periode, is_active
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
+                """, (
+                    satker_id, created_by, doc_id, item.nama_bank or "-",
+                    item.nomor_rekening or "-", item.nama_rekening or "-",
+                    final_nom or 0.0, item.deskripsi or "-", item.tahun, final_periode
+                ))
+
+            saved_items.append(doc_id)
+
+        db.commit()
+
+    # Bersihkan folder temporary
+    shutil.rmtree(batch_dir, ignore_errors=True)
+
+    await catat_log(db, created_by, "upload_batch", "dokumen", saved_items[0] if saved_items else 0, {
+        "batch_id": payload.batch_id, "total_saved": len(saved_items)
+    }, request.client.host if request.client else "127.0.0.1")
+
+    return {
+        "success": True,
+        "message": f"Berhasil menyimpan {len(saved_items)} berkas sekaligus!",
+        "saved_count": len(saved_items)
+    }
+
 
 
