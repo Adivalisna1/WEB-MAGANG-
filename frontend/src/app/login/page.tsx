@@ -1,44 +1,44 @@
-'use client';
+"use client";
 
-import { useState, FormEvent, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { clearSession } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import toast from 'react-hot-toast';
-import { 
-  Landmark, 
-  User, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Loader2, 
-  AlertCircle, 
-  Check, 
-  ChevronLeft 
-} from 'lucide-react';
+import { useState, FormEvent, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { clearSession } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import {
+  Landmark,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  Check,
+  ChevronLeft,
+} from "lucide-react";
 
 export default function LoginPage() {
   const { loginFn, user, loading } = useAuth();
   const router = useRouter();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Kalau sudah login, redirect sesuai role & tingkat (kecuali jika ada param switch / logout)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('logout') === 'true') {
+      if (params.get("logout") === "true") {
         clearSession();
-        window.location.href = '/login';
+        window.location.href = "/login";
         return;
       }
-      if (params.get('switch') === 'true') {
+      if (params.get("switch") === "true") {
         return;
       }
     }
@@ -47,47 +47,59 @@ export default function LoginPage() {
       const t = user.tingkat;
       const isIt = Boolean(
         user.is_it ||
-        r === 'admin_it' ||
-        r === 'it' ||
-        (t === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
+        r === "admin_it" ||
+        r === "it" ||
+        (t === "kl" &&
+          (user.permissions?.can_manage_users ||
+            ["it_admin", "naufal"].includes(user.username))),
       );
-      if (isIt) router.replace('/admin-it');
-      else if (t === 'kl') router.replace('/kl');
-      else if (r === 'eselon_1' || t === 'eselon_1') router.replace('/eselon-1');
-      else if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) router.replace('/pimpinan');
-      else router.replace('/staff/dokumen');
+      if (isIt) router.replace("/admin-it");
+      else if (t === "kl") router.replace("/kl");
+      else if (r === "eselon_1" || t === "eselon_1")
+        router.replace("/eselon-1");
+      else if (
+        r === "pimpinan_satker" ||
+        (t === "satker" && (r === "manajemen" || r === "administrasi"))
+      )
+        router.replace("/pimpinan");
+      else router.replace("/staff/dokumen");
     }
   }, [user, loading, router]);
 
   // Cek apakah user baru saja ketendang (kicked)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('kicked') === 'true') {
-        setError('Sesi Anda dihentikan karena akun ini baru saja login di perangkat atau jaringan lain.');
+      if (params.get("kicked") === "true") {
+        setError(
+          "Sesi Anda dihentikan karena akun ini baru saja login di perangkat atau jaringan lain.",
+        );
       }
     }
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setSubmitting(true);
     try {
       await loginFn(username, password);
-      if (password === '123456') {
-        toast('Akun Anda masih menggunakan password default. Segera ganti password demi keamanan!', {
-          icon: '⚠️',
-          duration: 8000,
-          style: {
-            background: '#fff3cd',
-            color: '#856404',
-            border: '1px solid #ffeeba'
-          }
-        });
+      if (password === "123456") {
+        toast(
+          "Akun Anda masih menggunakan password default. Segera ganti password demi keamanan!",
+          {
+            icon: "⚠️",
+            duration: 8000,
+            style: {
+              background: "#fff3cd",
+              color: "#856404",
+              border: "1px solid #ffeeba",
+            },
+          },
+        );
       }
     } catch (err: any) {
-      setError(err.message || 'Username atau password salah');
+      setError(err.message || "Username atau password salah");
     } finally {
       setSubmitting(false);
     }
@@ -95,12 +107,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white selection:bg-blue-100 selection:text-[#1D64EC]">
-      
       {/* ============================================================ */}
       {/* SISI KIRI (HERO & BRANDING VISUAL - PROPORSI BESAR & MEGAH)  */}
       {/* ============================================================ */}
       <div className="lg:w-1/2 bg-[#1D64EC] flex flex-col justify-between p-8 sm:p-12 lg:p-16 xl:p-20 relative overflow-hidden text-white shrink-0 min-h-screen lg:h-screen">
-        
         {/* Header Branding */}
         <div className="relative z-10 flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#1D64EC] shadow-md shrink-0">
@@ -114,10 +124,12 @@ export default function LoginPage() {
         {/* Center Content & Illustration */}
         <div className="relative z-10 my-auto py-8">
           <h1 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-extrabold text-white leading-[1.2] max-w-xl tracking-tight mb-4">
-            Pusat Pengelolaan Bukti Transaksi, Rekening Koran, dan Laporan Satker.
+            Pusat Pengelolaan Bukti Transaksi, Rekening Koran, dan Laporan
+            Satker.
           </h1>
           <p className="text-white/90 text-base sm:text-lg max-w-lg leading-relaxed mb-8 sm:mb-10">
-            Sederhanakan arsip bukti pengeluaran, pendapatan, dan pencocokan saldo kas bank dalam satu sistem terintegrasi.
+            Sederhanakan arsip bukti pengeluaran, pendapatan, dan pencocokan
+            saldo kas bank dalam satu sistem terintegrasi.
           </p>
 
           {/* Vektor Kartu Data & Verifikasi (Proporsional & Besar sesuai Monitor 1080p) */}
@@ -125,7 +137,7 @@ export default function LoginPage() {
             {/* Soft decorative background circles */}
             <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
             <div className="absolute -right-6 top-1/4 w-36 h-36 rounded-full bg-white/15 blur-xl pointer-events-none" />
-            
+
             {/* Outer Window Card */}
             <div className="relative bg-[#EAF2FE] rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-white/70">
               {/* Window dots & top bar */}
@@ -140,11 +152,28 @@ export default function LoginPage() {
                 {/* Mini Graph Card */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-50 flex-1 min-h-[140px] flex flex-col justify-between">
                   <div className="w-14 h-2 bg-[#E2EDFC] rounded-full" />
-                  <svg viewBox="0 0 100 45" className="w-full h-16 overflow-visible my-2">
+                  <svg
+                    viewBox="0 0 100 45"
+                    className="w-full h-16 overflow-visible my-2"
+                  >
                     <defs>
-                      <linearGradient id="chartFillLarge" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#1D64EC" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#1D64EC" stopOpacity="0.0" />
+                      <linearGradient
+                        id="chartFillLarge"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#1D64EC"
+                          stopOpacity="0.3"
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#1D64EC"
+                          stopOpacity="0.0"
+                        />
                       </linearGradient>
                     </defs>
                     <path
@@ -177,32 +206,16 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* 3 Poin Fitur (Diletakkan di alur tengah agar tidak bertabrakan dengan gelombang bawah) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 pt-6 max-w-[480px]">
-            <div className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center shrink-0">
-                <Check className="w-3 h-3 text-white stroke-[3]" />
-              </span>
-              <span className="text-xs sm:text-sm text-white font-medium">Integrasi Bank Otomatis</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center shrink-0">
-                <Check className="w-3 h-3 text-white stroke-[3]" />
-              </span>
-              <span className="text-xs sm:text-sm text-white font-medium">Validasi Laporan Cepat</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center shrink-0">
-                <Check className="w-3 h-3 text-white stroke-[3]" />
-              </span>
-              <span className="text-xs sm:text-sm text-white font-medium">Keamanan Data Terjamin</span>
-            </div>
-          </div>
+
         </div>
 
         {/* Dynamic Dark Wave Ribbon di Bagian Bawah */}
         <div className="absolute bottom-0 left-0 right-0 pointer-events-none overflow-hidden h-40 sm:h-52 z-0">
-          <svg viewBox="0 0 600 160" preserveAspectRatio="none" className="w-full h-full">
+          <svg
+            viewBox="0 0 600 160"
+            preserveAspectRatio="none"
+            className="w-full h-full"
+          >
             {/* Lapis Gelombang Biru Tua */}
             <path
               d="M 0 110 C 140 70 290 140 600 70 L 600 160 L 0 160 Z"
@@ -223,13 +236,11 @@ export default function LoginPage() {
       {/* SISI KANAN (FORM LOGIN MEWAH, LEGA, & UX SANGAT NYAMAN)      */}
       {/* ============================================================ */}
       <div className="lg:w-1/2 flex flex-col justify-between p-8 sm:p-12 lg:p-16 xl:p-20 bg-white min-h-screen lg:h-screen lg:overflow-y-auto">
-        
         {/* Spacer atas */}
         <div className="hidden lg:block"></div>
 
         {/* Form Container (Lega & Nyaman) */}
         <div className="w-full max-w-[460px] mx-auto my-auto py-6">
-          
           {/* Blue accent bar */}
           <div className="w-12 h-1.5 bg-[#1D64EC] rounded-full mb-6"></div>
 
@@ -238,16 +249,20 @@ export default function LoginPage() {
             <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-slate-800 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">Sesi Masih Aktif</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
+                    Sesi Masih Aktif
+                  </span>
                   <p className="font-extrabold text-sm text-slate-900 truncate">
-                    {user.nama} ({user.satker_nama || user.eselon_1_singkatan || user.role})
+                    {user.nama} (
+                    {user.satker_nama || user.eselon_1_singkatan || user.role})
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
                     clearSession();
-                    if (typeof window !== 'undefined') window.location.href = '/login';
+                    if (typeof window !== "undefined")
+                      window.location.href = "/login";
                   }}
                   className="px-3 py-1.5 text-xs font-bold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer text-center"
                 >
@@ -275,10 +290,12 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            
             {/* Field Username */}
             <div>
-              <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-2">
+              <label
+                htmlFor="username"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
                 Username
               </label>
               <div className="relative rounded-xl border border-gray-200 bg-white focus-within:border-[#1D64EC] focus-within:ring-4 focus-within:ring-[#1D64EC]/10 transition-all shadow-sm">
@@ -287,7 +304,7 @@ export default function LoginPage() {
                   id="username"
                   type="text"
                   value={username}
-                  onChange={e => setUsername(e.target.value)}
+                  onChange={(e) => setUsername(e.target.value)}
                   placeholder="Masukkan username"
                   required
                   autoComplete="username"
@@ -298,16 +315,19 @@ export default function LoginPage() {
 
             {/* Field Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative rounded-xl border border-gray-200 bg-white focus-within:border-[#1D64EC] focus-within:ring-4 focus-within:ring-[#1D64EC]/10 transition-all shadow-sm">
                 <Lock className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   id="password"
-                  type={showPass ? 'text' : 'password'}
+                  type={showPass ? "text" : "password"}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
                   required
                   autoComplete="current-password"
@@ -317,9 +337,15 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPass(!showPass)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                  aria-label={showPass ? 'Sembunyikan password' : 'Tampilkan password'}
+                  aria-label={
+                    showPass ? "Sembunyikan password" : "Tampilkan password"
+                  }
                 >
-                  {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPass ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -330,7 +356,7 @@ export default function LoginPage() {
                 <input
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-[#1D64EC] focus:ring-[#1D64EC]"
                 />
                 <span className="text-sm text-gray-600">Ingat saya</span>
@@ -351,7 +377,7 @@ export default function LoginPage() {
               className="w-full py-3.5 px-6 bg-[#1D64EC] hover:bg-[#1552C6] active:bg-[#0E45B0] text-white text-base font-semibold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2"
             >
               {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
-              {submitting ? 'Memproses...' : 'Masuk'}
+              {submitting ? "Memproses..." : "Masuk"}
             </button>
           </form>
 
@@ -372,7 +398,6 @@ export default function LoginPage() {
           © 2026 Portal Rekonsiliasi Satker
         </p>
       </div>
-
     </div>
   );
 }
