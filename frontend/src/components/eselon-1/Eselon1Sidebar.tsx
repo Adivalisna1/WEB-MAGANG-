@@ -66,7 +66,7 @@ export default function Eselon1Sidebar({
         {
           href: "/eselon-1",
           icon: LayoutDashboard,
-          label: "Dashboard Eksekutif",
+          label: "Dashboard",
           exact: true,
         },
         {
