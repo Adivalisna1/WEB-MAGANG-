@@ -968,11 +968,13 @@ async def rescan_dokumen(
     if not os.path.exists(file_path):
         raise HTTPException(404, "File fisik berkas tidak ditemukan di server")
 
-    with open(file_path, "rb") as f:
-        content = f.read()
-
     filename = dok["file_nama"] or "dokumen.pdf"
-    scan_res = scan_uploaded_file(content, filename)
+    try:
+        with open(file_path, "rb") as f:
+            content = f.read()
+        scan_res = scan_uploaded_file(content, filename)
+    except Exception as e:
+        scan_res = {"nominal": None, "warning": f"Gagal membaca teks otomatis berkas: {str(e)}"}
 
     nom = scan_res.get("nominal")
     val_rek = dok["nilai_rekening_koran"] if dok["nilai_rekening_koran"] is not None else nom

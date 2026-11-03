@@ -149,6 +149,8 @@ def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional
 
 def extract_metadata_from_text(text: str) -> Dict[str, Any]:
     """Ekstraksi metadata judul, tahun, kategori, semester/periode dari teks dokumen."""
+    nama_bulan_list = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+
     # 1. Tahun (2020-2035)
     tahun_match = re.search(r"\b(202[0-9]|203[0-5])\b", text)
     tahun = int(tahun_match.group(1)) if tahun_match else 2026
@@ -183,7 +185,6 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
             bulan = int(m_bulan_str)
 
     if bulan is None:
-        nama_bulan_list = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
         for idx, bname in enumerate(nama_bulan_list, 1):
             if re.search(rf"\b{bname}\b", text, re.IGNORECASE):
                 bulan = idx
