@@ -129,7 +129,7 @@ const formatTanggalIndo = (tanggal?: string) => {
   return String(tanggal).split("T")[0];
 };
 
-// Helper buka file: PDF/DOCX â†’ preview tab baru, Excel â†’ auto download
+// Helper buka file: PDF/DOCX -> preview tab baru, Excel -> auto download
 const openFile = async (bukti_file: string, token: string) => {
   const url = bukti_file.startsWith("http")
     ? bukti_file
@@ -256,8 +256,8 @@ export default function StaffpencatatanPage() {
       if (j.success) {
         toast.success(
           nextActive === 1
-            ? `Bukti diaktifkan â€” Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
-            : `Bukti dinonaktifkan â€” Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
+            ? `Bukti diaktifkan — Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
+            : `Bukti dinonaktifkan — Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
         );
       } else {
         // Rollback jika gagal
@@ -290,6 +290,37 @@ export default function StaffpencatatanPage() {
         String(t.nomor_rekening_bank).trim() !== "",
     );
     return found ? String(found.nomor_rekening_bank) : "";
+  };
+
+  // Cari nama bank dari nomor rekening yang sudah pernah dicatat di riwayat transaksi
+  const findExistingBankForNoRek = (noRek: string) => {
+    if (!noRek) return "";
+    const clean = noRek.replace(/[^\d]/g, "");
+    if (!clean) return "";
+    const found = transaksi.find((t) => {
+      const tClean = String(t.nomor_rekening_bank || "").replace(/[^\d]/g, "");
+      return tClean && (tClean === clean || clean.includes(tClean) || tClean.includes(clean));
+    });
+    return found ? (found.nama_bank || "") : "";
+  };
+
+  // Heuristic cerdas pola nomor rekening perbankan di Indonesia
+  const inferBankFromNoRek = (noRek: string) => {
+    if (!noRek) return "";
+    const clean = noRek.replace(/[^\d]/g, "");
+    // Mandiri: 13 digit berawalan 1 (misal 1220018008808, 137000xxxxxxx)
+    if (clean.length === 13 && clean.startsWith("1")) return "Bank Mandiri";
+    // BRI: 15 atau 14 digit
+    if (clean.length === 15 || clean.length === 14) return "Bank BRI";
+    // BNI: 10 digit berawalan 0
+    if (clean.length === 10 && clean.startsWith("0")) return "Bank BNI";
+    // BSI: 10 digit berawalan 7
+    if (clean.length === 10 && clean.startsWith("7")) return "Bank BSI (Bank Syariah Indonesia)";
+    // BTN: 16 digit
+    if (clean.length === 16) return "Bank BTN";
+    // BCA: 10 digit
+    if (clean.length === 10) return "Bank BCA";
+    return "";
   };
 
   // Handle otomatis scan berkas ketika user memilih file
@@ -339,9 +370,20 @@ export default function StaffpencatatanPage() {
               }
             }
 
-            // 2. Auto deteksi nama Bank & Kode Bank dari berkas
-            if (result.bank) {
-              const bName = result.bank.toLowerCase().trim();
+            // 2. Auto deteksi nomor rekening jika terdeteksi
+            const scannedRek = result.nomor_rekening ? String(result.nomor_rekening) : "";
+            if (scannedRek) {
+              updated.nomor_rekening_bank = scannedRek;
+            }
+
+            // 3. Auto deteksi nama Bank & Kode Bank dari berkas atau relasi nomor rekening
+            let rawBank = result.bank || "";
+            if (!rawBank && scannedRek) {
+              rawBank = findExistingBankForNoRek(scannedRek) || inferBankFromNoRek(scannedRek);
+            }
+
+            if (rawBank) {
+              const bName = rawBank.toLowerCase().trim();
               let matchedBank = BANK_BUMN_LIST.find((b) => {
                 const cleanB = b.toLowerCase().replace("bank ", "").trim();
                 return (
@@ -351,14 +393,14 @@ export default function StaffpencatatanPage() {
                 );
               });
               if (!matchedBank) {
-                matchedBank = result.bank || "";
+                matchedBank = normalizeBankKey(rawBank) || rawBank;
               }
-              updated.nama_bank = matchedBank || "";
+              updated.nama_bank = matchedBank;
               updated.kode_bank = getKodeBank(matchedBank);
 
               // Jika nomor rekening belum ada dari scan, coba ambil dari relasi bank yang sudah pernah diupload
-              if (!result.nomor_rekening) {
-                const existingRek = findExistingNoRekForBank(matchedBank || "");
+              if (!scannedRek) {
+                const existingRek = findExistingNoRekForBank(matchedBank);
                 if (existingRek) updated.nomor_rekening_bank = existingRek;
               }
             }
@@ -433,8 +475,9 @@ export default function StaffpencatatanPage() {
 
             // 6. Auto isi uraian jika masih kosong
             if (!prev.uraian) {
-              if (result.bank) {
-                updated.uraian = `Pencatatan Rekening Koran ${result.bank}`;
+              const bankForUraian = updated.nama_bank || result.bank;
+              if (bankForUraian) {
+                updated.uraian = `Pencatatan Rekening Koran ${bankForUraian}`;
               } else if (result.judul) {
                 updated.uraian = `Pencatatan ${result.judul}`;
               }
@@ -443,8 +486,11 @@ export default function StaffpencatatanPage() {
             return updated;
           });
 
-          if (result.bank) {
-            toast.success(`AI: Berkas terbaca dari ${result.bank}!`);
+          const finalBank =
+            result.bank ||
+            (scannedRek ? findExistingBankForNoRek(scannedRek) || inferBankFromNoRek(scannedRek) : "");
+          if (finalBank) {
+            toast.success(`AI: Berkas terbaca dari ${finalBank}!`);
           } else {
             toast.success("AI: Analisis berkas selesai!");
           }
@@ -829,16 +875,18 @@ export default function StaffpencatatanPage() {
               {aiResult &&
                 !aiScanning &&
                 (aiResult.bank ||
+                  formData.nama_bank ||
                   aiResult.nominal ||
-                  aiResult.nomor_rekening) && (
+                  aiResult.nomor_rekening ||
+                  formData.nomor_rekening_bank) && (
                   <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <div className="font-bold text-emerald-800 flex items-center gap-2 flex-wrap">
-                        <span>âœ¨ Analisis Berkas Berhasil:</span>
-                        {aiResult.bank && (
+                        <span>✨ Analisis Berkas Berhasil:</span>
+                        {(aiResult.bank || formData.nama_bank) && (
                           <span className="bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                            [{getKodeBank(aiResult.bank)}] {aiResult.bank}
+                            [{getKodeBank(aiResult.bank || formData.nama_bank)}] {aiResult.bank || formData.nama_bank}
                           </span>
                         )}
                         {aiResult.kategori && (
@@ -848,9 +896,9 @@ export default function StaffpencatatanPage() {
                         )}
                       </div>
                       <p className="text-emerald-700">
-                        {aiResult.bank && (
+                        {(aiResult.bank || formData.nama_bank) && (
                           <span>
-                            Bank <strong>{aiResult.bank}</strong> berhasil
+                            Bank <strong>{aiResult.bank || formData.nama_bank}</strong> berhasil
                             dideteksi.{" "}
                           </span>
                         )}
@@ -867,10 +915,10 @@ export default function StaffpencatatanPage() {
                             .{" "}
                           </span>
                         )}
-                        {aiResult.nomor_rekening && (
+                        {(aiResult.nomor_rekening || formData.nomor_rekening_bank) && (
                           <span>
                             No Rekening:{" "}
-                            <strong>{aiResult.nomor_rekening}</strong>.{" "}
+                            <strong>{aiResult.nomor_rekening || formData.nomor_rekening_bank}</strong>.{" "}
                           </span>
                         )}
                         Form otomatis disesuaikan!
@@ -998,7 +1046,7 @@ export default function StaffpencatatanPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
                     <Building2 className="w-4 h-4 text-blue-600" />
-                    Relasi Identitas Bank (No. Bank â€¢ Nama Bank â€¢ No. Rekening)
+                    Relasi Identitas Bank (No. Bank • Nama Bank • No. Rekening)
                   </span>
                   {formData.nama_bank && (
                     <span className="text-xs font-mono font-bold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">
@@ -1015,11 +1063,13 @@ export default function StaffpencatatanPage() {
                     <select
                       required
                       value={
-                        BANK_BUMN_LIST.includes(formData.nama_bank)
-                          ? formData.nama_bank
-                          : formData.nama_bank
-                            ? formData.nama_bank
-                            : ""
+                        BANK_BUMN_LIST.find(
+                          (b) =>
+                            normalizeBankKey(b) ===
+                            normalizeBankKey(formData.nama_bank),
+                        ) ||
+                        formData.nama_bank ||
+                        ""
                       }
                       onChange={(e) => {
                         const val = e.target.value;
@@ -1038,7 +1088,11 @@ export default function StaffpencatatanPage() {
                     >
                       <option value="">Pilih Bank...</option>
                       {formData.nama_bank &&
-                        !BANK_BUMN_LIST.includes(formData.nama_bank) && (
+                        !BANK_BUMN_LIST.some(
+                          (b) =>
+                            normalizeBankKey(b) ===
+                            normalizeBankKey(formData.nama_bank),
+                        ) && (
                           <option value={formData.nama_bank}>
                             [{getKodeBank(formData.nama_bank)}]{" "}
                             {formData.nama_bank}
@@ -1073,12 +1127,26 @@ export default function StaffpencatatanPage() {
                       type="text"
                       required
                       value={formData.nomor_rekening_bank}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        let nextBank = formData.nama_bank;
+                        let nextKode = formData.kode_bank;
+                        if (!nextBank || nextBank === "Bank Lainnya") {
+                          const autoBank =
+                            findExistingBankForNoRek(val) ||
+                            inferBankFromNoRek(val);
+                          if (autoBank) {
+                            nextBank = autoBank;
+                            nextKode = getKodeBank(autoBank);
+                          }
+                        }
                         setFormData({
                           ...formData,
-                          nomor_rekening_bank: e.target.value,
-                        })
-                      }
+                          nomor_rekening_bank: val,
+                          nama_bank: nextBank,
+                          kode_bank: nextKode,
+                        });
+                      }}
                       placeholder="Contoh: 8100126932121000"
                       className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-white shadow-sm"
                     />
@@ -1115,7 +1183,7 @@ export default function StaffpencatatanPage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
                   <span>Saldo Akhir (Rp) *</span>
                   <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    Kunci Utama #2 â€¢ Menentukan Total Saldo Bank
+                    Kunci Utama #2 • Menentukan Total Saldo Bank
                   </span>
                 </label>
                 <div className="relative">
@@ -1196,7 +1264,7 @@ export default function StaffpencatatanPage() {
                   Kategori Dokumen
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Relasi Bank (No. Bank â€¢ Nama Bank â€¢ No. Rek) & Daftar Bukti
+                  Relasi Bank (No. Bank • Nama Bank • No. Rek) & Daftar Bukti
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                   Saldo Akhir
@@ -1470,7 +1538,7 @@ export default function StaffpencatatanPage() {
                           <strong className="text-gray-800">
                             {item.nomor_rekening_bank || "-"}
                           </strong>{" "}
-                          â€¢ Kode Bank:{" "}
+                          • Kode Bank:{" "}
                           <strong className="text-gray-800">
                             #{getKodeBank(item.nama_bank, item.kode_bank)}
                           </strong>

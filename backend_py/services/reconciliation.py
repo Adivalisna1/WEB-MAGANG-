@@ -7,13 +7,13 @@ import openpyxl
 
 # Daftar Bank Persepsi / Bank Umum di Indonesia
 BANK_PATTERNS = [
-    (r"\b(?:BANK\s+)?BNI\b|\bPT\s+BANK\s+NEGARA\s+INDONESIA\b", "Bank BNI"),
-    (r"\b(?:BANK\s+)?BRI\b|\bPT\s+BANK\s+RAKYAT\s+INDONESIA\b", "Bank BRI"),
-    (r"\b(?:BANK\s+)?MANDIRI\b|\bPT\s+BANK\s+MANDIRI\b", "Bank Mandiri"),
-    (r"\b(?:BANK\s+)?BCA\b|\bPT\s+BANK\s+CENTRAL\s+ASIA\b", "Bank BCA"),
-    (r"\b(?:BANK\s+)?BSI\b|\bPT\s+BANK\s+SYARIAH\s+INDONESIA\b|\bBANK\s+SYARIAH\b|Branch\s*:\s*ID\d{5,8}|\b8101\d{10,14}\b", "Bank BSI"),
-    (r"\b(?:BANK\s+)?BTN\b|\bPT\s+BANK\s+TABUNGAN\s+NEGARA\b", "Bank BTN"),
-    (r"\b(?:BANK\s+)?DANAMON\b|\bPT\s+BANK\s+DANAMON\b", "Bank Danamon"),
+    (r"\b(?:BANK\s+)?BNI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+NEGARA\s+INDONESIA\b|\bBNI\s+DIRECT\b|\bBNI\s+CORPO\b", "Bank BNI"),
+    (r"\b(?:BANK\s+)?BRI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+RAKYAT\s+INDONESIA\b|\bCMS\s+BRI\b|\bBRICASH\b|\bIBBIZ\b|\bIBBIZ\s+BRI\b", "Bank BRI"),
+    (r"\b(?:BANK\s+)?MANDIRI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+MANDIRI\b|\bKOPRA\b|\bMCM\b|\bMANDIRI\s+CASH\s+MANAGEMENT\b|\bLIVIN\b|\bMANDIRI\s+INTERNET\b", "Bank Mandiri"),
+    (r"\b(?:BANK\s+)?BCA\b|\bPT\.?\s*BANK\s+CENTRAL\s+ASIA\b|\bKLIKBCA\b|\bBCA\s+BISNIS\b", "Bank BCA"),
+    (r"\b(?:BANK\s+)?BSI\b|\bPT\.?\s*BANK\s+SYARIAH\s+INDONESIA\b|\bBANK\s+SYARIAH\b|Branch\s*:\s*ID\d{5,8}|\b8101\d{10,14}\b|\bBSI\s+NET\b|\bBSI\s+CASH\b", "Bank BSI"),
+    (r"\b(?:BANK\s+)?BTN\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+TABUNGAN\s+NEGARA\b|\bBTN\s+CASH\b", "Bank BTN"),
+    (r"\b(?:BANK\s+)?DANAMON\b|\bPT\.?\s*BANK\s+DANAMON\b", "Bank Danamon"),
     (r"\bBANK\s+DKI\b", "Bank DKI"),
     (r"\bBANK\s+BJB\b", "Bank BJB"),
     (r"\bBANK\s+JATIM\b", "Bank Jatim"),
@@ -144,6 +144,28 @@ def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional
         # Bersihkan jika terdapat kata kunci header
         if cand_nm and not any(w in cand_nm.upper() for w in ["IDR", "RUPIAH", "INDONESIA", "PERIODE", "TANGGAL", "NOMOR"]):
             detected_nama_rek = cand_nm
+
+    # 6. Fallback cerdas: inferensi nama bank dari pola/digit nomor rekening jika nama bank belum terdeteksi dari teks
+    if not detected_bank and detected_rek:
+        clean_rek = re.sub(r"[^\d]", "", detected_rek)
+        # Bank Mandiri: 13 digit berawalan 1 (misal 1220018008808, 137000xxxxxxx)
+        if len(clean_rek) == 13 and clean_rek.startswith("1"):
+            detected_bank = "Bank Mandiri"
+        # Bank BRI: 15 digit (atau 14 digit)
+        elif len(clean_rek) in (14, 15):
+            detected_bank = "Bank BRI"
+        # Bank BNI: 10 digit berawalan 0
+        elif len(clean_rek) == 10 and clean_rek.startswith("0"):
+            detected_bank = "Bank BNI"
+        # Bank BSI: 10 digit berawalan 7
+        elif len(clean_rek) == 10 and clean_rek.startswith("7"):
+            detected_bank = "Bank BSI"
+        # Bank BTN: 16 digit
+        elif len(clean_rek) == 16:
+            detected_bank = "Bank BTN"
+        # Bank BCA: 10 digit
+        elif len(clean_rek) == 10:
+            detected_bank = "Bank BCA"
 
     return detected_bank, detected_rek, detected_nama_rek
 
@@ -506,7 +528,7 @@ def extract_from_excel(file_source: Any) -> Dict[str, Any]:
 
     full_text = "\n".join(all_text[:30])
     meta = extract_metadata_from_text(full_text)
-    bank, rek = extract_bank_info(full_text)
+    bank, rek, nama_rek = extract_bank_info(full_text)
 
     first_title = sheet.title if sheet.title and sheet.title.lower() != 'sheet1' else "Laporan Buku Kas & Pembukuan Excel"
 
@@ -520,6 +542,7 @@ def extract_from_excel(file_source: Any) -> Dict[str, Any]:
         "nominal": total_nominal or meta["nominal"],
         "bank": bank,
         "nomor_rekening": rek,
+        "nama_rekening": nama_rek,
         "deskripsi": f"Hasil ekstraksi data Excel {meta['kategori']} Tahun {meta['tahun']}",
         "confidence": "high" if total_nominal is not None else "medium",
     }
