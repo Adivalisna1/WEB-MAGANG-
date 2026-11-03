@@ -24,6 +24,7 @@ BANK_PATTERNS = [
 KATEGORI_PATTERNS = [
     (r"PEMBUKAAN\s+REKENING|SURAT\s+(?:IZIN\s+|PERMOHONAN\s+)?PEMBUKAAN|IZIN\s+PEMBUKAAN\s+REKENING", "Surat Pembukaan Rekening Koran"),
     (r"PENUTUPAN\s+REKENING|SURAT\s+(?:PERSETUJUAN\s+|PERMOHONAN\s+)?PENUTUPAN|IZIN\s+PENUTUPAN\s+REKENING", "Surat Penutupan Rekening Koran"),
+    (r"PENETAPAN\s+PIUTANG|SK\s+PIUTANG|SURAT\s+KEPUTUSAN[\s\S]{0,60}PIUTANG|SKTJM|TUNTUTAN\s+GANTI\s+RUGI", "SK Piutang Satker"),
     (r"\bLKjIP\b|LAPORAN\s+KINERJA\s+INSTANSI", "LKjIP"),
     (r"\bRENSTRA\b|RENCANA\s+STRATEGIS", "Renstra"),
     (r"\bRENJA\b|RENCANA\s+KERJA\b", "Renja"),
@@ -250,6 +251,15 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
                     if nominal is not None:
                         break
 
+    nama_debitur = None
+    dasar_temuan = None
+    deb_m = re.search(r"(?:Nama\s*(?:Debitur|Penanggung\s*Utang|Pihak\s*Tertagih|Wajib\s*Bayar)|Debitur)\s*[:=\-]\s*([^\n\r]{3,80})", text, re.IGNORECASE)
+    if deb_m:
+        nama_debitur = deb_m.group(1).strip()
+    bpk_m = re.search(r"(?:Nomor\s*(?:LHP|Temuan|SKTJM|Dasar)|LHP\s*BPK|SKTJM)\s*(?:No\.?|Nomor)?\s*[:=\-]?\s*([A-Za-z0-9/\.\-_]{4,60})", text, re.IGNORECASE)
+    if bpk_m:
+        dasar_temuan = bpk_m.group(1).strip()
+
     return {
         "tahun": tahun,
         "semester": semester,
@@ -257,6 +267,8 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         "kategori": kategori,
         "nominal": nominal,
         "tanggal_surat": tanggal_surat,
+        "nama_debitur": nama_debitur,
+        "dasar_temuan": dasar_temuan,
     }
 
 def extract_chronological_closing_balance(pages_text: List[str], tables_data: List[List[Any]]) -> Optional[float]:
@@ -449,8 +461,10 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
         "nomor_rekening": rek,
         "nama_rekening": nama_rek,
         "tanggal_surat": meta.get("tanggal_surat"),
+        "nama_debitur": meta.get("nama_debitur"),
+        "dasar_temuan": meta.get("dasar_temuan"),
         "deskripsi": f"Hasil ekstraksi otomatis dokumen {meta['kategori']} Tahun {meta['tahun']}" + (f" - {bank}" if bank else ""),
-        "confidence": "high" if meta["nominal"] is not None or meta.get("kategori") in ["Surat Pembukaan Rekening Koran", "Surat Penutupan Rekening Koran"] else "medium",
+        "confidence": "high" if meta["nominal"] is not None or meta.get("kategori") in ["Surat Pembukaan Rekening Koran", "Surat Penutupan Rekening Koran", "SK Piutang Satker"] else "medium",
         "raw_text_snippet": full_text[:400],
         "is_scanned_image": is_scanned_image,
         "warning": warning_msg,

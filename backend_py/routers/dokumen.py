@@ -176,7 +176,7 @@ async def get_all_dokumen(
         
     with db.cursor(dictionary=True) as cursor:
         query = (
-            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.nama_debitur, d.dasar_temuan, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
             "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, "
             "       d.download_count, d.is_public, d.created_at, d.updated_at, "
             "       d.nilai_rekening_koran, d.nilai_excel, "
@@ -225,17 +225,25 @@ async def upload_dokumen(
     nomor_rekening: Optional[str] = Form(None),
     tanggal_surat: Optional[str] = Form(None),
     nama_rekening: Optional[str] = Form(None),
+    nama_debitur: Optional[str] = Form(None),
+    dasar_temuan: Optional[str] = Form(None),
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    is_uploader = (
-        user.get("role") in ["operator", "it", "admin_it", "staff_satker"] or
-        user.get("role_id") in [1, 3] # 1=operator, 3=it
+    is_admin_role = (
+        user.get("role") in ["administrasi", "manajemen", "pimpinan_satker", "it", "admin_it"] or
+        user.get("role_id") in [2, 3] or
+        user.get("is_manajemen") or
+        user.get("is_it")
     )
-    if not is_uploader:
-        raise HTTPException(403, "Hanya Operator Pelaksana yang berhak mengunggah dokumen")
-
+    is_operator_role = (
+        user.get("role") in ["operator", "staff_satker"] or
+        user.get("role_id") == 1 or
+        user.get("is_operator")
+    )
+    if not (is_operator_role or is_admin_role):
+        raise HTTPException(403, "Anda tidak memiliki wewenang mengunggah dokumen")
         
     if not judul: raise HTTPException(400, "Judul wajib diisi")
     
@@ -250,11 +258,21 @@ async def upload_dokumen(
         cursor.execute('SELECT slug, nama FROM kategori_dokumen WHERE id = %s', (kategori_id,))
         kat_row = cursor.fetchone()
         
+    kat_slug = kat_row.get("slug") if kat_row else ""
+    is_sk_piutang = (kat_slug == "sk-piutang-satker")
+    if is_sk_piutang and not is_admin_role:
+        raise HTTPException(403, "Akses ditolak. Dokumen SK Piutang hanya dapat diunggah oleh Akun Administrasi.")
+        
     bulan_final = None if semester else (int(bulan) if bulan else None)
     semester_final = int(semester) if semester else None
     
-    is_surat_rek = bool(kat_row and kat_row.get("slug") in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"])
-    status_awal = 'menunggu_verifikasi' if is_surat_rek else 'draft'
+    is_surat_rek = kat_slug in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"]
+    if is_sk_piutang:
+        status_awal = 'lolos_admin'
+    elif is_surat_rek:
+        status_awal = 'menunggu_verifikasi'
+    else:
+        status_awal = 'draft'
     
     # Validasi format tanggal_surat jika dikirim
     tgl_surat_final = None
@@ -282,11 +300,11 @@ async def upload_dokumen(
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
             INSERT INTO dokumen
-             (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, deskripsi, tahun, bulan, semester,
+             (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
               file_nama, file_path, file_size, file_mime, status, is_public,
               nilai_rekening_koran, nilai_excel)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
-        """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, deskripsi, tahun, bulan_final, semester_final,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+        """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
               filename, r2_key, file_size, file.content_type, status_awal,
               nilai_rekening_koran, nilai_excel))
         insert_id = cursor.lastrowid
@@ -294,8 +312,8 @@ async def upload_dokumen(
         nomor_laporan = buat_nomor_laporan(kat_row["slug"] if kat_row else "", tahun, insert_id)
         cursor.execute('UPDATE dokumen SET nomor_laporan = %s WHERE id = %s', (nomor_laporan, insert_id))
         
-        # Jika Surat Pembukaan / Penutupan, langsung kirim notifikasi ke Admin Eselon 1
-        if is_surat_rek:
+        # Jika Surat Pembukaan / Penutupan atau SK Piutang, langsung kirim notifikasi ke Admin Eselon 1
+        if is_surat_rek or is_sk_piutang:
             satker_target_id = user.get("satker_id")
             cursor.execute("""
                 SELECT u.id FROM users u
@@ -308,11 +326,16 @@ async def upload_dokumen(
                     OR r.nama IN ('it', 'admin_it')
                 ) AND u.is_active = 1
             """, (satker_target_id,))
-            surat_label = "Pembukaan" if kat_row.get("slug") == "surat-pembukaan-rekening-koran" else "Penutupan"
+            if is_sk_piutang:
+                nom_str = f"Rp {int(nilai_rekening_koran):,}".replace(",", ".") if nilai_rekening_koran else "-"
+                notif_msg = f"Pengajuan SK Piutang baru \"{judul}\" (Debitur: {nama_debitur or '-'}, Dasar: {dasar_temuan or '-'}, Nominal: {nom_str}) siap ditinjau dan disahkan Eselon 1"
+            else:
+                surat_label = "Pembukaan" if kat_row.get("slug") == "surat-pembukaan-rekening-koran" else "Penutupan"
+                notif_msg = f"Pengajuan Surat {surat_label} Rekening Koran ({nama_bank or 'Bank'} - {nomor_rekening or '-'}) siap ditinjau dan disetujui"
             for ketua in cursor.fetchall():
                 await buat_notifikasi(
                     db, ketua["id"], "submit", judul,
-                    f"Pengajuan Surat {surat_label} Rekening Koran ({nama_bank or 'Bank'} - {nomor_rekening or '-'}) siap ditinjau dan disetujui",
+                    notif_msg,
                     insert_id
                 )
 
@@ -320,12 +343,12 @@ async def upload_dokumen(
         
     await catat_log(db, user["id"], "upload", "dokumen", insert_id, {
         "judul": judul, "tahun": tahun, "kategori_id": kategori_id, "file_nama": filename, "nomor_laporan": nomor_laporan,
-        "nama_bank": nama_bank, "nomor_rekening": nomor_rekening, "status": status_awal
+        "nama_bank": nama_bank, "nomor_rekening": nomor_rekening, "nama_debitur": nama_debitur, "dasar_temuan": dasar_temuan, "status": status_awal
     }, request.client.host)
     
     return {
         "success": True, 
-        "message": f"Dokumen berhasil diupload{' dan langsung diajukan ke Admin Eselon 1' if is_surat_rek else ''}", 
+        "message": f"Dokumen berhasil diupload{' dan langsung dikirim ke Admin Eselon 1' if (is_surat_rek or is_sk_piutang) else ''}", 
         "data": {"id": insert_id, "nomor_laporan": nomor_laporan, "status": status_awal}
     }
 
@@ -642,7 +665,7 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
         
-        is_surat_rek = dok.get("kat_slug") in ['surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran']
+        is_surat_rek = dok.get("kat_slug") in ['surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran', 'sk-piutang-satker']
         valid_statuses = ['lolos_admin', 'terverifikasi', 'menunggu_verifikasi'] if is_surat_rek else ['lolos_admin', 'terverifikasi']
         if dok["status"] not in valid_statuses:
             raise HTTPException(400, "Dokumen belum disahkan satker atau status tidak valid untuk ditinjau")
@@ -729,8 +752,32 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
                         WHERE satker_id = %s AND REPLACE(nomor_rekening, ' ', '') = REPLACE(%s, ' ', '')
                     """, (target_satker, nomor_rek))
 
-        pesan = "Disetujui dan dipublikasikan" if aksi == 'approve' else f"Perlu direvisi: {catatan}"
-        await buat_notifikasi(db, dok["uploaded_by"], aksi, dok["judul"], pesan, id)
+        if dok.get("kat_slug") == "sk-piutang-satker":
+            nom_str = f"Rp {int(dok['nilai_rekening_koran']):,}".replace(",", ".") if dok.get("nilai_rekening_koran") else "-"
+            if aksi == 'approve':
+                pesan = f"SK Piutang \"{dok['judul']}\" (Debitur: {dok.get('nama_debitur') or '-'}, Nominal: {nom_str}) telah DISETUJUI & DISAHKAN oleh Admin Eselon 1"
+            else:
+                pesan = f"SK Piutang \"{dok['judul']}\" perlu direvisi: {catatan}"
+        else:
+            pesan = "Disetujui dan dipublikasikan" if aksi == 'approve' else f"Perlu direvisi: {catatan}"
+
+        notified_users = set()
+        if dok.get("uploaded_by"):
+            notified_users.add(dok["uploaded_by"])
+            await buat_notifikasi(db, dok["uploaded_by"], aksi, dok["judul"], pesan, id)
+
+        # Pastikan seluruh Admin Satker di satker terkait juga menerima notifikasi langsung
+        if dok.get("satker_id"):
+            cursor.execute("""
+                SELECT u.id FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE u.satker_id = %s AND (u.role_id = 2 OR r.nama IN ('administrasi', 'manajemen', 'pimpinan_satker')) AND u.is_active = 1
+            """, (dok["satker_id"],))
+            for adm in cursor.fetchall():
+                if adm["id"] not in notified_users:
+                    notified_users.add(adm["id"])
+                    await buat_notifikasi(db, adm["id"], aksi, dok["judul"], pesan, id)
+
         db.commit()
         
     await catat_log(db, user["id"], f"ketua_{'setujui' if aksi=='approve' else 'revisi'}", "dokumen", id, {"aksi": aksi}, request.client.host)

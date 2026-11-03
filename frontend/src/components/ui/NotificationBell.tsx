@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, CheckCircle, XCircle, Send, CheckCheck, KeyRound } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/auth';
+import toast from 'react-hot-toast';
+import { fetchWithAuth, getSession } from '@/lib/auth';
 import { formatRelative } from '@/lib/dateUtils';
 import { useRouter } from 'next/navigation';
 
@@ -10,7 +11,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 interface Notifikasi {
   id: number;
-  aksi: 'submit' | 'approve' | 'reject' | 'pesan_ketua' | 'reset_password';
+  aksi: 'submit' | 'approve' | 'reject' | 'terverifikasi' | 'pesan_ketua' | 'reset_password';
   dokumen_id: number | null;
   judul: string | null;
   pesan: string;
@@ -18,7 +19,7 @@ interface Notifikasi {
   created_at: string;
 }
 
-const POLL_INTERVAL = 30_000; // 30 detik
+const POLL_INTERVAL = 8_000; // Poll setiap 8 detik agar notifikasi persetujuan langsung muncul real-time
 
 export default function NotificationBell() {
   const [count, setCount] = useState(0);
@@ -26,15 +27,38 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const prevCountRef = useRef<number | null>(null);
   const router = useRouter();
 
-  // ── Fetch unread count ──────────────────────────────────────
+  // ── Fetch unread count & trigger toast jika ada notifikasi baru ──
   const fetchCount = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${API_URL}/notifikasi/unread-count`);
       if (res.ok) {
         const { data } = await res.json();
-        setCount(data.count);
+        const newCount = Number(data?.count || 0);
+        if (prevCountRef.current !== null && newCount > prevCountRef.current) {
+          // Ambil notifikasi terbaru untuk ditampilkan di pop-up toast
+          try {
+            const listRes = await fetchWithAuth(`${API_URL}/notifikasi`);
+            if (listRes.ok) {
+              const listJson = await listRes.json();
+              const latest: Notifikasi | undefined = listJson.data?.[0];
+              if (latest) {
+                if (latest.aksi === 'approve' || latest.aksi === 'terverifikasi') {
+                  toast.success(latest.pesan, { duration: 6000 });
+                } else if (latest.aksi === 'reject') {
+                  toast.error(latest.pesan, { duration: 6000 });
+                } else {
+                  toast(latest.pesan, { icon: '🔔', duration: 5000 });
+                }
+                setList(listJson.data);
+              }
+            }
+          } catch { /* silent */ }
+        }
+        prevCountRef.current = newCount;
+        setCount(newCount);
       }
     } catch { /* silent */ }
   }, []);
@@ -53,7 +77,7 @@ export default function NotificationBell() {
     }
   }, []);
 
-  // ── Poll unread count setiap 30 detik ──────────────────────
+  // ── Poll unread count berkala ───────────────────────────────
   useEffect(() => {
     fetchCount();
     const interval = setInterval(fetchCount, POLL_INTERVAL);
@@ -82,6 +106,9 @@ export default function NotificationBell() {
       await fetchWithAuth(`${API_URL}/notifikasi/${id}/read`, { method: 'PATCH' });
       setList((prev: Notifikasi[]) => prev.map((n: Notifikasi) => n.id === id ? { ...n, is_read: 1 } : n));
       setCount((prev: number) => Math.max(0, prev - 1));
+      if (prevCountRef.current !== null) {
+        prevCountRef.current = Math.max(0, prevCountRef.current - 1);
+      }
     } catch { /* silent */ }
   }
 
@@ -91,28 +118,40 @@ export default function NotificationBell() {
       await fetchWithAuth(`${API_URL}/notifikasi/read-all`, { method: 'PATCH' });
       setList((prev: Notifikasi[]) => prev.map((n: Notifikasi) => ({ ...n, is_read: 1 })));
       setCount(0);
+      prevCountRef.current = 0;
     } catch { /* silent */ }
   }
 
-  // ── Klik notifikasi → mark read + navigate ────────────────
+  // ── Klik notifikasi → mark read + navigate sesuai role/tingkat ──
   function handleClickNotif(notif: Notifikasi) {
     if (!notif.is_read) markRead(notif.id);
 
-    // Tentukan halaman tujuan
-    if (notif.aksi === 'submit') {
+    const session = getSession();
+    const u = session?.user as any;
+    const tingkat = u?.tingkat;
+    const isAdminSatker = tingkat === 'satker' && (
+      ['administrasi', 'manajemen', 'pimpinan_satker'].includes(u?.role || '') ||
+      Number(u?.role_id) === 2 ||
+      u?.is_manajemen
+    );
+
+    if (tingkat === 'eselon_1') {
+      router.push('/eselon-1/dokumen');
+    } else if (isAdminSatker) {
+      router.push(notif.dokumen_id ? `/pimpinan/dokumen?id=${notif.dokumen_id}` : '/pimpinan/dokumen');
+    } else if (notif.aksi === 'submit') {
       router.push('/pimpinan/dokumen');
     } else if (notif.aksi === 'reject' && notif.dokumen_id) {
       router.push(`/staff/dokumen/${notif.dokumen_id}/edit`);
-    } else if (notif.aksi === 'approve') {
+    } else if (notif.aksi === 'approve' || notif.aksi === 'terverifikasi') {
       router.push('/staff/dokumen');
     }
-    // pesan_ketua & reset_password: cukup tandai dibaca, tanpa navigasi
     setOpen(false);
   }
 
   // ── Icon berdasarkan tipe notifikasi ──────────────────────
   function NotifIcon({ aksi }: { aksi: string }) {
-    if (aksi === 'approve')       return <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />;
+    if (aksi === 'approve' || aksi === 'terverifikasi') return <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />;
     if (aksi === 'reject')        return <XCircle className="w-5 h-5 text-orange-500 shrink-0" />;
     if (aksi === 'reset_password') return <KeyRound className="w-5 h-5 text-purple-500 shrink-0" />;
     return <Send className="w-5 h-5 text-blue-500 shrink-0" />;

@@ -63,7 +63,9 @@ export default function UploadPage() {
       });
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const d = await res.json();
-      const list: Kategori[] = d.data ?? [];
+      const u = session?.user as any;
+      const isAdminRole = Boolean(u && (['administrasi', 'manajemen', 'pimpinan_satker', 'it', 'admin_it'].includes(u.role || '') || [2, 3].includes(Number(u.role_id)) || u.is_manajemen || u.is_it));
+      const list: Kategori[] = (d.data ?? []).filter((k: Kategori) => isAdminRole || k.slug !== 'sk-piutang-satker');
       if (list.length === 0) {
         setKategoriError('Belum ada kategori. Minta Pimpinan untuk menambahkan kategori terlebih dahulu.');
       }

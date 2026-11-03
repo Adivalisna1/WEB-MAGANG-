@@ -24,6 +24,7 @@ interface UploadModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialFile?: File | null;
+  defaultKategoriSlug?: string;
 }
 
 interface BatchItem {
@@ -45,7 +46,7 @@ interface BatchItem {
   file_size: number;
 }
 
-export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }: UploadModalProps) {
+export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, defaultKategoriSlug }: UploadModalProps) {
   // Mode: single (1 file) atau batch (folder / zip)
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
 
@@ -65,6 +66,8 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
   const [nomorRekening, setNomorRekening] = useState('');
   const [tanggalSurat, setTanggalSurat] = useState('');
   const [namaRekening, setNamaRekening] = useState('');
+  const [namaDebitur,  setNamaDebitur]  = useState('');
+  const [dasarTemuan,  setDasarTemuan]  = useState('');
   const [file,        setFile]        = useState<File | null>(null);
   const [totalSaldo,  setTotalSaldo]  = useState('');
   
@@ -105,13 +108,20 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       setAiResult(null);
       setAiFilledFields([]);
       setJudul('');
-      setKategoriId('');
       setDeskripsi('');
       setNamaBank('');
       setNomorRekening('');
       setTanggalSurat('');
       setNamaRekening('');
+      setNamaDebitur('');
+      setDasarTemuan('');
       setTotalSaldo('');
+      if (defaultKategoriSlug && kategoriList.length > 0) {
+        const defKat = kategoriList.find(k => k.slug === defaultKategoriSlug);
+        setKategoriId(defKat ? String(defKat.id) : '');
+      } else {
+        setKategoriId('');
+      }
       
       // Reset batch state
       setBatchId(null);
@@ -132,7 +142,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
         setFile(null);
       }
     }
-  }, [isOpen, initialFile]);
+  }, [isOpen, initialFile, defaultKategoriSlug, kategoriList]);
 
   const fetchKategori = async () => {
     setKategoriLoading(true);
@@ -144,7 +154,19 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       });
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const d = await res.json();
-      const list: Kategori[] = d.data ?? [];
+      let list: Kategori[] = d.data ?? [];
+      const u = session?.user as any;
+      const isAdminRole = Boolean(
+        u && (
+          ['administrasi', 'manajemen', 'pimpinan_satker', 'it', 'admin_it'].includes(u.role || '') ||
+          [2, 3].includes(Number(u.role_id)) ||
+          u.is_manajemen ||
+          u.is_it
+        )
+      );
+      if (!isAdminRole) {
+        list = list.filter(k => k.slug !== 'sk-piutang-satker');
+      }
       if (list.length === 0) {
         setKategoriError('Belum ada kategori.');
       }
@@ -220,6 +242,14 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
         setNamaRekening(result.nama_rekening);
         filled.push('nama_rekening');
       }
+      if ((result as any).nama_debitur) {
+        setNamaDebitur((result as any).nama_debitur);
+        filled.push('nama_debitur');
+      }
+      if ((result as any).dasar_temuan) {
+        setDasarTemuan((result as any).dasar_temuan);
+        filled.push('dasar_temuan');
+      }
       if (result.deskripsi) {
         setDeskripsi(result.deskripsi);
         filled.push('deskripsi');
@@ -266,6 +296,13 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
     e.preventDefault();
     if (!file)       return setError('File wajib dipilih');
     if (!kategoriId) return setError('Kategori wajib dipilih');
+    const selKat = kategoriList.find(k => String(k.id) === kategoriId);
+    const isSkPiutang = selKat?.slug === 'sk-piutang-satker';
+    if (isSkPiutang) {
+      if (!namaDebitur.trim()) return setError('Nama Debitur / Pihak Tertagih wajib diisi untuk SK Piutang');
+      if (!dasarTemuan.trim()) return setError('Nomor Dasar Temuan BPK / SKTJM wajib diisi untuk SK Piutang');
+      if (!totalSaldo.trim()) return setError('Nominal Pokok Piutang wajib diisi');
+    }
     setError(''); setSubmitting(true);
 
     try {
@@ -282,8 +319,9 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
       if (namaBank) fd.append('nama_bank', namaBank);
       if (nomorRekening) fd.append('nomor_rekening', nomorRekening);
       if (tanggalSurat) fd.append('tanggal_surat', tanggalSurat);
+      if (namaDebitur) fd.append('nama_debitur', namaDebitur);
+      if (dasarTemuan) fd.append('dasar_temuan', dasarTemuan);
 
-      const selKat = kategoriList.find(k => String(k.id) === kategoriId);
       const isSuratRek = selKat?.slug === 'surat-pembukaan-rekening-koran' || selKat?.slug === 'surat-penutupan-rekening-koran';
       if (!isSuratRek && totalSaldo) {
         const cleanNom = totalSaldo.replace(/\./g, '').replace(',', '.');
@@ -297,10 +335,10 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
         body: fd,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Upload gagal');
+      if (!res.ok) throw new Error(data.detail || data.message || 'Upload gagal');
       
       setSuccess(true);
-      toast.success('Dokumen berhasil diunggah!');
+      toast.success(isSkPiutang ? 'SK Piutang berhasil diunggah & dikirim langsung ke Admin Eselon 1!' : 'Dokumen berhasil diunggah!');
       setTimeout(() => {
         onSuccess();
         onClose();
@@ -425,6 +463,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
   const isSuratPembukaan = selectedKat?.slug === 'surat-pembukaan-rekening-koran';
   const isSuratPenutupan = selectedKat?.slug === 'surat-penutupan-rekening-koran';
   const isSuratRekening = isSuratPembukaan || isSuratPenutupan;
+  const isSkPiutang = selectedKat?.slug === 'sk-piutang-satker';
 
   // Akumulasi saldo batch yang terdeteksi
   const totalNominalBatch = batchItems.reduce((acc, it) => acc + (Number(it.nominal) || 0), 0);
@@ -654,6 +693,59 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
                   </div>
                 )}
 
+                {/* SK Piutang Satker Fields (Khusus Administrasi - Bundel 1 PDF dengan Dasar BPK/SKTJM) */}
+                {isSkPiutang && (
+                  <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200/80 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs">
+                        <Sparkles className="w-4 h-4 text-indigo-600" />
+                        Detail SK Piutang & Lampiran Dasar Hukum (Bundel 1 PDF)
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                        Langsung ke Eselon 1
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-indigo-700 leading-relaxed">
+                      Pastikan berkas PDF yang diunggah menyatukan lembar <strong>SK Piutang</strong> beserta lampiran bukti <strong>Temuan BPK / SKTJM</strong>. Dokumen akan langsung dikirim ke Admin Eselon 1.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Nama Debitur / Pihak Tertagih <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={namaDebitur}
+                          onChange={e => setNamaDebitur(e.target.value)}
+                          placeholder="Contoh: PT Maju Jaya / Nama Pegawai"
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Nomor Dasar Temuan BPK / SKTJM <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={dasarTemuan}
+                          onChange={e => setDasarTemuan(e.target.value)}
+                          placeholder="Contoh: LHP-BPK/No.12/2026"
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-mono"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Penetapan SK</label>
+                        <input
+                          type="date"
+                          value={tanggalSurat}
+                          onChange={e => setTanggalSurat(e.target.value)}
+                          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Kategori Dokumen <span className="text-rose-500">*</span></label>
@@ -686,7 +778,9 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile }:
 
                 {!isSuratRekening && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Saldo Akhir Bulan (Rp)</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                      {isSkPiutang ? 'Nominal Pokok Piutang (Rp) *' : 'Saldo Akhir Bulan (Rp)'}
+                    </label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
                       <input

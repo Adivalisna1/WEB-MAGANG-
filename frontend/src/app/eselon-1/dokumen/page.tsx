@@ -29,6 +29,8 @@ interface Dokumen {
   nomor_rekening?: string;
   tanggal_surat?: string;
   nama_rekening?: string;
+  nama_debitur?: string | null;
+  dasar_temuan?: string | null;
   catatan: string | null;
   uploaded_by: string;
   uploaded_username?: string;
@@ -257,6 +259,11 @@ export default function KetuaDokumenPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || json.message);
+      toast.success(
+        target.aksi === 'approve'
+          ? 'Dokumen berhasil disetujui & notifikasi telah dikirim ke Admin Satker!'
+          : 'Dokumen dikembalikan untuk revisi & notifikasi telah dikirim ke Admin Satker'
+      );
       setTarget(null);
       setModalDok(null);
       setCatatan('');
@@ -359,6 +366,10 @@ export default function KetuaDokumenPage() {
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                             Pengajuan Penutupan Rekening
                           </span>
+                        ) : dok.kategori_slug === 'sk-piutang-satker' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                            Pengajuan SK Piutang Satker (Bundel BPK)
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
                             Disahkan Satker
@@ -376,6 +387,13 @@ export default function KetuaDokumenPage() {
                           </span>
                         )}
                       </p>
+                      {(dok.nama_debitur || dok.dasar_temuan) && (
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-indigo-900 flex-wrap">
+                          <span className="bg-indigo-50 text-indigo-900 border border-indigo-200 px-2.5 py-0.5 rounded-md font-medium">
+                            Debitur: <strong>{dok.nama_debitur || '-'}</strong> • Dasar Temuan BPK/SKTJM: <strong className="font-mono">{dok.dasar_temuan || '-'}</strong>
+                          </span>
+                        </div>
+                      )}
                       {(dok.nama_bank || dok.nomor_rekening) && (
                         <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-700 flex-wrap">
                           <span className="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium">
@@ -391,7 +409,7 @@ export default function KetuaDokumenPage() {
                       {(valRek != null || valExc != null) && (
                         <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 flex-wrap">
                           <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-md font-medium">
-                            Saldo Bank: <strong className="text-emerald-950 font-bold">{formatRupiah(valRek || valExc)}</strong>
+                            {dok.kategori_slug === 'sk-piutang-satker' ? 'Nominal Pokok Piutang:' : 'Saldo Bank:'} <strong className="text-emerald-950 font-bold">{formatRupiah(valRek || valExc)}</strong>
                           </span>
                         </div>
                       )}
@@ -421,7 +439,7 @@ export default function KetuaDokumenPage() {
                         onClick={() => { setTarget({ dok, aksi: 'approve' }); setCatatan(''); }}
                         className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
                       >
-                        <CheckCircle className="w-3.5 h-3.5" /> Konfirmasi Audit
+                        <CheckCircle className="w-3.5 h-3.5" /> {dok.kategori_slug === 'sk-piutang-satker' ? 'Setujui SK Piutang' : 'Konfirmasi Audit'}
                       </button>
                       <button
                         onClick={() => { setTarget({ dok, aksi: 'reject' }); setCatatan(''); }}

@@ -4,12 +4,13 @@ import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'reac
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { getSession } from '@/lib/auth';
+import UploadModal from '@/components/Staff/UploadModal';
 import {
   FileText, CheckCircle, XCircle, Clock,
   Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Download,
   Send, X, Search, FileCheck, FileSpreadsheet,
   ChevronLeft, ChevronRight, Maximize2, Printer,
-  Filter, Check, AlertTriangle, ShieldCheck, UserCheck, Layers
+  Filter, Check, AlertTriangle, ShieldCheck, UserCheck, Layers, Plus
 } from 'lucide-react';
 import clsx from 'clsx';
 import '@/app/staff/staff.css';
@@ -25,6 +26,10 @@ interface Dokumen {
   nomor_laporan?: string | null;
   status: string;
   kategori: string;
+  kategori_slug?: string;
+  nama_debitur?: string | null;
+  dasar_temuan?: string | null;
+  tanggal_surat?: string | null;
   file_nama: string;
   file_size: number;
   uploaded_by: string;
@@ -82,6 +87,7 @@ function DokumenContent() {
   const [previewProgress, setPreviewProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [previewError, setPreviewError] = useState('');
   const [showBarModal, setShowBarModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const isPdf = selectedDok ? /\.pdf$/i.test(selectedDok.file_nama) : false;
   const isExcel = selectedDok ? /\.(xls|xlsx)$/i.test(selectedDok.file_nama) : false;
@@ -359,6 +365,14 @@ function DokumenContent() {
               Semua Berkas Selesai Ditelaah
             </span>
           )}
+
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-sm shadow-indigo-600/20"
+          >
+            <Plus className="w-4 h-4" />
+            Unggah SK Piutang
+          </button>
 
           <button
             onClick={fetchDokumen}
@@ -890,11 +904,33 @@ function DokumenContent() {
                       </div>
                     )}
 
+                    {/* Info Khusus SK Piutang Satker */}
+                    {(selectedDok.kategori_slug === 'sk-piutang-satker' || selectedDok.nama_debitur || selectedDok.dasar_temuan) && (
+                      <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl mb-4 space-y-2 text-xs">
+                        <div className="font-bold text-indigo-950 flex items-center justify-between">
+                          <span>Detail Ketetapan SK Piutang Satker</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold">
+                            Bundel SK + Bukti BPK
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 pt-1">
+                          <div>
+                            <span className="text-[10px] text-slate-500 block uppercase font-semibold">Nama Debitur / Pihak Tertagih</span>
+                            <span className="font-bold text-slate-900">{selectedDok.nama_debitur || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 block uppercase font-semibold">Dasar Temuan BPK / SKTJM</span>
+                            <span className="font-mono font-bold text-indigo-900">{selectedDok.dasar_temuan || '-'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Ringkasan Saldo Akhir Kas Bank & Bukti Voucher */}
                     <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                          Total Saldo Akhir Rekening Bank
+                          {selectedDok.kategori_slug === 'sk-piutang-satker' ? 'Nominal Pokok Piutang Satker' : 'Total Saldo Akhir Rekening Bank'}
                         </span>
                         <span className="text-lg font-black text-slate-900 mt-1 block">
                           {(selectedDok.nilai_rekening_koran != null || selectedDok.nilai_excel != null)
@@ -1099,6 +1135,13 @@ function DokumenContent() {
           </div>
         </div>
       )}
+
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={fetchDokumen}
+        defaultKategoriSlug="sk-piutang-satker"
+      />
 
     </div>
   );

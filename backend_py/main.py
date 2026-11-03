@@ -37,6 +37,14 @@ from routers import notifikasi, user
 app.include_router(notifikasi.router, prefix="/api/notifikasi", tags=["notifikasi"])
 app.include_router(user.router, prefix="/api/user", tags=["user"])
 
+@app.on_event("startup")
+def run_startup_migrations():
+    try:
+        from migrations.add_sk_piutang import run_migration as migrate_sk_piutang
+        migrate_sk_piutang()
+    except Exception as e:
+        print(f"Startup migration notice: {e}")
+
 @app.get("/")
 def read_root():
     return {"success": True, "message": "Backend FastAPI berhasil nyala! Ngebut banget kan? 🔥"}

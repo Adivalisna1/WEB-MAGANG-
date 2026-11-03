@@ -256,9 +256,10 @@ async def get_dokumen(
         
     with db.cursor(dictionary=True) as cursor:
         sql_dok = (
-            "SELECT d.id, d.judul, d.tahun, d.nomor_laporan, d.status, d.catatan, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.nama_debitur, d.dasar_temuan, "
+            "       d.tahun, d.bulan, d.semester, d.nomor_laporan, d.status, d.catatan, d.file_nama, "
             "       d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
-            "       k.nama AS kategori, u.nama AS uploaded_by, u.username AS uploaded_username, "
+            "       k.nama AS kategori, k.slug AS kategori_slug, u.nama AS uploaded_by, u.username AS uploaded_username, "
             "       s.NO_Satker AS no_satker, s.nama AS satker_nama "
             "FROM dokumen d "
             "JOIN kategori_dokumen k ON k.id = d.kategori_id "
@@ -279,7 +280,7 @@ async def get_dokumen_menunggu(
 ):
     eselon_id = current_user.get("eselon_1_id")
     is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
-    where = "(d.status = 'lolos_admin' OR (d.status = 'menunggu_verifikasi' AND k.slug IN ('surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran')))"
+    where = "(d.status = 'lolos_admin' OR (d.status = 'menunggu_verifikasi' AND k.slug IN ('surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran', 'sk-piutang-satker')))"
     params = []
     if is_specific:
         where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
@@ -287,7 +288,7 @@ async def get_dokumen_menunggu(
         
     with db.cursor(dictionary=True) as cursor:
         sql_wait = (
-            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.nama_debitur, d.dasar_temuan, "
             "       d.tahun, d.bulan, d.semester, d.nomor_laporan, "
             "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime, "
             "       d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
