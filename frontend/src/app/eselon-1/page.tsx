@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
   FileText, Clock, CheckCircle, RefreshCw,
-  Loader2, AlertCircle, Users, Building2, ShieldCheck
+  Loader2, AlertCircle, Users, Building2
 } from 'lucide-react';
 import MonitoringSatkerSection from '@/components/eselon-1/MonitoringSatkerSection';
 
@@ -123,10 +123,6 @@ export default function KetuaDashboardPage() {
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-xs">
               <Building2 className="w-3.5 h-3.5 text-blue-600" />
               {user?.eselon_1_singkatan ? `${user.eselon_1_singkatan} · ${user.eselon_1_nama}` : 'Unit Eselon 1 Pusat'}
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Tingkat K/L (Eselon I)
             </span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
