@@ -757,11 +757,17 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
                     """, (target_satker, nomor_rek))
 
         if dok.get("kat_slug") == "sk-piutang-satker":
-            nom_str = f"Rp {int(dok['nilai_rekening_koran']):,}".replace(",", ".") if dok.get("nilai_rekening_koran") else "-"
+            extra_info = []
+            if dok.get("nama_debitur"):
+                extra_info.append(f"Debitur: {dok['nama_debitur']}")
+            if dok.get("nilai_rekening_koran"):
+                extra_info.append(f"Nominal: Rp {int(dok['nilai_rekening_koran']):,}".replace(",", "."))
+            info_str = f" ({', '.join(extra_info)})" if extra_info else ""
+
             if aksi == 'approve':
-                pesan = f"SK Piutang \"{dok['judul']}\" (Debitur: {dok.get('nama_debitur') or '-'}, Nominal: {nom_str}) telah DISETUJUI & DISAHKAN oleh Admin Eselon 1"
+                pesan = f"SK Piutang \"{dok['judul']}\"{info_str} telah DISETUJUI & DISAHKAN oleh Admin Eselon 1"
             else:
-                pesan = f"SK Piutang \"{dok['judul']}\" perlu direvisi: {catatan}"
+                pesan = f"SK Piutang \"{dok['judul']}\"{info_str} perlu direvisi: {catatan}"
         else:
             pesan = "Disetujui dan dipublikasikan" if aksi == 'approve' else f"Perlu direvisi: {catatan}"
 
