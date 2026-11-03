@@ -714,11 +714,27 @@ export default function StaffDokumenPage() {
 
             <div className="staff-modal-body">
               {/* Meta strip */}
-              <div className="text-xs text-slate-500 pb-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="text-xs text-slate-500 pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <span>
                   Kategori: <strong>{detailModalDoc.kategori}</strong> • Tahun <strong>{detailModalDoc.tahun}</strong>
                 </span>
-                <span>Berkas: <strong>{detailModalDoc.file_nama || 'Tidak ada'}</strong></span>
+                <span>
+                  Berkas:{" "}
+                  {detailModalDoc.file_nama ? (
+                    <a
+                      href={`${API}/dokumen/${detailModalDoc.id}/download`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                      title="Klik untuk membuka/mengunduh berkas"
+                    >
+                      <span>{detailModalDoc.file_nama}</span>
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
+                  ) : (
+                    <strong>Tidak ada</strong>
+                  )}
+                </span>
               </div>
 
               {/* Stepper Alur Dokumen 4 Tahap */}
@@ -803,54 +819,130 @@ export default function StaffDokumenPage() {
                     </p>
                   </div>
 
-                  {/* Timeline Event 2: Catatan jika ada */}
-                  {detailModalDoc.catatan ? (
-                    <div className={clsx(
-                      'staff-timeline-event',
-                      detailModalDoc.status === 'revisi' ? 'warning' : 'info'
-                    )}>
+                  {/* Timeline Event 2: Status & Catatan Verifikasi Terkini */}
+                  {detailModalDoc.status === 'terverifikasi' ? (
+                    <div className="staff-timeline-event success">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-800">
-                          Catatan dari {detailModalDoc.catatan_oleh || 'Verifikator'}
+                        <span className="font-bold text-emerald-800">
+                          {detailModalDoc.kategori?.toLowerCase().includes("rekening")
+                            ? "Tercatat & Terverifikasi Otomatis"
+                            : "Dokumen Telah Terverifikasi Penuh"}
                         </span>
-                        <span className="text-slate-400">Pembaruan Terbaru</span>
+                        <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
+                          Selesai (Publikasi)
+                        </span>
                       </div>
-                      <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-lg text-xs text-amber-900 mt-1">
-                        &ldquo;{detailModalDoc.catatan}&rdquo;
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {detailModalDoc.kategori?.toLowerCase().includes("rekening")
+                          ? "Berkas bukti rekening koran telah dicocokkan dan diverifikasi aktif dalam sistem."
+                          : "Dokumen telah melalui seluruh tahapan verifikasi hingga persetujuan final Eselon 1."}
+                      </p>
+                      {detailModalDoc.catatan && (
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 mt-2">
+                          <strong>Catatan Verifikator:</strong> &ldquo;{detailModalDoc.catatan}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  ) : detailModalDoc.status === 'lolos_pimpinan' || detailModalDoc.status === 'lolos_admin' ? (
+                    <div className="staff-timeline-event info">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-blue-800">Lolos Verifikasi Pimpinan</span>
+                        <span className="text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded-full">
+                          Menunggu Eselon 1
+                        </span>
                       </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Telah disetujui Pimpinan Satker dan sedang menunggu persetujuan final dari Eselon 1.
+                      </p>
+                      {detailModalDoc.catatan && (
+                        <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 mt-2">
+                          <strong>Catatan Pimpinan:</strong> &ldquo;{detailModalDoc.catatan}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  ) : detailModalDoc.status === 'revisi' ? (
+                    <div className="staff-timeline-event warning">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-amber-800">Perlu Perbaikan / Revisi</span>
+                        <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full">
+                          Revisi
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Verifikator meminta dokumen ini diperbaiki sebelum dapat disetujui.
+                      </p>
+                      {detailModalDoc.catatan && (
+                        <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-lg text-xs text-amber-900 mt-2">
+                          <strong>Catatan dari {detailModalDoc.catatan_oleh || 'Verifikator'}:</strong> &ldquo;{detailModalDoc.catatan}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  ) : detailModalDoc.status === 'draft' ? (
+                    <div className="staff-timeline-event default">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-700">Dokumen Masih Draft</span>
+                        <span className="text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-full">
+                          Draft
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Dokumen belum diajukan untuk verifikasi. Klik tombol Kirim untuk mengajukan ke Pimpinan.
+                      </p>
                     </div>
                   ) : (
                     <div className="staff-timeline-event info">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-slate-800">Status Saat Ini</span>
-                        <span className="text-slate-400">Sedang Diproses</span>
+                        <span className="text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-full">
+                          Sedang Diproses
+                        </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Menunggu tindakan verifikasi dari pejabat berwenang.
                       </p>
+                      {detailModalDoc.catatan && (
+                        <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 mt-2">
+                          <strong>Catatan:</strong> &ldquo;{detailModalDoc.catatan}&rdquo;
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="staff-modal-footer">
-              <button
-                type="button"
-                onClick={() => setDetailModalDoc(null)}
-                className="staff-btn staff-btn-md staff-btn-secondary"
-              >
-                Tutup
-              </button>
-              {(detailModalDoc.status === 'draft' || detailModalDoc.status === 'revisi') && (
-                <Link
-                  href={`/staff/dokumen/${detailModalDoc.id}/edit`}
-                  className="staff-btn staff-btn-md staff-btn-primary"
+            <div className="staff-modal-footer flex items-center justify-between">
+              <div>
+                {detailModalDoc.file_nama && (
+                  <a
+                    href={`${API}/dokumen/${detailModalDoc.id}/download`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="staff-btn staff-btn-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5 font-bold"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Buka / Unduh Berkas</span>
+                  </a>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDetailModalDoc(null)}
+                  className="staff-btn staff-btn-md staff-btn-secondary"
                 >
-                  <Pencil className="w-4 h-4" />
-                  Perbaiki Dokumen
-                </Link>
-              )}
+                  Tutup
+                </button>
+                {(detailModalDoc.status === 'draft' || detailModalDoc.status === 'revisi') && (
+                  <Link
+                    href={`/staff/dokumen/${detailModalDoc.id}/edit`}
+                    className="staff-btn staff-btn-md staff-btn-primary"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Perbaiki Dokumen
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>
