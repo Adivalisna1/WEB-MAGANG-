@@ -229,8 +229,8 @@ export default function PimpinanpencatatanPage() {
       if (j.success) {
         toast.success(
           nextActive === 1
-            ? `Bukti diaktifkan â€” Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
-            : `Bukti dinonaktifkan â€” Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
+            ? `Bukti diaktifkan — Saldo ditambahkan ke total ${item.nama_bank || "Bank"}`
+            : `Bukti dinonaktifkan — Saldo dikecualikan dari total ${item.nama_bank || "Bank"}`,
         );
       } else {
         setTransaksi((prev) =>
@@ -477,7 +477,7 @@ export default function PimpinanpencatatanPage() {
                   Kategori Dokumen
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Relasi Bank (No. Bank â€¢ Nama Bank â€¢ No. Rek) & Daftar Bukti
+                  Relasi Bank (No. Bank • Nama Bank • No. Rek) & Daftar Bukti
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                   Saldo Akhir
@@ -713,7 +713,7 @@ export default function PimpinanpencatatanPage() {
                         </div>
                         <p className="text-xs font-mono text-gray-600">
                           No. Rek:{" "}
-                          <strong>{item.nomor_rekening_bank || "-"}</strong> â€¢
+                          <strong>{item.nomor_rekening_bank || "-"}</strong> •
                           Kode Bank:{" "}
                           <strong>
                             #{getKodeBank(item.nama_bank, item.kode_bank)}

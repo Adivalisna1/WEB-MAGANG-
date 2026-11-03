@@ -283,8 +283,8 @@ export default function KertasKerjaPage() {
       if (j.success) {
         toast.success(
           nextActive === 1
-            ? `Bukti diaktifkan â€” Saldo dimasukkan ke Total Saldo ${item.nama_bank || 'Bank'}`
-            : `Bukti dinonaktifkan â€” Saldo dikecualikan dari Total Saldo ${item.nama_bank || 'Bank'}`
+            ? `Bukti diaktifkan — Saldo dimasukkan ke Total Saldo ${item.nama_bank || 'Bank'}`
+            : `Bukti dinonaktifkan — Saldo dikecualikan dari Total Saldo ${item.nama_bank || 'Bank'}`
         );
       } else {
         setDataList(prev =>
@@ -1086,7 +1086,7 @@ export default function KertasKerjaPage() {
                           )}
                         </div>
                         <p className="text-xs font-mono text-gray-700 pt-0.5">
-                          No. Rek: <strong>{item.nomor_rekening_bank || '-'}</strong> â€¢ Kode Bank: <strong>#{getKodeBank(item.nama_bank, item.kode_bank)}</strong>
+                          No. Rek: <strong>{item.nomor_rekening_bank || '-'}</strong> • Kode Bank: <strong>#{getKodeBank(item.nama_bank, item.kode_bank)}</strong>
                         </p>
                         <p className="text-xs text-gray-500 truncate">
                           {item.keterangan || item.nama_rekening || 'Laporan Rekening Koran'}
