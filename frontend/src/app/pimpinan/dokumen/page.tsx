@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'reac
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { getSession } from '@/lib/auth';
-import UploadModal from '@/components/Staff/UploadModal';
+import UploadSkPiutangModal from '@/components/pimpinan/UploadSkPiutangModal';
 import {
   FileText, CheckCircle, XCircle, Clock,
   Loader2, RefreshCw, AlertCircle, Eye, ExternalLink, Download,
@@ -1136,11 +1136,10 @@ function DokumenContent() {
         </div>
       )}
 
-      <UploadModal
+      <UploadSkPiutangModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onSuccess={fetchDokumen}
-        defaultKategoriSlug="sk-piutang-satker"
       />
 
     </div>

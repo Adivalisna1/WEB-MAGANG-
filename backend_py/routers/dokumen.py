@@ -248,13 +248,6 @@ async def upload_dokumen(
     if not judul: raise HTTPException(400, "Judul wajib diisi")
     
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("""
-            SELECT id, status FROM dokumen
-            WHERE LOWER(judul) = LOWER(%s) AND kategori_id = %s AND tahun = %s AND status NOT IN ('diarsipkan')
-        """, (judul.strip(), kategori_id, tahun))
-        if cursor.fetchone():
-            raise HTTPException(409, "Dokumen duplikat (judul, kategori, tahun sama)")
-            
         cursor.execute('SELECT slug, nama FROM kategori_dokumen WHERE id = %s', (kategori_id,))
         kat_row = cursor.fetchone()
         
@@ -262,6 +255,17 @@ async def upload_dokumen(
     is_sk_piutang = (kat_slug == "sk-piutang-satker")
     if is_sk_piutang and not is_admin_role:
         raise HTTPException(403, "Akses ditolak. Dokumen SK Piutang hanya dapat diunggah oleh Akun Administrasi.")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT id, status FROM dokumen
+            WHERE LOWER(judul) = LOWER(%s) AND kategori_id = %s AND tahun = %s AND status NOT IN ('diarsipkan')
+        """, (judul.strip(), kategori_id, tahun))
+        if cursor.fetchone():
+            if is_sk_piutang:
+                judul = f"{judul.strip()} ({int(time.time())})"
+            else:
+                raise HTTPException(409, "Dokumen duplikat (judul, kategori, tahun sama)")
         
     bulan_final = None if semester else (int(bulan) if bulan else None)
     semester_final = int(semester) if semester else None
