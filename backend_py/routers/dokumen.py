@@ -977,6 +977,36 @@ async def rescan_dokumen(
         scan_res = {"nominal": None, "warning": f"Gagal membaca teks otomatis berkas: {str(e)}"}
 
     nom = scan_res.get("nominal")
+    existing_saldo = dok.get("nilai_rekening_koran") if dok.get("nilai_rekening_koran") is not None else dok.get("nilai_excel")
+
+    selisih = None
+    is_cocok = None
+
+    if existing_saldo is not None and nom is not None:
+        diff = abs(float(existing_saldo) - float(nom))
+        if diff < 0.01:
+            selisih = 0.0
+            is_cocok = True
+            message = "Audit total saldo akhir sudah sesuai"
+        else:
+            selisih = diff
+            is_cocok = False
+            if selisih.is_integer():
+                selisih_str = f"{int(selisih):,}".replace(",", ".")
+            else:
+                selisih_str = f"{selisih:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            message = f"Audit total saldo akhir berbeda: terdapat selisih Rp {selisih_str}"
+    elif existing_saldo is None and nom is not None:
+        nom_str = f"{int(nom):,}".replace(",", ".") if float(nom).is_integer() else f"{float(nom):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        is_cocok = True
+        message = f"Audit total saldo akhir terdeteksi Rp {nom_str}"
+    elif nom is None and existing_saldo is not None:
+        is_cocok = True
+        message = "Audit total saldo akhir sudah sesuai"
+    else:
+        is_cocok = True
+        message = "Audit total saldo akhir sudah sesuai"
+
     val_rek = dok["nilai_rekening_koran"] if dok["nilai_rekening_koran"] is not None else nom
     val_exc = dok["nilai_excel"] if dok["nilai_excel"] is not None else nom
 
@@ -994,13 +1024,19 @@ async def rescan_dokumen(
 
     return {
         "success": True,
-        "message": "Audit ulang berkas berhasil",
+        "message": message,
+        "is_cocok": is_cocok,
+        "selisih": selisih,
         "data": {
             "dokumen_id": id,
             "scan": scan_res,
             "reconciliation": reconcile_res,
             "nilai_rekening_koran": val_rek,
-            "nilai_excel": val_exc
+            "nilai_excel": val_exc,
+            "existing_saldo": existing_saldo,
+            "scanned_saldo": nom,
+            "is_cocok": is_cocok,
+            "selisih": selisih
         }
     }
 

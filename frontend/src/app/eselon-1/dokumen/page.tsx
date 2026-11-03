@@ -224,7 +224,16 @@ export default function KetuaDokumenPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || data.message || 'Gagal audit ulang berkas');
       
-      toast.success(data.message || 'Audit ulang berkas selesai');
+      if (data.is_cocok === false || (data.selisih != null && data.selisih > 0)) {
+        toast.error(
+          data.message || `Audit total saldo akhir berbeda: terdapat selisih Rp ${Number(data.selisih).toLocaleString('id-ID')}`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(data.message || 'Audit total saldo akhir sudah sesuai', {
+          duration: 4000,
+        });
+      }
       await refresh();
       if (modalDok && modalDok.id === id) {
         setModalDok(prev => prev ? {

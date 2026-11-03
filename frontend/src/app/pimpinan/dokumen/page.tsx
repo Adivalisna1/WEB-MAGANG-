@@ -286,7 +286,16 @@ function DokumenContent() {
         if (!editNilaiRek) setEditNilaiRek(nomFormatted);
         if (!editNilaiExcel) setEditNilaiExcel(nomFormatted);
       }
-      toast.success(data.message || 'Audit ulang berkas rekonsiliasi selesai');
+      if (data.is_cocok === false || (data.selisih != null && data.selisih > 0)) {
+        toast.error(
+          data.message || `Audit total saldo akhir berbeda: terdapat selisih Rp ${Number(data.selisih).toLocaleString('id-ID')}`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(data.message || 'Audit total saldo akhir sudah sesuai', {
+          duration: 4000,
+        });
+      }
       fetchDokumen();
     } catch (err: any) {
       toast.error(err.message || 'Gagal audit ulang berkas');
