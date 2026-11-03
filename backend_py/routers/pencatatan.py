@@ -59,6 +59,7 @@ async def get_kategori(user: dict = Depends(get_current_user), db=Depends(get_db
             SELECT id, nama as nama_kategori 
             FROM kategori_dokumen 
             WHERE is_active = 1 
+              AND slug NOT IN ('sk-piutang-satker', 'surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran')
             ORDER BY 
                 CASE 
                     WHEN LOWER(nama) LIKE '%lainnya%' OR id = 999 THEN 1 

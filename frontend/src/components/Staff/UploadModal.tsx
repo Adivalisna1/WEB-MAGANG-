@@ -156,19 +156,34 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
       const d = await res.json();
       let list: Kategori[] = d.data ?? [];
       const u = session?.user as any;
-      const isAdminRole = Boolean(
-        u && (
-          ['administrasi', 'manajemen', 'pimpinan_satker', 'it', 'admin_it'].includes(u.role || '') ||
-          [2, 3].includes(Number(u.role_id)) ||
-          u.is_manajemen ||
-          u.is_it
+      const isAdminSatker = Boolean(
+        u && (u.tingkat === 'satker' || !u.tingkat) && (
+          ['administrasi', 'manajemen', 'pimpinan_satker'].includes(u.role || '') ||
+          Number(u.role_id) === 2 ||
+          u.is_manajemen
         )
       );
-      if (!isAdminRole) {
-        list = list.filter(k => k.slug !== 'sk-piutang-satker');
+      if (isAdminSatker || defaultKategoriSlug === 'sk-piutang-satker') {
+        // Admin Satker KHUSUS & HANYA bisa upload SK Piutang Satker
+        list = list.filter(k => k.slug === 'sk-piutang-satker');
+        if (list.length > 0) {
+          setKategoriId(String(list[0].id));
+        }
+      } else {
+        const isAdminRole = Boolean(
+          u && (
+            ['administrasi', 'manajemen', 'pimpinan_satker', 'it', 'admin_it'].includes(u.role || '') ||
+            [2, 3].includes(Number(u.role_id)) ||
+            u.is_manajemen ||
+            u.is_it
+          )
+        );
+        if (!isAdminRole) {
+          list = list.filter(k => k.slug !== 'sk-piutang-satker');
+        }
       }
       if (list.length === 0) {
-        setKategoriError('Belum ada kategori.');
+        setKategoriError('Belum ada kategori yang sesuai wewenang akun Anda.');
       }
       setKategoriList(list);
     } catch (err: any) {
@@ -294,11 +309,20 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
 
   const handleSingleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!file)       return setError('File wajib dipilih');
-    if (!kategoriId) return setError('Kategori wajib dipilih');
-    const selKat = kategoriList.find(k => String(k.id) === kategoriId);
-    const isSkPiutang = selKat?.slug === 'sk-piutang-satker';
-    if (isSkPiutang) {
+    if (!file) return setError('File wajib dipilih');
+
+    let activeKatId = kategoriId;
+    if (!activeKatId) {
+      const skCat = kategoriList.find(k => k.slug === 'sk-piutang-satker');
+      if (skCat && (defaultKategoriSlug === 'sk-piutang-satker' || isSkPiutang)) {
+        activeKatId = String(skCat.id);
+      }
+    }
+    if (!activeKatId) return setError('Kategori wajib dipilih');
+
+    const selKat = kategoriList.find(k => String(k.id) === activeKatId);
+    const isSkPiutangActive = selKat?.slug === 'sk-piutang-satker' || defaultKategoriSlug === 'sk-piutang-satker';
+    if (isSkPiutangActive) {
       if (!namaDebitur.trim()) return setError('Nama Debitur / Pihak Tertagih wajib diisi untuk SK Piutang');
       if (!dasarTemuan.trim()) return setError('Nomor Dasar Temuan BPK / SKTJM wajib diisi untuk SK Piutang');
       if (!totalSaldo.trim()) return setError('Nominal Pokok Piutang wajib diisi');
@@ -313,7 +337,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
       fd.append('tahun',       tahun);
       if (jenisPeriode === 'bulan' && bulan) fd.append('bulan', bulan);
       if (jenisPeriode === 'semester' && semester) fd.append('semester', semester);
-      fd.append('kategori_id', kategoriId);
+      fd.append('kategori_id', activeKatId);
       if (deskripsi) fd.append('deskripsi', deskripsi);
       if (namaRekening) fd.append('nama_rekening', namaRekening);
       if (namaBank) fd.append('nama_bank', namaBank);
@@ -463,7 +487,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
   const isSuratPembukaan = selectedKat?.slug === 'surat-pembukaan-rekening-koran';
   const isSuratPenutupan = selectedKat?.slug === 'surat-penutupan-rekening-koran';
   const isSuratRekening = isSuratPembukaan || isSuratPenutupan;
-  const isSkPiutang = selectedKat?.slug === 'sk-piutang-satker';
+  const isSkPiutang = selectedKat?.slug === 'sk-piutang-satker' || defaultKategoriSlug === 'sk-piutang-satker';
 
   // Akumulasi saldo batch yang terdeteksi
   const totalNominalBatch = batchItems.reduce((acc, it) => acc + (Number(it.nominal) || 0), 0);
@@ -478,38 +502,51 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
         <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-slate-800">Unggah Dokumen</h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Cerdas Otomatis</span>
+              <h2 className="text-xl font-black text-slate-800">
+                {isSkPiutang ? 'Unggah SK Piutang Satker' : 'Unggah Dokumen'}
+              </h2>
+              <span className={clsx(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                isSkPiutang ? "bg-indigo-100 text-indigo-800" : "bg-blue-100 text-blue-800"
+              )}>
+                {isSkPiutang ? 'Kewenangan Khusus Admin Satker' : 'Cerdas Otomatis'}
+              </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">Unggah satuan atau 1 folder / file ZIP langsung</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isSkPiutang
+                ? 'Unggah berkas resmi SK Piutang beserta lampiran bukti dasar temuan BPK / SKTJM'
+                : 'Unggah satuan atau 1 folder / file ZIP langsung'}
+            </p>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            {/* Mode Switcher Tabs */}
-            <div className="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => { setActiveTab('single'); setError(''); }}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
-                  activeTab === 'single' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Berkas Satuan</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setActiveTab('batch'); setBatchError(''); }}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
-                  activeTab === 'batch' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                <Folder className="w-3.5 h-3.5 text-amber-500" />
-                <span>1 Folder / ZIP Masal</span>
-              </button>
-            </div>
+            {/* Mode Switcher Tabs - Sembunyikan untuk SK Piutang karena wajib berkas bundel satuan */}
+            {!isSkPiutang && (
+              <div className="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('single'); setError(''); }}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
+                    activeTab === 'single' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Berkas Satuan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('batch'); setBatchError(''); }}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
+                    activeTab === 'batch' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <Folder className="w-3.5 h-3.5 text-amber-500" />
+                  <span>1 Folder / ZIP Masal</span>
+                </button>
+              </div>
+            )}
 
             <button onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
               <X className="w-5 h-5" />
@@ -563,20 +600,28 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                     )}
                   >
                     <CloudUpload className={clsx("w-10 h-10 mx-auto mb-3", dragging ? "text-indigo-500" : "text-slate-400")} />
-                    <p className="text-sm font-semibold text-slate-700">Tarik & lepas berkas ke sini</p>
-                    <p className="text-xs text-slate-500 mt-1">atau klik untuk memilih file dari komputer</p>
+                    <p className="text-sm font-semibold text-slate-700">
+                      {isSkPiutang ? 'Tarik & lepas berkas PDF bundel SK Piutang' : 'Tarik & lepas berkas ke sini'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {isSkPiutang ? 'atau klik untuk memilih file PDF dari komputer' : 'atau klik untuk memilih file dari komputer'}
+                    </p>
                     <div className="flex items-center justify-center gap-3 mt-4">
-                      <span className="text-xs text-slate-400 font-medium bg-slate-100 px-2.5 py-1 rounded-md">PDF, XLSX, JPG, PNG (Max 50MB)</span>
-                      <span className="flex items-center gap-1 text-xs font-semibold text-violet-600 bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-md">
-                        <Sparkles className="w-3 h-3" /> Ekstraksi Cerdas
+                      <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-md">
+                        {isSkPiutang ? 'Format PDF Bundel (Max 50MB)' : 'PDF, XLSX, JPG, PNG (Max 50MB)'}
                       </span>
+                      {!isSkPiutang && (
+                        <span className="flex items-center gap-1 text-xs font-semibold text-violet-600 bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-md">
+                          <Sparkles className="w-3 h-3" /> Ekstraksi Cerdas
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".pdf,.docx,.doc,.xlsx,.xls,.jpg,.jpeg,.png"
+                  accept={isSkPiutang ? ".pdf,.docx,.doc" : ".pdf,.docx,.doc,.xlsx,.xls,.jpg,.jpeg,.png"}
                   className="hidden"
                   onChange={e => handleFilePick(e.target.files?.[0] ?? null)}
                 />
@@ -633,7 +678,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                     type="text"
                     value={judul}
                     onChange={e => setJudul(e.target.value)}
-                    placeholder="Contoh: Laporan Rekening Koran September 2026"
+                    placeholder={
+                      isSkPiutang
+                        ? "Contoh: SK Penetapan Piutang T.A. 2026 - PT Maju Jaya"
+                        : "Contoh: Laporan Rekening Koran September 2026"
+                    }
                     required
                     className={clsx(
                       "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors",
@@ -748,18 +797,29 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Kategori Dokumen <span className="text-rose-500">*</span></label>
-                    <select
-                      value={kategoriId}
-                      onChange={e => setKategoriId(e.target.value)}
-                      required
-                      className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                    >
-                      <option value="">-- Pilih Kategori --</option>
-                      {kategoriList.map(k => (
-                        <option key={k.id} value={k.id}>{k.nama}</option>
-                      ))}
-                    </select>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                      Kategori Dokumen <span className="text-rose-500">*</span>
+                    </label>
+                    {isSkPiutang ? (
+                      <div className="w-full px-4 py-2.5 text-sm border border-indigo-200 rounded-xl bg-indigo-50/70 font-bold text-indigo-900 flex items-center justify-between shadow-2xs">
+                        <span>SK Piutang Satker</span>
+                        <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                          Terkunci
+                        </span>
+                      </div>
+                    ) : (
+                      <select
+                        value={kategoriId}
+                        onChange={e => setKategoriId(e.target.value)}
+                        required
+                        className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                      >
+                        <option value="">-- Pilih Kategori --</option>
+                        {kategoriList.map(k => (
+                          <option key={k.id} value={k.id}>{k.nama}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Tahun <span className="text-rose-500">*</span></label>
