@@ -351,7 +351,7 @@ export default function MonitoringSatkerSection() {
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 Total Satker Binaan
               </span>
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                 <Building2 className="w-4 h-4" />
               </div>
             </div>
@@ -931,7 +931,7 @@ export default function MonitoringSatkerSection() {
                               {doc.nomor_laporan && (
                                 <>
                                   <span>&bull;</span>
-                                  <span className="font-mono text-indigo-600 font-semibold">
+                                  <span className="font-mono text-blue-600 font-semibold">
                                     No: {doc.nomor_laporan}
                                   </span>
                                 </>

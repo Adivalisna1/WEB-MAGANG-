@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
           }}
         />
         <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 right-0 w-[30rem] h-[30rem] rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 w-[30rem] h-[30rem] rounded-full bg-blue-500/15 blur-3xl" />
 
         {/* Header Kiri: Brand & Logo Instansi */}
         <div className="relative z-10">
@@ -233,7 +233,7 @@ export default function ForgotPasswordPage() {
         <div className="my-auto max-w-md w-full mx-auto">
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-7 sm:p-9 relative overflow-hidden">
             {/* Top Blue Accent Line */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-[#1D64EC] to-indigo-600" />
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-[#1D64EC] to-blue-600" />
 
             {!isSent ? (
               <>

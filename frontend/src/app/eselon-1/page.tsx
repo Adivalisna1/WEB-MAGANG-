@@ -87,7 +87,7 @@ export default function KetuaDashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -100,7 +100,7 @@ export default function KetuaDashboardPage() {
   }
 
   const kartu = [
-    { label: 'Total Dokumen',          value: data.totalDokumen,    icon: FileText,     color: 'text-indigo-600 bg-indigo-50' },
+    { label: 'Total Dokumen',          value: data.totalDokumen,    icon: FileText,     color: 'text-blue-600 bg-blue-50' },
     { label: 'Menunggu Verifikasi',    value: data.menunggu,        icon: Clock,        color: 'text-amber-600 bg-amber-50' },
     { label: 'Menunggu Persetujuan',   value: data.lolosPimpinan ?? 0, icon: Clock,        color: 'text-blue-600 bg-blue-50' },
     { label: 'Terverifikasi',          value: data.terverifikasi,   icon: CheckCircle,  color: 'text-green-600 bg-green-50' },
@@ -133,7 +133,7 @@ export default function KetuaDashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setLoading(true); fetchStats(); }}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
           >
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
@@ -244,7 +244,7 @@ export default function KetuaDashboardPage() {
               {data.onlineUsers.map((u) => (
                 <div key={u.id} className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-semibold text-sm">
+                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold text-sm">
                       {u.nama.charAt(0).toUpperCase()}
                     </div>
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />

@@ -153,7 +153,7 @@ export default function NotificationBell() {
   function NotifIcon({ aksi }: { aksi: string }) {
     if (aksi === 'approve' || aksi === 'terverifikasi') return <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />;
     if (aksi === 'reject')        return <XCircle className="w-5 h-5 text-orange-500 shrink-0" />;
-    if (aksi === 'reset_password') return <KeyRound className="w-5 h-5 text-purple-500 shrink-0" />;
+    if (aksi === 'reset_password') return <KeyRound className="w-5 h-5 text-sky-500 shrink-0" />;
     return <Send className="w-5 h-5 text-blue-500 shrink-0" />;
   }
 

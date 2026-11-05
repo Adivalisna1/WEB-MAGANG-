@@ -84,7 +84,7 @@ export default function AdminITDashboard() {
         {[
           { title: 'Total Pengguna Terdaftar', value: stats.totalUsers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
           { title: 'Sesi Aktif', value: stats.onlineNow, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { title: 'Total Dokumen', value: stats.totalDokumen, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { title: 'Total Dokumen', value: stats.totalDokumen, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
           { title: 'Kategori Terdaftar', value: stats.totalKategori, icon: Database, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
@@ -132,7 +132,7 @@ export default function AdminITDashboard() {
                 <span className="text-gray-500">{stats.memoryUsage}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${stats.memoryUsage}%` }}></div>
+                <div className="bg-blue-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${stats.memoryUsage}%` }}></div>
               </div>
             </div>
           </div>

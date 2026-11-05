@@ -33,6 +33,13 @@ const BANK_BUMN_LIST = [
   "Bank BTN",
   "Bank BSI (Bank Syariah Indonesia)",
   "Bank BCA",
+  "Bank BJB (Jawa Barat & Banten)",
+  "Bank BJB Syariah",
+  "Bank Jateng (Jawa Tengah)",
+  "Bank Jatim (Jawa Timur)",
+  "Bank Nagari (Sumatra Barat)",
+  "Bank Sumsel Babel (Sumatra Selatan & Babel)",
+  "Bank BPD Bali",
   "Bank Lainnya",
 ];
 
@@ -55,6 +62,20 @@ const BANK_CODE_MAP: Record<string, string> = {
   "bank bca": "014",
   bca: "014",
   "bank central asia": "014",
+  "bjb syariah": "425",
+  "bank bjb syariah": "425",
+  bjb: "110",
+  "bank bjb": "110",
+  jateng: "113",
+  "bank jateng": "113",
+  jatim: "114",
+  "bank jatim": "114",
+  nagari: "118",
+  "bank nagari": "118",
+  "sumsel babel": "120",
+  "bank sumsel babel": "120",
+  "bpd bali": "129",
+  "bank bpd bali": "129",
 };
 
 const getKodeBank = (namaBank?: string, kodeBankDb?: string) => {
@@ -377,7 +398,7 @@ export default function PimpinanpencatatanPage() {
               <span>Total Saldo Bukti Aktif Tercatat</span>
               <DollarSign className="w-4 h-4 text-blue-500" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 mt-1">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
               Rp {totalNominal.toLocaleString("id-ID")}
             </div>
           </div>
@@ -530,7 +551,7 @@ export default function PimpinanpencatatanPage() {
                             <Calendar className="w-3.5 h-3.5 text-blue-600" />
                             {formatTanggalIndo(t.tanggal)}
                           </span>
-                          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-semibold">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[11px] font-semibold">
                             {getDisplayPeriode(t.periode, t.tanggal)}
                           </span>
                         </div>
@@ -639,7 +660,7 @@ export default function PimpinanpencatatanPage() {
             onClick={() => setSelectedBankDrawer(null)}
           />
           <div className="relative z-10 w-full max-w-xl bg-white h-full shadow-2xl border-l border-gray-200 flex flex-col overflow-hidden">
-            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex items-start justify-between gap-4">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-blue-900 text-white flex items-start justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-md bg-blue-500/30 border border-blue-300/30 text-xs font-mono font-bold text-blue-100">
@@ -707,7 +728,7 @@ export default function PimpinanpencatatanPage() {
                             <Calendar className="w-3 h-3" />
                             {formatTanggalIndo(item.tanggal)}
                           </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold">
                             {getDisplayPeriode(item.periode, item.tanggal)}
                           </span>
                         </div>

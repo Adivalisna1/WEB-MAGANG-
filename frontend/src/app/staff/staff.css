@@ -13,9 +13,9 @@
   --color-primary-border: rgba(30, 144, 255, 0.28);
 
   --color-indigo: #4F46E5;
-  --color-indigo-hover: #4338CA;
-  --color-indigo-light: #EEF2FF;
-  --color-indigo-subtle: rgba(79, 70, 229, 0.12);
+  --color-blue-hover: #4338CA;
+  --color-blue-light: #EEF2FF;
+  --color-blue-subtle: rgba(79, 70, 229, 0.12);
 
   /* --- PALET NETRAL --- */
   --slate-50:  #F8FAFC;

@@ -256,7 +256,7 @@ export default function SatkerManagementPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
                           <Building2 className="w-4 h-4" />
                         </div>
                         <span className="font-medium text-gray-900">{k.nama}</span>

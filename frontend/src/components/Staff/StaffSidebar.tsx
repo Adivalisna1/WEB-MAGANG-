@@ -1,34 +1,82 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
-  FileText,
-  Upload,
   LayoutDashboard,
   LogOut,
   User,
   ChevronRight,
-  Home,
-  Settings,
-  Bell,
+  ChevronDown,
+  ChevronLeft,
   FileSpreadsheet,
   FileUp,
   X,
-  ChevronLeft,
+  Wallet,
+  ClipboardList,
+  FileCheck2,
+  FileText,
+  ClipboardCheck,
+  BookMarked,
+  Landmark,
+  Receipt,
+  AlertOctagon,
+  FileSignature,
+  CheckCheck,
 } from "lucide-react";
 import clsx from "clsx";
 
-const StaffMenu = [
-  { href: "/staff/dokumen", icon: LayoutDashboard, label: "Dokumen" },
+const StaffKasSubMenu = [
   {
     href: "/staff/rekening-koran",
     icon: FileSpreadsheet,
     label: "Rekening Koran",
   },
-  { href: "/staff/pencatatan", icon: FileUp, label: "Upload Bukti" },
-  { href: "/staff/profil", icon: User, label: "Profil" },
+  {
+    href: "/staff/kas/bap-kas",
+    icon: ClipboardCheck,
+    label: "BAP Kas",
+  },
+  {
+    href: "/staff/kas/lpj-bendahara",
+    icon: BookMarked,
+    label: "LPJ Bendahara",
+  },
+  {
+    href: "/staff/kas/konfirmasi-bank",
+    icon: Landmark,
+    label: "Konfirmasi Saldo Bank",
+  },
+];
+
+const StaffLaporanSubMenu = [
+  {
+    href: "/staff/laporan/sk-piutang/penetapan",
+    icon: AlertOctagon,
+    label: "1. SK Penetapan / Kurang Bayar",
+  },
+  {
+    href: "/staff/laporan/sk-piutang/pembebanan",
+    icon: FileSignature,
+    label: "2. SK Pembebanan / SKTJM",
+  },
+  {
+    href: "/staff/laporan/sk-piutang/penghapusan",
+    icon: CheckCheck,
+    label: "3. SK Penghapusan Piutang",
+  },
+  {
+    href: "/staff/laporan/surat-rekening",
+    icon: FileText,
+    label: "Surat Penutup/Pembukaan Rekening",
+  },
+  {
+    href: "/staff/laporan/bukti-setor-up",
+    icon: Receipt,
+    label: "Bukti Setor Sisa UP (NTPN)",
+  },
 ];
 
 interface SidebarProps {
@@ -47,6 +95,40 @@ export default function Sidebar({
   const pathname = usePathname();
   const { user, logoutFn } = useAuth();
 
+  const isDokumenActive =
+    pathname === "/staff/dokumen" || pathname.startsWith("/staff/dokumen");
+
+  const isKasActive =
+    pathname === "/staff/kas" ||
+    pathname.startsWith("/staff/kas") ||
+    pathname === "/staff/rekening-koran" ||
+    pathname.startsWith("/staff/rekening-koran");
+
+  const isUploadBuktiActive =
+    pathname === "/staff/pencatatan" ||
+    pathname.startsWith("/staff/pencatatan");
+
+  const isLaporanActive =
+    pathname.startsWith("/staff/laporan");
+
+  const isProfilActive =
+    pathname === "/staff/profil" || pathname.startsWith("/staff/profil");
+
+  const [isKasOpen, setIsKasOpen] = useState(isKasActive);
+  const [isLaporanOpen, setIsLaporanOpen] = useState(isLaporanActive);
+
+  useEffect(() => {
+    if (isKasActive) {
+      setIsKasOpen(true);
+    }
+  }, [isKasActive]);
+
+  useEffect(() => {
+    if (isLaporanActive) {
+      setIsLaporanOpen(true);
+    }
+  }, [isLaporanActive]);
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -60,8 +142,8 @@ export default function Sidebar({
       <aside
         className={`
         fixed left-0 top-0 md:relative h-screen bg-white border-r border-slate-200 text-slate-600 flex flex-col shrink-0 z-50 transition-all duration-300
-        ${isMobileOpen ? "translate-x-0 w-[260px]" : "-translate-x-full md:translate-x-0"}
-        ${isCollapsed ? "md:w-20" : "md:w-[260px]"}
+        ${isMobileOpen ? "translate-x-0 w-[270px]" : "-translate-x-full md:translate-x-0"}
+        ${isCollapsed ? "md:w-20" : "md:w-[270px]"}
       `}
       >
         <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
@@ -96,33 +178,248 @@ export default function Sidebar({
 
         {/* Menu */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {StaffMenu.map(({ href, icon: Icon, label }) => {
-            const active = pathname === href || pathname.startsWith(href);
-            return (
+          {/* Dokumen */}
+          <Link
+            href="/staff/dokumen"
+            className={clsx(
+              "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+              isDokumenActive
+                ? "bg-[#475569] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+              isCollapsed ? "justify-center" : "gap-3 w-full"
+            )}
+            title={isCollapsed ? "Dokumen" : undefined}
+          >
+            <LayoutDashboard
+              className={clsx(
+                "w-5 h-5 shrink-0",
+                isDokumenActive
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-slate-900"
+              )}
+            />
+            {!isCollapsed && <span className="truncate">Dokumen</span>}
+          </Link>
+
+          {/* Kas Parent Navigation + Accordion */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isKasActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/60"
+              )}
+            >
+              {/* Klik link teks/icon Kas -> navigasi ke /staff/kas */}
               <Link
-                key={href}
-                href={href}
+                href="/staff/kas"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsKasOpen(true);
+                }}
                 className={clsx(
-                  "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
-                  active
-                    ? "bg-[#475569] text-white shadow-sm"
-                    : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-                  isCollapsed ? "justify-center" : "gap-3 w-full",
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
                 )}
-                title={isCollapsed ? label : undefined}
+                title={isCollapsed ? "Buku Kas & Rekonsiliasi" : undefined}
               >
-                <Icon
+                <Wallet
                   className={clsx(
                     "w-5 h-5 shrink-0",
-                    active
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-slate-900",
+                    isKasActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-slate-900"
                   )}
                 />
-                {!isCollapsed && <span className="truncate">{label}</span>}
+                {!isCollapsed && <span className="truncate">Kas</span>}
               </Link>
-            );
-          })}
+
+              {/* Tombol Chevron -> buka/tutup submenu */}
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsKasOpen(!isKasOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-slate-700 transition-colors"
+                  title={isKasOpen ? "Ciutkan sub-menu" : "Buka sub-menu"}
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200",
+                      isKasOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Child Menu Kas */}
+            {!isCollapsed && isKasOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {StaffKasSubMenu.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Upload Bukti (Standalone Menu) */}
+          <Link
+            href="/staff/pencatatan"
+            className={clsx(
+              "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+              isUploadBuktiActive
+                ? "bg-[#475569] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+              isCollapsed ? "justify-center" : "gap-3 w-full"
+            )}
+            title={isCollapsed ? "Upload Bukti" : undefined}
+          >
+            <FileUp
+              className={clsx(
+                "w-5 h-5 shrink-0",
+                isUploadBuktiActive
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-slate-900"
+              )}
+            />
+            {!isCollapsed && <span className="truncate">Upload Bukti</span>}
+          </Link>
+
+          {/* Laporan Accordion */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isLaporanActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/60"
+              )}
+            >
+              <Link
+                href="/staff/laporan/sk-piutang"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsLaporanOpen(true);
+                }}
+                className={clsx(
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
+                )}
+                title={isCollapsed ? "Laporan & SK Piutang" : undefined}
+              >
+                <ClipboardList
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    isLaporanActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-slate-900"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">Laporan</span>}
+              </Link>
+
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsLaporanOpen(!isLaporanOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-slate-700 transition-colors"
+                  title={isLaporanOpen ? "Ciutkan sub-menu" : "Buka sub-menu"}
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200",
+                      isLaporanOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Child Menu Laporan (Termasuk 3 Submenu SK Piutang dari Mentor) */}
+            {!isCollapsed && isLaporanOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {StaffLaporanSubMenu.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Profil */}
+          <Link
+            href="/staff/profil"
+            className={clsx(
+              "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+              isProfilActive
+                ? "bg-[#475569] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+              isCollapsed ? "justify-center" : "gap-3 w-full"
+            )}
+            title={isCollapsed ? "Profil" : undefined}
+          >
+            <User
+              className={clsx(
+                "w-5 h-5 shrink-0",
+                isProfilActive
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-slate-900"
+              )}
+            />
+            {!isCollapsed && <span className="truncate">Profil</span>}
+          </Link>
         </nav>
 
         <div className="p-3 border-t border-slate-100 flex flex-col gap-2 bg-slate-50/50">
@@ -130,7 +427,7 @@ export default function Sidebar({
           <div
             className={clsx(
               "flex items-center bg-white border border-slate-200/80 rounded-xl p-2 transition-all shadow-xs",
-              isCollapsed ? "justify-center" : "justify-between gap-2",
+              isCollapsed ? "justify-center" : "justify-between gap-2"
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">

@@ -269,11 +269,11 @@ export default function UploadPage() {
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         {/* AI Scanning Indicator */}
         {aiScanning && (
-          <div className="flex items-center gap-3 bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 text-violet-700 text-sm rounded-xl px-5 py-4 animate-pulse">
+          <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-blue-50 border border-blue-200 text-blue-700 text-sm rounded-xl px-5 py-4 animate-pulse">
             <Brain className="w-5 h-5 animate-spin" />
             <div>
               <p className="font-semibold">🤖 AI sedang membaca dokumen...</p>
-              <p className="text-xs text-violet-500 mt-0.5">Menganalisis isi file untuk mengisi form otomatis</p>
+              <p className="text-xs text-blue-500 mt-0.5">Menganalisis isi file untuk mengisi form otomatis</p>
             </div>
           </div>
         )}
@@ -446,7 +446,7 @@ export default function UploadPage() {
 
         {/* Khusus Surat Pembukaan & Surat Penutupan Rekening Koran: Form Detail & Info Verifikasi Eselon 1 (Tanpa Saldo) */}
         {isSuratRekening && (
-          <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-200 rounded-xl p-5 space-y-3.5 shadow-xs">
+          <div className="bg-gradient-to-br from-blue-50/80 to-blue-50/80 border border-blue-200 rounded-xl p-5 space-y-3.5 shadow-xs">
             <div className="flex items-start gap-3">
               <div className={`p-2.5 rounded-xl text-white shrink-0 ${isSuratPembukaan ? 'bg-blue-600' : 'bg-amber-600'}`}>
                 <FileText className="w-5 h-5" />
@@ -653,7 +653,7 @@ export default function UploadPage() {
                 <p className="text-xs text-gray-500">{formatSize(file.size)}</p>
               </div>
               {aiScanning && (
-                <span className="flex items-center gap-1.5 text-xs text-violet-600 bg-violet-100 px-2.5 py-1 rounded-full animate-pulse">
+                <span className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full animate-pulse">
                   <Brain className="w-3.5 h-3.5 animate-spin" /> Scanning...
                 </span>
               )}
@@ -681,7 +681,7 @@ export default function UploadPage() {
               <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
               <div className="flex items-center justify-center gap-2 mt-3">
                 <p className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX • Maks 50MB</p>
-                <span className="inline-flex items-center gap-1 text-xs text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
                   <Sparkles className="w-3 h-3" /> AI Autofill
                 </span>
               </div>

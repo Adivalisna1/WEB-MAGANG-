@@ -63,12 +63,12 @@ interface Kategori {
 
 const statusConfig: Record<string, { label: string; badgeClass: string; color: string }> = {
   draft: { label: 'Draft', badgeClass: 'staff-badge-draft', color: 'bg-slate-100 text-slate-700 border-slate-300' },
-  menunggu_verifikasi: { label: 'Menunggu Pimpinan', badgeClass: 'staff-badge-pimpinan', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  menunggu_verifikasi: { label: 'Menunggu Pimpinan', badgeClass: 'staff-badge-pimpinan', color: 'bg-blue-50 text-blue-700 border-blue-200' },
   lolos_pimpinan: { label: 'Menunggu Eselon 1', badgeClass: 'staff-badge-eselon', color: 'bg-blue-50 text-blue-700 border-blue-200' },
   lolos_admin: { label: 'Menunggu Eselon 1', badgeClass: 'staff-badge-eselon', color: 'bg-blue-50 text-blue-700 border-blue-200' },
   terverifikasi: { label: 'Selesai', badgeClass: 'staff-badge-selesai', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   revisi: { label: 'Perlu Perbaikan', badgeClass: 'staff-badge-revisi', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  diarsipkan: { label: 'Diarsipkan', badgeClass: 'staff-badge-arsip', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  diarsipkan: { label: 'Diarsipkan', badgeClass: 'staff-badge-arsip', color: 'bg-sky-50 text-sky-700 border-sky-200' },
 };
 
 function formatRupiah(val: number | null | undefined): string {
@@ -180,7 +180,7 @@ export default function PimpinanDashboardPage() {
   if (loading && !stats) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
         <p className="text-sm font-semibold text-slate-500">Memuat data Dashboard Pimpinan...</p>
       </div>
     );
@@ -193,7 +193,7 @@ export default function PimpinanDashboardPage() {
           1. ALERT / SPOTLIGHT NOTICE BANNER (MIRRORS STAFF BANNER AESTHETIC)
           ==================================================================== */}
       {countMenunggu > 0 ? (
-        <section className="alert-banner-amber flex-wrap sm:flex-nowrap gap-4 shadow-sm border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-50 to-indigo-50/40">
+        <section className="alert-banner-amber flex-wrap sm:flex-nowrap gap-4 shadow-sm border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-50 to-blue-50/40">
           <div className="alert-banner-left">
             <div className="alert-icon-circle bg-amber-500 text-white shrink-0 shadow-xs">
               <Clock4 className="w-5 h-5" />
@@ -332,8 +332,8 @@ export default function PimpinanDashboardPage() {
 
           {/* Quick Review Spotlight Card (Jika ada antrean menunggu) */}
           {topPendingDoc && (
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 shadow-md border border-slate-700 relative overflow-hidden">
-              <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-indigo-500/10 to-transparent pointer-events-none" />
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white rounded-2xl p-6 shadow-md border border-slate-700 relative overflow-hidden">
+              <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-blue-500/10 to-transparent pointer-events-none" />
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   <Clock className="w-3.5 h-3.5" /> Antrean Teratas Memerlukan Tindakan
@@ -388,7 +388,7 @@ export default function PimpinanDashboardPage() {
                 </span>
                 <Link
                   href="/pimpinan/dokumen"
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all transform hover:scale-[1.02]"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all transform hover:scale-[1.02]"
                 >
                   <Eye className="w-4 h-4" />
                   <span>Tinjau Dokumen Ini di Panel Verifikasi</span>
@@ -477,7 +477,7 @@ export default function PimpinanDashboardPage() {
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Cari judul dokumen, nomor, atau staff..."
-                    className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   {searchQuery && (
                     <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -491,7 +491,7 @@ export default function PimpinanDashboardPage() {
                   <select
                     value={selectedKategori}
                     onChange={e => setSelectedKategori(e.target.value)}
-                    className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="all">Semua Kategori</option>
                     {kategoriList.map(k => (
@@ -540,12 +540,12 @@ export default function PimpinanDashboardPage() {
                         <tr key={dok.id} className="hover:bg-slate-50/60 transition-colors group">
                           {/* Dokumen & Tracking */}
                           <td className="px-6 py-4 max-w-[280px]">
-                            <p className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1" title={dok.judul}>
+                            <p className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1" title={dok.judul}>
                               {dok.judul}
                             </p>
                             <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                               {dok.nomor_laporan ? (
-                                <span className="font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                <span className="font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded text-[10px] font-bold">
                                   #{dok.nomor_laporan}
                                 </span>
                               ) : null}
@@ -610,7 +610,7 @@ export default function PimpinanDashboardPage() {
                             <div className="inline-flex items-center gap-1 justify-end">
                               <Link
                                 href="/pimpinan/dokumen"
-                                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg transition-colors inline-flex items-center gap-1"
+                                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition-colors inline-flex items-center gap-1"
                                 title="Tinjau & Verifikasi Dokumen"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -643,7 +643,7 @@ export default function PimpinanDashboardPage() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/pimpinan/dokumen"
-                  className="font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
+                  className="font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"
                 >
                   <span>Buka Semua Dokumen</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -680,7 +680,7 @@ export default function PimpinanDashboardPage() {
                   {totalAllDocs}
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                 <FileText className="w-5 h-5" />
               </div>
             </div>
@@ -761,7 +761,7 @@ export default function PimpinanDashboardPage() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.05)]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-600" />
+                <Users className="w-4 h-4 text-blue-600" />
                 <h3 className="font-bold text-slate-900 text-sm">Staff Satker Aktif</h3>
               </div>
               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -798,8 +798,8 @@ export default function PimpinanDashboardPage() {
           </div>
 
           {/* KARTU PANDUAN PIMPINAN (STYLE MATCHING STAFF GUIDE CARD) */}
-          <div className="staff-card staff-guide-card rounded-2xl p-6 bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white border border-slate-700/80 shadow-md">
-            <div className="staff-guide-card-icon w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3">
+          <div className="staff-card staff-guide-card rounded-2xl p-6 bg-gradient-to-br from-blue-950 via-slate-900 to-slate-950 text-white border border-slate-700/80 shadow-md">
+            <div className="staff-guide-card-icon w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-3">
               <BookOpen className="w-5 h-5" />
             </div>
             <h3 className="text-white font-bold text-base mb-1">Pedoman Verifikasi v2.4</h3>

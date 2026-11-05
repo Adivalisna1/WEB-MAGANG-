@@ -174,7 +174,7 @@ export default function UploadSkPiutangModal({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-black text-slate-800">Unggah SK Piutang</h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
                 Admin Satker
               </span>
             </div>
@@ -220,8 +220,8 @@ export default function UploadSkPiutangModal({
                 </label>
 
                 {file ? (
-                  <div className="flex items-center gap-3 bg-indigo-50/80 border border-indigo-200 rounded-xl p-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                  <div className="flex items-center gap-3 bg-blue-50/80 border border-blue-200 rounded-xl p-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -250,11 +250,11 @@ export default function UploadSkPiutangModal({
                     className={clsx(
                       "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
                       dragging
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50/60"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-slate-300 hover:border-blue-400 hover:bg-slate-50/60"
                     )}
                   >
-                    <CloudUpload className={clsx("w-8 h-8 mx-auto mb-2", dragging ? "text-indigo-600" : "text-slate-400")} />
+                    <CloudUpload className={clsx("w-8 h-8 mx-auto mb-2", dragging ? "text-blue-600" : "text-slate-400")} />
                     <p className="text-xs font-bold text-slate-700">Tarik & lepas file ke sini</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">atau klik untuk memilih file</p>
                     <div className="mt-2.5">
@@ -285,7 +285,7 @@ export default function UploadSkPiutangModal({
                   value={keterangan}
                   onChange={(e) => setKeterangan(e.target.value)}
                   placeholder="Tuliskan keterangan lengkap SK Piutang, nomor surat, pihak penanggung/debitur, atau catatan penting terkait..."
-                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white resize-none text-slate-800 placeholder:text-slate-400 leading-relaxed"
+                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white resize-none text-slate-800 placeholder:text-slate-400 leading-relaxed"
                 />
               </div>
 
@@ -310,7 +310,7 @@ export default function UploadSkPiutangModal({
                 <button
                   type="submit"
                   disabled={loading || !file || !keterangan.trim()}
-                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl flex items-center gap-1.5 shadow-sm shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {loading ? (
                     <>

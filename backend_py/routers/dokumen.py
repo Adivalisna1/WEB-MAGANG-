@@ -25,10 +25,74 @@ def buat_nomor_laporan(slug: str, tahun: int, doc_id: int) -> str:
     kode = (slug or 'DOK').upper().replace('-', '')
     return f"{kode}/{tahun}/{str(doc_id).zfill(3)}"
 
+_DOKUMEN_GDRIVE_ENSURED = False
+def _ensure_dokumen_gdrive_column(cursor, db):
+    global _DOKUMEN_GDRIVE_ENSURED
+    if _DOKUMEN_GDRIVE_ENSURED:
+        return
+    try:
+        cursor.execute("ALTER TABLE dokumen ADD COLUMN link_drive VARCHAR(500) NULL")
+        db.commit()
+    except Exception:
+        pass
+    _DOKUMEN_GDRIVE_ENSURED = True
+
+class GDriveScanPayload(BaseModel):
+    url: str
+
+@router.post("/gdrive-scan")
+async def gdrive_scan_dokumen(
+    payload: GDriveScanPayload,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Mengunduh dan menganalisis berkas Google Drive secara real-time.
+    Mendeteksi error spesifik:
+    - PRIVATE_ACCESS_DENIED (Akses Dibatasi)
+    - QUOTA_EXCEEDED (Batas Pengunjung/Unduhan Terlampaui)
+    - NOT_FOUND (Berkas Dihapus/404)
+    - INVALID_URL
+    """
+    from services.gdrive import download_and_scan_gdrive
+    temp_dir = os.path.join(UPLOAD_DIR, "temp_gdrive")
+    result = await download_and_scan_gdrive(payload.url, temp_dir)
+    return result
+
+class GDriveFolderScanPayload(BaseModel):
+    url: str
+
+@router.post("/gdrive-folder-scan")
+async def gdrive_folder_scan_dokumen(
+    payload: GDriveFolderScanPayload,
+    user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """
+    Pindai tautan FOLDER Google Drive secara menyeluruh (termasuk sub-folder Satker).
+    Mengunduh berkas secara otomatis dan mengekstrak bank, no rek, serta saldo akhir.
+    """
+    from services.gdrive import scan_gdrive_folder
+    batch_id = f"batch_gdrive_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+    batch_dir = os.path.join(UPLOAD_DIR, "temp_batch", batch_id)
+    
+    result = await scan_gdrive_folder(payload.url, batch_dir)
+    if not result.get("success"):
+        return result
+        
+    result["batch_id"] = batch_id
+    return result
+
 @router.get("/kategori")
 async def get_kategori(db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, nama, slug, deskripsi, perlu_nominal FROM kategori_dokumen WHERE is_active = 1 ORDER BY urutan ASC")
+        rows = cursor.fetchall()
+    return {"success": True, "data": rows}
+
+@router.get("/banks")
+async def get_banks(db=Depends(get_db)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, kode_bank, nama_bank, singkatan FROM master_bank WHERE is_active = 1 ORDER BY id ASC")
         rows = cursor.fetchall()
     return {"success": True, "data": rows}
 
@@ -227,7 +291,9 @@ async def upload_dokumen(
     nama_rekening: Optional[str] = Form(None),
     nama_debitur: Optional[str] = Form(None),
     dasar_temuan: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    temp_gdrive_filename: Optional[str] = Form(None),
+    link_drive: Optional[str] = Form(None),
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
@@ -290,27 +356,60 @@ async def upload_dokumen(
         nilai_rekening_koran = None
         nilai_excel = None
     
-    filename = file.filename or ""
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"Format file '{ext}' tidak diizinkan. Hanya file dokumen (.pdf, .xlsx, .xls, .docx, .doc, .jpg, .png) yang didukung.")
-    base_name = os.path.splitext(filename)[0].replace(' ', '-').lower()
-    unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
-    
-    r2_key = await save_file(file.file, unique_name, tahun)
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    
+    if file and file.filename:
+        filename = file.filename
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(400, f"Format file '{ext}' tidak diizinkan. Hanya file dokumen (.pdf, .xlsx, .xls, .docx, .doc, .jpg, .png) yang didukung.")
+        base_name = os.path.splitext(filename)[0].replace(' ', '-').lower()
+        unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
+        r2_key = await save_file(file.file, unique_name, tahun)
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file_mime = file.content_type
+    elif temp_gdrive_filename:
+        temp_gdrive_path = os.path.join(UPLOAD_DIR, "temp_gdrive", temp_gdrive_filename)
+        if not os.path.exists(temp_gdrive_path):
+            raise HTTPException(400, "Berkas Google Drive sementara tidak ditemukan atau sudah kedaluwarsa. Silakan scan ulang.")
+        with open(temp_gdrive_path, "rb") as gf:
+            g_bytes = gf.read()
+        filename = temp_gdrive_filename.split("_", 1)[-1] if "_" in temp_gdrive_filename else temp_gdrive_filename
+        ext = os.path.splitext(filename)[1].lower() or ".pdf"
+        base_name = os.path.splitext(filename)[0].replace(' ', '-').lower()
+        unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
+        g_stream = io.BytesIO(g_bytes)
+        r2_key = await save_file(g_stream, unique_name, tahun)
+        file_size = len(g_bytes)
+        file_mime = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+        try:
+            os.remove(temp_gdrive_path)
+        except Exception:
+            pass
+    else:
+        raise HTTPException(400, "Berkas dokumen wajib diunggah atau berikan tautan Google Drive yang valid")
+
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("""
-            INSERT INTO dokumen
-             (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
-              file_nama, file_path, file_size, file_mime, status, is_public,
-              nilai_rekening_koran, nilai_excel)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
-        """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
-              filename, r2_key, file_size, file.content_type, status_awal,
-              nilai_rekening_koran, nilai_excel))
+        _ensure_dokumen_gdrive_column(cursor, db)
+        try:
+            cursor.execute("""
+                INSERT INTO dokumen
+                 (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
+                  file_nama, file_path, file_size, file_mime, status, is_public,
+                  nilai_rekening_koran, nilai_excel, link_drive)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
+            """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
+                  filename, r2_key, file_size, file_mime, status_awal,
+                  nilai_rekening_koran, nilai_excel, link_drive))
+        except Exception:
+            cursor.execute("""
+                INSERT INTO dokumen
+                 (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
+                  file_nama, file_path, file_size, file_mime, status, is_public,
+                  nilai_rekening_koran, nilai_excel)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+            """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
+                  filename, r2_key, file_size, file_mime, status_awal,
+                  nilai_rekening_koran, nilai_excel))
         insert_id = cursor.lastrowid
         
         nomor_laporan = buat_nomor_laporan(kat_row["slug"] if kat_row else "", tahun, insert_id)
@@ -342,6 +441,58 @@ async def upload_dokumen(
                     notif_msg,
                     insert_id
                 )
+
+        # Jika Rekening Koran, otomatis catat ke rekening_koran dan pencatatan
+        is_rek = bool(
+            nama_bank or
+            (kat_row and "rekening" in kat_row.get("nama", "").lower() and not is_surat_rek) or
+            kategori_id == 1
+        )
+        if is_rek:
+            target_satker = user.get("satker_id")
+            final_nom = float(nilai_rekening_koran or nilai_excel or 0)
+            BULAN_NAMES_ID = {
+                1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+                5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+                9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+            }
+            final_periode = f"{BULAN_NAMES_ID.get(bulan_final, 'September')} {tahun}" if bulan_final else f"{tahun}"
+            try:
+                cursor.execute("""
+                    INSERT INTO rekening_koran (
+                        satker_id, uploaded_by, dokumen_id, nama_bank, nomor_rekening_bank,
+                        nama_rekening, saldo_akhir_bulan, keterangan, tahun, periode, is_active
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
+                """, (
+                    target_satker, user["id"], insert_id, nama_bank or "-",
+                    nomor_rekening or "-", nama_rekening or "-",
+                    final_nom, deskripsi or "-", tahun, final_periode
+                ))
+            except Exception as e:
+                logger.warning("Insert into rekening_koran failed: %s", e)
+
+            try:
+                cursor.execute("""
+                    INSERT INTO pencatatan 
+                    (tanggal, periode, uraian, jenis, id_kategori, satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, kode_bank, nama_rekening, is_active) 
+                    VALUES (%s, %s, %s, 'debit', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
+                """, (
+                    tgl_surat_final or f"{tahun}-09-30",
+                    final_periode,
+                    deskripsi or f"Pencatatan Rekening Koran - {nama_bank or 'Bank'}",
+                    kategori_id,
+                    target_satker,
+                    final_nom,
+                    f"/api/dokumen/{insert_id}/download",
+                    deskripsi or "-",
+                    user["id"],
+                    nomor_rekening or "-",
+                    nama_bank or "-",
+                    "-",
+                    nama_rekening or "-"
+                ))
+            except Exception as e:
+                logger.warning("Insert into pencatatan failed: %s", e)
 
         db.commit()
         
@@ -1076,12 +1227,17 @@ async def batch_scan_dokumen(
     Scan masal file dari file ZIP atau dari 1 folder (multiple file picker).
     Mengekstrak bank, no rek, nama rek, dan saldo akhir tiap dokumen secara otomatis.
     """
+    # Seluruh pengguna yang berhak mengunggah dokumen (Tingkat Satker, Eselon 1, maupun Admin IT)
+    # memiliki akses penuh untuk batch scan 1 folder / ZIP
     is_uploader = (
-        user.get("role") in ["operator", "it", "admin_it", "staff_satker"] or
-        user.get("role_id") in [1, 3]
+        user.get("tingkat") in ["satker", "eselon_1", "kl"] or
+        user.get("role") in ["operator", "it", "admin_it", "staff_satker", "administrasi", "manajemen", "staff"] or
+        user.get("role_id") in [1, 2, 3] or
+        bool(user.get("satker_id")) or
+        bool(user.get("eselon_1_id"))
     )
     if not is_uploader:
-        raise HTTPException(403, "Hanya Operator Pelaksana yang berhak mengunggah dokumen")
+        raise HTTPException(403, "Anda tidak memiliki hak akses untuk mengunggah dokumen masal")
 
     batch_id = f"batch_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
     batch_dir = os.path.join(UPLOAD_DIR, "temp_batch", batch_id)
@@ -1201,12 +1357,17 @@ async def batch_save_dokumen(
     """
     Menyimpan sekaligus seluruh dokumen hasil konfirmasi batch upload ke database dan penyimpanan berkas.
     """
+    # Seluruh pengguna yang berhak mengunggah dokumen (Tingkat Satker, Eselon 1, maupun Admin IT)
+    # memiliki akses penuh untuk batch scan 1 folder / ZIP
     is_uploader = (
-        user.get("role") in ["operator", "it", "admin_it", "staff_satker"] or
-        user.get("role_id") in [1, 3]
+        user.get("tingkat") in ["satker", "eselon_1", "kl"] or
+        user.get("role") in ["operator", "it", "admin_it", "staff_satker", "administrasi", "manajemen", "staff"] or
+        user.get("role_id") in [1, 2, 3] or
+        bool(user.get("satker_id")) or
+        bool(user.get("eselon_1_id"))
     )
     if not is_uploader:
-        raise HTTPException(403, "Hanya Operator Pelaksana yang berhak mengunggah dokumen")
+        raise HTTPException(403, "Anda tidak memiliki hak akses untuk mengunggah dokumen masal")
 
     batch_dir = os.path.join(UPLOAD_DIR, "temp_batch", payload.batch_id)
     if not os.path.exists(batch_dir):
@@ -1214,16 +1375,27 @@ async def batch_save_dokumen(
 
     saved_items = []
     created_by = user["id"]
-    satker_id = user.get("satker_id")
+    user_satker_id = user.get("satker_id")
 
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT id, nama, slug FROM kategori_dokumen")
         kat_map = {k["id"]: k for k in cursor.fetchall()}
 
+        cursor.execute("SELECT id, NO_Satker FROM satkers")
+        satker_code_map = {str(s["NO_Satker"]): s["id"] for s in cursor.fetchall() if s.get("NO_Satker")}
+
         for item in payload.items:
             temp_path = os.path.join(batch_dir, item.temp_filename)
             if not os.path.exists(temp_path):
                 continue
+
+            # Prioritas satker: jika user adalah akun Satker, gunakan satker user.
+            # Jika user adalah Eselon 1 atau Admin IT, deteksi otomatis dari kode 6 digit di nama file (misal 693385)
+            target_satker_id = user_satker_id
+            if not target_satker_id:
+                m_code = re.search(r"\b(\d{6})\b", item.file_nama)
+                if m_code and m_code.group(1) in satker_code_map:
+                    target_satker_id = satker_code_map[m_code.group(1)]
 
             file_size = os.path.getsize(temp_path)
             ext = os.path.splitext(item.file_nama)[1].lower()
@@ -1280,10 +1452,33 @@ async def batch_save_dokumen(
                         nama_rekening, saldo_akhir_bulan, keterangan, tahun, periode, is_active
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
                 """, (
-                    satker_id, created_by, doc_id, item.nama_bank or "-",
+                    target_satker_id, created_by, doc_id, item.nama_bank or "-",
                     item.nomor_rekening or "-", item.nama_rekening or "-",
                     final_nom or 0.0, item.deskripsi or "-", item.tahun, final_periode
                 ))
+
+                try:
+                    cursor.execute("""
+                        INSERT INTO pencatatan 
+                        (tanggal, periode, uraian, jenis, id_kategori, satker_id, nominal, bukti_file, catatan_audit, created_by, nomor_rekening, nama_bank, kode_bank, nama_rekening, is_active) 
+                        VALUES (%s, %s, %s, 'debit', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
+                    """, (
+                        item.tanggal_surat or f"{item.tahun}-09-30",
+                        final_periode,
+                        item.deskripsi or f"Pencatatan Rekening Koran - {item.nama_bank or 'Bank'}",
+                        item.kategori_id,
+                        target_satker_id,
+                        final_nom or 0.0,
+                        f"/api/dokumen/{doc_id}/download",
+                        item.deskripsi or "-",
+                        created_by,
+                        item.nomor_rekening or "-",
+                        item.nama_bank or "-",
+                        "-",
+                        item.nama_rekening or "-"
+                    ))
+                except Exception as e:
+                    logger.warning("Insert into pencatatan skipped: %s", e)
 
             saved_items.append(doc_id)
 

@@ -21,7 +21,9 @@ import {
   CreditCard,
   Layers,
   ChevronRight,
+  Folder,
 } from "lucide-react";
+import UploadModal from "@/components/Staff/UploadModal";
 import clsx from "clsx";
 import * as XLSX from "xlsx";
 
@@ -37,6 +39,13 @@ const BANK_BUMN_LIST = [
   "Bank BTN",
   "Bank BSI (Bank Syariah Indonesia)",
   "Bank BCA",
+  "Bank BJB (Jawa Barat & Banten)",
+  "Bank BJB Syariah",
+  "Bank Jateng (Jawa Tengah)",
+  "Bank Jatim (Jawa Timur)",
+  "Bank Nagari (Sumatra Barat)",
+  "Bank Sumsel Babel (Sumatra Selatan & Babel)",
+  "Bank BPD Bali",
   "Bank Lainnya",
 ];
 
@@ -59,6 +68,20 @@ const BANK_CODE_MAP: Record<string, string> = {
   "bank bca": "014",
   bca: "014",
   "bank central asia": "014",
+  "bjb syariah": "425",
+  "bank bjb syariah": "425",
+  bjb: "110",
+  "bank bjb": "110",
+  jateng: "113",
+  "bank jateng": "113",
+  jatim: "114",
+  "bank jatim": "114",
+  nagari: "118",
+  "bank nagari": "118",
+  "sumsel babel": "120",
+  "bank sumsel babel": "120",
+  "bpd bali": "129",
+  "bank bpd bali": "129",
 };
 
 const getKodeBank = (namaBank?: string, kodeBankDb?: string) => {
@@ -193,6 +216,7 @@ export default function Eselon1PencatatanPage() {
   const todayDate = new Date().toISOString().split("T")[0];
 
   const [showForm, setShowForm] = useState(false);
+  const [showUploadBatch, setShowUploadBatch] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
 
   const [formData, setFormData] = useState({
@@ -562,6 +586,7 @@ export default function Eselon1PencatatanPage() {
             <Download className="w-4 h-4" /> Export Excel
           </button>
           {isOperator && (
+            <>
             <button
               onClick={() => {
                 setShowForm(true);
@@ -585,10 +610,18 @@ export default function Eselon1PencatatanPage() {
                 setAiResult(null);
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/20"
             >
-              <Plus className="w-4 h-4" /> Unggah Bukti Baru
+              <Plus className="w-4 h-4" /> Unggah Bukti Satuan
             </button>
+            <button
+              type="button"
+              onClick={() => setShowUploadBatch(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-all shadow-md shadow-sky-600/20"
+            >
+              <Folder className="w-4 h-4 text-amber-300" /> Unggah 1 Folder / ZIP Masal
+            </button>
+            </>
           )}
         </div>
       </div>
@@ -599,9 +632,9 @@ export default function Eselon1PencatatanPage() {
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Total Saldo Bukti Rekening Koran Aktif</span>
-              <DollarSign className="w-4 h-4 text-indigo-500" />
+              <DollarSign className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 mt-1">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
               Rp {totalNominal.toLocaleString("id-ID")}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -626,11 +659,11 @@ export default function Eselon1PencatatanPage() {
                 <div
                   key={bg.nama_bank}
                   onClick={() => setSelectedBankDrawer(bg.nama_bank)}
-                  className="bg-white border border-slate-200 hover:border-indigo-400 rounded-xl p-3.5 shadow-xs hover:shadow transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                  className="bg-white border border-slate-200 hover:border-blue-400 rounded-xl p-3.5 shadow-xs hover:shadow transition-all cursor-pointer flex items-center justify-between gap-3 group"
                 >
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 rounded">
+                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-blue-100 text-blue-800 rounded">
                         #{bg.kode_bank}
                       </span>
                       <span className="text-xs font-bold text-slate-800 truncate">
@@ -650,7 +683,7 @@ export default function Eselon1PencatatanPage() {
                       e.stopPropagation();
                       setSelectedBankDrawer(bg.nama_bank);
                     }}
-                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white text-xs font-semibold transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 group-hover:bg-blue-600 text-blue-700 group-hover:text-white text-xs font-semibold transition-colors"
                   >
                     <span>{bg.items.length} Bukti</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -671,14 +704,14 @@ export default function Eselon1PencatatanPage() {
             placeholder="Cari satker, bank, atau keterangan..."
             value={searchUraian}
             onChange={(e) => setSearchUraian(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
           />
         </div>
 
         <select
           value={filterSatker}
           onChange={(e) => setFilterSatker(e.target.value)}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium"
+          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
         >
           <option value="">
             Semua Satker Binaan (
@@ -701,7 +734,7 @@ export default function Eselon1PencatatanPage() {
         <select
           value={filterKategori}
           onChange={(e) => setFilterKategori(e.target.value)}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
           <option value="">Semua Kategori Dokumen</option>
           {sortedKategori.map((k) => (
@@ -714,7 +747,7 @@ export default function Eselon1PencatatanPage() {
         <select
           value={filterPeriode}
           onChange={(e) => setFilterPeriode(e.target.value)}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
           <option value="">Semua Bulan</option>
           {uniquePeriode.map((p) => (
@@ -746,7 +779,7 @@ export default function Eselon1PencatatanPage() {
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         {loading ? (
           <div className="py-20 flex justify-center items-center">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : filteredData.length === 0 ? (
           <div className="py-20 text-center text-slate-400 text-sm">
@@ -788,7 +821,7 @@ export default function Eselon1PencatatanPage() {
                     >
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex flex-col gap-1 items-start">
-                          <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded text-[11px]">
+                          <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded text-[11px]">
                             {getDisplayPeriode(row.periode, row.tanggal)}
                           </span>
                           <span className="text-[10px] text-slate-400 flex items-center gap-1">
@@ -827,10 +860,10 @@ export default function Eselon1PencatatanPage() {
                           <div className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl">
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 rounded">
+                                <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-blue-100 text-blue-800 rounded">
                                   #{kodeBank}
                                 </span>
-                                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                 <span className="font-bold text-slate-800 truncate">
                                   {row.nama_bank}
                                 </span>
@@ -842,7 +875,7 @@ export default function Eselon1PencatatanPage() {
                             <button
                               type="button"
                               onClick={() => setSelectedBankDrawer(row.nama_bank)}
-                              className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
+                              className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
                               title={`Lihat seluruh bukti rekening koran ${row.nama_bank}`}
                             >
                               <Layers className="w-3 h-3" />
@@ -917,7 +950,7 @@ export default function Eselon1PencatatanPage() {
                         {row.bukti_file ? (
                           <button
                             onClick={() => openFile(row.bukti_file, token || "")}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors"
                           >
                             <Paperclip className="w-3.5 h-3.5" /> Lihat
                           </button>
@@ -929,7 +962,7 @@ export default function Eselon1PencatatanPage() {
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <button
                           onClick={() => setSelectedDetail(row)}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1 rounded-lg transition-colors"
                           title="Lihat Detail Transaksi"
                         >
                           <Eye className="w-3.5 h-3.5" /> Detail
@@ -970,14 +1003,14 @@ export default function Eselon1PencatatanPage() {
               onSubmit={handleSubmit}
               className="p-6 overflow-y-auto space-y-4 text-xs"
             >
-              <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+              <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-700 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <Sparkles className="w-4 h-4 text-blue-600" />
                     Upload Bukti Berkas Rekening Koran *
                   </label>
                   {aiScanning && (
-                    <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                    <span className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memindai
                       berkas...
                     </span>
@@ -1151,7 +1184,7 @@ export default function Eselon1PencatatanPage() {
                 <button
                   type="submit"
                   disabled={submitLoading || aiScanning}
-                  className="flex items-center gap-2 px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl disabled:opacity-50"
                 >
                   {submitLoading ? "Menyimpan..." : "Unggah & Simpan Bukti"}
                 </button>
@@ -1169,10 +1202,10 @@ export default function Eselon1PencatatanPage() {
             onClick={() => setSelectedBankDrawer(null)}
           />
           <div className="relative z-10 w-full max-w-xl bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col overflow-hidden">
-            <div className="px-6 py-5 bg-gradient-to-r from-indigo-900 to-blue-900 text-white flex items-start justify-between gap-4">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-blue-900 text-white flex items-start justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/30 border border-indigo-300/30 text-xs font-mono font-bold text-indigo-100">
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-500/30 border border-blue-300/30 text-xs font-mono font-bold text-blue-100">
                     KODE BANK: #{selectedBankGroup.kode_bank}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-300/30 text-xs font-semibold text-emerald-200">
@@ -1181,10 +1214,10 @@ export default function Eselon1PencatatanPage() {
                   </span>
                 </div>
                 <h3 className="text-xl font-extrabold flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-indigo-300" />
+                  <Building2 className="w-5 h-5 text-blue-300" />
                   <span>{selectedBankGroup.nama_bank}</span>
                 </h3>
-                <p className="text-xs text-indigo-200 font-mono">
+                <p className="text-xs text-blue-200 font-mono">
                   Daftar Seluruh Bukti Rekening Koran Satker Binaan
                 </p>
               </div>
@@ -1197,11 +1230,11 @@ export default function Eselon1PencatatanPage() {
               </button>
             </div>
 
-            <div className="px-6 py-4 bg-indigo-50/80 border-b border-indigo-100">
-              <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wider">
+            <div className="px-6 py-4 bg-blue-50/80 border-b border-blue-100">
+              <p className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
                 Total Saldo Aktif ({selectedBankGroup.nama_bank})
               </p>
-              <p className="text-2xl font-black text-indigo-700 mt-0.5">
+              <p className="text-2xl font-black text-slate-900 mt-0.5">
                 Rp {selectedBankGroup.activeTotal.toLocaleString("id-ID")}
               </p>
             </div>
@@ -1230,7 +1263,7 @@ export default function Eselon1PencatatanPage() {
                           <span className="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded">
                             {item.satker_nama || "Satker"}
                           </span>
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-bold">
                             <Calendar className="w-3 h-3" />
                             {formatTanggalIndo(item.tanggal)}
                           </span>
@@ -1320,7 +1353,7 @@ export default function Eselon1PencatatanPage() {
                         <button
                           type="button"
                           onClick={() => openFile(item.bukti_file, token || "")}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100"
                         >
                           <FileText className="w-3.5 h-3.5" />
                           <span>Lihat Berkas</span>
@@ -1399,7 +1432,7 @@ export default function Eselon1PencatatanPage() {
               {selectedDetail.bukti_file && (
                 <button
                   onClick={() => openFile(selectedDetail.bukti_file, token || "")}
-                  className="w-full py-2 bg-indigo-600 text-white font-bold rounded-xl"
+                  className="w-full py-2 bg-blue-600 text-white font-bold rounded-xl"
                 >
                   Buka Berkas Bukti
                 </button>

@@ -2,12 +2,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install LibreOffice and dependencies for PDF conversion
+# Install LibreOffice and dependencies for PDF conversion + OCR
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
     libreoffice-writer \
     libreoffice-calc \
     fonts-liberation \
+    tesseract-ocr \
+    tesseract-ocr-ind \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file first for caching

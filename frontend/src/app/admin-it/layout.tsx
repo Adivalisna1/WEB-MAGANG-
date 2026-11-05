@@ -9,7 +9,7 @@ export default function AdminITLayout({ children }: { children: React.ReactNode 
   const { user, loading } = useRequireAuth('admin_it');
   const [mounted, setMounted] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   useEffect(() => {
     setMounted(true);

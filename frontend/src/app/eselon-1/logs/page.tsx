@@ -114,7 +114,7 @@ export default function KetuaLogsPage() {
         </div>
         <button
           onClick={() => { setLoading(true); fetchLogs(); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
         >
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
@@ -129,7 +129,7 @@ export default function KetuaLogsPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : (
           <>
@@ -155,7 +155,7 @@ export default function KetuaLogsPage() {
                       </td>
                       <td className="px-5 py-3 text-gray-800">{log.user_nama ?? 'System'}</td>
                       <td className="px-5 py-3">
-                        <span className="inline-flex whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+                        <span className="inline-flex whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
                           {formatAksi(log.aksi)}
                         </span>
                       </td>

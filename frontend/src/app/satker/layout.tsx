@@ -23,6 +23,8 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Quick fetch for search dropdown
   const handleSearchChange = async (val: string) => {
@@ -73,7 +75,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -81,13 +83,13 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden">
       {/* @ts-ignore */}
-      <SatkerSidebar />
+      <SatkerSidebar isMobileOpen={isMobileOpen} setIsMobileOpen={setIsMobileOpen} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
       <div className="flex-1 flex flex-col h-screen relative">
         <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-8 z-20 sticky top-0 w-full">
           {/* Search Bar */}
           <div className="relative w-96 hidden md:block group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <Search className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             </div>
             <input
               type="text"
@@ -96,7 +98,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
               onChange={(e) => handleSearchChange(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-              className="block w-full pl-10 pr-10 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all sm:text-sm shadow-sm"
+              className="block w-full pl-10 pr-10 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all sm:text-sm shadow-sm"
             />
             {searchTerm && (
               <button onClick={() => handleSearchChange('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-rose-500 transition-colors">
@@ -109,7 +111,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-slide-up origin-top">
                 <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 flex justify-between items-center">
                   <span>Hasil Pencarian Cepat</span>
-                  {isSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />}
+                  {isSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />}
                 </div>
 
                 {searchResults.length > 0 ? (
@@ -117,23 +119,23 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
                     {searchResults.map((res: any) => (
                       <li key={res.id}>
                         <div className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-50 last:border-0 group/item">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                            <FileText className="w-4 h-4 text-indigo-600" />
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-blue-600" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate group-hover/item:text-indigo-600 transition-colors">{res.judul}</p>
+                            <p className="text-sm font-semibold text-slate-800 truncate group-hover/item:text-blue-600 transition-colors">{res.judul}</p>
                             <p className="text-xs text-slate-500 flex gap-2 mt-0.5">
                               <span>{res.kategori}</span>
                               <span className="text-slate-300">•</span>
                               <span>Tahun {res.tahun}</span>
                             </p>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover/item:text-indigo-500 transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover/item:text-blue-500 transition-colors" />
                         </div>
                       </li>
                     ))}
                     <li className="px-4 py-3 bg-slate-50 text-center border-t border-slate-100">
-                      <p className="text-xs font-medium text-indigo-600">Tekan Enter untuk melihat semua di tabel bawah</p>
+                      <p className="text-xs font-medium text-blue-600">Tekan Enter untuk melihat semua di tabel bawah</p>
                     </li>
                   </ul>
                 ) : (

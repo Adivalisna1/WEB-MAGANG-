@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -11,11 +12,22 @@ import {
   Activity,
   LogOut,
   ChevronRight,
-  Home,
+  ChevronDown,
   User,
   X,
   ChevronLeft,
   BookOpen,
+  Wallet,
+  ClipboardList,
+  FileCheck2,
+  FileText,
+  ClipboardCheck,
+  BookMarked,
+  Landmark,
+  Receipt,
+  AlertOctagon,
+  FileSignature,
+  CheckCheck,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -37,53 +49,99 @@ export default function Eselon1Sidebar({
 
   const isOperator = user?.role === "operator" || user?.is_operator;
 
-  const menuItems = isOperator
-    ? [
-        {
-          href: "/eselon-1",
-          icon: LayoutDashboard,
-          label: "Dashboard",
-          exact: true,
-        },
-        {
-          href: "/eselon-1/dokumen",
-          icon: FileSearch,
-          label: "Dokumen Satker",
-        },
-        {
-          href: "/eselon-1/pencatatan",
-          icon: BookOpen,
-          label: "Bukti Rekening Koran Satker",
-        },
-        {
-          href: "/eselon-1/rekening-koran",
-          icon: FileSpreadsheet,
-          label: "Rekening Koran",
-        },
-        { href: "/eselon-1/profil", icon: User, label: "Profil" },
-      ]
+  const isKasActive =
+    pathname === "/staff/kas" ||
+    pathname.startsWith("/staff/kas") ||
+    pathname === "/eselon-1/rekening-koran" ||
+    pathname.startsWith("/eselon-1/rekening-koran") ||
+    pathname.includes("/kas/");
+
+  const isBuktiActive =
+    pathname === "/eselon-1/pencatatan" ||
+    pathname.startsWith("/eselon-1/pencatatan");
+
+  const isLaporanActive =
+    pathname.includes("/laporan/");
+
+  const [isKasOpen, setIsKasOpen] = useState(isKasActive);
+  const [isLaporanOpen, setIsLaporanOpen] = useState(isLaporanActive);
+
+  useEffect(() => {
+    if (isKasActive) setIsKasOpen(true);
+  }, [isKasActive]);
+
+  useEffect(() => {
+    if (isLaporanActive) setIsLaporanOpen(true);
+  }, [isLaporanActive]);
+
+  const topMenuItems = [
+    {
+      href: "/eselon-1",
+      icon: LayoutDashboard,
+      label: "Dashboard",
+      exact: true,
+    },
+    {
+      href: "/eselon-1/dokumen",
+      icon: FileSearch,
+      label: isOperator ? "Dokumen Satker" : "Verifikasi Dokumen",
+    },
+  ];
+
+  const kasSubMenu = [
+    {
+      href: "/eselon-1/rekening-koran",
+      icon: FileSpreadsheet,
+      label: isOperator ? "Rekening Koran" : "Rekening Koran Satker",
+    },
+    {
+      href: "/staff/kas/bap-kas",
+      icon: ClipboardCheck,
+      label: "BAP Kas",
+    },
+    {
+      href: "/staff/kas/lpj-bendahara",
+      icon: BookMarked,
+      label: "LPJ Bendahara",
+    },
+    {
+      href: "/staff/kas/konfirmasi-bank",
+      icon: Landmark,
+      label: "Konfirmasi Saldo Bank",
+    },
+  ];
+
+  const laporanSubMenu = [
+    {
+      href: "/staff/laporan/sk-piutang/penetapan",
+      icon: AlertOctagon,
+      label: "1. SK Penetapan / Kurang Bayar",
+    },
+    {
+      href: "/staff/laporan/sk-piutang/pembebanan",
+      icon: FileSignature,
+      label: "2. SK Pembebanan / SKTJM",
+    },
+    {
+      href: "/staff/laporan/sk-piutang/penghapusan",
+      icon: CheckCheck,
+      label: "3. SK Penghapusan Piutang",
+    },
+    {
+      href: "/staff/laporan/surat-rekening",
+      icon: FileText,
+      label: "Surat Penutup/Pembukaan Rekening",
+    },
+    {
+      href: "/staff/laporan/bukti-setor-up",
+      icon: Receipt,
+      label: "Bukti Setor Sisa UP (NTPN)",
+    },
+  ];
+
+  const bottomMenuItems = isOperator
+    ? [{ href: "/eselon-1/profil", icon: User, label: "Profil" }]
     : [
-        {
-          href: "/eselon-1",
-          icon: LayoutDashboard,
-          label: "Dashboard",
-          exact: true,
-        },
-        {
-          href: "/eselon-1/dokumen",
-          icon: FileSearch,
-          label: "Verifikasi Dokumen",
-        },
-        {
-          href: "/eselon-1/pencatatan",
-          icon: BookOpen,
-          label: "Bukti Rekening Koran Satker",
-        },
-        {
-          href: "/eselon-1/rekening-koran",
-          icon: FileSpreadsheet,
-          label: "Rekening Koran Satker",
-        },
         {
           href: "/eselon-1/users",
           icon: Users,
@@ -108,15 +166,15 @@ export default function Eselon1Sidebar({
       <aside
         className={`
         fixed left-0 top-0 md:relative h-screen bg-white border-r border-slate-200 text-slate-600 flex flex-col shrink-0 z-50 transition-all duration-300
-        ${isMobileOpen ? "translate-x-0 w-[260px]" : "-translate-x-full md:translate-x-0"}
-        ${isCollapsed ? "md:w-20" : "md:w-[260px]"}
+        ${isMobileOpen ? "translate-x-0 w-[270px]" : "-translate-x-full md:translate-x-0"}
+        ${isCollapsed ? "md:w-20" : "md:w-[270px]"}
       `}
       >
         {/* Header */}
         <div className="h-20 flex items-center justify-between px-4 md:px-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
             <div
-              className={`w-8 h-8 ${isOperator ? "bg-indigo-600" : "bg-[#1E90FF]"} rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? "mx-auto" : ""}`}
+              className={`w-8 h-8 ${isOperator ? "bg-blue-600" : "bg-[#1E90FF]"} rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${isCollapsed ? "mx-auto" : ""}`}
             >
               <span className="text-sm">E1</span>
             </div>
@@ -146,7 +204,8 @@ export default function Eselon1Sidebar({
 
         {/* Menu Navigasi */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {menuItems.map(({ href, icon: Icon, label, exact }) => {
+          {/* Top Menu Items */}
+          {topMenuItems.map(({ href, icon: Icon, label, exact }) => {
             const active = exact
               ? pathname === href
               : pathname === href || pathname.startsWith(href);
@@ -159,16 +218,234 @@ export default function Eselon1Sidebar({
                   active
                     ? "bg-[#475569] text-white shadow-sm"
                     : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-                  isCollapsed ? "justify-center" : "gap-3 w-full",
+                  isCollapsed ? "justify-center" : "gap-3 w-full"
                 )}
                 title={isCollapsed ? label : undefined}
               >
                 <Icon
                   className={clsx(
                     "w-5 h-5 shrink-0",
-                    active
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-white",
+                    active ? "text-white" : "text-slate-400 group-hover:text-white"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">{label}</span>}
+              </Link>
+            );
+          })}
+
+          {/* Kas Parent Link + Accordion */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isKasActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+              )}
+            >
+              <Link
+                href="/staff/kas"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsKasOpen(true);
+                }}
+                className={clsx(
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
+                )}
+                title={isCollapsed ? "Kas" : undefined}
+              >
+                <Wallet
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    isKasActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-white"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">Kas</span>}
+              </Link>
+
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsKasOpen(!isKasOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200 shrink-0",
+                      isKasOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Submenu Kas */}
+            {!isCollapsed && isKasOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {kasSubMenu.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Bukti Rekening Koran Satker (Standalone Menu) */}
+          <Link
+            href="/eselon-1/pencatatan"
+            className={clsx(
+              "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+              isBuktiActive
+                ? "bg-[#475569] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+              isCollapsed ? "justify-center" : "gap-3 w-full"
+            )}
+            title={isCollapsed ? "Bukti Rekening Koran Satker" : undefined}
+          >
+            <BookOpen
+              className={clsx(
+                "w-5 h-5 shrink-0",
+                isBuktiActive
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-white"
+              )}
+            />
+            {!isCollapsed && <span className="truncate">Bukti Rekening Koran</span>}
+          </Link>
+
+          {/* Laporan Accordion Menu */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isLaporanActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+              )}
+            >
+              <Link
+                href="/staff/laporan/sk-piutang"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsLaporanOpen(true);
+                }}
+                className={clsx(
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
+                )}
+                title={isCollapsed ? "Laporan" : undefined}
+              >
+                <ClipboardList
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    isLaporanActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-white"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">Laporan</span>}
+              </Link>
+
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsLaporanOpen(!isLaporanOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200 shrink-0",
+                      isLaporanOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Submenu Laporan (Termasuk 3 Submenu SK Piutang) */}
+            {!isCollapsed && isLaporanOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {laporanSubMenu.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Menu Items */}
+          {bottomMenuItems.map(({ href, icon: Icon, label }) => {
+            const active = pathname === href || pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx(
+                  "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+                  active
+                    ? "bg-[#475569] text-white shadow-sm"
+                    : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+                  isCollapsed ? "justify-center" : "gap-3 w-full"
+                )}
+                title={isCollapsed ? label : undefined}
+              >
+                <Icon
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    active ? "text-white" : "text-slate-400 group-hover:text-white"
                   )}
                 />
                 {!isCollapsed && <span className="truncate">{label}</span>}
@@ -183,7 +460,7 @@ export default function Eselon1Sidebar({
           <div
             className={clsx(
               "flex items-center bg-white border border-slate-200/80 rounded-xl p-2 transition-all shadow-xs",
-              isCollapsed ? "justify-center" : "justify-between gap-2",
+              isCollapsed ? "justify-center" : "justify-between gap-2"
             )}
           >
             <Link

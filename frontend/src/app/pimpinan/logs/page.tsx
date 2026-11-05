@@ -25,7 +25,7 @@ const aksiColor: Record<string, string> = {
   login:              'bg-blue-100 text-blue-700',
   upload:             'bg-green-100 text-green-700',
   edit:               'bg-yellow-100 text-yellow-700',
-  verifikasi:         'bg-purple-100 text-purple-700',
+  verifikasi:         'bg-sky-100 text-sky-700',
   submit_verifikasi:  'bg-orange-100 text-orange-700',
   hapus:              'bg-red-100 text-red-700',
   buat_user:          'bg-teal-100 text-teal-700',

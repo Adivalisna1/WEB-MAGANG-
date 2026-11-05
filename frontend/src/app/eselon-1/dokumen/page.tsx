@@ -301,7 +301,7 @@ export default function KetuaDokumenPage() {
           <select
             value={filter}
             onChange={(e) => { setLoading(true); setFilter(e.target.value); }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             <option value="">Semua Status</option>
             <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
@@ -312,14 +312,14 @@ export default function KetuaDokumenPage() {
           </select>
           <button
             onClick={() => { setLoading(true); refresh(); }}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
           >
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
           {isOperator && (
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" /> Unggah Dokumen
             </button>
@@ -376,7 +376,7 @@ export default function KetuaDokumenPage() {
                             Pengajuan Penutupan Rekening
                           </span>
                         ) : dok.kategori_slug === 'sk-piutang-satker' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
                             Pengajuan SK Piutang Satker (Bundel BPK)
                           </span>
                         ) : (
@@ -391,14 +391,14 @@ export default function KetuaDokumenPage() {
                         <span className="font-bold text-gray-800">{dok.satker_nama || 'Satker'}</span>
                         <span className="text-gray-400">({dok.uploaded_by})</span>
                         {dok.nomor_laporan && (
-                          <span className="inline-flex items-center gap-1 ml-1 text-indigo-600 font-mono">
+                          <span className="inline-flex items-center gap-1 ml-1 text-blue-600 font-mono">
                             <Hash className="w-3 h-3" />{dok.nomor_laporan}
                           </span>
                         )}
                       </p>
                       {(dok.nama_debitur || dok.dasar_temuan) && (
-                        <div className="flex items-center gap-2 mt-1.5 text-xs text-indigo-900 flex-wrap">
-                          <span className="bg-indigo-50 text-indigo-900 border border-indigo-200 px-2.5 py-0.5 rounded-md font-medium">
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-blue-900 flex-wrap">
+                          <span className="bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-md font-medium">
                             Debitur: <strong>{dok.nama_debitur || '-'}</strong> • Dasar Temuan BPK/SKTJM: <strong className="font-mono">{dok.dasar_temuan || '-'}</strong>
                           </span>
                         </div>
@@ -432,7 +432,7 @@ export default function KetuaDokumenPage() {
                       <button
                         onClick={() => handleAuditUlang(dok.id)}
                         disabled={auditingId === dok.id}
-                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors disabled:opacity-50"
                         title="Audit ulang berkas rekonsiliasi"
                       >
                         <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === dok.id && "animate-spin")} />
@@ -469,7 +469,7 @@ export default function KetuaDokumenPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -712,7 +712,7 @@ export default function KetuaDokumenPage() {
                       )}>
                         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                            <Stamp className="w-4 h-4 text-indigo-600" /> Hasil Rekonsiliasi
+                            <Stamp className="w-4 h-4 text-blue-600" /> Hasil Rekonsiliasi
                           </span>
                           {hasBoth && (
                             isCocok ? (
@@ -749,7 +749,7 @@ export default function KetuaDokumenPage() {
                           type="button"
                           onClick={() => handleAuditUlang(modalDok.id)}
                           disabled={auditingId === modalDok.id}
-                          className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
+                          className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition-colors shadow-2xs disabled:opacity-50"
                         >
                           <RefreshCw className={clsx("w-3.5 h-3.5", auditingId === modalDok.id && "animate-spin")} />
                           {auditingId === modalDok.id ? 'Memindai Ulang...' : 'Audit Ulang Berkas (Re-check)'}
@@ -830,7 +830,7 @@ export default function KetuaDokumenPage() {
               onChange={(e) => setCatatan(e.target.value)}
               rows={3}
               placeholder={target.aksi === 'approve' ? 'Tambahkan catatan jika perlu...' : 'Jelaskan apa yang perlu direvisi...'}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button

@@ -190,3 +190,16 @@ CREATE TABLE IF NOT EXISTS notifikasi (
     INDEX idx_notif_user_read (user_id, is_read),
     INDEX idx_notif_created (created_at)
 ) ENGINE=InnoDB;
+
+
+-- ============================================================
+-- Tabel Master Bank
+-- ============================================================
+CREATE TABLE IF NOT EXISTS master_bank (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kode_bank VARCHAR(10) NOT NULL UNIQUE,
+    nama_bank VARCHAR(100) NOT NULL,
+    singkatan VARCHAR(50) NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;

@@ -42,7 +42,7 @@ const getLogConfig = (aksi: string) => {
     return { icon: FileMinus, color: 'text-red-600', bg: 'bg-red-100', label: 'Hapus Dokumen' };
   }
   if (aksi.includes('reset_password')) {
-    return { icon: Key, color: 'text-purple-600', bg: 'bg-purple-100', label: 'Reset Password' };
+    return { icon: Key, color: 'text-sky-600', bg: 'bg-sky-100', label: 'Reset Password' };
   }
   if (aksi.includes('hapus_user')) {
     return { icon: Trash2, color: 'text-red-600', bg: 'bg-red-100', label: 'Hapus Akun' };

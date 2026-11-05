@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, S
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
+from pydantic import BaseModel
 from auth import get_current_user, require_admin_it
 from db import get_db
 import os
@@ -129,6 +130,26 @@ async def serve_file(
     return FileResponse(file_path)
 
 
+class GDriveScanPayload(BaseModel):
+    url: str
+
+@router.post("/gdrive-scan")
+async def gdrive_scan_pencatatan(
+    payload: GDriveScanPayload,
+    user: dict = Depends(get_current_user)
+):
+    from services.gdrive import download_and_scan_gdrive
+    temp_dir = os.path.join(UPLOAD_DIR, "temp_gdrive")
+    result = await download_and_scan_gdrive(payload.url, temp_dir)
+    return result
+
+@router.get("/banks")
+async def get_banks_pencatatan(db=Depends(get_db)):
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, kode_bank, nama_bank, singkatan FROM master_bank WHERE is_active = 1 ORDER BY id ASC")
+        rows = cursor.fetchall()
+    return {"success": True, "data": rows}
+
 @router.get("")
 async def get_akuntansi(user: dict = Depends(get_current_user), db=Depends(get_db)):
     tingkat = user.get("tingkat")
@@ -204,7 +225,9 @@ async def create_akuntansi(
     nama_rekening: Optional[str] = Form(None),
     nama_bank: Optional[str] = Form(None),
     kode_bank: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    temp_gdrive_filename: Optional[str] = Form(None),
+    link_drive: Optional[str] = Form(None),
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
@@ -218,17 +241,37 @@ async def create_akuntansi(
     if not is_allowed:
         raise HTTPException(403, "Forbidden: Akses khusus Operator dan Manajemen Satker")
         
-    ext = os.path.splitext(file.filename or "")[1].lower()
-    allowed_exts = {'.pdf', '.xlsx', '.xls', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
-    if ext not in allowed_exts:
-        raise HTTPException(400, f"Format file bukti '{ext}' tidak didukung. Harap unggah PDF, Excel, Word, atau Gambar.")
+    if file and orig_filename:
+        ext = os.path.splitext(orig_filename or "")[1].lower()
+        allowed_exts = {'.pdf', '.xlsx', '.xls', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
+        if ext not in allowed_exts:
+            raise HTTPException(400, f"Format file bukti '{ext}' tidak didukung. Harap unggah PDF, Excel, Word, atau Gambar.")
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{file.filename}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{orig_filename}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_content_type = file_content_type
+        orig_filename = orig_filename
+    elif temp_gdrive_filename:
+        temp_gdrive_path = os.path.join(UPLOAD_DIR, "temp_gdrive", temp_gdrive_filename)
+        if not os.path.exists(temp_gdrive_path):
+            raise HTTPException(400, "Berkas Google Drive sementara tidak ditemukan atau sudah kedaluwarsa. Silakan scan ulang.")
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        clean_name = temp_gdrive_filename.split("_", 1)[-1] if "_" in temp_gdrive_filename else temp_gdrive_filename
+        filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{clean_name}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        shutil.copy2(temp_gdrive_path, file_path)
+        file_content_type = "application/pdf" if filename.lower().endswith(".pdf") else "application/octet-stream"
+        orig_filename = clean_name
+        try:
+            os.remove(temp_gdrive_path)
+        except Exception:
+            pass
+    else:
+        raise HTTPException(400, "Berkas bukti transaksi wajib diunggah atau berikan tautan Google Drive yang valid")
         
     bukti_file = f"/api/pencatatan/file/{filename}"
     
@@ -289,13 +332,13 @@ async def create_akuntansi(
                     kat_dok_id,
                     tahun,
                     f"akuntansi/{filename}",
-                    file.filename,
+                    orig_filename,
                     created_by,
                     'terverifikasi',
                     0,
                     final_nominal,
                     final_nominal,
-                    file.content_type
+                    file_content_type
                 ))
                 dokumen_id = cursor.lastrowid
                 

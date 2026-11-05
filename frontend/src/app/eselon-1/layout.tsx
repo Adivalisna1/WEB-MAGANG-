@@ -17,7 +17,7 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const isOperator = user?.role === 'operator' || user?.is_operator;
 
@@ -40,7 +40,7 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }

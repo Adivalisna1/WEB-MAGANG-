@@ -70,7 +70,7 @@ export default function UserCombobox({ users, satkers = [], value, onChange }: U
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <div 
-        className="flex items-center justify-between w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg bg-white cursor-pointer hover:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500"
+        className="flex items-center justify-between w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg bg-white cursor-pointer hover:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className={`truncate ${!value ? 'text-gray-500' : 'text-gray-900'}`}>
@@ -98,14 +98,14 @@ export default function UserCombobox({ users, satkers = [], value, onChange }: U
             {!search && (
               <>
                 <div 
-                  className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === 'all' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-gray-50'}`}
+                  className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === 'all' ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-50'}`}
                   onClick={() => { onChange('all'); setIsOpen(false); }}
                 >
                   <span>Kirim ke: Semua User</span>
                   {value === 'all' && <Check className="w-4 h-4" />}
                 </div>
                 <div 
-                  className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === 'satker' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-gray-50'}`}
+                  className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === 'satker' ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-50'}`}
                   onClick={() => { onChange('satker'); setIsOpen(false); }}
                 >
                   <span>Kirim ke: Seluruh Satker</span>
@@ -125,7 +125,7 @@ export default function UserCombobox({ users, satkers = [], value, onChange }: U
                   return (
                     <div
                       key={val}
-                      className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === val ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-gray-50'}`}
+                      className={`px-3 py-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${value === val ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-50'}`}
                       onClick={() => { onChange(val); setIsOpen(false); }}
                     >
                       <span>[Grup] {s.nama}</span>
@@ -148,7 +148,7 @@ export default function UserCombobox({ users, satkers = [], value, onChange }: U
               filteredUsers.map((u) => (
                 <div
                   key={u.id}
-                  className={`px-3 py-2 text-sm rounded-md cursor-pointer flex flex-col ${String(u.id) === value ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50'}`}
+                  className={`px-3 py-2 text-sm rounded-md cursor-pointer flex flex-col ${String(u.id) === value ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'}`}
                   onClick={() => { onChange(String(u.id)); setIsOpen(false); }}
                 >
                   <div className="flex items-center justify-between">

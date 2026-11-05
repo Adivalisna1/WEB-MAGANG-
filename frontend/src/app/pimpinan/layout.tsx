@@ -17,7 +17,7 @@ export default function PimpinanLayout({ children }: { children: React.ReactNode
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleLogout = useCallback(async () => {
     const token = localStorage.getItem('token') || '';

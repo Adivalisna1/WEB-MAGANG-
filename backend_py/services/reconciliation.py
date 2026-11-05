@@ -7,18 +7,39 @@ import openpyxl
 
 # Daftar Bank Persepsi / Bank Umum di Indonesia
 BANK_PATTERNS = [
-    (r"\b(?:BANK\s+)?BNI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+NEGARA\s+INDONESIA\b|\bBNI\s+DIRECT\b|\bBNI\s+CORPO\b", "Bank BNI"),
-    (r"\b(?:BANK\s+)?BRI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+RAKYAT\s+INDONESIA\b|\bCMS\s+BRI\b|\bBRICASH\b|\bIBBIZ\b|\bIBBIZ\s+BRI\b", "Bank BRI"),
     (r"\b(?:BANK\s+)?MANDIRI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+MANDIRI\b|\bKOPRA\b|\bMCM\b|\bMANDIRI\s+CASH\s+MANAGEMENT\b|\bLIVIN\b|\bMANDIRI\s+INTERNET\b", "Bank Mandiri"),
+    (r"\b(?:BANK\s+)?BSI\b|\bPT\.?\s*BANK\s+SYARIAH\s+INDONESIA\b|\bBANK\s+SYARIAH\b|Branch\s*:\s*ID\d{5,8}|\bBSI\s+NET\b|\bBSI\s+CASH\b|\bBSI\s+CMS\b|\bBYOND\b|\b(?:KCP|KC)\s+[^\n]*SDR\s*ATAS\b|\bPEKANBARU\s+SDR\s*ATAS\b", "Bank BSI"),
+    (r"\b(?:BANK\s+)?BNI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+NEGARA\s+INDONESIA\b|\bBNI\s+DIRECT\b|\bBNIDIRECT\b|\bBNI\s+CORPO\b", "Bank BNI"),
+    (r"\b(?:BANK\s+)?BRI\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+RAKYAT\s+INDONESIA\b|\bCMS\s+BRI\b|\bBRICASH\b|\bIBBIZ\b|\bIBBIZ\s+BRI\b", "Bank BRI"),
     (r"\b(?:BANK\s+)?BCA\b|\bPT\.?\s*BANK\s+CENTRAL\s+ASIA\b|\bKLIKBCA\b|\bBCA\s+BISNIS\b", "Bank BCA"),
-    (r"\b(?:BANK\s+)?BSI\b|\bPT\.?\s*BANK\s+SYARIAH\s+INDONESIA\b|\bBANK\s+SYARIAH\b|Branch\s*:\s*ID\d{5,8}|\b8101\d{10,14}\b|\bBSI\s+NET\b|\bBSI\s+CASH\b", "Bank BSI"),
     (r"\b(?:BANK\s+)?BTN\b|\bPT\.?\s*(?:PERSERO\s+)?BANK\s+TABUNGAN\s+NEGARA\b|\bBTN\s+CASH\b", "Bank BTN"),
     (r"\b(?:BANK\s+)?DANAMON\b|\bPT\.?\s*BANK\s+DANAMON\b", "Bank Danamon"),
     (r"\bBANK\s+DKI\b", "Bank DKI"),
-    (r"\bBANK\s+BJB\b", "Bank BJB"),
-    (r"\bBANK\s+JATIM\b", "Bank Jatim"),
-    (r"\bBANK\s+JATENG\b", "Bank Jateng"),
+    (r"\bBJB\s+SYARIAH\b", "Bank BJB Syariah"),
+    (r"\b(?:BANK\s+)?BJB\b|\bBANK\s+JABAR\b", "Bank BJB"),
+    (r"\b(?:BANK\s+)?JATIM\b|\bBANK\s+JAWA\s+TIMUR\b", "Bank Jatim"),
+    (r"\b(?:BANK\s+)?JATENG\b|\bBANK\s+JAWA\s+TENGAH\b", "Bank Jateng"),
+    (r"\b(?:BANK\s+)?NAGARI\b|\bBANK\s+SUMBAR\b", "Bank Nagari"),
+    (r"\bSUMSEL\s+BABEL\b|\bBANK\s+SUMATERA\s+SELATAN\b", "Bank Sumsel Babel"),
+    (r"\bBPD\s+BALI\b|\bBANK\s+BALI\b", "Bank BPD Bali"),
 ]
+
+# Mapping Kode Bank Standar Indonesia (Kemenkeu / SPAN / SAKTI)
+BANK_CODE_MAP = {
+    "002": "Bank BRI",
+    "008": "Bank Mandiri",
+    "009": "Bank BNI",
+    "200": "Bank BTN",
+    "451": "Bank BSI",
+    "110": "Bank BJB",
+    "425": "Bank BJB Syariah",
+    "113": "Bank Jateng",
+    "114": "Bank Jatim",
+    "118": "Bank Nagari",
+    "120": "Bank Sumsel Babel",
+    "129": "Bank BPD Bali",
+    "014": "Bank BCA",
+}
 
 # Kategori dokumen pemerintah
 KATEGORI_PATTERNS = [
@@ -44,6 +65,9 @@ def parse_indonesian_number(val_str: str) -> Optional[float]:
     if not val_str:
         return None
     s = val_str.strip().replace("Rp", "").replace("IDR", "").replace("rp", "").strip()
+    # Hapus spasi antar angka akibat hasil scan/OCR (misal '29,136, 656,982. 94')
+    s = re.sub(r"(?<=\d)\s+(?=\d)", "", s)
+    s = re.sub(r"(?<=[,\.])\s+(?=\d)", "", s)
     
     # Deteksi format: 12.345.678,90 (Indonesia) vs 12,345,678.90 (Internasional)
     if "." in s and "," in s:
@@ -145,27 +169,20 @@ def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional
         if cand_nm and not any(w in cand_nm.upper() for w in ["IDR", "RUPIAH", "INDONESIA", "PERIODE", "TANGGAL", "NOMOR"]):
             detected_nama_rek = cand_nm
 
-    # 6. Fallback cerdas: inferensi nama bank dari pola/digit nomor rekening jika nama bank belum terdeteksi dari teks
+    # 6. Deteksi dari Kode Bank 3 digit (misal: BPG 008, RPL 009, Kode Bank : 008, Bank Code : 451)
+    if not detected_bank:
+        code_m = re.search(r"\b(?:BPG|RPL|Kode\s*Bank|Bank\s*Code)[:\s]*([0-9]{3})\b", text, re.IGNORECASE)
+        if code_m and code_m.group(1) in BANK_CODE_MAP:
+            detected_bank = BANK_CODE_MAP[code_m.group(1)]
+
+    # 7. Format rekening Bank Mandiri: 13 digit berawalan 1 (misal 1600005828088, 1600005941048)
     if not detected_bank and detected_rek:
         clean_rek = re.sub(r"[^\d]", "", detected_rek)
-        # Bank Mandiri: 13 digit berawalan 1 (misal 1220018008808, 137000xxxxxxx)
         if len(clean_rek) == 13 and clean_rek.startswith("1"):
             detected_bank = "Bank Mandiri"
-        # Bank BRI: 15 digit (atau 14 digit)
-        elif len(clean_rek) in (14, 15):
-            detected_bank = "Bank BRI"
-        # Bank BNI: 10 digit berawalan 0
-        elif len(clean_rek) == 10 and clean_rek.startswith("0"):
-            detected_bank = "Bank BNI"
-        # Bank BSI: 10 digit berawalan 7
-        elif len(clean_rek) == 10 and clean_rek.startswith("7"):
-            detected_bank = "Bank BSI"
-        # Bank BTN: 16 digit
-        elif len(clean_rek) == 16:
-            detected_bank = "Bank BTN"
-        # Bank BCA: 10 digit
-        elif len(clean_rek) == 10:
-            detected_bank = "Bank BCA"
+
+    # 8. Sesuai instruksi: Jika tidak terdeteksi nama bank atau kode bank yang valid di dalam teks dokumen,
+    # biarkan KOSONG (None) agar dapat diisi manual oleh pengguna. Sistem tidak memaksakan tebakan sembarangan.
 
     return detected_bank, detected_rek, detected_nama_rek
 
@@ -238,25 +255,59 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
     if kategori in ["Surat Pembukaan Rekening Koran", "Surat Penutupan Rekening Koran"]:
         nominal = None
     else:
-        # Cek khusus pattern multi-kolom ringkasan (Saldo Awal ... Saldo Akhir \n num1 num2 num3 num4)
-        grid_m = re.search(r"SALDO\s*AWAL.*SALDO\s*AKHIR\s*\n\s*([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)", text, re.IGNORECASE)
-        if grid_m:
-            val = parse_indonesian_number(grid_m.group(4))
-            if val is not None and val > 0:
-                nominal = val
+        # Prioritas 1: Format Eksplisit Saldo Akhir / Closing Balance / Ending Balance
+        # Contoh:
+        # "Saldo Akhir (20260930) : 4,097,593,000.00"
+        # "Closing Balance 0.00" atau "Closing Balance : 0.00"
+        # "Ending Balance : 12,345,678.00"
+        explicit_m = re.search(
+            r"(?:Saldo\s+Akhir|Ending\s+Balance|Closing\s+Balance)(?:\s*\([^)]*\))?\s*[:\s=]+(?:(?:IDR|Rp\.?)\s*)?([0-9\.,\s]+)",
+            text,
+            re.IGNORECASE
+        )
+        if explicit_m:
+            raw_str = explicit_m.group(1).split("\n")[0].strip()
+            cand_val = parse_indonesian_number(raw_str)
+            if cand_val is not None and cand_val >= 0:
+                nominal = cand_val
 
+        # Prioritas 1B: Header dua baris (Header di baris 1, Angka di baris 2, format Bank Mandiri Kopra)
+        # Contoh:
+        # Closing Balance No. of Credit Total Amount Credited
+        # 257,210,940.01 77 262,934,730.10
+        if nominal is None:
+            multiline_m = re.search(
+                r"(?:Closing\s+Balance|Saldo\s+Akhir)[^\n]*\n\s*([0-9\.,\s]{4,})",
+                text,
+                re.IGNORECASE
+            )
+            if multiline_m:
+                cand_raw = multiline_m.group(1).split()[0].strip()
+                cand_val = parse_indonesian_number(cand_raw)
+                if cand_val is not None and cand_val >= 0:
+                    nominal = cand_val
+
+        # Prioritas 2: Multi-kolom ringkasan (Saldo Awal ... Saldo Akhir \n num1 num2 num3 num4)
+        if nominal is None:
+            grid_m = re.search(r"SALDO\s*AWAL.*SALDO\s*AKHIR\s*\n\s*([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)\s+([\d\.,]+)", text, re.IGNORECASE)
+            if grid_m:
+                val = parse_indonesian_number(grid_m.group(4))
+                if val is not None and val >= 0:
+                    nominal = val
+
+        # Prioritas 3: Pola baris saldo terperinci
         if nominal is None:
             saldo_patterns = [
                 # 1. Saldo per tanggal / Saldo Akhir per 30 Juni 2026 / Saldo per 30/06/2026
-                r"Saldo\s*(?:Akhir|Buku|Bank|Kas)?\s*(?:per|s/?d)?\s*(?:[0-9]{1,2}[-\s/]+(?:[A-Za-z]+|\d{1,2})[-\s/]+\d{2,4}|[A-Za-z]+\s*\d{4})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
+                r"Saldo\s+(?:Akhir|Buku|Bank|Kas)\s*(?:per|s/?d)?\s*(?:[0-9]{1,2}[-\s/]+(?:[A-Za-z]+|\d{1,2})[-\s/]+\d{2,4}|[A-Za-z]+\s*\d{4})?\s*[:=]\s*(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{1,})(?:\s*(?:CR|DB|C|D)\b)?",
                 # 2. Saldo Akhir / Ending Balance / Saldo Buku / Saldo Bank / Saldo Kas / Total Saldo
-                r"(?:Saldo\s*(?:Akhir|Penutupan|Buku|Bank|Kas|Giro|Efektif|Mutasi|Berjalan)?|Ending\s*Balance|Closing\s*Balance|Total\s*Saldo|Jumlah\s*Saldo)(?:[^\n:]{0,40})?[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})(?:\s*(?:CR|DB|C|D)\b)?",
+                r"(?:Saldo\s+(?:Akhir|Penutupan|Buku|Bank|Kas|Giro|Efektif|Mutasi|Berjalan)|Ending\s+Balance|Closing\s+Balance|Total\s+Saldo|Jumlah\s+Saldo)\s*[:=]\s*(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{1,})(?:\s*(?:CR|DB|C|D)\b)?",
                 # 3. Baris mutasi dengan flag CR / DB di belakang angka (format Bank Mandiri, BCA, BRI)
                 r"(?:^|\s)([\d\.,]{4,})\s*(?:CR|DB)\b",
                 # 4. Total Realisasi / Belanja / Pengeluaran / Penerimaan
-                r"(?:Total\s*(?:Realisasi|Belanja|Pengeluaran|Penerimaan|Kas)|Jumlah\s*(?:Realisasi|Belanja|Pengeluaran))[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
+                r"(?:Total\s+(?:Realisasi|Belanja|Pengeluaran|Penerimaan|Kas)|Jumlah\s+(?:Realisasi|Belanja|Pengeluaran))\s*[:=]\s*(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
                 # 5. Saldo Akhir Bulan eksplisit
-                r"(?:Saldo\s*Akhir\s*Bulan)[:\s\.\=\|\-]+(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{4,})",
+                r"(?:Saldo\s+Akhir\s+Bulan)\s*[:=]\s*(?:(?:IDR|Rp\.?)\s*)?([\d\.,]{1,})",
                 # 6. Fallback Rp angka
                 r"(?:Rp\.?\s*)([\d\.,]{5,})",
             ]
@@ -268,7 +319,7 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
                         if isinstance(cand, tuple):
                             cand = cand[-1]
                         val = parse_indonesian_number(cand)
-                        if val is not None and val > 0:
+                        if val is not None and val >= 0:
                             nominal = val
                             break
                     if nominal is not None:
@@ -314,16 +365,21 @@ def extract_chronological_closing_balance(pages_text: List[str], tables_data: Li
             continue
         row_str = " ".join([str(c or "") for c in row if c])
         
-        # Cari tanggal transaksi: DD/MM/YYYY atau DD-MM-YYYY atau DD MMM YYYY
-        date_match = re.search(r"\b(\d{1,2})[-\/\.]([A-Za-z]{3}|\d{1,2})[-\/\.](\d{2,4})\b", row_str)
+        # Cari tanggal transaksi: YYYY-MM-DD atau DD/MM/YYYY atau DD-MM-YYYY atau DD MMM YYYY
+        date_match = re.search(r"\b(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})\b|\b(\d{1,2})[-\/\.]([A-Za-z]{3}|\d{1,2})[-\/\.](\d{2,4})\b", row_str)
         if not date_match:
             continue
             
-        day = int(date_match.group(1))
-        m_str = date_match.group(2).lower()
-        month = int(m_str) if m_str.isdigit() else MONTH_MAP.get(m_str[:3], 1)
-        year_str = date_match.group(3)
-        year = int(year_str) if len(year_str) == 4 else int("20" + year_str)
+        if date_match.group(1):
+            year = int(date_match.group(1))
+            month = int(date_match.group(2))
+            day = int(date_match.group(3))
+        else:
+            day = int(date_match.group(4))
+            m_str = date_match.group(5).lower()
+            month = int(m_str) if m_str.isdigit() else MONTH_MAP.get(m_str[:3], 1)
+            year_str = date_match.group(6)
+            year = int(year_str) if len(year_str) == 4 else int("20" + year_str)
         
         # Cari waktu transaksi: HH:MM:SS atau HH:MM
         time_match = re.search(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b", row_str)
@@ -336,7 +392,7 @@ def extract_chronological_closing_balance(pages_text: List[str], tables_data: Li
                 continue
             cand_str = str(cell).strip()
             # Hindari tanggal atau nomor referensi
-            if re.match(r"^\d{1,2}[-\/\.]\d{1,2}", cand_str) or len(cand_str) < 4:
+            if re.match(r"^\d{1,2}[-\/\.]\d{1,2}", cand_str) or re.match(r"^\d{4}[-\/\.]\d{1,2}", cand_str) or len(cand_str) < 3:
                 continue
             val = parse_indonesian_number(cand_str)
             if val is not None and val >= 0:
@@ -358,14 +414,19 @@ def extract_chronological_closing_balance(pages_text: List[str], tables_data: Li
             lines = pt.split("\n")
             for line in lines:
                 line_str = line.strip()
-                date_match = re.search(r"\b(\d{1,2})[-\/\.]([A-Za-z]{3}|\d{1,2})[-\/\.](\d{2,4})\b", line_str)
+                date_match = re.search(r"\b(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})\b|\b(\d{1,2})[-\/\.]([A-Za-z]{3}|\d{1,2})[-\/\.](\d{2,4})\b", line_str)
                 if not date_match:
                     continue
-                day = int(date_match.group(1))
-                m_str = date_match.group(2).lower()
-                month = int(m_str) if m_str.isdigit() else MONTH_MAP.get(m_str[:3], 1)
-                year_str = date_match.group(3)
-                year = int(year_str) if len(year_str) == 4 else int("20" + year_str)
+                if date_match.group(1):
+                    year = int(date_match.group(1))
+                    month = int(date_match.group(2))
+                    day = int(date_match.group(3))
+                else:
+                    day = int(date_match.group(4))
+                    m_str = date_match.group(5).lower()
+                    month = int(m_str) if m_str.isdigit() else MONTH_MAP.get(m_str[:3], 1)
+                    year_str = date_match.group(6)
+                    year = int(year_str) if len(year_str) == 4 else int("20" + year_str)
                 
                 time_match = re.search(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b", line_str)
                 time_str = time_match.group(0) if time_match else "00:00:00"
@@ -427,17 +488,43 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     is_scanned_image = False
     warning_msg = None
     if len(full_text) < 30 and (has_images or total_pages > 0):
-        is_scanned_image = True
-        warning_msg = "Dokumen PDF terdeteksi berupa hasil scan atau gambar tanpa teks digital. Sistem tidak dapat membaca data secara otomatis, mohon isi formulir secara manual."
+        # Jalankan OCR Tesseract untuk membaca teks langsung dari lembaran foto scan di PDF
+        ocr_texts = []
+        try:
+            import pytesseract
+            from PIL import Image
+
+            with pdfplumber.open(file_source) as ocr_pdf:
+                # Ambil halaman scan (maksimal 6 halaman: depan & belakang laporan)
+                target_pages = ocr_pdf.pages if len(ocr_pdf.pages) <= 6 else [ocr_pdf.pages[0], ocr_pdf.pages[1], ocr_pdf.pages[-2], ocr_pdf.pages[-1]]
+                for p in target_pages:
+                    if hasattr(p, 'images') and len(p.images) > 0:
+                        raw_b = p.images[0]['stream'].get_rawdata()
+                        img = Image.open(io.BytesIO(raw_b))
+                        t = pytesseract.image_to_string(img, lang='ind+eng')
+                        if t and len(t.strip()) > 10:
+                            ocr_texts.append(t)
+        except Exception:
+            pass
+
+        if ocr_texts:
+            full_text = "\n".join(ocr_texts).strip()
+            pages_text = ocr_texts
+            combined_search_text = f"{filename}\n{full_text}" if filename else full_text
+        else:
+            is_scanned_image = True
+            warning_msg = "Dokumen PDF terdeteksi berupa hasil scan atau gambar tanpa teks digital. Sistem tidak dapat membaca data secara otomatis, mohon isi formulir secara manual."
 
     meta = extract_metadata_from_text(combined_search_text)
     bank, rek, nama_rek = extract_bank_info(combined_search_text)
 
     # 1. Prioritas Utama Penentuan Saldo Akhir:
-    # Membaca baris mutasi rekening koran dan mengurutkan berdasarkan Tanggal, Waktu, & Urutan Transaksi
-    chronological_saldo = extract_chronological_closing_balance(pages_text, tables_data)
-    if chronological_saldo is not None:
-        meta["nominal"] = chronological_saldo
+    # Jika sudah ditemukan saldo eksplisit dari header / ringkasan dokumen, gunakan itu.
+    # Jika belum, telusuri baris mutasi rekening koran dan urutkan secara kronologis
+    if meta["nominal"] is None:
+        chronological_saldo = extract_chronological_closing_balance(pages_text, tables_data)
+        if chronological_saldo is not None:
+            meta["nominal"] = chronological_saldo
 
     # 2. Multi-page fallback handling: jika belum ditemukan dari urutan transaksi
     if meta["nominal"] is None and pages_text:

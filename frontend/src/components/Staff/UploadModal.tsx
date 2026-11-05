@@ -6,7 +6,8 @@ import { getSession } from '@/lib/auth';
 import {
   Upload, FileText, X, CheckCircle,
   Loader2, AlertCircle, CloudUpload, Sparkles, Brain, CheckCircle2,
-  Folder, Archive, Trash2, Edit3, Building2, Layers
+  Folder, Archive, Trash2, Edit3, Building2, Layers,
+  Link, ExternalLink, Globe, AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -25,6 +26,7 @@ interface UploadModalProps {
   onSuccess: () => void;
   initialFile?: File | null;
   defaultKategoriSlug?: string;
+  initialTab?: 'single' | 'batch';
 }
 
 interface BatchItem {
@@ -46,9 +48,9 @@ interface BatchItem {
   file_size: number;
 }
 
-export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, defaultKategoriSlug }: UploadModalProps) {
+export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, defaultKategoriSlug, initialTab }: UploadModalProps) {
   // Mode: single (1 file) atau batch (folder / zip)
-  const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
+  const [activeTab, setActiveTab] = useState<'single' | 'batch'>(initialTab || 'single');
 
   const [kategoriList,      setKategoriList]      = useState<Kategori[]>([]);
   const [kategoriLoading,   setKategoriLoading]   = useState(true);
@@ -82,12 +84,25 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
   const [aiError,     setAiError]     = useState('');
   const [aiFilledFields, setAiFilledFields] = useState<string[]>([]);
 
+  // Google Drive state
+  const [sourceMode, setSourceMode] = useState<'file' | 'gdrive'>('file');
+  const [gdriveUrl, setGdriveUrl] = useState('');
+  const [gdriveScanning, setGdriveScanning] = useState(false);
+  const [tempGdriveFilename, setTempGdriveFilename] = useState<string | null>(null);
+  const [gdriveFilename, setGdriveFilename] = useState('');
+  const [gdriveFileSize, setGdriveFileSize] = useState<number | null>(null);
+  const [gdriveError, setGdriveError] = useState<{ type: string; title: string; message: string } | null>(null);
+  const [gdriveWarning, setGdriveWarning] = useState<string | null>(null);
+  const [gdriveSuccess, setGdriveSuccess] = useState<string | null>(null);
+
   // Batch upload state
   const [batchId,        setBatchId]        = useState<string | null>(null);
   const [batchItems,     setBatchItems]     = useState<BatchItem[]>([]);
   const [batchScanning,  setBatchScanning]  = useState(false);
   const [batchSaving,    setBatchSaving]    = useState(false);
   const [batchError,     setBatchError]     = useState('');
+  const [batchSourceMode, setBatchSourceMode] = useState<'local' | 'gdrive'>('local');
+  const [batchGdriveUrl,  setBatchGdriveUrl]  = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -123,12 +138,27 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
         setKategoriId('');
       }
       
+      // Reset gdrive state
+      setSourceMode('file');
+      setGdriveUrl('');
+      setGdriveScanning(false);
+      setTempGdriveFilename(null);
+      setGdriveFilename('');
+      setGdriveFileSize(null);
+      setGdriveError(null);
+      setGdriveWarning(null);
+      setGdriveSuccess(null);
+
       // Reset batch state
       setBatchId(null);
       setBatchItems([]);
       setBatchScanning(false);
       setBatchSaving(false);
       setBatchError('');
+
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
 
       if (initialFile) {
         if (initialFile.name.endsWith('.zip')) {
@@ -156,15 +186,8 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
       const d = await res.json();
       let list: Kategori[] = d.data ?? [];
       const u = session?.user as any;
-      const isAdminSatker = Boolean(
-        u && (u.tingkat === 'satker' || !u.tingkat) && (
-          ['administrasi', 'manajemen', 'pimpinan_satker'].includes(u.role || '') ||
-          Number(u.role_id) === 2 ||
-          u.is_manajemen
-        )
-      );
-      if (isAdminSatker || defaultKategoriSlug === 'sk-piutang-satker') {
-        // Admin Satker KHUSUS & HANYA bisa upload SK Piutang Satker
+      if (defaultKategoriSlug === 'sk-piutang-satker') {
+        // Jika modal dibuka khusus untuk SK Piutang Satker
         list = list.filter(k => k.slug === 'sk-piutang-satker');
         if (list.length > 0) {
           setKategoriId(String(list[0].id));
@@ -307,9 +330,94 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
     scanWithAI(picked, kategoriList);
   };
 
+  // --- SMART GOOGLE DRIVE SCAN HANDLER ---
+  const handleGdriveScan = async () => {
+    if (!gdriveUrl || !gdriveUrl.trim()) {
+      setGdriveError({
+        type: 'EMPTY',
+        title: 'Tautan Wajib Diisi',
+        message: 'Masukkan tautan berkas atau folder Google Drive terlebih dahulu.'
+      });
+      return;
+    }
+
+    const trimmedUrl = gdriveUrl.trim();
+    // Jika tautan adalah FOLDER, langsung alihkan dan proses secara batch masal otomatis!
+    if (trimmedUrl.includes('/drive/folders/') || trimmedUrl.includes('/folders/')) {
+      setActiveTab('batch');
+      setBatchGdriveUrl(trimmedUrl);
+      handleBatchGdriveFolderScan(trimmedUrl);
+      return;
+    }
+
+    setGdriveScanning(true);
+    setGdriveError(null);
+    setGdriveWarning(null);
+    setGdriveSuccess(null);
+
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/gdrive-scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`
+        },
+        body: JSON.stringify({ url: trimmedUrl })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setGdriveError({
+          type: data.error_type || 'UNKNOWN',
+          title: data.error_title || 'Link Tidak Bisa Diakses',
+          message: data.error_message || data.detail || 'Terjadi kesalahan saat mengakses tautan Google Drive.'
+        });
+        toast.error(data.error_title || 'Gagal mengakses link Google Drive');
+        return;
+      }
+
+      // Berhasil mengunduh
+      setTempGdriveFilename(data.saved_filename);
+      setGdriveFilename(data.file_name);
+      setGdriveFileSize(data.file_size);
+
+      // Pre-fill form fields
+      const ext = data.extracted || {};
+      if (ext.judul && (!judul || judul.startsWith('Laporan Rekening Koran'))) setJudul(ext.judul);
+      if (ext.nama_bank) setNamaBank(ext.nama_bank);
+      if (ext.nomor_rekening) setNomorRekening(ext.nomor_rekening);
+      if (ext.nama_rekening) setNamaRekening(ext.nama_rekening);
+      if (ext.saldo_akhir != null && ext.saldo_akhir > 0) {
+        setTotalSaldo(Number(ext.saldo_akhir).toLocaleString('id-ID'));
+      }
+      if (ext.tanggal_surat) setTanggalSurat(ext.tanggal_surat);
+      if (ext.tahun) setTahun(String(ext.tahun));
+      if (ext.bulan) setBulan(String(ext.bulan));
+      if (ext.kategori_id) setKategoriId(String(ext.kategori_id));
+
+      if (data.is_perfect) {
+        setGdriveSuccess(`Berhasil Terhubung ke Google Drive! Seluruh data otomatis terisi: Bank ${ext.nama_bank || 'Bank'}, No. Rek: ${ext.nomor_rekening || '-'}, Saldo: Rp ${Number(ext.saldo_akhir || 0).toLocaleString('id-ID')}`);
+        toast.success('Berhasil mengekstrak data dari Google Drive!');
+      } else {
+        const missingStr = data.missing_fields && data.missing_fields.length > 0 ? data.missing_fields.join(', ') : 'Saldo Akhir / Rekening';
+        setGdriveWarning(`Berkas berhasil diunduh dari Google Drive, namun kolom [${missingStr}] belum terdeteksi otomatis karena berkas berupa hasil scan/foto. Silakan lengkapi manual di bawah.`);
+        toast('Berkas diunduh, silakan lengkapi kolom yang belum terisi', { icon: '⚠️' });
+      }
+    } catch (err: any) {
+      setGdriveError({
+        type: 'NETWORK_ERROR',
+        title: 'Kesalahan Jaringan',
+        message: err.message || 'Gagal menghubungi server untuk memindai Google Drive.'
+      });
+      toast.error('Gagal menghubungi server');
+    } finally {
+      setGdriveScanning(false);
+    }
+  };
+
   const handleSingleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!file) return setError('File wajib dipilih');
+    if (!file && !tempGdriveFilename) return setError('Pilih berkas dari komputer atau masukkan link Google Drive yang valid');
 
     let activeKatId = kategoriId;
     if (!activeKatId) {
@@ -332,7 +440,14 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
     try {
       const session = getSession();
       const fd = new FormData();
-      fd.append('file',        file);
+      if (tempGdriveFilename) {
+        fd.append('temp_gdrive_filename', tempGdriveFilename);
+        fd.append('link_drive', gdriveUrl);
+      } else if (file) {
+        fd.append('file', file);
+      } else {
+        return setError('Pilih berkas dari komputer atau masukkan link Google Drive yang valid');
+      }
       fd.append('judul',       judul);
       fd.append('tahun',       tahun);
       if (jenisPeriode === 'bulan' && bulan) fd.append('bulan', bulan);
@@ -428,6 +543,43 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
     }
   };
 
+  const handleBatchGdriveFolderScan = async (urlToScan?: string) => {
+    const url = (urlToScan || batchGdriveUrl).trim();
+    if (!url) {
+      setBatchError('Masukkan tautan folder Google Drive terlebih dahulu');
+      return;
+    }
+    setBatchScanning(true);
+    setBatchError('');
+    setBatchItems([]);
+    setBatchId(null);
+
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/gdrive-folder-scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`
+        },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error_message || data.detail || 'Gagal memindai folder Google Drive');
+      }
+
+      setBatchId(data.batch_id);
+      setBatchItems(data.items || []);
+      toast.success(`Berhasil mengunduh dan menganalisis ${data.total_files} berkas dari Google Drive!`);
+    } catch (err: any) {
+      setBatchError(err.message || 'Gagal memindai folder Google Drive');
+      toast.error(err.message || 'Gagal memproses folder Google Drive');
+    } finally {
+      setBatchScanning(false);
+    }
+  };
+
   const updateBatchItem = (index: number, field: keyof BatchItem, value: any) => {
     setBatchItems(prev => {
       const copy = [...prev];
@@ -507,7 +659,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
               </h2>
               <span className={clsx(
                 "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                isSkPiutang ? "bg-indigo-100 text-indigo-800" : "bg-blue-100 text-blue-800"
+                "bg-blue-100 text-blue-800"
               )}>
                 {isSkPiutang ? 'Kewenangan Khusus Admin Satker' : 'Cerdas Otomatis'}
               </span>
@@ -520,7 +672,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            {/* Mode Switcher Tabs - Sembunyikan untuk SK Piutang karena wajib berkas bundel satuan */}
+            {/* Mode Switcher Tabs - Selalu tampilkan untuk kemudahan batch folder / ZIP */}
             {!isSkPiutang && (
               <div className="flex items-center bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
                 <button
@@ -528,10 +680,10 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                   onClick={() => { setActiveTab('single'); setError(''); }}
                   className={clsx(
                     "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
-                    activeTab === 'single' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    activeTab === 'single' ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
                   )}
                 >
-                  <FileText className="w-3.5 h-3.5" />
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
                   <span>Berkas Satuan</span>
                 </button>
                 <button
@@ -539,7 +691,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                   onClick={() => { setActiveTab('batch'); setBatchError(''); }}
                   className={clsx(
                     "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
-                    activeTab === 'batch' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    activeTab === 'batch' ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
                   )}
                 >
                   <Folder className="w-3.5 h-3.5 text-amber-500" />
@@ -565,17 +717,44 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
           ) : activeTab === 'single' ? (
             // ==================== MODE SATUAN ====================
             <form onSubmit={handleSingleSubmit} className="space-y-5">
-              {/* File Info / Dropzone */}
+              {/* File Info / Dropzone / Google Drive Input */}
               <div>
-                {file ? (
-                  <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
-                    <FileText className="w-8 h-8 text-indigo-600 shrink-0" />
+                {/* 1. JIKA FILE GOOGLE DRIVE TERUNDUH */}
+                {tempGdriveFilename ? (
+                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                    <Globe className="w-8 h-8 text-blue-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 truncate">{gdriveFilename}</p>
+                        <span className="text-[10px] font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Google Drive</span>
+                      </div>
+                      <p className="text-xs text-slate-500">{gdriveFileSize ? formatSize(gdriveFileSize) : 'Terunduh dari Google Drive'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTempGdriveFilename(null);
+                        setGdriveFilename('');
+                        setGdriveFileSize(null);
+                        setGdriveSuccess(null);
+                        setGdriveWarning(null);
+                      }}
+                      className="text-slate-400 hover:text-rose-500 transition-colors p-2 cursor-pointer"
+                      title="Ganti Berkas / Tautan"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : file ? (
+                  /* 2. JIKA FILE KOMPUTER DIPILIH */
+                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                    <FileText className="w-8 h-8 text-blue-600 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-900 truncate">{file.name}</p>
                       <p className="text-xs text-slate-500">{formatSize(file.size)}</p>
                     </div>
                     {aiScanning && (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 bg-violet-100 px-3 py-1.5 rounded-full animate-pulse">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-100 px-3 py-1.5 rounded-full animate-pulse">
                         <Brain className="w-3.5 h-3.5 animate-spin" /> Menganalisis...
                       </span>
                     )}
@@ -584,38 +763,134 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                         <CheckCircle2 className="w-3.5 h-3.5" /> Terdeteksi Otomatis
                       </span>
                     )}
-                    <button type="button" onClick={() => { setFile(null); setAiResult(null); setAiFilledFields([]); setAiError(''); }} className="text-slate-400 hover:text-rose-500 transition-colors p-2">
+                    <button type="button" onClick={() => { setFile(null); setAiResult(null); setAiFilledFields([]); setAiError(''); }} className="text-slate-400 hover:text-rose-500 transition-colors p-2 cursor-pointer">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                 ) : (
-                  <div
-                    onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={e => { e.preventDefault(); setDragging(false); handleFilePick(e.dataTransfer.files[0] ?? null); }}
-                    onClick={() => fileRef.current?.click()}
-                    className={clsx(
-                      "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
-                      dragging ? "border-indigo-500 bg-indigo-50" : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50"
-                    )}
-                  >
-                    <CloudUpload className={clsx("w-10 h-10 mx-auto mb-3", dragging ? "text-indigo-500" : "text-slate-400")} />
-                    <p className="text-sm font-semibold text-slate-700">
-                      {isSkPiutang ? 'Tarik & lepas berkas PDF bundel SK Piutang' : 'Tarik & lepas berkas ke sini'}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {isSkPiutang ? 'atau klik untuk memilih file PDF dari komputer' : 'atau klik untuk memilih file dari komputer'}
-                    </p>
-                    <div className="flex items-center justify-center gap-3 mt-4">
-                      <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-md">
-                        {isSkPiutang ? 'Format PDF Bundel (Max 50MB)' : 'PDF, XLSX, JPG, PNG (Max 50MB)'}
-                      </span>
-                      {!isSkPiutang && (
-                        <span className="flex items-center gap-1 text-xs font-semibold text-violet-600 bg-violet-50 border border-violet-100 px-2.5 py-1 rounded-md">
-                          <Sparkles className="w-3 h-3" /> Ekstraksi Cerdas
-                        </span>
+                  /* 3. BELUM ADA FILE: DROPZONE + INPUT TAUTAN GOOGLE DRIVE (LANGSUNG MENYATU) */
+                  <div className="space-y-3">
+                    {/* Area Drag & Drop Berkas Komputer */}
+                    <div
+                      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={e => { e.preventDefault(); setDragging(false); handleFilePick(e.dataTransfer.files[0] ?? null); }}
+                      onClick={() => fileRef.current?.click()}
+                      className={clsx(
+                        "border-2 border-dashed rounded-xl p-7 text-center cursor-pointer transition-all",
+                        dragging ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-blue-400 hover:bg-slate-50"
                       )}
+                    >
+                      <CloudUpload className={clsx("w-9 h-9 mx-auto mb-2", dragging ? "text-blue-500" : "text-slate-400")} />
+                      <p className="text-sm font-semibold text-slate-700">
+                        {isSkPiutang ? 'Tarik & lepas berkas PDF bundel SK Piutang' : 'Tarik & lepas berkas ke sini'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {isSkPiutang ? 'atau klik untuk memilih file PDF dari komputer' : 'atau klik untuk memilih file dari komputer'}
+                      </p>
+                      <div className="flex items-center justify-center gap-3 mt-3">
+                        <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-md">
+                          {isSkPiutang ? 'Format PDF Bundel (Max 50MB)' : 'PDF, XLSX, JPG, PNG (Max 50MB)'}
+                        </span>
+                        {!isSkPiutang && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md">
+                            <Sparkles className="w-3 h-3 text-blue-500" /> Ekstraksi Cerdas
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    {!isSkPiutang && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                          <span className="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">atau tautan google drive</span>
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="relative flex-1">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                              <Globe className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <input
+                              type="url"
+                              value={gdriveUrl}
+                              onChange={e => { setGdriveUrl(e.target.value); setGdriveError(null); }}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleGdriveScan(); } }}
+                              placeholder="Tempel tautan berkas atau folder Google Drive di sini..."
+                              className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-slate-800 transition-colors"
+                              disabled={gdriveScanning}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleGdriveScan}
+                            disabled={gdriveScanning || !gdriveUrl.trim()}
+                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-xs shadow-blue-500/20"
+                          >
+                            {gdriveScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            <span>{gdriveScanning ? 'Memproses...' : 'Ambil & Pindai'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* RED ERROR BOX (Jika link tidak bisa diakses / private / quota / 404) */}
+                        {gdriveError && (
+                          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-1 animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-2 font-bold text-rose-900">
+                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                              <span>{gdriveError.title || 'Link Tidak Bisa Diakses'}</span>
+                            </div>
+                            <p className="pl-6 leading-relaxed text-rose-700">
+                              {gdriveError.message}
+                            </p>
+                            {gdriveError.type === 'FOLDER_NOT_FILE' && (
+                              <div className="pl-6 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveTab('batch');
+                                    setBatchSourceMode('gdrive');
+                                    setBatchGdriveUrl(gdriveUrl);
+                                    handleBatchGdriveFolderScan(gdriveUrl);
+                                  }}
+                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                  <Folder className="w-3.5 h-3.5" />
+                                  <span>Pindah ke Mode Masal & Pindai Folder Ini Otomatis ➔</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* AMBER WARNING BOX (Jika file scan / sebagian kolom tidak terbaca) */}
+                        {gdriveWarning && (
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1 animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-2 font-bold text-amber-900">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>Berkas Diunduh (Perlu Pengisian Manual)</span>
+                            </div>
+                            <p className="pl-6 leading-relaxed text-amber-700">
+                              {gdriveWarning}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* GREEN SUCCESS BOX (Jika seluruh data terbaca sempurna) */}
+                        {gdriveSuccess && (
+                          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1 animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-2 font-bold text-emerald-900">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>Berhasil Terhubung ke Google Drive!</span>
+                            </div>
+                            <p className="pl-6 leading-relaxed text-emerald-700">
+                              {gdriveSuccess}
+                            </p>
+                          </div>
+                        )}
                   </div>
                 )}
                 <input
@@ -685,7 +960,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                     }
                     required
                     className={clsx(
-                      "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors",
+                      "w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors",
                       aiFilledFields.includes('judul') ? "border-emerald-300 bg-emerald-50/50" : "border-slate-300 bg-white"
                     )}
                   />
@@ -744,17 +1019,17 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
 
                 {/* SK Piutang Satker Fields (Khusus Administrasi - Bundel 1 PDF dengan Dasar BPK/SKTJM) */}
                 {isSkPiutang && (
-                  <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200/80 space-y-3">
+                  <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs">
-                        <Sparkles className="w-4 h-4 text-indigo-600" />
+                      <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                        <Sparkles className="w-4 h-4 text-blue-600" />
                         Detail SK Piutang & Lampiran Dasar Hukum (Bundel 1 PDF)
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white">
                         Langsung ke Eselon 1
                       </span>
                     </div>
-                    <p className="text-[11px] text-indigo-700 leading-relaxed">
+                    <p className="text-[11px] text-blue-700 leading-relaxed">
                       Pastikan berkas PDF yang diunggah menyatukan lembar <strong>SK Piutang</strong> beserta lampiran bukti <strong>Temuan BPK / SKTJM</strong>. Dokumen akan langsung dikirim ke Admin Eselon 1.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -801,9 +1076,9 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                       Kategori Dokumen <span className="text-rose-500">*</span>
                     </label>
                     {isSkPiutang ? (
-                      <div className="w-full px-4 py-2.5 text-sm border border-indigo-200 rounded-xl bg-indigo-50/70 font-bold text-indigo-900 flex items-center justify-between shadow-2xs">
+                      <div className="w-full px-4 py-2.5 text-sm border border-blue-200 rounded-xl bg-blue-50/70 font-bold text-blue-900 flex items-center justify-between shadow-2xs">
                         <span>SK Piutang Satker</span>
-                        <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                           Terkunci
                         </span>
                       </div>
@@ -812,7 +1087,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                         value={kategoriId}
                         onChange={e => setKategoriId(e.target.value)}
                         required
-                        className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                        className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                       >
                         <option value="">-- Pilih Kategori --</option>
                         {kategoriList.map(k => (
@@ -827,7 +1102,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                       value={tahun}
                       onChange={e => setTahun(e.target.value)}
                       required
-                      className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                      className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     >
                       {TAHUN_LIST.map(t => (
                         <option key={t} value={t}>{t}</option>
@@ -855,7 +1130,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                           setTotalSaldo(parts.length === 2 ? `${formatted},${parts[1]}` : formatted);
                         }}
                         placeholder="0"
-                        className="w-full pl-12 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-bold"
+                        className="w-full pl-12 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-bold"
                       />
                     </div>
                   </div>
@@ -868,7 +1143,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                     onChange={e => setDeskripsi(e.target.value)}
                     rows={2}
                     placeholder="Keterangan opsional..."
-                    className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none bg-white"
+                    className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-white"
                   />
                 </div>
               </div>
@@ -878,71 +1153,105 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
             <div className="space-y-5">
               {batchScanning ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+                  <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
                   <p className="font-bold text-slate-800 text-sm">Sedang Mengekstrak & Memindai Berkas...</p>
                   <p className="text-xs text-slate-500 max-w-sm text-center">
                     Sistem sedang membaca nomor rekening satker, nama bank, dan menghitung saldo akhir tiap berkas secara mandiri.
                   </p>
                 </div>
               ) : batchItems.length === 0 ? (
-                <div>
-                  {/* Dropzone untuk ZIP atau Folder */}
-                  <div
-                    onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={e => {
-                      e.preventDefault(); setDragging(false);
-                      const files = e.dataTransfer.files;
-                      if (!files || files.length === 0) return;
-                      if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
-                        handleBatchZip(files[0]);
-                      } else {
-                        handleFolderSelect(files);
-                      }
-                    }}
-                    className={clsx(
-                      "border-2 border-dashed rounded-2xl p-8 text-center transition-all",
-                      dragging ? "border-indigo-500 bg-indigo-50" : "border-slate-300 hover:border-indigo-400 bg-slate-50/50"
-                    )}
-                  >
-                    <div className="flex items-center justify-center gap-3 mb-3">
-                      <div className="p-3 bg-amber-100 text-amber-700 rounded-2xl">
-                        <Folder className="w-8 h-8" />
+                <div className="space-y-4">
+                    {/* Dropzone untuk ZIP atau Folder */}
+                    <div
+                      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={e => {
+                        e.preventDefault(); setDragging(false);
+                        const files = e.dataTransfer.files;
+                        if (!files || files.length === 0) return;
+                        if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+                          handleBatchZip(files[0]);
+                        } else {
+                          handleFolderSelect(files);
+                        }
+                      }}
+                      className={clsx(
+                        "border-2 border-dashed rounded-2xl p-7 text-center transition-all",
+                        dragging ? "border-blue-500 bg-blue-50" : "border-slate-300 hover:border-blue-400 bg-slate-50/50"
+                      )}
+                    >
+                      <div className="flex items-center justify-center gap-3 mb-2">
+                        <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl">
+                          <Folder className="w-6 h-6" />
+                        </div>
+                        <span className="text-slate-400 font-bold text-xs">+</span>
+                        <div className="p-2.5 bg-sky-100 text-sky-700 rounded-xl">
+                          <Archive className="w-6 h-6" />
+                        </div>
                       </div>
-                      <span className="text-slate-400 font-bold text-sm">+</span>
-                      <div className="p-3 bg-violet-100 text-violet-700 rounded-2xl">
-                        <Archive className="w-8 h-8" />
+                      <h3 className="text-sm font-bold text-slate-800">Tarik & Lepas File .ZIP atau Berkas Folder ke Sini</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        atau pilih langsung dari komputer Anda
+                      </p>
+
+                      <div className="flex items-center justify-center gap-3 mt-4">
+                        <button
+                          type="button"
+                          onClick={() => folderInputRef.current?.click()}
+                          className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Folder className="w-4 h-4 text-amber-100" />
+                          <span>Pilih 1 Folder Satker</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => zipInputRef.current?.click()}
+                          className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <Archive className="w-4 h-4 text-sky-200" />
+                          <span>Pilih File .ZIP</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2 mt-3 text-[11px] text-slate-400">
+                        <span>Mendukung PDF, Excel, JPG, PNG di dalam folder</span>
                       </div>
                     </div>
-                    <h3 className="text-base font-bold text-slate-800">Tarik & Lepas File .ZIP atau Berkas Folder ke Sini</h3>
-                    <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                      Unggah seluruh dokumen Rekening Koran sekaligus dalam 1 folder atau arsip ZIP.
-                    </p>
 
-                    <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
-                      <button
-                        type="button"
-                        onClick={() => folderInputRef.current?.click()}
-                        className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
-                      >
-                        <Folder className="w-4 h-4 text-amber-300" />
-                        <span>Pilih 1 Folder Langsung</span>
-                      </button>
+                    {/* ATAU TEMPEL TAUTAN FOLDER GOOGLE DRIVE */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center gap-3 text-xs text-slate-400">
+                        <div className="h-px bg-slate-200 flex-1"></div>
+                        <span className="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">atau tautan folder google drive</span>
+                        <div className="h-px bg-slate-200 flex-1"></div>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => zipInputRef.current?.click()}
-                        className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
-                      >
-                        <Archive className="w-4 h-4 text-violet-200" />
-                        <span>Pilih File .ZIP</span>
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <Folder className="w-4 h-4 text-amber-500" />
+                          </div>
+                          <input
+                            type="url"
+                            value={batchGdriveUrl}
+                            onChange={e => setBatchGdriveUrl(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleBatchGdriveFolderScan(); } }}
+                            placeholder="https://drive.google.com/drive/folders/15qKsZe..."
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-slate-800 transition-colors"
+                            disabled={batchScanning}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleBatchGdriveFolderScan()}
+                          disabled={batchScanning || !batchGdriveUrl.trim()}
+                          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-xs shadow-blue-500/20"
+                        >
+                          {batchScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                          <span>{batchScanning ? 'Menelusuri Folder...' : 'Pindai Folder'}</span>
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-slate-400">
-                      <span>Mendukung PDF, Excel, JPG, PNG di dalam folder</span>
-                    </div>
-                  </div>
 
                   {/* Hidden folder input (HTML5 webkitdirectory) */}
                   <input
@@ -971,23 +1280,23 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
               ) : (
                 // REVIEW TABLE BATCH
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3.5">
+                  <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                      <div className="p-2 bg-blue-600 text-white rounded-lg">
                         <Layers className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-indigo-950">
+                        <div className="text-xs font-bold text-blue-950">
                           {batchItems.length} Dokumen Berhasil Diekstrak
                         </div>
-                        <div className="text-[11px] text-indigo-700 mt-0.5">
+                        <div className="text-[11px] text-blue-700 mt-0.5">
                           Periksa kembali rincian di bawah sebelum disimpan ke sistem.
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-[10px] uppercase font-bold text-slate-500">Total Akumulasi Saldo</div>
-                      <div className="text-sm font-black text-indigo-900">Rp {totalNominalBatch.toLocaleString('id-ID')}</div>
+                      <div className="text-sm font-black text-blue-900">Rp {totalNominalBatch.toLocaleString('id-ID')}</div>
                     </div>
                   </div>
 
@@ -1058,7 +1367,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                                   const raw = e.target.value.replace(/\D/g, '');
                                   updateBatchItem(idx, 'nominal', raw ? parseInt(raw, 10) : 0);
                                 }}
-                                className="w-full text-xs text-right font-bold border border-slate-200 px-2 py-1 rounded bg-white text-blue-700"
+                                className="w-full text-xs text-right font-bold border border-slate-200 px-2 py-1 rounded bg-white text-slate-900"
                                 placeholder="0"
                               />
                             </td>
@@ -1127,8 +1436,8 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
               {activeTab === 'single' ? (
                 <button
                   onClick={handleSingleSubmit}
-                  disabled={submitting || !file || !judul || !kategoriId}
-                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition-all cursor-pointer"
+                  disabled={submitting || (!file && !tempGdriveFilename) || !judul || !kategoriId}
+                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition-all cursor-pointer"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                   {submitting ? 'Menyimpan...' : 'Unggah Sekarang'}

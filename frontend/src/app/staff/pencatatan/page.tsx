@@ -20,9 +20,11 @@ import {
   FileText,
   Power,
   Layers,
+  Folder,
 } from "lucide-react";
 import clsx from "clsx";
 import * as XLSX from "xlsx";
+import UploadModal from "@/components/Staff/UploadModal";
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
@@ -34,6 +36,13 @@ const BANK_BUMN_LIST = [
   "Bank BTN",
   "Bank BSI (Bank Syariah Indonesia)",
   "Bank BCA",
+  "Bank BJB (Jawa Barat & Banten)",
+  "Bank BJB Syariah",
+  "Bank Jateng (Jawa Tengah)",
+  "Bank Jatim (Jawa Timur)",
+  "Bank Nagari (Sumatra Barat)",
+  "Bank Sumsel Babel (Sumatra Selatan & Babel)",
+  "Bank BPD Bali",
   "Bank Lainnya",
 ];
 
@@ -56,6 +65,20 @@ const BANK_CODE_MAP: Record<string, string> = {
   "bank bca": "014",
   bca: "014",
   "bank central asia": "014",
+  "bjb syariah": "425",
+  "bank bjb syariah": "425",
+  bjb: "110",
+  "bank bjb": "110",
+  jateng: "113",
+  "bank jateng": "113",
+  jatim: "114",
+  "bank jatim": "114",
+  nagari: "118",
+  "bank nagari": "118",
+  "sumsel babel": "120",
+  "bank sumsel babel": "120",
+  "bpd bali": "129",
+  "bank bpd bali": "129",
 };
 
 const getKodeBank = (namaBank?: string, kodeBankDb?: string) => {
@@ -177,6 +200,7 @@ export default function StaffpencatatanPage() {
   const todayDate = new Date().toISOString().split("T")[0];
 
   const [showForm, setShowForm] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState<'single' | 'batch'>('single');
   const [formData, setFormData] = useState({
     tanggal: todayDate,
     periode: defaultPeriode,
@@ -700,13 +724,26 @@ export default function StaffpencatatanPage() {
             <Download className="w-4 h-4" /> Export
           </button>
           <button
+            type="button"
             onClick={() => {
               resetForm();
+              setModalInitialTab('single');
               setShowForm(true);
             }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" /> Unggah Bukti Baru
+            <Plus className="w-4 h-4" /> Unggah Bukti Satuan
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              setModalInitialTab('batch');
+              setShowForm(true);
+            }}
+            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-xs cursor-pointer"
+          >
+            <Folder className="w-4 h-4 text-amber-300" /> Unggah 1 Folder / ZIP Masal
           </button>
         </div>
       </div>
@@ -717,9 +754,9 @@ export default function StaffpencatatanPage() {
           <div>
             <div className="staff-mini-label">
               <span>Total Saldo Bukti Aktif Tercatat</span>
-              <DollarSign className="w-4 h-4 text-blue-500" />
+              <DollarSign className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="staff-mini-val text-blue-600 text-2xl sm:text-3xl mt-1">
+            <div className="staff-mini-val text-slate-900 text-2xl sm:text-3xl mt-1 font-extrabold">
               Rp {totalNominal.toLocaleString("id-ID")}
             </div>
           </div>
@@ -825,431 +862,16 @@ export default function StaffpencatatanPage() {
         </span>
       </div>
 
-      {/* Modal Unggah Bukti Transaksi */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden my-8 border border-gray-100 transition-all">
-            <div className="px-6 py-4 md:px-8 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <span>Unggah Bukti Laporan Rekening Koran / Kas</span>
-                  {aiScanning && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 animate-pulse">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Analisis AI...
-                    </span>
-                  )}
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Kunci Utama: Tanggal Laporan & Saldo Akhir, serta Relasi Kode
-                  Bank, Nama Bank, dan Nomor Rekening
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-xl transition-colors"
-                title="Tutup"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5">
-              {/* Banner Hasil Analisis Otomatis AI */}
-              {aiScanning && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-center gap-3 animate-pulse">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600 shrink-0" />
-                  <div>
-                    <p className="font-bold">
-                      Sedang Menganalisis Berkas Otomatis...
-                    </p>
-                    <p className="text-blue-600 mt-0.5">
-                      Membaca isi berkas, mendeteksi kode & nama bank, nomor
-                      rekening, tanggal, dan saldo akhir.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {aiResult &&
-                !aiScanning &&
-                (aiResult.bank ||
-                  formData.nama_bank ||
-                  aiResult.nominal ||
-                  aiResult.nomor_rekening ||
-                  formData.nomor_rekening_bank) && (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <div className="font-bold text-emerald-800 flex items-center gap-2 flex-wrap">
-                        <span>✨ Analisis Berkas Berhasil:</span>
-                        {(aiResult.bank || formData.nama_bank) && (
-                          <span className="bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                            [{getKodeBank(aiResult.bank || formData.nama_bank)}] {aiResult.bank || formData.nama_bank}
-                          </span>
-                        )}
-                        {aiResult.kategori && (
-                          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                            {aiResult.kategori}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-emerald-700">
-                        {(aiResult.bank || formData.nama_bank) && (
-                          <span>
-                            Bank <strong>{aiResult.bank || formData.nama_bank}</strong> berhasil
-                            dideteksi.{" "}
-                          </span>
-                        )}
-                        {(aiResult.nominal != null ||
-                          aiResult.saldo_rekening != null) && (
-                          <span>
-                            Saldo Akhir:{" "}
-                            <strong>
-                              Rp{" "}
-                              {Number(
-                                aiResult.nominal ?? aiResult.saldo_rekening,
-                              ).toLocaleString("id-ID")}
-                            </strong>
-                            .{" "}
-                          </span>
-                        )}
-                        {(aiResult.nomor_rekening || formData.nomor_rekening_bank) && (
-                          <span>
-                            No Rekening:{" "}
-                            <strong>{aiResult.nomor_rekening || formData.nomor_rekening_bank}</strong>.{" "}
-                          </span>
-                        )}
-                        Form otomatis disesuaikan!
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-              {aiError && !aiScanning && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>{aiError}</span>
-                </div>
-              )}
-
-              {/* Row 1: Berkas Bukti / PDF Rekening Koran */}
-              <div className="p-4 bg-blue-50/50 border border-blue-200/80 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <label className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-blue-600" />
-                    <span>
-                      Upload Berkas Bukti Laporan (PDF / Gambar / Excel) *
-                    </span>
-                  </label>
-                  <span className="text-[11px] font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                    Otomatis Masuk ke Tabel Pencatatan & Rekening Koran
-                  </span>
-                </div>
-                <div className="border border-dashed border-gray-300 hover:border-blue-400 rounded-xl p-3.5 bg-white transition-colors">
-                  <input
-                    type="file"
-                    required
-                    ref={fileInputRef}
-                    accept=".pdf,.xlsx,.xls,.docx,.png,.jpg,.jpeg"
-                    onChange={handleFileChange}
-                    className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-2">
-                    {aiScanning
-                      ? "Sedang memindai berkas..."
-                      : "Format PDF Rekening Koran atau berkas bukti akan dibaca otomatis oleh AI untuk mendeteksi Bank, No. Rekening, Bulan, dan Saldo Akhir."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Row 2: KUNCI UTAMA WAKTU -> Tanggal Laporan & Bulan Transaksi */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      Tanggal Bukti / Laporan *
-                    </span>
-                    <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                      Kunci Utama #1
-                    </span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.tanggal}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      let nextPeriode = formData.periode;
-                      if (val) {
-                        const d = new Date(val);
-                        if (!isNaN(d.getTime())) {
-                          const m = d.toLocaleDateString("id-ID", {
-                            month: "long",
-                          });
-                          const y = d.getFullYear();
-                          nextPeriode = `${m.charAt(0).toUpperCase() + m.slice(1)} ${y}`;
-                        }
-                      }
-                      setFormData({
-                        ...formData,
-                        tanggal: val,
-                        periode: nextPeriode,
-                      });
-                    }}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                    <span>Bulan Transaksi *</span>
-                    <span className="text-[11px] font-normal text-gray-400">
-                      Bulan pelaporan rekening koran
-                    </span>
-                  </label>
-                  <select
-                    required
-                    value={formData.periode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, periode: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all bg-white shadow-sm"
-                  >
-                    <option value="">Pilih Bulan...</option>
-                    {[
-                      "Januari",
-                      "Februari",
-                      "Maret",
-                      "April",
-                      "Mei",
-                      "Juni",
-                      "Juli",
-                      "Agustus",
-                      "September",
-                      "Oktober",
-                      "November",
-                      "Desember",
-                    ].map((m) => (
-                      <option key={m} value={`${m} ${new Date().getFullYear()}`}>
-                        {m} {new Date().getFullYear()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 3: RELASI BANK (No/Kode Bank, Nama Bank, Nomor Rekening) & Kategori */}
-              <div className="p-4 bg-gray-50/80 border border-gray-200 rounded-2xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    Relasi Identitas Bank (No. Bank • Nama Bank • No. Rekening)
-                  </span>
-                  {formData.nama_bank && (
-                    <span className="text-xs font-mono font-bold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">
-                      Kode Bank: {getKodeBank(formData.nama_bank, formData.kode_bank)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Nama & Kode Bank *
-                    </label>
-                    <select
-                      required
-                      value={
-                        BANK_BUMN_LIST.find(
-                          (b) =>
-                            normalizeBankKey(b) ===
-                            normalizeBankKey(formData.nama_bank),
-                        ) ||
-                        formData.nama_bank ||
-                        ""
-                      }
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const autoRek =
-                          formData.nomor_rekening_bank ||
-                          findExistingNoRekForBank(val);
-                        setFormData({
-                          ...formData,
-                          nama_bank: val,
-                          kode_bank: getKodeBank(val),
-                          nomor_rekening_bank: autoRek,
-                        });
-                        if (val !== "Bank Lainnya") setCustomBank("");
-                      }}
-                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-white shadow-sm"
-                    >
-                      <option value="">Pilih Bank...</option>
-                      {formData.nama_bank &&
-                        !BANK_BUMN_LIST.some(
-                          (b) =>
-                            normalizeBankKey(b) ===
-                            normalizeBankKey(formData.nama_bank),
-                        ) && (
-                          <option value={formData.nama_bank}>
-                            [{getKodeBank(formData.nama_bank)}]{" "}
-                            {formData.nama_bank}
-                          </option>
-                        )}
-                      {BANK_BUMN_LIST.map((b) => (
-                        <option key={b} value={b}>
-                          {b === "Bank Lainnya"
-                            ? b
-                            : `[${getKodeBank(b)}] ${b}`}
-                        </option>
-                      ))}
-                    </select>
-                    {formData.nama_bank === "Bank Lainnya" && (
-                      <input
-                        type="text"
-                        required
-                        value={customBank}
-                        onChange={(e) => setCustomBank(e.target.value)}
-                        placeholder="Ketikkan nama bank..."
-                        className="mt-2 w-full px-3.5 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 outline-none bg-white"
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                      <CreditCard className="w-3.5 h-3.5 text-gray-500" />
-                      <span>Nomor Rekening Bank *</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.nomor_rekening_bank}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        let nextBank = formData.nama_bank;
-                        let nextKode = formData.kode_bank;
-                        if (!nextBank || nextBank === "Bank Lainnya") {
-                          const autoBank =
-                            findExistingBankForNoRek(val) ||
-                            inferBankFromNoRek(val);
-                          if (autoBank) {
-                            nextBank = autoBank;
-                            nextKode = getKodeBank(autoBank);
-                          }
-                        }
-                        setFormData({
-                          ...formData,
-                          nomor_rekening_bank: val,
-                          nama_bank: nextBank,
-                          kode_bank: nextKode,
-                        });
-                      }}
-                      placeholder="Contoh: 8100126932121000"
-                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-white shadow-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Kategori Dokumen *
-                    </label>
-                    <select
-                      required
-                      value={formData.id_kategori}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          id_kategori: e.target.value,
-                        })
-                      }
-                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-white shadow-sm"
-                    >
-                      <option value="">Pilih Kategori...</option>
-                      {sortedKategori.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.nama_kategori}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 4: KUNCI UTAMA SALDO AKHIR */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center justify-between">
-                  <span>Saldo Akhir (Rp) *</span>
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    Kunci Utama #2 • Menentukan Total Saldo Bank
-                  </span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">
-                    Rp
-                  </span>
-                  <input
-                    type="text"
-                    required
-                    value={
-                      formData.saldo_akhir
-                        ? Number(formData.saldo_akhir).toLocaleString("id-ID")
-                        : formData.nominal
-                          ? Number(formData.nominal).toLocaleString("id-ID")
-                          : ""
-                    }
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, "");
-                      setFormData({
-                        ...formData,
-                        saldo_akhir: raw,
-                        nominal: raw,
-                      });
-                    }}
-                    className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
-                    placeholder="Contoh: 15.000.000"
-                    title="Ketik angka, titik ribuan otomatis diformat"
-                  />
-                  {Boolean(formData.saldo_akhir || formData.nominal) && (
-                    <p className="text-xs text-blue-600 font-bold mt-1.5 flex items-center gap-1">
-                      <span>Terbaca:</span>
-                      <span className="bg-blue-50 px-2 py-0.5 rounded text-blue-700">
-                        Rp{" "}
-                        {Number(
-                          formData.saldo_akhir || formData.nominal,
-                        ).toLocaleString("id-ID")}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions Footer */}
-              <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitLoading || aiScanning}
-                  className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm shadow-blue-500/20 disabled:opacity-50 transition-all flex items-center gap-2"
-                >
-                  {submitLoading && (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  )}
-                  {submitLoading ? "Menyimpan..." : "Unggah & Simpan Bukti"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Modal Unggah Bukti Transaksi (Satuan / 1 Folder / ZIP Masal - Ocean Blue Theme) */}
+      <UploadModal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        onSuccess={() => {
+          setShowForm(false);
+          fetchData();
+        }}
+        initialTab={modalInitialTab}
+      />
 
       {/* Tabel Utama Pencatatan Bukti Laporan */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -1318,7 +940,7 @@ export default function StaffpencatatanPage() {
                             <Calendar className="w-3.5 h-3.5 text-blue-600" />
                             {formatTanggalIndo(t.tanggal)}
                           </span>
-                          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-semibold border border-indigo-100">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[11px] font-semibold border border-blue-100">
                             {getDisplayPeriode(t.periode, t.tanggal)}
                           </span>
                         </div>
@@ -1444,7 +1066,7 @@ export default function StaffpencatatanPage() {
           />
           <div className="relative z-10 w-full max-w-xl bg-white h-full shadow-2xl border-l border-gray-200 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
-            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex items-start justify-between gap-4">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-sky-900 text-white flex items-start justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-md bg-blue-500/30 border border-blue-300/30 text-xs font-mono font-bold text-blue-100">
@@ -1484,7 +1106,7 @@ export default function StaffpencatatanPage() {
                 <p className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
                   Total Saldo Aktif ({selectedBankGroup.nama_bank})
                 </p>
-                <p className="text-2xl font-black text-blue-700 mt-0.5">
+                <p className="text-2xl font-black text-slate-900 mt-0.5">
                   Rp {selectedBankGroup.activeTotal.toLocaleString("id-ID")}
                 </p>
                 <p className="text-[11px] text-blue-600 mt-0.5">
@@ -1528,7 +1150,7 @@ export default function StaffpencatatanPage() {
                             <Calendar className="w-3 h-3" />
                             {formatTanggalIndo(item.tanggal)}
                           </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold">
                             {getDisplayPeriode(item.periode, item.tanggal)}
                           </span>
                         </div>

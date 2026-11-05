@@ -80,3 +80,22 @@ INSERT INTO kategori_dokumen (nama, slug, deskripsi, urutan, perlu_nominal) VALU
 INSERT INTO aktivitas_log (user_id, aksi, entitas, detail) VALUES
 (1, 'system_init', 'system', JSON_OBJECT('pesan', 'Database berhasil diinisialisasi'));
 
+
+
+-- ============================================================
+-- Seed Master Bank
+-- ============================================================
+INSERT INTO master_bank (kode_bank, nama_bank, singkatan) VALUES
+('002', 'Bank BRI', 'BRI'),
+('008', 'Bank Mandiri', 'Mandiri'),
+('009', 'Bank BNI', 'BNI'),
+('110', 'Bank BJB (Jawa Barat & Banten)', 'BJB'),
+('113', 'Bank Jateng (Jawa Tengah)', 'Bank Jateng'),
+('114', 'Bank Jatim (Jawa Timur)', 'Bank Jatim'),
+('118', 'Bank Nagari (Sumatra Barat)', 'Bank Nagari'),
+('120', 'Bank Sumsel Babel (Sumatra Selatan & Babel)', 'Sumsel Babel'),
+('129', 'Bank BPD Bali', 'BPD Bali'),
+('200', 'Bank BTN', 'BTN'),
+('425', 'Bank BJB Syariah', 'BJB Syariah'),
+('451', 'Bank BSI', 'BSI')
+ON DUPLICATE KEY UPDATE nama_bank=VALUES(nama_bank), singkatan=VALUES(singkatan);

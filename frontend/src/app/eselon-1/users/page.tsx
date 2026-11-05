@@ -26,12 +26,12 @@ const ROLE_BADGE: Record<string, string> = {
   operator: 'bg-blue-100 text-blue-700',
   manajemen: 'bg-yellow-100 text-yellow-700',
   administrasi: 'bg-yellow-100 text-yellow-700',
-  it: 'bg-purple-100 text-purple-700',
+  it: 'bg-sky-100 text-sky-700',
   pimpinan_satker: 'bg-yellow-100 text-yellow-700',
   staff_satker: 'bg-blue-100 text-blue-700',
   Pimpinan: 'bg-yellow-100 text-yellow-700',
   Satker: 'bg-blue-100 text-blue-700',
-  ketua_tim: 'bg-indigo-100 text-indigo-700',
+  ketua_tim: 'bg-blue-100 text-blue-700',
 };
 const ROLE_LABEL: Record<string, string> = {
   operator: 'Operator',
@@ -104,7 +104,7 @@ export default function KetuaUsersPage() {
         </div>
         <button
           onClick={() => { setLoading(true); fetchUsers(); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
         >
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
@@ -130,7 +130,7 @@ export default function KetuaUsersPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -151,7 +151,7 @@ export default function KetuaUsersPage() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-semibold">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
                             {user.nama.charAt(0).toUpperCase()}
                           </div>
                           {user.is_online === 1 && (

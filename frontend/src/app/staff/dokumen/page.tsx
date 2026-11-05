@@ -9,7 +9,7 @@ import {
   FileText, Upload, Clock, CheckCircle,
   Archive, Send, Pencil, Loader2,
   RefreshCw, AlertCircle, MessageSquareWarning, Bell, Info, CloudUpload,
-  Eye, Download, BookOpen, AlertTriangle, CheckCircle2, ChevronRight, X
+  Eye, Download, BookOpen, AlertTriangle, CheckCircle2, ChevronRight, X, Folder
 } from 'lucide-react';
 import clsx from 'clsx';
 import UploadModal from '@/components/Staff/UploadModal';
@@ -56,6 +56,7 @@ export default function StaffDokumenPage() {
 
   // Dropzone & Upload Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState<'single' | 'batch'>('single');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -239,13 +240,24 @@ export default function StaffDokumenPage() {
                   Lampirkan berkas laporan keuangan satuan kerja untuk diverifikasi oleh pimpinan
                 </span>
               </div>
-              <button
-                onClick={() => { setSelectedFile(null); setIsModalOpen(true); }}
-                className="staff-btn staff-btn-secondary staff-btn-sm"
-              >
-                <Upload className="w-4 h-4" />
-                Buka Form Upload Lengkap
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedFile(null); setModalInitialTab('single'); setIsModalOpen(true); }}
+                  className="staff-btn staff-btn-secondary staff-btn-sm"
+                >
+                  <Upload className="w-4 h-4" />
+                  Buka Form Satuan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedFile(null); setModalInitialTab('batch'); setIsModalOpen(true); }}
+                  className="staff-btn staff-btn-primary staff-btn-sm bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-sm"
+                >
+                  <Folder className="w-4 h-4 text-amber-300" />
+                  Unggah 1 Folder / ZIP Masal
+                </button>
+              </div>
             </div>
 
             {/* Dropzone Drag & Drop Area */}
@@ -504,11 +516,11 @@ export default function StaffDokumenPage() {
                               <button
                                 onClick={() => submitVerifikasi(dok.id)}
                                 disabled={submitting === dok.id}
-                                className="staff-action-icon hover:text-indigo-600 disabled:opacity-40"
+                                className="staff-action-icon hover:text-blue-600 disabled:opacity-40"
                                 title="Kirim untuk Verifikasi Pimpinan"
                               >
                                 {submitting === dok.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                                 ) : (
                                   <Send className="w-4 h-4" />
                                 )}
@@ -618,14 +630,14 @@ export default function StaffDokumenPage() {
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
                   <span className="flex items-center gap-2 text-slate-600 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                     Menunggu Verifikasi
                   </span>
                   <span className="font-bold text-slate-800">{stats.menunggu}</span>
                 </div>
                 <div className="staff-progress-bg">
                   <div
-                    className="staff-progress-fill bg-indigo-500"
+                    className="staff-progress-fill bg-blue-500"
                     style={{ width: `${calculatePercent(stats.menunggu, stats.total)}%` }}
                   />
                 </div>
@@ -960,6 +972,7 @@ export default function StaffDokumenPage() {
           fetchDokumen();
         }}
         initialFile={selectedFile}
+        initialTab={modalInitialTab}
       />
 
     </div>

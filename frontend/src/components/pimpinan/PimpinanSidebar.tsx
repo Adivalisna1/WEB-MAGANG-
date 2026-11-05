@@ -1,38 +1,91 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
-  FileCheck,
   FileText,
   Users,
   Activity,
   LogOut,
   ChevronRight,
-  Home,
+  ChevronDown,
   User,
   FileSpreadsheet,
   FileCheck2,
   X,
   ChevronLeft,
+  Wallet,
+  ClipboardList,
+  ClipboardCheck,
+  BookMarked,
+  Landmark,
+  Receipt,
+  AlertOctagon,
+  FileSignature,
+  CheckCheck,
 } from "lucide-react";
 import clsx from "clsx";
 
-const PimpinanMenu = [
+const TOP_MENU = [
   { href: "/pimpinan", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/pimpinan/dokumen", icon: FileText, label: "Dokumen" },
+];
+
+const KAS_SUB_MENU = [
   {
     href: "/pimpinan/rekening-koran",
     icon: FileSpreadsheet,
     label: "Rekening Koran",
   },
   {
-    href: "/pimpinan/pencatatan",
-    icon: FileCheck2,
-    label: "Verifikasi Bukti Kas",
+    href: "/staff/kas/bap-kas",
+    icon: ClipboardCheck,
+    label: "BAP Kas",
   },
+  {
+    href: "/staff/kas/lpj-bendahara",
+    icon: BookMarked,
+    label: "LPJ Bendahara",
+  },
+  {
+    href: "/staff/kas/konfirmasi-bank",
+    icon: Landmark,
+    label: "Konfirmasi Saldo Bank",
+  },
+];
+
+const LAPORAN_SUB_MENU = [
+  {
+    href: "/staff/laporan/sk-piutang/penetapan",
+    icon: AlertOctagon,
+    label: "1. SK Penetapan / Kurang Bayar",
+  },
+  {
+    href: "/staff/laporan/sk-piutang/pembebanan",
+    icon: FileSignature,
+    label: "2. SK Pembebanan / SKTJM",
+  },
+  {
+    href: "/staff/laporan/sk-piutang/penghapusan",
+    icon: CheckCheck,
+    label: "3. SK Penghapusan Piutang",
+  },
+  {
+    href: "/staff/laporan/surat-rekening",
+    icon: FileText,
+    label: "Surat Penutup/Pembukaan Rekening",
+  },
+  {
+    href: "/staff/laporan/bukti-setor-up",
+    icon: Receipt,
+    label: "Bukti Setor Sisa UP (NTPN)",
+  },
+];
+
+const BOTTOM_MENU = [
   { href: "/pimpinan/users", icon: Users, label: "Manajemen User" },
   { href: "/pimpinan/logs", icon: Activity, label: "Log Aktivitas" },
   { href: "/pimpinan/profil", icon: User, label: "Profil" },
@@ -54,6 +107,31 @@ export default function PimpinanSidebar({
   const pathname = usePathname();
   const { user, logoutFn } = useAuth();
 
+  const isKasActive =
+    pathname === "/staff/kas" ||
+    pathname.startsWith("/staff/kas") ||
+    pathname === "/pimpinan/rekening-koran" ||
+    pathname.startsWith("/pimpinan/rekening-koran") ||
+    pathname.includes("/kas/");
+
+  const isBuktiActive =
+    pathname === "/pimpinan/pencatatan" ||
+    pathname.startsWith("/pimpinan/pencatatan");
+
+  const isLaporanActive =
+    pathname.includes("/laporan/");
+
+  const [isKasOpen, setIsKasOpen] = useState(isKasActive);
+  const [isLaporanOpen, setIsLaporanOpen] = useState(isLaporanActive);
+
+  useEffect(() => {
+    if (isKasActive) setIsKasOpen(true);
+  }, [isKasActive]);
+
+  useEffect(() => {
+    if (isLaporanActive) setIsLaporanOpen(true);
+  }, [isLaporanActive]);
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -67,8 +145,8 @@ export default function PimpinanSidebar({
       <aside
         className={`
         fixed left-0 top-0 md:relative h-screen bg-white border-r border-slate-200 text-slate-600 flex flex-col shrink-0 z-50 transition-all duration-300
-        ${isMobileOpen ? "translate-x-0 w-[260px]" : "-translate-x-full md:translate-x-0"}
-        ${isCollapsed ? "md:w-20" : "md:w-[260px]"}
+        ${isMobileOpen ? "translate-x-0 w-[270px]" : "-translate-x-full md:translate-x-0"}
+        ${isCollapsed ? "md:w-20" : "md:w-[270px]"}
       `}
       >
         {/* Header */}
@@ -104,7 +182,8 @@ export default function PimpinanSidebar({
 
         {/* Menu */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {PimpinanMenu.map(({ href, icon: Icon, label, exact }) => {
+          {/* Top Menu Items */}
+          {TOP_MENU.map(({ href, icon: Icon, label, exact }) => {
             const active = exact
               ? pathname === href
               : pathname === href || pathname.startsWith(href);
@@ -117,7 +196,7 @@ export default function PimpinanSidebar({
                   active
                     ? "bg-[#475569] text-white shadow-sm"
                     : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-                  isCollapsed ? "justify-center" : "gap-3 w-full",
+                  isCollapsed ? "justify-center" : "gap-3 w-full"
                 )}
                 title={isCollapsed ? label : undefined}
               >
@@ -126,7 +205,229 @@ export default function PimpinanSidebar({
                     "w-5 h-5 shrink-0",
                     active
                       ? "text-white"
-                      : "text-slate-400 group-hover:text-white",
+                      : "text-slate-400 group-hover:text-white"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">{label}</span>}
+              </Link>
+            );
+          })}
+
+          {/* Kas Parent Link + Accordion */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isKasActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+              )}
+            >
+              <Link
+                href="/staff/kas"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsKasOpen(true);
+                }}
+                className={clsx(
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
+                )}
+                title={isCollapsed ? "Kas" : undefined}
+              >
+                <Wallet
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    isKasActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-white"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">Kas</span>}
+              </Link>
+
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsKasOpen(!isKasOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200 shrink-0",
+                      isKasOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Submenu Kas */}
+            {!isCollapsed && isKasOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {KAS_SUB_MENU.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Verifikasi Bukti Kas (Standalone Menu) */}
+          <Link
+            href="/pimpinan/pencatatan"
+            className={clsx(
+              "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+              isBuktiActive
+                ? "bg-[#475569] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+              isCollapsed ? "justify-center" : "gap-3 w-full"
+            )}
+            title={isCollapsed ? "Verifikasi Bukti Kas" : undefined}
+          >
+            <FileCheck2
+              className={clsx(
+                "w-5 h-5 shrink-0",
+                isBuktiActive
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-white"
+              )}
+            />
+            {!isCollapsed && <span className="truncate">Verifikasi Bukti Kas</span>}
+          </Link>
+
+          {/* Laporan Accordion Menu */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isLaporanActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+              )}
+            >
+              <Link
+                href="/staff/laporan/sk-piutang"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsLaporanOpen(true);
+                }}
+                className={clsx(
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
+                )}
+                title={isCollapsed ? "Laporan" : undefined}
+              >
+                <ClipboardList
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    isLaporanActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-white"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">Laporan</span>}
+              </Link>
+
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsLaporanOpen(!isLaporanOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200 shrink-0",
+                      isLaporanOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Submenu Laporan (Termasuk 3 Submenu SK Piutang) */}
+            {!isCollapsed && isLaporanOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {LAPORAN_SUB_MENU.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Menu Items */}
+          {BOTTOM_MENU.map(({ href, icon: Icon, label }) => {
+            const active = pathname === href || pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx(
+                  "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+                  active
+                    ? "bg-[#475569] text-white shadow-sm"
+                    : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+                  isCollapsed ? "justify-center" : "gap-3 w-full"
+                )}
+                title={isCollapsed ? label : undefined}
+              >
+                <Icon
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    active
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-white"
                   )}
                 />
                 {!isCollapsed && <span className="truncate">{label}</span>}
@@ -141,7 +442,7 @@ export default function PimpinanSidebar({
           <div
             className={clsx(
               "flex items-center bg-white border border-slate-200/80 rounded-xl p-2 transition-all shadow-xs",
-              isCollapsed ? "justify-center" : "justify-between gap-2",
+              isCollapsed ? "justify-center" : "justify-between gap-2"
             )}
           >
             <Link
@@ -158,13 +459,13 @@ export default function PimpinanSidebar({
               {!isCollapsed && (
                 <div className="min-w-0 flex flex-col">
                   <span className="text-xs font-bold text-slate-800 truncate leading-tight">
-                    {user?.nama || "Manajemen Satker"}
+                    {user?.nama || "Pimpinan Satker"}
                   </span>
                   <span
-                    className="text-[10px] text-blue-600 font-semibold tracking-wide truncate max-w-[130px]"
+                    className="text-[10px] text-blue-600 font-semibold tracking-wide truncate max-w-[140px]"
                     title={user?.satker_nama || undefined}
                   >
-                    {user?.satker_nama || "MANAJEMEN SATKER"}
+                    {user?.satker_nama || "PORTAL SATKER"}
                   </span>
                 </div>
               )}

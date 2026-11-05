@@ -377,7 +377,7 @@ function DokumenContent() {
 
           <button
             onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl transition-all shadow-sm shadow-indigo-600/20"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition-all shadow-sm shadow-blue-600/20"
           >
             <Plus className="w-4 h-4" />
             Unggah SK Piutang
@@ -755,7 +755,7 @@ function DokumenContent() {
                         type="button"
                         onClick={() => handleRescan(selectedDok.id)}
                         disabled={rescanning}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 rounded-xl transition-all disabled:opacity-50 shadow-2xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all disabled:opacity-50 shadow-2xs"
                         title="Audit ulang berkas rekonsiliasi otomatis"
                       >
                         <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
@@ -915,10 +915,10 @@ function DokumenContent() {
 
                     {/* Info Khusus SK Piutang Satker */}
                     {(selectedDok.kategori_slug === 'sk-piutang-satker' || selectedDok.nama_debitur || selectedDok.dasar_temuan) && (
-                      <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl mb-4 space-y-2 text-xs">
-                        <div className="font-bold text-indigo-950 flex items-center justify-between">
+                      <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl mb-4 space-y-2 text-xs">
+                        <div className="font-bold text-blue-950 flex items-center justify-between">
                           <span>Detail Ketetapan SK Piutang Satker</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
                             Bundel SK + Bukti BPK
                           </span>
                         </div>
@@ -929,7 +929,7 @@ function DokumenContent() {
                           </div>
                           <div>
                             <span className="text-[10px] text-slate-500 block uppercase font-semibold">Dasar Temuan BPK / SKTJM</span>
-                            <span className="font-mono font-bold text-indigo-900">{selectedDok.dasar_temuan || '-'}</span>
+                            <span className="font-mono font-bold text-blue-900">{selectedDok.dasar_temuan || '-'}</span>
                           </div>
                         </div>
                       </div>
@@ -1001,7 +1001,7 @@ function DokumenContent() {
                       <button
                         onClick={() => handleRescan(selectedDok.id)}
                         disabled={rescanning}
-                        className="px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5"
+                        className="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all flex items-center gap-1.5"
                       >
                         <RefreshCw className={clsx("w-3.5 h-3.5", rescanning && "animate-spin")} />
                         {rescanning ? 'Memindai...' : 'Audit Ulang Rekonsiliasi'}

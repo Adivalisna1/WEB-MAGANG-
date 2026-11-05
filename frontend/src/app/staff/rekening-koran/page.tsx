@@ -603,7 +603,7 @@ export default function KertasKerjaPage() {
       {/* Ringkasan Saldo Per Bank */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl p-5 shadow-sm">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-blue-100 text-xs font-semibold uppercase tracking-wider">Total Saldo Aktif Seluruh Bank</span>
               <Building2 className="w-5 h-5 text-blue-200" />
@@ -1040,7 +1040,7 @@ export default function KertasKerjaPage() {
         <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs">
           <div className="fixed inset-0" onClick={() => setSelectedBankDrawer(null)} />
           <div className="relative z-10 w-full max-w-xl bg-white h-full shadow-2xl border-l border-gray-200 flex flex-col overflow-hidden">
-            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex items-start justify-between gap-4">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-900 to-blue-900 text-white flex items-start justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-md bg-blue-500/30 border border-blue-300/30 text-xs font-mono font-bold text-blue-100">
