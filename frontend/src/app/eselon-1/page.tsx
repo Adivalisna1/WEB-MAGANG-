@@ -160,6 +160,13 @@ export default function KetuaDashboardPage() {
         </div>
       )}
 
+      {/* Peta Sebaran & Rekonsiliasi Kas Satker Binaan (Lapisan Utama Paling Atas) */}
+      <SatkerIndonesiaMap
+        filterEselon1Initial={user?.eselon_1_singkatan || "all"}
+        title={`Peta Sebaran & Rekonsiliasi Kas Satker (${user?.eselon_1_singkatan || "Eselon 1"})`}
+        subtitle="Posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker di bawah binaan"
+      />
+
       {/* Kartu statistik */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {kartu.map(({ label, value, icon: Icon, color }) => (
@@ -175,13 +182,6 @@ export default function KetuaDashboardPage() {
 
       {/* Monitoring Dokumen Satker Binaan (Fitur Baru Eselon 1) */}
       <MonitoringSatkerSection />
-
-      {/* Peta Sebaran & Rekonsiliasi Kas Satker Binaan */}
-      <SatkerIndonesiaMap
-        filterEselon1Initial={user?.eselon_1_singkatan || "all"}
-        title={`Peta Sebaran & Rekonsiliasi Kas Satker (${user?.eselon_1_singkatan || "Eselon 1"})`}
-        subtitle="Posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker di bawah binaan"
-      />
 
       {/* Grafik baris 1: upload per Satker + distribusi status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

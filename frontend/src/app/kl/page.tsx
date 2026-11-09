@@ -732,6 +732,16 @@ export default function KLDashboardPage() {
                 </div>
               </div>
 
+              {/* GEOSPATIAL MAP SECTION (MONITORING NASIONAL - LAPISAN UTAMA PALING ATAS DASHBOARD) */}
+              <section style={{ marginBottom: 24 }}>
+                <SatkerIndonesiaMap
+                  filterEselon1Initial="all"
+                  isKLLevel={true}
+                  title="Peta Geospasial Wilayah Pengawasan K/L Se-Nusantara"
+                  subtitle="Pemantauan lingkaran simpul wilayah kerja Eselon 1, rincian satker binaan, dan audit saldo kas se-Indonesia"
+                />
+              </section>
+
               {/* 4 KPI CARDS */}
               <section className="kpi-grid">
                 <div className="card kpi-card kpi-compliance">
@@ -809,16 +819,6 @@ export default function KLDashboardPage() {
                     <span style={{ color: '#dc2626', fontWeight: 700 }}><strong>{liveStats.satkerPending}</strong> Belum Setor</span>
                   </div>
                 </div>
-              </section>
-
-              {/* GEOSPATIAL MAP SECTION (MONITORING NASIONAL) */}
-              <section style={{ marginBottom: 24 }}>
-                <SatkerIndonesiaMap
-                  filterEselon1Initial="all"
-                  isKLLevel={true}
-                  title="Peta Geospasial Wilayah Pengawasan K/L Se-Nusantara"
-                  subtitle="Pemantauan lingkaran simpul wilayah kerja Eselon 1, rincian satker binaan, dan audit saldo kas se-Indonesia"
-                />
               </section>
 
               {/* ANALYTICS SECTION */}

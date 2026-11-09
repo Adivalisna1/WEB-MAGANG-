@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
+import "leaflet/dist/leaflet.css";
 import {
   MapPin,
   Building2,
@@ -769,14 +770,6 @@ export default function SatkerIndonesiaMap({
     const initMap = async () => {
       try {
         const L = (await import("leaflet")).default;
-        // Import CSS jika belum ada
-        if (!document.getElementById("leaflet-css")) {
-          const link = document.createElement("link");
-          link.id = "leaflet-css";
-          link.rel = "stylesheet";
-          link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-          document.head.appendChild(link);
-        }
 
         if (!mapInstanceRef.current && mapContainerRef.current) {
           // Center titik tengah Indonesia (Kepulauan Nusantara)
@@ -787,15 +780,18 @@ export default function SatkerIndonesiaMap({
             maxZoom: 14,
             scrollWheelZoom: true,
             zoomControl: false,
+            preferCanvas: true, // Hardware acceleration GPU
           });
 
-          // OpenStreetMap Public Tile Layer (100% Free, No Watermark, No API Key)
+          // OpenStreetMap Public Tile Layer (100% Free, No Watermark, No API Key, Optimized)
           L.tileLayer(
             "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
             {
               attribution:
                 '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
-              maxZoom: 19,
+              maxZoom: 18,
+              updateWhenIdle: true,
+              keepBuffer: 2,
             }
           ).addTo(map);
 
@@ -873,12 +869,12 @@ export default function SatkerIndonesiaMap({
             html: `
               <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
                 <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                  <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background-color: ${pulseColor}; animation: ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-                  <div style="position: relative; width: 32px; height: 32px; border-radius: 50%; background-color: white; border: 3px solid ${circleColor}; box-shadow: 0 4px 8px rgba(0,0,0,0.18); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: ${circleColor};">
+                  <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background-color: ${pulseColor};"></div>
+                  <div style="position: relative; width: 30px; height: 30px; border-radius: 50%; background-color: white; border: 3px solid ${circleColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.18); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: ${circleColor};">
                     ${shortCode}
                   </div>
                 </div>
-                <div style="margin-top: 3px; background: white; padding: 2px 8px; border-radius: 9999px; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 700; color: #1e293b; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap;">
+                <div style="margin-top: 2px; background: white; padding: 2px 8px; border-radius: 9999px; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 700; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); white-space: nowrap;">
                   ${w.satkerUtama.split(" ")[0]} (${w.satkers.length} Satker)
                 </div>
               </div>
@@ -959,13 +955,13 @@ export default function SatkerIndonesiaMap({
 
           const customIcon = L.divIcon({
             className: "custom-satker-marker",
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
             html: `
-              <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background-color: ${pulseColor}; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-                <div style="position: relative; width: 22px; height: 22px; border-radius: 50%; background-color: white; border: 3px solid ${pinColor}; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;">
-                  <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${pinColor};"></div>
+              <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: ${pulseColor};"></div>
+                <div style="position: relative; width: 18px; height: 18px; border-radius: 50%; background-color: white; border: 2.5px solid ${pinColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center;">
+                  <div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${pinColor};"></div>
                 </div>
               </div>
             `,
