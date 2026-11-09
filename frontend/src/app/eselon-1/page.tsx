@@ -163,8 +163,9 @@ export default function KetuaDashboardPage() {
       {/* Peta Sebaran & Rekonsiliasi Kas Satker Binaan (Lapisan Utama Paling Atas) */}
       <SatkerIndonesiaMap
         filterEselon1Initial={user?.eselon_1_singkatan || "Ditjen Dikti"}
+        lockEselon1={true}
         title={`Peta Sebaran & Rekonsiliasi Kas Satker (${user?.eselon_1_singkatan || "Ditjen Dikti"})`}
-        subtitle="Posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker di bawah binaan"
+        subtitle={`Posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker di bawah binaan ${user?.eselon_1_singkatan || "Ditjen Dikti"}`}
       />
 
       {/* Kartu statistik */}

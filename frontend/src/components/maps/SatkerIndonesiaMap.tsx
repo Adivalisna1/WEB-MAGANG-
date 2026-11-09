@@ -682,6 +682,7 @@ export function matchEselon1(satkerEselon?: string | null, targetEselon?: string
 
 interface SatkerMapProps {
   filterEselon1Initial?: string;
+  lockEselon1?: boolean;
   isKLLevel?: boolean;
   title?: string;
   subtitle?: string;
@@ -689,6 +690,7 @@ interface SatkerMapProps {
 
 export default function SatkerIndonesiaMap({
   filterEselon1Initial = "all",
+  lockEselon1 = false,
   isKLLevel = false,
   title = "Peta Sebaran & Rekonsiliasi Kas Satker Se-Nusantara",
   subtitle = "Monitoring interaktif geografis, saldo kas riil, dan kelengkapan bukti dokumen satker",
@@ -716,7 +718,7 @@ export default function SatkerIndonesiaMap({
     if (filterEselon1Initial) {
       setFilterEselon(filterEselon1Initial);
     }
-  }, [filterEselon1Initial]);
+  }, [filterEselon1Initial, lockEselon1]);
 
   // Normalisasi value untuk elemen dropdown select
   const currentSelectEselonValue = useMemo(() => {
@@ -1069,11 +1071,12 @@ export default function SatkerIndonesiaMap({
     }
   };
 
-  // Satker dalam wilayah terpilih (dengan pencarian internal menu)
+  // Satker dalam wilayah terpilih (dengan pencarian internal menu & filter eselon)
   const activeWilayahSatkers = useMemo(() => {
     if (!selectedWilayah) return [];
     const satkers = SATKER_INDONESIA_LIST.filter((s) =>
-      selectedWilayah.satkerIds.includes(s.id)
+      selectedWilayah.satkerIds.includes(s.id) &&
+      (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon))
     );
     if (!searchWilayahSatker.trim()) return satkers;
     const q = searchWilayahSatker.toLowerCase();
@@ -1083,13 +1086,14 @@ export default function SatkerIndonesiaMap({
         s.kota.toLowerCase().includes(q) ||
         s.kode.toLowerCase().includes(q)
     );
-  }, [selectedWilayah, searchWilayahSatker]);
+  }, [selectedWilayah, searchWilayahSatker, filterEselon]);
 
   // Agregasi saldo untuk wilayah terpilih
   const selectedWilayahTotals = useMemo(() => {
     if (!selectedWilayah) return null;
     const satkers = SATKER_INDONESIA_LIST.filter((s) =>
-      selectedWilayah.satkerIds.includes(s.id)
+      selectedWilayah.satkerIds.includes(s.id) &&
+      (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon))
     );
     const totalBuku = satkers.reduce((acc, s) => acc + s.saldoBuku, 0);
     const totalBank = satkers.reduce((acc, s) => acc + s.saldoBank, 0);
@@ -1108,7 +1112,7 @@ export default function SatkerIndonesiaMap({
       compliancePercent,
       totalSatker: satkers.length,
     };
-  }, [selectedWilayah]);
+  }, [selectedWilayah, filterEselon]);
 
   return (
     <div
@@ -1180,22 +1184,29 @@ export default function SatkerIndonesiaMap({
           </div>
 
           {/* Filter Eselon 1 */}
-          <div className="flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={currentSelectEselonValue}
-              onChange={(e) => setFilterEselon(e.target.value)}
-              className="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1E90FF] shadow-2xs"
-            >
-              <option value="all">Semua Eselon 1</option>
-              <option value="Ditjen Dikti">Ditjen Pendidikan Tinggi (Dikti)</option>
-              <option value="Ditjen Vokasi">Ditjen Pendidikan Vokasi (Vokasi)</option>
-              <option value="Setjen">Sekretariat Jenderal (Setjen)</option>
-              <option value="Ditjen Risbang">Ditjen Riset & Pengembangan</option>
-              <option value="Ditjen Saintek">Ditjen Sains & Teknologi</option>
-              <option value="Itjen">Inspektorat Jenderal (Itjen)</option>
-            </select>
-          </div>
+          {lockEselon1 ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-bold text-blue-700 shadow-2xs" title="Terkunci pada unit Eselon 1 akun Anda">
+              <Building2 className="w-3.5 h-3.5 text-blue-600" />
+              <span>{filterEselon}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={currentSelectEselonValue}
+                onChange={(e) => setFilterEselon(e.target.value)}
+                className="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1E90FF] shadow-2xs"
+              >
+                <option value="all">Semua Eselon 1</option>
+                <option value="Ditjen Dikti">Ditjen Pendidikan Tinggi (Dikti)</option>
+                <option value="Ditjen Vokasi">Ditjen Pendidikan Vokasi (Vokasi)</option>
+                <option value="Setjen">Sekretariat Jenderal (Setjen)</option>
+                <option value="Ditjen Risbang">Ditjen Riset & Pengembangan</option>
+                <option value="Ditjen Saintek">Ditjen Sains & Teknologi</option>
+                <option value="Itjen">Inspektorat Jenderal (Itjen)</option>
+              </select>
+            </div>
+          )}
 
           {/* Filter Status Kas */}
           <div className="flex items-center gap-1.5">
