@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import SatkerSidebar from '@/components/Staff/StaffSidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
-import { Loader2, Search, X, FileText, ChevronRight } from 'lucide-react';
+import { Loader2, Search, X, FileText, ChevronRight, LogOut } from 'lucide-react';
 import { SearchContext } from '@/context/SearchContext';
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
@@ -160,6 +160,14 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
               <span className="text-slate-600 font-medium">Selamat Datang, {user?.nama || 'Satker'}</span>
             </div>
             <NotificationBell />
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer border border-rose-200/60"
+              title="Keluar / Ganti Akun"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
+            </button>
           </div>
         </header>
 

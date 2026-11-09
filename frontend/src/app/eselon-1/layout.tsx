@@ -10,7 +10,7 @@ import Eselon1Sidebar from '@/components/eselon-1/Eselon1Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, LogOut } from 'lucide-react';
 
 export default function KetuaLayout({ children }: { children: React.ReactNode }) {
   const { loading } = useRequireAuth('eselon_1');
@@ -76,6 +76,14 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
 
           <div className="flex items-center gap-3 md:gap-6">
             <NotificationBell />
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer border border-rose-200/60"
+              title="Keluar / Ganti Akun"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
+            </button>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 md:p-8" id="main-content">

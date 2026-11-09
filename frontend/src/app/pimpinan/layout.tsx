@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import PimpinanSidebar from '@/components/pimpinan/PimpinanSidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, LogOut } from 'lucide-react';
 
 export default function PimpinanLayout({ children }: { children: React.ReactNode }) {
   const { loading } = useRequireAuth(['pimpinan_satker']);
@@ -83,6 +83,14 @@ export default function PimpinanLayout({ children }: { children: React.ReactNode
               {currentDate}
             </div>
             <NotificationBell />
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer border border-rose-200/60"
+              title="Keluar / Ganti Akun"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
+            </button>
           </div>
         </header>
 
