@@ -300,8 +300,8 @@ export default function SatkerIndonesiaMap({
       if (viewMode === "wilayah") {
         filteredWilayah.forEach((w) => {
           const isSelected = selectedWilayah?.id === w.id;
-          const circleColor = w.hasSelisih ? "#f59e0b" : "#10b981"; // Amber vs Emerald
-          const circleFill = w.hasSelisih ? "rgba(245, 158, 11, 0.14)" : "rgba(16, 185, 129, 0.14)";
+          const circleColor = w.hasSelisih ? "#ef4444" : "#10b981"; // Amber vs Emerald
+          const circleFill = w.hasSelisih ? "rgba(239, 68, 68, 0.16)" : "rgba(16, 185, 129, 0.14)";
 
           // Gambar Lingkaran Jangkauan Wilayah Pengawasan K/L
           const circle = L.circle([w.lat, w.lng], {
@@ -325,7 +325,7 @@ export default function SatkerIndonesiaMap({
           circlesRef.current.push(circle);
 
           // Simpul Utama Wilayah Pengawasan
-          const pulseColor = w.hasSelisih ? "rgba(245, 158, 11, 0.45)" : "rgba(16, 185, 129, 0.45)";
+          const pulseColor = w.hasSelisih ? "rgba(239, 68, 68, 0.45)" : "rgba(16, 185, 129, 0.45)";
           const shortCode = w.kodeWilayah.replace("WIL-", "W-");
 
           const customIcon = L.divIcon({
@@ -355,7 +355,7 @@ export default function SatkerIndonesiaMap({
             `<strong>${w.nama}</strong><br/>
              <span style="font-size: 11px; color: #64748b;">Pengawas: ${w.eselon1}</span><br/>
              <span style="font-size: 11px; font-weight: 600; color: #0f172a;">${w.satkers.length} Satker Diawasi &bull; Saldo: ${formatRupiah(w.totalBank)}</span><br/>
-             <span style="font-size: 10px; color: ${w.hasSelisih ? '#d97706' : '#059669'}; font-weight: 600;">
+             <span style="font-size: 10px; color: ${w.hasSelisih ? '#dc2626' : '#059669'}; font-weight: 600;">
                ${w.hasSelisih ? '⚠️ ' + w.selisihCount + ' Satker Ada Selisih' : '✓ Semua Satker Saldo Klop'}
              </span>`,
             { direction: "top", offset: [0, -22], opacity: 0.95 }
@@ -376,7 +376,7 @@ export default function SatkerIndonesiaMap({
           // Tampilkan selalu pin-pin penanda satker binaan di dalam lingkaran wilayah
           w.satkers.forEach((childSatker) => {
             const childMatch = childSatker.status === "match";
-            const childColor = childMatch ? "#10b981" : "#f59e0b";
+            const childColor = childMatch ? "#10b981" : "#ef4444";
             const isChildExpanded = expandedSatkerId === childSatker.id;
 
             const childIcon = L.divIcon({
@@ -396,7 +396,7 @@ export default function SatkerIndonesiaMap({
 
             childMarker.bindTooltip(
               `<strong>${childSatker.nama}</strong><br/>
-               <span style="font-size: 10px; color: ${childMatch ? '#059669' : '#d97706'};">
+               <span style="font-size: 10px; color: ${childMatch ? '#059669' : '#dc2626'};">
                  ${childMatch ? '✓ Saldo Kas Klop' : '⚠️ Selisih: ' + formatRupiah(childSatker.selisih)}
                </span>`,
               { direction: "top", offset: [0, -14], opacity: 0.95 }
@@ -418,8 +418,8 @@ export default function SatkerIndonesiaMap({
       if (viewMode === "satker") {
         filteredSatkers.forEach((satker) => {
           const isMatch = satker.status === "match";
-          const pinColor = isMatch ? "#10b981" : "#f59e0b";
-          const pulseColor = isMatch ? "rgba(16, 185, 129, 0.4)" : "rgba(245, 158, 11, 0.4)";
+          const pinColor = isMatch ? "#10b981" : "#ef4444";
+          const pulseColor = isMatch ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)";
 
           const customIcon = L.divIcon({
             className: "custom-satker-marker",
@@ -440,7 +440,7 @@ export default function SatkerIndonesiaMap({
           );
 
           marker.bindTooltip(
-            `<strong>${satker.nama}</strong><br/><span style="font-size: 11px; color: ${isMatch ? '#059669' : '#d97706'};">${isMatch ? '✓ Saldo Kas Klop' : '⚠️ Selisih: ' + formatRupiah(satker.selisih)}</span>`,
+            `<strong>${satker.nama}</strong><br/><span style="font-size: 11px; color: ${isMatch ? '#059669' : '#dc2626'};">${isMatch ? '✓ Saldo Kas Klop' : '⚠️ Selisih: ' + formatRupiah(satker.selisih)}</span>`,
             { direction: "top", offset: [0, -14], opacity: 0.95 }
           );
 
@@ -626,7 +626,7 @@ export default function SatkerIndonesiaMap({
             >
               <option value="all">Semua Status Kas</option>
               <option value="match">🟢 Saldo Klop (Match)</option>
-              <option value="selisih">🟡 Ada Selisih Kas</option>
+              <option value="selisih">🔴 Ada Selisih Kas</option>
             </select>
           </div>
 
@@ -667,8 +667,8 @@ export default function SatkerIndonesiaMap({
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <strong>{stats.match}</strong> Satker Klop
           </span>
-          <span className="inline-flex items-center gap-1 text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="inline-flex items-center gap-1 text-rose-700 font-medium bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
             <strong>{stats.selisih}</strong> Satker Selisih
           </span>
         </div>
@@ -693,7 +693,7 @@ export default function SatkerIndonesiaMap({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200" />
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200" />
             <span className="text-slate-600">
               {viewMode === "wilayah" ? "Zona Ada Satker Selisih" : "Perlu Verifikasi / Selisih"}
             </span>
@@ -760,7 +760,7 @@ export default function SatkerIndonesiaMap({
                       "px-2 py-0.5 rounded text-[10px] font-bold",
                       selectedWilayahTotals.totalSelisih === 0
                         ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
+                        : "bg-rose-100 text-rose-800"
                     )}
                   >
                     {selectedWilayahTotals.totalSelisih === 0
@@ -794,7 +794,7 @@ export default function SatkerIndonesiaMap({
                     <p
                       className={clsx(
                         "font-bold text-xs mt-0.5 truncate",
-                        selectedWilayahTotals.totalSelisih === 0 ? "text-emerald-600" : "text-amber-600"
+                        selectedWilayahTotals.totalSelisih === 0 ? "text-emerald-600" : "text-rose-600"
                       )}
                       title={formatRupiah(selectedWilayahTotals.totalSelisih)}
                     >
@@ -817,7 +817,7 @@ export default function SatkerIndonesiaMap({
                       style={{ width: `${selectedWilayahTotals.compliancePercent}%` }}
                     />
                     <div
-                      className="bg-amber-500 h-full transition-all duration-500"
+                      className="bg-rose-500 h-full transition-all duration-500"
                       style={{ width: `${100 - selectedWilayahTotals.compliancePercent}%` }}
                     />
                   </div>
@@ -885,7 +885,7 @@ export default function SatkerIndonesiaMap({
                               "px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 flex items-center gap-1",
                               isMatch
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-rose-50 text-rose-700 border border-rose-200"
                             )}
                           >
                             {isMatch ? (
@@ -895,7 +895,7 @@ export default function SatkerIndonesiaMap({
                               </>
                             ) : (
                               <>
-                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                <AlertTriangle className="w-3 h-3 text-rose-600" />
                                 Selisih Kas
                               </>
                             )}
@@ -927,7 +927,7 @@ export default function SatkerIndonesiaMap({
                             <span
                               className={clsx(
                                 "font-bold truncate block",
-                                isMatch ? "text-emerald-600" : "text-amber-600"
+                                isMatch ? "text-emerald-600" : "text-rose-600"
                               )}
                             >
                               {isMatch ? "Rp 0" : formatRupiah(satker.selisih)}
@@ -987,7 +987,7 @@ export default function SatkerIndonesiaMap({
                                     "px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0",
                                     dok.status === "Terverifikasi"
                                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                                      : "bg-rose-50 text-rose-700 border border-rose-200"
                                   )}
                                 >
                                   {dok.status}
@@ -1063,14 +1063,14 @@ export default function SatkerIndonesiaMap({
                   "p-3 rounded-xl border flex items-center justify-between",
                   selectedSatker.status === "match"
                     ? "bg-emerald-50/70 border-emerald-200 text-emerald-800"
-                    : "bg-amber-50/70 border-amber-200 text-amber-800"
+                    : "bg-rose-50/70 border-rose-200 text-rose-800"
                 )}
               >
                 <div className="flex items-center gap-2">
                   {selectedSatker.status === "match" ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
                   )}
                   <div>
                     <p className="font-bold text-xs leading-none">
@@ -1130,7 +1130,7 @@ export default function SatkerIndonesiaMap({
                           "px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0",
                           dok.status === "Terverifikasi"
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
                         )}
                       >
                         {dok.status}
