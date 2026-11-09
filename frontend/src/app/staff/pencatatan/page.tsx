@@ -379,6 +379,8 @@ export default function StaffpencatatanPage() {
             selectedFile.name.toLowerCase().includes("rk") ||
             selectedFile.name.toLowerCase().includes("koran");
 
+          const scannedRek = result.nomor_rekening ? String(result.nomor_rekening) : "";
+
           setFormData((prev) => {
             const updated = { ...prev };
 
@@ -395,7 +397,6 @@ export default function StaffpencatatanPage() {
             }
 
             // 2. Auto deteksi nomor rekening jika terdeteksi
-            const scannedRek = result.nomor_rekening ? String(result.nomor_rekening) : "";
             if (scannedRek) {
               updated.nomor_rekening_bank = scannedRek;
             }
@@ -408,7 +409,7 @@ export default function StaffpencatatanPage() {
 
             if (rawBank) {
               const bName = rawBank.toLowerCase().trim();
-              let matchedBank = BANK_BUMN_LIST.find((b) => {
+              const matchedBank = BANK_BUMN_LIST.find((b) => {
                 const cleanB = b.toLowerCase().replace("bank ", "").trim();
                 return (
                   bName.includes(cleanB) ||
@@ -416,15 +417,13 @@ export default function StaffpencatatanPage() {
                   (bName.includes("bsi") && b.toLowerCase().includes("bsi"))
                 );
               });
-              if (!matchedBank) {
-                matchedBank = normalizeBankKey(rawBank) || rawBank;
-              }
-              updated.nama_bank = matchedBank;
-              updated.kode_bank = getKodeBank(matchedBank);
+              const finalBankName = matchedBank || normalizeBankKey(rawBank) || rawBank || "";
+              updated.nama_bank = finalBankName;
+              updated.kode_bank = getKodeBank(finalBankName);
 
               // Jika nomor rekening belum ada dari scan, coba ambil dari relasi bank yang sudah pernah diupload
-              if (!scannedRek) {
-                const existingRek = findExistingNoRekForBank(matchedBank);
+              if (!scannedRek && finalBankName) {
+                const existingRek = findExistingNoRekForBank(finalBankName);
                 if (existingRek) updated.nomor_rekening_bank = existingRek;
               }
             }

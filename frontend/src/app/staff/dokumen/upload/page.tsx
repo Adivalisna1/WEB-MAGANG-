@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth';
+import toast from 'react-hot-toast';
 import {
   Upload, FileText, X, CheckCircle,
   Loader2, AlertCircle, ArrowLeft, CloudUpload, DollarSign, Sparkles, Brain, CheckCircle2

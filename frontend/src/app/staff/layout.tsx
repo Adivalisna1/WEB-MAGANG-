@@ -7,6 +7,9 @@ import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { logout, clearSession, getSession } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
 import StaffSidebar from '@/components/Staff/StaffSidebar';
+import PimpinanSidebar from '@/components/pimpinan/PimpinanSidebar';
+import Eselon1Sidebar from '@/components/eselon-1/Eselon1Sidebar';
+import AdminITSidebar from '@/components/admin-it/AdminITSidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal';
 import { Loader2, Search, X, FileText, ChevronRight, Menu, Plus, LogOut } from 'lucide-react';
@@ -16,7 +19,19 @@ import './staff.css';
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
-  const { loading } = useRequireAuth('staff_satker');
+  const { loading } = useRequireAuth([
+    'staff',
+    'staff_satker',
+    'operator',
+    'pimpinan',
+    'pimpinan_satker',
+    'manajemen',
+    'administrasi',
+    'eselon_1',
+    'admin_it',
+    'it',
+    'kl',
+  ]);
   const { user } = useAuth();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,14 +100,61 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const renderSidebar = () => {
+    const r = user?.role;
+    const t = user?.tingkat;
+    if (user?.is_it || r === 'admin_it' || r === 'it') {
+      return (
+        <AdminITSidebar
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
+      );
+    }
+    if (t === 'eselon_1' || r === 'eselon_1' || t === 'kl') {
+      return (
+        <Eselon1Sidebar
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
+      );
+    }
+    if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) {
+      return (
+        <PimpinanSidebar
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
+      );
+    }
+    return (
+      <StaffSidebar
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+      />
+    );
+  };
+
+  const getRoleHeaderTitle = () => {
+    const r = user?.role;
+    const t = user?.tingkat;
+    if (user?.is_it || r === 'admin_it' || r === 'it') return 'Portal Admin IT';
+    if (t === 'eselon_1' || r === 'eselon_1' || t === 'kl') return 'Dashboard Eselon 1';
+    if (r === 'pimpinan_satker' || (t === 'satker' && (r === 'manajemen' || r === 'administrasi'))) return 'Dashboard Pimpinan';
+    return 'Dashboard Staff';
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative">
-      <StaffSidebar 
-        isMobileOpen={isMobileOpen} 
-        setIsMobileOpen={setIsMobileOpen} 
-        isCollapsed={isCollapsed} 
-        setIsCollapsed={setIsCollapsed} 
-      />
+      {renderSidebar()}
       <div className="flex-1 flex flex-col h-screen relative min-w-0">
         <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-4 md:px-8 z-20 sticky top-0 w-full">
           <div className="flex items-center gap-3">
@@ -173,9 +235,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
           <div className="flex items-center gap-6 ml-auto">
             <div className="text-right flex items-center gap-2">
-              <span className="font-bold text-slate-800 tracking-tight hidden lg:inline">Dashboard Staff</span>
+              <span className="font-bold text-slate-800 tracking-tight hidden lg:inline">{getRoleHeaderTitle()}</span>
               <span className="text-slate-300 hidden lg:inline">|</span>
-              <span className="text-slate-600 font-medium">Selamat Datang, {user?.nama || 'Staff'}</span>
+              <span className="text-slate-600 font-medium">Selamat Datang, {user?.nama || 'Pengguna'}</span>
             </div>
             <NotificationBell />
             <button

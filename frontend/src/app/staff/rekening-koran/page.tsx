@@ -293,19 +293,6 @@ export default function KertasKerjaPage() {
           ? `Status diaktifkan - Saldo dimasukkan ke Total Saldo ${item.nama_bank || 'Bank'}`
           : `Status dinonaktifkan - Saldo dikecualikan dari Total Saldo ${item.nama_bank || 'Bank'}`
       );
-      return;
-      if (j.success) {
-        toast.success(
-          nextActive === 1
-            ? `Bukti diaktifkan — Saldo dimasukkan ke Total Saldo ${item.nama_bank || 'Bank'}`
-            : `Bukti dinonaktifkan — Saldo dikecualikan dari Total Saldo ${item.nama_bank || 'Bank'}`
-        );
-      } else {
-        setDataList(prev =>
-          prev.map(r => (r.id === item.id ? { ...r, is_active: currentActive ? 1 : 0 } : r))
-        );
-        toast.error(j.message || 'Gagal mengubah status bukti');
-      }
     } catch {
       setDataList(prev =>
         prev.map(r => (r.id === item.id ? { ...r, is_active: currentActive ? 1 : 0 } : r))

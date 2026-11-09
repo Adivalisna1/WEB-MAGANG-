@@ -28,6 +28,7 @@ import {
   AlertOctagon,
   FileSignature,
   CheckCheck,
+  Scale,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -61,7 +62,7 @@ const KAS_SUB_MENU = [
   },
 ];
 
-const LAPORAN_SUB_MENU = [
+const SK_PIUTANG_SUB_MENU = [
   {
     href: "/staff/laporan/sk-piutang/penetapan",
     label: "1. SK Penetapan / Kurang Bayar",
@@ -77,6 +78,9 @@ const LAPORAN_SUB_MENU = [
     label: "3. SK Penghapusan Piutang",
     icon: CheckCheck,
   },
+];
+
+const LAPORAN_LAIN_SUB_MENU = [
   {
     href: "/staff/laporan/surat-rekening",
     label: "Surat Penutup/Pembukaan Rekening",
@@ -123,8 +127,12 @@ export default function AdminITSidebar({
   const isLaporanActive =
     pathname.includes("/laporan/");
 
+  const isPiutangActive =
+    pathname.includes("/sk-piutang");
+
   const [isKasOpen, setIsKasOpen] = useState(isKasActive);
   const [isLaporanOpen, setIsLaporanOpen] = useState(isLaporanActive);
+  const [isPiutangOpen, setIsPiutangOpen] = useState(isPiutangActive);
 
   useEffect(() => {
     if (isKasActive) setIsKasOpen(true);
@@ -132,7 +140,8 @@ export default function AdminITSidebar({
 
   useEffect(() => {
     if (isLaporanActive) setIsLaporanOpen(true);
-  }, [isLaporanActive]);
+    if (isPiutangActive) setIsPiutangOpen(true);
+  }, [isLaporanActive, isPiutangActive]);
 
   return (
     <>
@@ -374,10 +383,89 @@ export default function AdminITSidebar({
               )}
             </div>
 
-            {/* Submenu Laporan (Termasuk 3 Submenu SK Piutang) */}
+            {/* Submenu Laporan (Dengan Nested Accordion SK Piutang) */}
             {!isCollapsed && isLaporanOpen && (
               <div className="mt-1 ml-4 pl-3 border-l-2 border-slate-200 space-y-1">
-                {LAPORAN_SUB_MENU.map((item) => {
+                {/* 1. Sub-Accordion SK Piutang */}
+                <div>
+                  <div
+                    className={clsx(
+                      "w-full flex items-center justify-between rounded-lg font-medium text-xs transition-all group",
+                      isPiutangActive
+                        ? "bg-blue-50/70 text-slate-900 font-semibold"
+                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                    )}
+                  >
+                    <Link
+                      href="/staff/laporan/sk-piutang"
+                      onClick={() => setIsPiutangOpen(true)}
+                      className="flex items-center gap-2.5 flex-1 px-3 py-2"
+                      title="Ringkasan SK Piutang"
+                    >
+                      <Scale
+                        className={clsx(
+                          "w-4 h-4 flex-shrink-0",
+                          isPiutangActive
+                            ? "text-[#1E90FF]"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">SK Piutang</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsPiutangOpen(!isPiutangOpen);
+                      }}
+                      className="p-2 text-slate-400 hover:text-slate-700 transition-colors"
+                      title={isPiutangOpen ? "Ciutkan sub-menu piutang" : "Buka sub-menu piutang"}
+                    >
+                      <ChevronDown
+                        className={clsx(
+                          "w-3.5 h-3.5 transition-transform duration-200",
+                          isPiutangOpen && "rotate-180"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {/* 3 Sub-menu SK Piutang (Nested Level 2) */}
+                  {isPiutangOpen && (
+                    <div className="mt-1 ml-3 pl-2.5 border-l-2 border-blue-200/60 space-y-1 py-0.5">
+                      {SK_PIUTANG_SUB_MENU.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={clsx(
+                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
+                              isActive
+                                ? "bg-[#1E90FF] text-white shadow-xs font-semibold"
+                                : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                            )}
+                          >
+                            <item.icon
+                              className={clsx(
+                                "w-3.5 h-3.5 flex-shrink-0",
+                                isActive
+                                  ? "text-white"
+                                  : "text-slate-400 group-hover:text-slate-700"
+                              )}
+                            />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Sibling Menu Laporan Lainnya */}
+                {LAPORAN_LAIN_SUB_MENU.map((item) => {
                   const isActive = pathname === item.href;
                   return (
                     <Link
@@ -393,7 +481,9 @@ export default function AdminITSidebar({
                       <item.icon
                         className={clsx(
                           "w-4 h-4 flex-shrink-0",
-                          isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
+                          isActive
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
                         )}
                       />
                       <span className="truncate">{item.label}</span>

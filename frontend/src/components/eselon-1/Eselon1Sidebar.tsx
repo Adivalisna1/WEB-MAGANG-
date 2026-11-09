@@ -28,6 +28,7 @@ import {
   AlertOctagon,
   FileSignature,
   CheckCheck,
+  Scale,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -63,8 +64,12 @@ export default function Eselon1Sidebar({
   const isLaporanActive =
     pathname.includes("/laporan/");
 
+  const isPiutangActive =
+    pathname.includes("/sk-piutang");
+
   const [isKasOpen, setIsKasOpen] = useState(isKasActive);
   const [isLaporanOpen, setIsLaporanOpen] = useState(isLaporanActive);
+  const [isPiutangOpen, setIsPiutangOpen] = useState(isPiutangActive);
 
   useEffect(() => {
     if (isKasActive) setIsKasOpen(true);
@@ -72,7 +77,8 @@ export default function Eselon1Sidebar({
 
   useEffect(() => {
     if (isLaporanActive) setIsLaporanOpen(true);
-  }, [isLaporanActive]);
+    if (isPiutangActive) setIsPiutangOpen(true);
+  }, [isLaporanActive, isPiutangActive]);
 
   const topMenuItems = [
     {
@@ -111,7 +117,7 @@ export default function Eselon1Sidebar({
     },
   ];
 
-  const laporanSubMenu = [
+  const skPiutangSubMenu = [
     {
       href: "/staff/laporan/sk-piutang/penetapan",
       icon: AlertOctagon,
@@ -127,6 +133,9 @@ export default function Eselon1Sidebar({
       icon: CheckCheck,
       label: "3. SK Penghapusan Piutang",
     },
+  ];
+
+  const laporanLainSubMenu = [
     {
       href: "/staff/laporan/surat-rekening",
       icon: FileText,
@@ -394,10 +403,89 @@ export default function Eselon1Sidebar({
               )}
             </div>
 
-            {/* Submenu Laporan (Termasuk 3 Submenu SK Piutang) */}
+            {/* Submenu Laporan (Dengan Nested Accordion SK Piutang) */}
             {!isCollapsed && isLaporanOpen && (
               <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
-                {laporanSubMenu.map(({ href, icon: SubIcon, label }) => {
+                {/* 1. Sub-Accordion SK Piutang */}
+                <div>
+                  <div
+                    className={clsx(
+                      "w-full flex items-center justify-between rounded-lg font-medium text-xs transition-all group",
+                      isPiutangActive
+                        ? "bg-slate-100 text-slate-900 font-semibold"
+                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                    )}
+                  >
+                    <Link
+                      href="/staff/laporan/sk-piutang"
+                      onClick={() => setIsPiutangOpen(true)}
+                      className="flex items-center gap-2.5 flex-1 px-3 py-2"
+                      title="Ringkasan SK Piutang"
+                    >
+                      <Scale
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          isPiutangActive
+                            ? "text-[#1E90FF]"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">SK Piutang</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsPiutangOpen(!isPiutangOpen);
+                      }}
+                      className="p-2 text-slate-400 hover:text-slate-700 transition-colors"
+                      title={isPiutangOpen ? "Ciutkan sub-menu piutang" : "Buka sub-menu piutang"}
+                    >
+                      <ChevronDown
+                        className={clsx(
+                          "w-3.5 h-3.5 transition-transform duration-200",
+                          isPiutangOpen && "rotate-180"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {/* 3 Sub-menu SK Piutang (Nested Level 2) */}
+                  {isPiutangOpen && (
+                    <div className="mt-1 ml-3 pl-2.5 border-l-2 border-blue-200/60 space-y-1 py-0.5">
+                      {skPiutangSubMenu.map(({ href, icon: SubIcon, label }) => {
+                        const active = pathname === href || pathname.startsWith(href);
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            className={clsx(
+                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
+                              active
+                                ? "bg-[#475569] text-white shadow-xs font-semibold"
+                                : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                            )}
+                          >
+                            <SubIcon
+                              className={clsx(
+                                "w-3.5 h-3.5 shrink-0",
+                                active
+                                  ? "text-white"
+                                  : "text-slate-400 group-hover:text-slate-700"
+                              )}
+                            />
+                            <span className="truncate">{label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Sibling Menu Laporan Lainnya */}
+                {laporanLainSubMenu.map(({ href, icon: SubIcon, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
