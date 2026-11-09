@@ -590,17 +590,19 @@ export default function KertasKerjaPage() {
       {/* Ringkasan Saldo Per Bank */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-100 text-xs font-semibold uppercase tracking-wider">Total Saldo Aktif Seluruh Bank</span>
-              <Building2 className="w-5 h-5 text-blue-200" />
+          <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Saldo Aktif Seluruh Bank</span>
+              <div className="text-2xl font-bold text-gray-900 mt-1">
+                Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Akumulasi dari {filteredData.filter(d => d.is_active !== 0).length} bukti aktif di {bankSummary.length} bank mitra
+              </p>
             </div>
-            <div className="text-2xl font-black mt-2">
-              Rp {totalSaldoSemuaBank.toLocaleString('id-ID')}
+            <div className="p-3 bg-blue-50 text-[#1E90FF] rounded-xl">
+              <Building2 className="w-6 h-6" />
             </div>
-            <p className="text-xs text-blue-100 mt-1">
-              Akumulasi dari {filteredData.filter(d => d.is_active !== 0).length} bukti aktif di {bankSummary.length} bank mitra
-            </p>
           </div>
 
           <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">

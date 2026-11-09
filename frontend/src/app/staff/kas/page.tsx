@@ -354,16 +354,16 @@ export default function KasOverviewPage() {
         </div>
 
         {/* Saldo Akhir Kas Buku */}
-        <div className="bg-gradient-to-tr from-blue-900 to-slate-900 text-white p-5 rounded-2xl shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-blue-200 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-blue-100">Saldo Akhir Buku (BKU)</span>
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Saldo Akhir Buku (BKU)</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#1E90FF]">
               <Scale className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <p className="text-xl font-bold text-white tracking-tight">{formatRupiah(saldoAkhirBuku)}</p>
-            <p className="text-[11px] text-blue-200 mt-1">Saldo Awal + Masuk - Keluar</p>
+            <p className="text-xl font-bold text-slate-900 tracking-tight">{formatRupiah(saldoAkhirBuku)}</p>
+            <p className="text-[11px] text-slate-400 mt-1">Saldo Awal + Masuk - Keluar</p>
           </div>
         </div>
       </div>
