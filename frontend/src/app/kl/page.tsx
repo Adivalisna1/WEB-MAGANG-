@@ -1,10 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { getSession } from '@/lib/auth';
 import toast from 'react-hot-toast';
+
+const SatkerIndonesiaMap = dynamic(
+  () => import('@/components/maps/SatkerIndonesiaMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="card" style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+        Memuat Peta Geospasial Satker Se-Nusantara...
+      </div>
+    ),
+  }
+);
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
@@ -796,6 +809,15 @@ export default function KLDashboardPage() {
                     <span style={{ color: '#dc2626', fontWeight: 700 }}><strong>{liveStats.satkerPending}</strong> Belum Setor</span>
                   </div>
                 </div>
+              </section>
+
+              {/* GEOSPATIAL MAP SECTION (MONITORING NASIONAL) */}
+              <section style={{ marginBottom: 24 }}>
+                <SatkerIndonesiaMap
+                  filterEselon1Initial="all"
+                  title="Peta Geospasial Konsolidasi Kas Satker Se-Nusantara"
+                  subtitle="Pemantauan posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker se-Indonesia"
+                />
               </section>
 
               {/* ANALYTICS SECTION */}

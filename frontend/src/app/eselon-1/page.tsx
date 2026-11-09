@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { getSession } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -12,6 +13,19 @@ import {
   Loader2, AlertCircle, Users, Building2
 } from 'lucide-react';
 import MonitoringSatkerSection from '@/components/eselon-1/MonitoringSatkerSection';
+
+const SatkerIndonesiaMap = dynamic(
+  () => import('@/components/maps/SatkerIndonesiaMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-96 bg-white rounded-2xl border border-slate-200 flex items-center justify-center p-8 animate-pulse text-slate-400">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-500 mr-2" />
+        <span className="text-sm font-medium">Memuat Peta Sebaran Satker Nusantara...</span>
+      </div>
+    ),
+  }
+);
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 const POLL_INTERVAL = 30_000; // 30 detik
@@ -161,6 +175,13 @@ export default function KetuaDashboardPage() {
 
       {/* Monitoring Dokumen Satker Binaan (Fitur Baru Eselon 1) */}
       <MonitoringSatkerSection />
+
+      {/* Peta Sebaran & Rekonsiliasi Kas Satker Binaan */}
+      <SatkerIndonesiaMap
+        filterEselon1Initial={user?.eselon_1_singkatan || "all"}
+        title={`Peta Sebaran & Rekonsiliasi Kas Satker (${user?.eselon_1_singkatan || "Eselon 1"})`}
+        subtitle="Posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker di bawah binaan"
+      />
 
       {/* Grafik baris 1: upload per Satker + distribusi status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
