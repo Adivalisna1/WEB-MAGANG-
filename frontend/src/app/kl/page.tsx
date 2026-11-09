@@ -337,7 +337,7 @@ export default function KLDashboardPage() {
               bank: `Rp ${(bank / 1e9).toFixed(2).replace('.', ',')} M`,
               variance: `Rp ${Math.round(diff / 1e6)} Jt`,
               varianceNum: Math.round(diff / 1e6),
-              status: diff > 0 ? "Perlu Klarifikasi" : "Klop Sesuai"
+              status: diff > 0 ? "Perlu Klarifikasi" : "Seimbang Sesuai"
             };
           });
           if (mappedFindings.length > 0) setFindings(mappedFindings);
@@ -979,7 +979,7 @@ export default function KLDashboardPage() {
                   </div>
 
                   <div className="table-footer">
-                    <span>Total selisih belum klop: <strong>Rp {totalDiff.toLocaleString('id-ID')} Juta</strong></span>
+                    <span>Total selisih belum seimbang: <strong>Rp {totalDiff.toLocaleString('id-ID')} Juta</strong></span>
                     <button className="text-link" onClick={() => setActiveTab('reconcile')}>
                       Buka Meja Audit Rekonsiliasi ›
                     </button>

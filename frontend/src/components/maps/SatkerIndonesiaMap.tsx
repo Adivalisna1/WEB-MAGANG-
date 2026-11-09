@@ -356,7 +356,7 @@ export default function SatkerIndonesiaMap({
              <span style="font-size: 11px; color: #64748b;">Pengawas: ${w.eselon1}</span><br/>
              <span style="font-size: 11px; font-weight: 600; color: #0f172a;">${w.satkers.length} Satker Diawasi &bull; Saldo: ${formatRupiah(w.totalBank)}</span><br/>
              <span style="font-size: 10px; color: ${w.hasSelisih ? '#dc2626' : '#059669'}; font-weight: 600;">
-               ${w.hasSelisih ? '⚠️ ' + w.selisihCount + ' Satker Ada Selisih' : '✓ Semua Satker Saldo Klop'}
+               ${w.hasSelisih ? '⚠️ ' + w.selisihCount + ' Satker Ada Selisih' : '✓ Semua Satker Saldo Seimbang'}
              </span>`,
             { direction: "top", offset: [0, -22], opacity: 0.95 }
           );
@@ -397,7 +397,7 @@ export default function SatkerIndonesiaMap({
             childMarker.bindTooltip(
               `<strong>${childSatker.nama}</strong><br/>
                <span style="font-size: 10px; color: ${childMatch ? '#059669' : '#dc2626'};">
-                 ${childMatch ? '✓ Saldo Kas Klop' : '⚠️ Selisih: ' + formatRupiah(childSatker.selisih)}
+                 ${childMatch ? '✓ Saldo Kas Seimbang' : '⚠️ Selisih: ' + formatRupiah(childSatker.selisih)}
                </span>`,
               { direction: "top", offset: [0, -14], opacity: 0.95 }
             );
@@ -440,7 +440,7 @@ export default function SatkerIndonesiaMap({
           );
 
           marker.bindTooltip(
-            `<strong>${satker.nama}</strong><br/><span style="font-size: 11px; color: ${isMatch ? '#059669' : '#dc2626'};">${isMatch ? '✓ Saldo Kas Klop' : '⚠️ Selisih: ' + formatRupiah(satker.selisih)}</span>`,
+            `<strong>${satker.nama}</strong><br/><span style="font-size: 11px; color: ${isMatch ? '#059669' : '#dc2626'};">${isMatch ? '✓ Saldo Kas Seimbang' : '⚠️ Selisih: ' + formatRupiah(satker.selisih)}</span>`,
             { direction: "top", offset: [0, -14], opacity: 0.95 }
           );
 
@@ -625,7 +625,7 @@ export default function SatkerIndonesiaMap({
               className="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1E90FF] shadow-2xs"
             >
               <option value="all">Semua Status Kas</option>
-              <option value="match">🟢 Saldo Klop (Match)</option>
+              <option value="match">🟢 Saldo Seimbang (Match)</option>
               <option value="selisih">🔴 Ada Selisih Kas</option>
             </select>
           </div>
@@ -665,7 +665,7 @@ export default function SatkerIndonesiaMap({
           )}
           <span className="inline-flex items-center gap-1 text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <strong>{stats.match}</strong> Satker Klop
+            <strong>{stats.match}</strong> Satker Seimbang
           </span>
           <span className="inline-flex items-center gap-1 text-rose-700 font-medium bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60">
             <span className="w-2 h-2 rounded-full bg-rose-500" />
@@ -689,7 +689,7 @@ export default function SatkerIndonesiaMap({
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
             <span className="text-slate-600">
-              {viewMode === "wilayah" ? "Zona Saldo Klop 100%" : "Saldo Klop (Match 100%)"}
+              {viewMode === "wilayah" ? "Zona Saldo Seimbang 100%" : "Saldo Seimbang (Match 100%)"}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -764,7 +764,7 @@ export default function SatkerIndonesiaMap({
                     )}
                   >
                     {selectedWilayahTotals.totalSelisih === 0
-                      ? "100% Klop"
+                      ? "100% Seimbang"
                       : `${selectedWilayahTotals.selisihCount} Satker Ada Selisih`}
                   </span>
                 </div>
@@ -798,7 +798,7 @@ export default function SatkerIndonesiaMap({
                       )}
                       title={formatRupiah(selectedWilayahTotals.totalSelisih)}
                     >
-                      {selectedWilayahTotals.totalSelisih === 0 ? "Rp 0 (Klop)" : formatRupiah(selectedWilayahTotals.totalSelisih)}
+                      {selectedWilayahTotals.totalSelisih === 0 ? "Rp 0 (Seimbang)" : formatRupiah(selectedWilayahTotals.totalSelisih)}
                     </p>
                   </div>
                 </div>
@@ -808,7 +808,7 @@ export default function SatkerIndonesiaMap({
                   <div className="flex justify-between text-[11px] text-slate-600">
                     <span>Tingkat Kepatuhan Rekonsiliasi</span>
                     <span className="font-bold text-slate-800">
-                      {selectedWilayahTotals.matchCount} dari {selectedWilayahTotals.totalSatker} Satker Klop ({selectedWilayahTotals.compliancePercent}%)
+                      {selectedWilayahTotals.matchCount} dari {selectedWilayahTotals.totalSatker} Satker Seimbang ({selectedWilayahTotals.compliancePercent}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
@@ -891,7 +891,7 @@ export default function SatkerIndonesiaMap({
                             {isMatch ? (
                               <>
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Saldo Klop
+                                Saldo Seimbang
                               </>
                             ) : (
                               <>
@@ -1074,11 +1074,11 @@ export default function SatkerIndonesiaMap({
                   )}
                   <div>
                     <p className="font-bold text-xs leading-none">
-                      {selectedSatker.status === "match" ? "Rekonsiliasi Klop" : "Ada Selisih Kas"}
+                      {selectedSatker.status === "match" ? "Rekonsiliasi Seimbang" : "Ada Selisih Kas"}
                     </p>
                     <p className="text-[10px] opacity-80 mt-0.5">
                       {selectedSatker.status === "match"
-                        ? "Buku & Bank klop 100%"
+                        ? "Buku & Bank seimbang 100%"
                         : `Selisih: ${formatRupiah(selectedSatker.selisih)}`}
                     </p>
                   </div>
