@@ -39,7 +39,26 @@ const statusConfig: Record<string, { label: string; badgeClass: string }> = {
 };
 
 export default function KonfirmasiBankPage() {
-  const { user } = useAuth();
+  const { user, isIt } = useAuth();
+  const session = typeof window !== 'undefined' ? getSession() : null;
+  const currentUser = user || session?.user;
+
+  const isITUser = Boolean(
+    isIt ||
+    currentUser?.is_it ||
+    currentUser?.role === 'admin_it' ||
+    currentUser?.role === 'it' ||
+    currentUser?.role_id === 3 ||
+    ['naufal', 'it_admin'].includes(currentUser?.username || '')
+  );
+  const canUpload = !isITUser && (
+    currentUser?.role === 'operator' ||
+    currentUser?.role === 'staff' ||
+    currentUser?.role === 'staff_satker' ||
+    currentUser?.role_id === 1 ||
+    currentUser?.is_operator
+  );
+
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -90,10 +109,17 @@ export default function KonfirmasiBankPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>Konfirmasi Bank</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Landmark className="w-7 h-7 text-[#1E90FF]" />
-            Surat Konfirmasi Saldo Bank
-          </h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+              <Landmark className="w-7 h-7 text-[#1E90FF]" />
+              Surat Konfirmasi Saldo Bank
+            </h1>
+            {isITUser && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Mode Pantau IT (Read-Only)
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 mt-1">
             Surat konfirmasi saldo kas resmi dari bank mitra per tanggal cut-off pelaporan (audit trail).
           </p>
@@ -108,13 +134,15 @@ export default function KonfirmasiBankPage() {
             <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
           </button>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold text-sm rounded-xl transition-all shadow-sm hover:shadow"
-          >
-            <Plus className="w-4 h-4" />
-            Unggah Konfirmasi Bank
-          </button>
+          {canUpload && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold text-sm rounded-xl transition-all shadow-sm hover:shadow"
+            >
+              <Plus className="w-4 h-4" />
+              Unggah Konfirmasi Bank
+            </button>
+          )}
         </div>
       </div>
 
@@ -153,13 +181,19 @@ export default function KonfirmasiBankPage() {
             <p className="text-sm text-slate-500 max-w-sm mb-6">
               Belum ada surat konfirmasi saldo dari pihak bank yang diunggah.
             </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold text-sm rounded-xl transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Unggah Surat Sekarang
-            </button>
+            {canUpload ? (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold text-sm rounded-xl transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Unggah Surat Sekarang
+              </button>
+            ) : (
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">
+                Mode Pantau IT — Pengunggahan dilakukan oleh Operator Satker
+              </span>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

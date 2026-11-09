@@ -231,12 +231,22 @@ async def create_akuntansi(
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    is_allowed = (
-        user.get("role") in ["operator", "manajemen", "administrasi", "it", "admin_it", "pimpinan_satker", "staff_satker"] or
-        user.get("role_id") in [1, 2, 3] or
-        user.get("is_operator") or
-        user.get("is_manajemen") or
+    is_it_role = (
+        user.get("role") in ["it", "admin_it"] or
+        user.get("role_id") == 3 or
         user.get("is_it")
+    )
+    if is_it_role:
+        raise HTTPException(
+            403, 
+            "Role IT Administrator hanya memiliki hak akses pemantauan dan pengelolaan sistem, tidak berwenang menambah transaksi atau mengunggah bukti kas."
+        )
+
+    is_allowed = (
+        user.get("role") in ["operator", "manajemen", "administrasi", "pimpinan_satker", "staff_satker"] or
+        user.get("role_id") in [1, 2] or
+        user.get("is_operator") or
+        user.get("is_manajemen")
     )
     if not is_allowed:
         raise HTTPException(403, "Forbidden: Akses khusus Operator dan Manajemen Satker")

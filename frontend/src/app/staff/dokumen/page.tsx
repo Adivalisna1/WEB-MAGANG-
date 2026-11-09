@@ -43,7 +43,26 @@ const statusConfig: Record<string, { label: string; badgeClass: string; step: nu
 };
 
 export default function StaffDokumenPage() {
-  const { user } = useAuth();
+  const { user, isIt } = useAuth();
+  const session = typeof window !== 'undefined' ? getSession() : null;
+  const currentUser = user || session?.user;
+
+  const isITUser = Boolean(
+    isIt ||
+    currentUser?.is_it ||
+    currentUser?.role === 'admin_it' ||
+    currentUser?.role === 'it' ||
+    currentUser?.role_id === 3 ||
+    ['naufal', 'it_admin'].includes(currentUser?.username || '')
+  );
+  const canUpload = !isITUser && (
+    currentUser?.role === 'operator' ||
+    currentUser?.role === 'staff' ||
+    currentUser?.role === 'staff_satker' ||
+    currentUser?.role_id === 1 ||
+    currentUser?.is_operator
+  );
+
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -231,101 +250,117 @@ export default function StaffDokumenPage() {
         {/* --- KOLOM KIRI: DROPZONE CEPAT & TABEL PENGAJUAN --- */}
         <div className="staff-main-col">
 
-          {/* KARTU UNGGAH DOKUMEN BARU */}
-          <div className="staff-card">
-            <div className="staff-card-header">
-              <div className="staff-card-title-group">
-                <h2 className="staff-card-title">Unggah Dokumen Baru</h2>
-                <span className="staff-card-subtitle">
-                  Lampirkan berkas laporan keuangan satuan kerja untuk diverifikasi oleh pimpinan
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedFile(null); setModalInitialTab('single'); setIsModalOpen(true); }}
-                  className="staff-btn staff-btn-secondary staff-btn-sm"
-                >
-                  <Upload className="w-4 h-4" />
-                  Buka Form Satuan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedFile(null); setModalInitialTab('batch'); setIsModalOpen(true); }}
-                  className="staff-btn staff-btn-primary staff-btn-sm bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-sm"
-                >
-                  <Folder className="w-4 h-4 text-amber-300" />
-                  Unggah 1 Folder / ZIP Masal
-                </button>
-              </div>
-            </div>
-
-            {/* Dropzone Drag & Drop Area */}
-            <div
-              onDragOver={e => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileRef.current?.click()}
-              className={clsx('staff-dropzone', dragging && 'drag-over')}
-            >
-              <input
-                type="file"
-                ref={fileRef}
-                style={{ display: 'none' }}
-                accept=".pdf,.doc,.docx,.xls,.xlsx"
-                onChange={handleFileSelect}
-              />
-              <div className="staff-dropzone-icon">
-                <CloudUpload className="w-7 h-7" />
-              </div>
-              <div className="staff-dropzone-title">
-                Tarik & lepaskan berkas ke sini, atau <span>Pilih Berkas</span>
-              </div>
-              <div className="staff-dropzone-specs">
-                <span>Format didukung:</span>
-                <span className="badge-filetype">PDF</span>
-                <span className="badge-filetype">DOC</span>
-                <span className="badge-filetype">DOCX</span>
-                <span className="badge-filetype">XLS</span>
-                <span className="badge-filetype">XLSX</span>
-                <span>• Ukuran maksimum 10MB per berkas</span>
-              </div>
-
-              {/* Strip Berkas Terpilih */}
-              {selectedFile && (
-                <div
-                  className="staff-preview-strip"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">
-                      FILE
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm text-slate-800">{selectedFile.name}</div>
-                      <div className="text-xs text-slate-400">{formatFileSize(selectedFile.size)}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleOpenUploadWithFile}
-                      className="staff-btn staff-btn-sm staff-btn-primary"
-                    >
-                      Lanjutkan Form
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelSelectedFile}
-                      className="staff-btn staff-btn-sm staff-btn-ghost text-slate-400 hover:text-red-600"
-                    >
-                      Batal
-                    </button>
-                  </div>
+          {/* KARTU UNGGAH DOKUMEN BARU (Hanya untuk Operator/Staff Satker) */}
+          {canUpload ? (
+            <div className="staff-card">
+              <div className="staff-card-header">
+                <div className="staff-card-title-group">
+                  <h2 className="staff-card-title">Unggah Dokumen Baru</h2>
+                  <span className="staff-card-subtitle">
+                    Lampirkan berkas laporan keuangan satuan kerja untuk diverifikasi oleh pimpinan
+                  </span>
                 </div>
-              )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedFile(null); setModalInitialTab('single'); setIsModalOpen(true); }}
+                    className="staff-btn staff-btn-secondary staff-btn-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Buka Form Satuan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedFile(null); setModalInitialTab('batch'); setIsModalOpen(true); }}
+                    className="staff-btn staff-btn-primary staff-btn-sm bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Folder className="w-4 h-4 text-amber-300" />
+                    Unggah 1 Folder / ZIP Masal
+                  </button>
+                </div>
+              </div>
+
+              {/* Dropzone Drag & Drop Area */}
+              <div
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileRef.current?.click()}
+                className={clsx('staff-dropzone', dragging && 'drag-over')}
+              >
+                <input
+                  type="file"
+                  ref={fileRef}
+                  style={{ display: 'none' }}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={handleFileSelect}
+                />
+                <div className="staff-dropzone-icon">
+                  <CloudUpload className="w-7 h-7" />
+                </div>
+                <div className="staff-dropzone-title">
+                  Tarik & lepaskan berkas ke sini, atau <span>Pilih Berkas</span>
+                </div>
+                <div className="staff-dropzone-specs">
+                  <span>Format didukung:</span>
+                  <span className="badge-filetype">PDF</span>
+                  <span className="badge-filetype">DOC</span>
+                  <span className="badge-filetype">DOCX</span>
+                  <span className="badge-filetype">XLS</span>
+                  <span className="badge-filetype">XLSX</span>
+                  <span>• Ukuran maksimum 10MB per berkas</span>
+                </div>
+
+                {/* Strip Berkas Terpilih */}
+                {selectedFile && (
+                  <div
+                    className="staff-preview-strip"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center">
+                        FILE
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm text-slate-800">{selectedFile.name}</div>
+                        <div className="text-xs text-slate-400">{formatFileSize(selectedFile.size)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleOpenUploadWithFile}
+                        className="staff-btn staff-btn-sm staff-btn-primary"
+                      >
+                        Lanjutkan Form
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelSelectedFile}
+                        className="staff-btn staff-btn-sm staff-btn-ghost text-slate-400 hover:text-red-600"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          ) : isITUser ? (
+            <div className="staff-card p-5 bg-blue-50/60 border border-blue-200 rounded-2xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full border border-blue-200">
+                  Mode Pantau IT (Read-Only)
+                </span>
+                <p className="text-sm font-semibold text-slate-800 mt-2">
+                  Portal Pemantauan Dokumen Seluruh Satker
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Akun IT Administrator tidak berwenang mengunggah dokumen. Pengunggahan dilakukan oleh Operator Satker masing-masing.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* TABEL DAFTAR PENGAJUAN TERBARU */}
           <div className="staff-card staff-table-card">

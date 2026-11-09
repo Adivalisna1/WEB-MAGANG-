@@ -71,7 +71,26 @@ const formatRupiah = (val: number | null | undefined): string => {
 };
 
 export default function KasOverviewPage() {
-  const { user } = useAuth();
+  const { user, isIt } = useAuth();
+  const session = typeof window !== 'undefined' ? getSession() : null;
+  const currentUser = user || session?.user;
+
+  const isITUser = Boolean(
+    isIt ||
+    currentUser?.is_it ||
+    currentUser?.role === 'admin_it' ||
+    currentUser?.role === 'it' ||
+    currentUser?.role_id === 3 ||
+    ['naufal', 'it_admin'].includes(currentUser?.username || '')
+  );
+  const canUpload = !isITUser && (
+    currentUser?.role === 'operator' ||
+    currentUser?.role === 'staff' ||
+    currentUser?.role === 'staff_satker' ||
+    currentUser?.role_id === 1 ||
+    currentUser?.is_operator
+  );
+
   const [transaksiList, setTransaksiList] = useState<TransaksiKas[]>([]);
   const [rekeningList, setRekeningList] = useState<RekeningKoranItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -264,10 +283,17 @@ export default function KasOverviewPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>Akuntansi & Rekonsiliasi</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Wallet className="w-7 h-7 text-[#1E90FF]" />
-            Buku Kas & Rekonsiliasi Kas Satker
-          </h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+              <Wallet className="w-7 h-7 text-[#1E90FF]" />
+              Buku Kas & Rekonsiliasi Kas Satker
+            </h1>
+            {isITUser && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Mode Pantau IT (Read-Only)
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 mt-1">
             Pantau arus kas riil, mutasi penerimaan/pengeluaran dari bukti yang diunggah, dan rekonsiliasi saldo buku terhadap rekening koran bank.
           </p>
@@ -291,13 +317,15 @@ export default function KasOverviewPage() {
             Ekspor Excel
           </button>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold text-sm rounded-xl transition-all shadow-xs hover:shadow"
-          >
-            <Plus className="w-4 h-4" />
-            Tambah Bukti Kas
-          </button>
+          {canUpload && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold text-sm rounded-xl transition-all shadow-xs hover:shadow"
+            >
+              <Plus className="w-4 h-4" />
+              Tambah Bukti Kas
+            </button>
+          )}
         </div>
       </div>
 

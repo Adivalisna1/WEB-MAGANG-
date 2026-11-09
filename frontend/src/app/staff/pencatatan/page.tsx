@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getSession } from "@/lib/auth";
 import {
   Plus,
   Download,
@@ -177,7 +178,26 @@ const openFile = async (bukti_file: string, token: string) => {
 };
 
 export default function StaffpencatatanPage() {
-  const { token } = useAuth();
+  const { token, user, isIt } = useAuth();
+  const session = typeof window !== 'undefined' ? getSession() : null;
+  const currentUser = user || session?.user;
+
+  const isITUser = Boolean(
+    isIt ||
+    currentUser?.is_it ||
+    currentUser?.role === 'admin_it' ||
+    currentUser?.role === 'it' ||
+    currentUser?.role_id === 3 ||
+    ['naufal', 'it_admin'].includes(currentUser?.username || '')
+  );
+  const canUpload = !isITUser && (
+    currentUser?.role === 'operator' ||
+    currentUser?.role === 'staff' ||
+    currentUser?.role === 'staff_satker' ||
+    currentUser?.role_id === 1 ||
+    currentUser?.is_operator
+  );
+
   const [transaksi, setTransaksi] = useState<any[]>([]);
   const [kategori, setKategori] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -707,9 +727,16 @@ export default function StaffpencatatanPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Unggah & Kelola Bukti Transaksi
-          </h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              Unggah & Kelola Bukti Transaksi
+            </h1>
+            {isITUser && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Mode Pantau IT (Read-Only)
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500 mt-1">
             Unggah berkas bukti transaksi (PDF/Gambar/Excel) dengan kunci utama
             Tanggal & Saldo Akhir yang terhubung langsung per Bank.
@@ -722,28 +749,32 @@ export default function StaffpencatatanPage() {
           >
             <Download className="w-4 h-4" /> Export
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setModalInitialTab('single');
-              setShowForm(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> Unggah Bukti Satuan
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setModalInitialTab('batch');
-              setShowForm(true);
-            }}
-            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-xs cursor-pointer"
-          >
-            <Folder className="w-4 h-4 text-amber-300" /> Unggah 1 Folder / ZIP Masal
-          </button>
+          {canUpload && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setModalInitialTab('single');
+                  setShowForm(true);
+                }}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Unggah Bukti Satuan
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setModalInitialTab('batch');
+                  setShowForm(true);
+                }}
+                className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-xs cursor-pointer"
+              >
+                <Folder className="w-4 h-4 text-amber-300" /> Unggah 1 Folder / ZIP Masal
+              </button>
+            </>
+          )}
         </div>
       </div>
 

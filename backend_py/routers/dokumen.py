@@ -297,11 +297,18 @@ async def upload_dokumen(
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    is_admin_role = (
-        user.get("role") in ["administrasi", "manajemen", "pimpinan_satker", "it", "admin_it"] or
-        user.get("role_id") in [2, 3] or
-        user.get("is_manajemen") or
+    is_it_role = (
+        user.get("role") in ["it", "admin_it"] or
+        user.get("role_id") == 3 or
         user.get("is_it")
+    )
+    if is_it_role:
+        raise HTTPException(403, "Role IT Administrator hanya memiliki hak akses pemantauan dan administrasi sistem, tidak berwenang mengunggah berkas kas/keuangan satker.")
+
+    is_admin_role = (
+        user.get("role") in ["administrasi", "manajemen", "pimpinan_satker"] or
+        user.get("role_id") == 2 or
+        user.get("is_manajemen")
     )
     is_operator_role = (
         user.get("role") in ["operator", "staff_satker"] or
@@ -1229,10 +1236,13 @@ async def batch_scan_dokumen(
     """
     # Seluruh pengguna yang berhak mengunggah dokumen (Tingkat Satker, Eselon 1, maupun Admin IT)
     # memiliki akses penuh untuk batch scan 1 folder / ZIP
+    if user.get("role") in ["it", "admin_it"] or user.get("role_id") == 3 or user.get("is_it"):
+        raise HTTPException(403, "Role IT Administrator hanya memiliki hak akses pemantauan dan administrasi sistem, tidak berwenang mengunggah dokumen masal.")
+
     is_uploader = (
         user.get("tingkat") in ["satker", "eselon_1", "kl"] or
-        user.get("role") in ["operator", "it", "admin_it", "staff_satker", "administrasi", "manajemen", "staff"] or
-        user.get("role_id") in [1, 2, 3] or
+        user.get("role") in ["operator", "staff_satker", "administrasi", "manajemen", "staff"] or
+        user.get("role_id") in [1, 2] or
         bool(user.get("satker_id")) or
         bool(user.get("eselon_1_id"))
     )
@@ -1359,10 +1369,13 @@ async def batch_save_dokumen(
     """
     # Seluruh pengguna yang berhak mengunggah dokumen (Tingkat Satker, Eselon 1, maupun Admin IT)
     # memiliki akses penuh untuk batch scan 1 folder / ZIP
+    if user.get("role") in ["it", "admin_it"] or user.get("role_id") == 3 or user.get("is_it"):
+        raise HTTPException(403, "Role IT Administrator hanya memiliki hak akses pemantauan dan administrasi sistem, tidak berwenang mengunggah dokumen masal.")
+
     is_uploader = (
         user.get("tingkat") in ["satker", "eselon_1", "kl"] or
-        user.get("role") in ["operator", "it", "admin_it", "staff_satker", "administrasi", "manajemen", "staff"] or
-        user.get("role_id") in [1, 2, 3] or
+        user.get("role") in ["operator", "staff_satker", "administrasi", "manajemen", "staff"] or
+        user.get("role_id") in [1, 2] or
         bool(user.get("satker_id")) or
         bool(user.get("eselon_1_id"))
     )

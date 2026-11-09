@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user?.is_it ||
     user?.role === 'admin_it' ||
     user?.role === 'it' ||
+    user?.role_id === 3 ||
     (user?.tingkat === 'kl' && (user?.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user?.username || '')))
   );
   const isPimpinan = Boolean(

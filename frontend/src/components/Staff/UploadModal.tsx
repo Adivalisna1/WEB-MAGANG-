@@ -49,6 +49,18 @@ interface BatchItem {
 }
 
 export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, defaultKategoriSlug, initialTab }: UploadModalProps) {
+  const session = typeof window !== 'undefined' ? getSession() : null;
+  const currentUser = session?.user as any;
+  const isIT = Boolean(
+    currentUser && (
+      currentUser.is_it ||
+      currentUser.role === 'admin_it' ||
+      currentUser.role === 'it' ||
+      currentUser.role_id === 3 ||
+      ['naufal', 'it_admin'].includes(currentUser.username || '')
+    )
+  );
+
   // Mode: single (1 file) atau batch (folder / zip)
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>(initialTab || 'single');
 
@@ -194,11 +206,10 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
         }
       } else {
         const isAdminRole = Boolean(
-          u && (
-            ['administrasi', 'manajemen', 'pimpinan_satker', 'it', 'admin_it'].includes(u.role || '') ||
-            [2, 3].includes(Number(u.role_id)) ||
-            u.is_manajemen ||
-            u.is_it
+          u && !isIT && (
+            ['administrasi', 'manajemen', 'pimpinan_satker'].includes(u.role || '') ||
+            Number(u.role_id) === 2 ||
+            u.is_manajemen
           )
         );
         if (!isAdminRole) {
@@ -417,6 +428,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
 
   const handleSingleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isIT) {
+      setError('Role IT Administrator tidak berwenang mengunggah berkas kas/keuangan.');
+      toast.error('Akses ditolak: IT Administrator bersifat read-only untuk dokumen transaksi keuangan.');
+      return;
+    }
     if (!file && !tempGdriveFilename) return setError('Pilih berkas dari komputer atau masukkan link Google Drive yang valid');
 
     let activeKatId = kategoriId;
@@ -509,6 +525,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
   };
 
   const executeBatchScan = async (payload: { zip_file?: File; files?: File[] }) => {
+    if (isIT) {
+      setBatchError('Role IT Administrator tidak berwenang mengunggah dokumen masal.');
+      toast.error('Akses ditolak: IT Administrator berstatus read-only.');
+      return;
+    }
     setBatchScanning(true);
     setBatchError('');
     setBatchItems([]);
@@ -708,6 +729,17 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto">
+          {isIT && (
+            <div className="p-4 mb-5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-bold">Mode Pantau IT (Read-Only)</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Akun IT Administrator hanya memiliki hak akses pemantauan dan pengelolaan teknis sistem, tidak berwenang mengunggah dokumen kas atau transaksi keuangan Satker.
+                </p>
+              </div>
+            </div>
+          )}
           {success ? (
             <div className="flex flex-col items-center justify-center py-12 gap-4">
               <CheckCircle className="w-16 h-16 text-emerald-500 animate-bounce" />
@@ -1436,20 +1468,20 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
               {activeTab === 'single' ? (
                 <button
                   onClick={handleSingleSubmit}
-                  disabled={submitting || (!file && !tempGdriveFilename) || !judul || !kategoriId}
+                  disabled={submitting || isIT || (!file && !tempGdriveFilename) || !judul || !kategoriId}
                   className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition-all cursor-pointer"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {submitting ? 'Menyimpan...' : 'Unggah Sekarang'}
+                  {submitting ? 'Menyimpan...' : isIT ? 'Akses Ditolak (IT Read-Only)' : 'Unggah Sekarang'}
                 </button>
               ) : (
                 <button
                   onClick={handleBatchSaveSubmit}
-                  disabled={batchSaving || batchItems.length === 0}
+                  disabled={batchSaving || isIT || batchItems.length === 0}
                   className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition-all cursor-pointer"
                 >
                   {batchSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  {batchSaving ? 'Menyimpan Semua...' : `Simpan Semua (${batchItems.length} Berkas)`}
+                  {batchSaving ? 'Menyimpan Semua...' : isIT ? 'Akses Ditolak (IT Read-Only)' : `Simpan Semua (${batchItems.length} Berkas)`}
                 </button>
               )}
             </div>
