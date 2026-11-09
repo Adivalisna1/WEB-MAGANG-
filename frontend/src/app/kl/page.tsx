@@ -815,8 +815,9 @@ export default function KLDashboardPage() {
               <section style={{ marginBottom: 24 }}>
                 <SatkerIndonesiaMap
                   filterEselon1Initial="all"
-                  title="Peta Geospasial Konsolidasi Kas Satker Se-Nusantara"
-                  subtitle="Pemantauan posisi geografis, saldo kas riil, dan kelengkapan bukti dokumen satker se-Indonesia"
+                  isKLLevel={true}
+                  title="Peta Geospasial Wilayah Pengawasan K/L Se-Nusantara"
+                  subtitle="Pemantauan lingkaran simpul wilayah kerja Eselon 1, rincian satker binaan, dan audit saldo kas se-Indonesia"
                 />
               </section>
 
