@@ -154,11 +154,11 @@ export default function AdminITSidebar({
       )}
 
       {/* Sidebar Container */}
-      <div
+      <aside
         className={`
-        fixed left-0 top-0 h-screen bg-white border-r border-slate-200 z-50 flex flex-col font-['Inter',sans-serif] shadow-sm transition-all duration-300
-        ${isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"}
-        ${isCollapsed ? "md:w-20" : "md:w-64"}
+        fixed left-0 top-0 md:relative h-screen bg-white border-r border-slate-200 z-50 flex flex-col shrink-0 font-['Inter',sans-serif] shadow-sm transition-all duration-300
+        ${isMobileOpen ? "translate-x-0 w-[270px]" : "-translate-x-full md:translate-x-0"}
+        ${isCollapsed ? "md:w-20" : "md:w-[270px]"}
       `}
       >
         {/* Header */}
@@ -540,7 +540,7 @@ export default function AdminITSidebar({
             )}
           </button>
         </div>
-      </div>
+      </aside>
     </>
   );
 }

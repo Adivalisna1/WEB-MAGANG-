@@ -24,7 +24,7 @@ export default function AdminITLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-['Inter',sans-serif]">
+    <div className="min-h-screen bg-[#f8fafc] font-['Inter',sans-serif] flex relative overflow-x-hidden">
       {/* Mobile Topbar */}
       <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 h-16 px-4 fixed top-0 w-full z-40">
         <div className="flex items-center gap-3">
@@ -48,7 +48,7 @@ export default function AdminITLayout({ children }: { children: React.ReactNode 
         setIsCollapsed={setIsCollapsed} 
       />
 
-      <div className={`flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'md:pl-20' : 'md:pl-64'} pt-16 md:pt-0`}>
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 pt-16 md:pt-0">
         <main className="flex-1 p-4 md:p-8">
           {children}
         </main>
