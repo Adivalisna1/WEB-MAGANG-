@@ -599,13 +599,12 @@ export default function SatkerIndonesiaMap({
             zoomControl: false,
           });
 
-          // Custom Clean Light Tiles: CartoDB Positron
+          // OpenStreetMap Public Tile Layer (100% Free, No Watermark, No API Key)
           L.tileLayer(
-            "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
             {
               attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-              subdomains: "abcd",
+                '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
               maxZoom: 19,
             }
           ).addTo(map);
