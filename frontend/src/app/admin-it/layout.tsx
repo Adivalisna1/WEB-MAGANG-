@@ -2,14 +2,14 @@
 
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useState, useEffect } from 'react';
+import { useSidebarState } from '@/hooks/useSidebarState';
 import AdminITSidebar from '@/components/admin-it/AdminITSidebar';
 import { Menu } from 'lucide-react';
 
 export default function AdminITLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useRequireAuth('admin_it');
   const [mounted, setMounted] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebarState();
 
   useEffect(() => {
     setMounted(true);

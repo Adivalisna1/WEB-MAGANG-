@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useSidebarState } from '@/hooks/useSidebarState';
 import { logout, clearSession } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
 import PimpinanSidebar from '@/components/pimpinan/PimpinanSidebar';
@@ -16,8 +17,7 @@ export default function PimpinanLayout({ children }: { children: React.ReactNode
   const { user } = useAuth();
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebarState();
 
   const handleLogout = useCallback(async () => {
     const token = localStorage.getItem('token') || '';

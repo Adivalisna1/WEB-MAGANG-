@@ -4,6 +4,7 @@ import { useState, useCallback, createContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useSidebarState } from '@/hooks/useSidebarState';
 import { logout, clearSession, getSession } from '@/lib/auth';
 import { useAuth } from '@/context/AuthContext';
 import SatkerSidebar from '@/components/Staff/StaffSidebar';
@@ -23,8 +24,7 @@ export default function SatkerLayout({ children }: { children: React.ReactNode }
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebarState();
 
   // Quick fetch for search dropdown
   const handleSearchChange = async (val: string) => {

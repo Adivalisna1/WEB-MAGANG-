@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useSidebarState } from '@/hooks/useSidebarState';
 import { logout, clearSession } from '@/lib/auth';
 import Eselon1Sidebar from '@/components/eselon-1/Eselon1Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
@@ -16,8 +17,7 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   const { user } = useAuth();
   const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebarState();
 
   const isOperator = user?.role === 'operator' || user?.is_operator;
 
