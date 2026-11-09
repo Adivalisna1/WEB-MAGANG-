@@ -638,6 +638,48 @@ const formatRupiah = (val: number): string => {
   }).format(val);
 };
 
+export function matchEselon1(satkerEselon?: string | null, targetEselon?: string | null): boolean {
+  if (!targetEselon || targetEselon === "all") return true;
+  if (!satkerEselon) return false;
+
+  const s = satkerEselon.toLowerCase().trim();
+  const t = targetEselon.toLowerCase().trim();
+
+  if (s === t || s.includes(t) || t.includes(s)) return true;
+
+  // Ditjen Dikti / Pendidikan Tinggi
+  const isDiktiS = s.includes("dikti") || s.includes("pendidikan tinggi") || s.includes("tinggi");
+  const isDiktiT = t.includes("dikti") || t.includes("pendidikan tinggi") || t.includes("tinggi");
+  if (isDiktiS && isDiktiT) return true;
+
+  // Ditjen Vokasi / Pendidikan Vokasi
+  const isVokasiS = s.includes("vokasi");
+  const isVokasiT = t.includes("vokasi");
+  if (isVokasiS && isVokasiT) return true;
+
+  // Setjen / Sekretariat Jenderal
+  const isSetjenS = s.includes("setjen") || s.includes("sekretariat");
+  const isSetjenT = t.includes("setjen") || t.includes("sekretariat");
+  if (isSetjenS && isSetjenT) return true;
+
+  // Itjen / Inspektorat Jenderal
+  const isItjenS = s.includes("itjen") || s.includes("inspektorat");
+  const isItjenT = t.includes("itjen") || t.includes("inspektorat");
+  if (isItjenS && isItjenT) return true;
+
+  // Ditjen Risbang / Riset dan Pengembangan
+  const isRisbangS = s.includes("risbang") || s.includes("riset");
+  const isRisbangT = t.includes("risbang") || t.includes("riset");
+  if (isRisbangS && isRisbangT) return true;
+
+  // Ditjen Saintek / Sains dan Teknologi
+  const isSaintekS = s.includes("saintek") || s.includes("sains");
+  const isSaintekT = t.includes("saintek") || t.includes("sains");
+  if (isSaintekS && isSaintekT) return true;
+
+  return false;
+}
+
 interface SatkerMapProps {
   filterEselon1Initial?: string;
   isKLLevel?: boolean;
@@ -656,10 +698,8 @@ export default function SatkerIndonesiaMap({
   const markersRef = useRef<any[]>([]);
   const circlesRef = useRef<any[]>([]);
 
-  // Mode View: di K/L default 'wilayah' (lingkaran pengawasan), di Eselon 1 default 'satker'
-  const [viewMode, setViewMode] = useState<"wilayah" | "satker">(
-    isKLLevel ? "wilayah" : "satker"
-  );
+  // Mode View: default 'wilayah' (lingkaran pengawasan + penanda satker)
+  const [viewMode, setViewMode] = useState<"wilayah" | "satker">("wilayah");
   const [selectedSatker, setSelectedSatker] = useState<SatkerGeoData | null>(null);
   const [selectedWilayah, setSelectedWilayah] = useState<WilayahPengawasanKL | null>(null);
   const [searchWilayahSatker, setSearchWilayahSatker] = useState<string>("");
@@ -671,10 +711,30 @@ export default function SatkerIndonesiaMap({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
 
+  // Sinkronisasi filter saat prop inisial berubah (misal sesudah data user terambil)
+  useEffect(() => {
+    if (filterEselon1Initial) {
+      setFilterEselon(filterEselon1Initial);
+    }
+  }, [filterEselon1Initial]);
+
+  // Normalisasi value untuk elemen dropdown select
+  const currentSelectEselonValue = useMemo(() => {
+    if (!filterEselon || filterEselon === "all") return "all";
+    const f = filterEselon.toLowerCase();
+    if (f.includes("dikti") || f.includes("tinggi")) return "Ditjen Dikti";
+    if (f.includes("vokasi")) return "Ditjen Vokasi";
+    if (f.includes("setjen") || f.includes("sekretariat")) return "Setjen";
+    if (f.includes("risbang") || f.includes("riset")) return "Ditjen Risbang";
+    if (f.includes("saintek") || f.includes("sains")) return "Ditjen Saintek";
+    if (f.includes("itjen") || f.includes("inspektorat")) return "Itjen";
+    return filterEselon;
+  }, [filterEselon]);
+
   // Filtered Satkers untuk mode individual
   const filteredSatkers = useMemo(() => {
     return SATKER_INDONESIA_LIST.filter((s) => {
-      if (filterEselon !== "all" && !s.eselon1.toLowerCase().includes(filterEselon.toLowerCase())) {
+      if (filterEselon !== "all" && !matchEselon1(s.eselon1, filterEselon)) {
         return false;
       }
       if (filterStatus !== "all" && s.status !== filterStatus) {
@@ -696,7 +756,8 @@ export default function SatkerIndonesiaMap({
   const aggregatedWilayah = useMemo(() => {
     return WILAYAH_PENGAWASAN_KL_LIST.map((w) => {
       const satkersInWilayah = SATKER_INDONESIA_LIST.filter((s) =>
-        w.satkerIds.includes(s.id)
+        w.satkerIds.includes(s.id) &&
+        (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon))
       );
       const totalBuku = satkersInWilayah.reduce((acc, s) => acc + s.saldoBuku, 0);
       const totalBank = satkersInWilayah.reduce((acc, s) => acc + s.saldoBank, 0);
@@ -715,17 +776,12 @@ export default function SatkerIndonesiaMap({
         hasSelisih,
       };
     });
-  }, []);
+  }, [filterEselon]);
 
   // Filtered Wilayah untuk mode lingkaran pengawasan K/L
   const filteredWilayah = useMemo(() => {
     return aggregatedWilayah.filter((w) => {
-      if (filterEselon !== "all") {
-        const matchesEselon = w.satkers.some((s) =>
-          s.eselon1.toLowerCase().includes(filterEselon.toLowerCase())
-        );
-        if (!matchesEselon) return false;
-      }
+      if (w.satkers.length === 0) return false;
       if (filterStatus === "match" && w.hasSelisih) return false;
       if (filterStatus === "selisih" && !w.hasSelisih) return false;
       if (searchSatker.trim()) {
@@ -741,7 +797,7 @@ export default function SatkerIndonesiaMap({
       }
       return true;
     });
-  }, [aggregatedWilayah, filterEselon, filterStatus, searchSatker]);
+  }, [aggregatedWilayah, filterStatus, searchSatker]);
 
   // Statistik Cepat Peta (menyesuaikan viewMode)
   const stats = useMemo(() => {
@@ -907,42 +963,44 @@ export default function SatkerIndonesiaMap({
 
           markersRef.current.push(marker);
 
-          // Jika wilayah ini sedang dipilih, tampilkan juga pin-pin satker binaan di dalamnya
-          if (isSelected) {
-            w.satkers.forEach((childSatker) => {
-              const childMatch = childSatker.status === "match";
-              const childColor = childMatch ? "#10b981" : "#f59e0b";
+          // Tampilkan selalu pin-pin penanda satker binaan di dalam lingkaran wilayah
+          w.satkers.forEach((childSatker) => {
+            const childMatch = childSatker.status === "match";
+            const childColor = childMatch ? "#10b981" : "#f59e0b";
+            const isChildExpanded = expandedSatkerId === childSatker.id;
 
-              const childIcon = L.divIcon({
-                className: "custom-child-marker",
-                iconSize: [26, 26],
-                iconAnchor: [13, 13],
-                html: `
-                  <div style="position: relative; width: 26px; height: 26px; border-radius: 50%; background-color: white; border: 2.5px solid ${childColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #1e293b; cursor: pointer;">
-                    ${childSatker.nama.slice(0, 2).toUpperCase()}
-                  </div>
-                `,
-              });
-
-              const childMarker = L.marker([childSatker.lat, childSatker.lng], {
-                icon: childIcon,
-              }).addTo(mapInstanceRef.current);
-
-              childMarker.bindTooltip(
-                `<strong>${childSatker.nama}</strong><br/>
-                 <span style="font-size: 10px; color: ${childMatch ? '#059669' : '#d97706'};">
-                   ${childMatch ? '✓ Klop 100%' : '⚠️ Selisih: ' + formatRupiah(childSatker.selisih)}
-                 </span>`,
-                { direction: "top", offset: [0, -12], opacity: 0.95 }
-              );
-
-              childMarker.on("click", () => {
-                setExpandedSatkerId(childSatker.id);
-              });
-
-              markersRef.current.push(childMarker);
+            const childIcon = L.divIcon({
+              className: "custom-child-marker",
+              iconSize: [28, 28],
+              iconAnchor: [14, 14],
+              html: `
+                <div style="position: relative; width: 28px; height: 28px; border-radius: 50%; background-color: white; border: 2.5px solid ${childColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.22); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #1e293b; cursor: pointer; transform: ${isChildExpanded ? 'scale(1.2)' : 'scale(1)'}; transition: transform 0.2s;">
+                  ${childSatker.nama.slice(0, 2).toUpperCase()}
+                </div>
+              `,
             });
-          }
+
+            const childMarker = L.marker([childSatker.lat, childSatker.lng], {
+              icon: childIcon,
+            }).addTo(mapInstanceRef.current);
+
+            childMarker.bindTooltip(
+              `<strong>${childSatker.nama}</strong><br/>
+               <span style="font-size: 10px; color: ${childMatch ? '#059669' : '#d97706'};">
+                 ${childMatch ? '✓ Saldo Kas Klop' : '⚠️ Selisih: ' + formatRupiah(childSatker.selisih)}
+               </span>`,
+              { direction: "top", offset: [0, -14], opacity: 0.95 }
+            );
+
+            childMarker.on("click", (e: any) => {
+              L.DomEvent.stopPropagation(e);
+              setSelectedWilayah(w);
+              setSelectedSatker(childSatker);
+              setExpandedSatkerId(childSatker.id);
+            });
+
+            markersRef.current.push(childMarker);
+          });
         });
       }
 
@@ -1073,43 +1131,41 @@ export default function SatkerIndonesiaMap({
 
         {/* Filter Toolbar & Switch Mode */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Switch Mode: Lingkaran Wilayah Pengawasan K/L vs Titik Semua Satker */}
-          {isKLLevel && (
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shadow-2xs">
-              <button
-                onClick={() => {
-                  setViewMode("wilayah");
-                  setSelectedSatker(null);
-                }}
-                className={clsx(
-                  "px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
-                  viewMode === "wilayah"
-                    ? "bg-white text-blue-600 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                )}
-                title="Tampilkan Lingkaran Wilayah Pengawasan K/L"
-              >
-                <Radio className="w-3.5 h-3.5 text-blue-500" />
-                Lingkaran Wilayah K/L
-              </button>
-              <button
-                onClick={() => {
-                  setViewMode("satker");
-                  setSelectedWilayah(null);
-                }}
-                className={clsx(
-                  "px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
-                  viewMode === "satker"
-                    ? "bg-white text-blue-600 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                )}
-                title="Tampilkan Semua Titik Satker Se-Nusantara"
-              >
-                <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                Semua Titik Satker
-              </button>
-            </div>
-          )}
+          {/* Switch Mode: Lingkaran Wilayah Pengawasan vs Semua Penanda Satker */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shadow-2xs">
+            <button
+              onClick={() => {
+                setViewMode("wilayah");
+                setSelectedSatker(null);
+              }}
+              className={clsx(
+                "px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
+                viewMode === "wilayah"
+                  ? "bg-white text-blue-600 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+              title="Tampilkan Lingkaran Wilayah Pengawasan"
+            >
+              <Radio className="w-3.5 h-3.5 text-blue-500" />
+              Lingkaran Wilayah
+            </button>
+            <button
+              onClick={() => {
+                setViewMode("satker");
+                setSelectedWilayah(null);
+              }}
+              className={clsx(
+                "px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
+                viewMode === "satker"
+                  ? "bg-white text-blue-600 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+              title="Tampilkan Semua Penanda Satker Se-Nusantara"
+            >
+              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+              Semua Penanda Satker
+            </button>
+          </div>
 
           {/* Search Satker / Wilayah */}
           <div className="relative">
@@ -1127,13 +1183,17 @@ export default function SatkerIndonesiaMap({
           <div className="flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-slate-400" />
             <select
-              value={filterEselon}
+              value={currentSelectEselonValue}
               onChange={(e) => setFilterEselon(e.target.value)}
               className="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1E90FF] shadow-2xs"
             >
               <option value="all">Semua Eselon 1</option>
-              <option value="Dikti">Ditjen Pendidikan Tinggi</option>
-              <option value="Vokasi">Ditjen Pendidikan Vokasi</option>
+              <option value="Ditjen Dikti">Ditjen Pendidikan Tinggi (Dikti)</option>
+              <option value="Ditjen Vokasi">Ditjen Pendidikan Vokasi (Vokasi)</option>
+              <option value="Setjen">Sekretariat Jenderal (Setjen)</option>
+              <option value="Ditjen Risbang">Ditjen Riset & Pengembangan</option>
+              <option value="Ditjen Saintek">Ditjen Sains & Teknologi</option>
+              <option value="Itjen">Inspektorat Jenderal (Itjen)</option>
             </select>
           </div>
 
