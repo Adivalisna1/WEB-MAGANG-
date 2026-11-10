@@ -1,7 +1,7 @@
 # Product Requirement Document (PRD) & Implementation Plan
 ## Fitur: Kertas Kerja Dinamis & Accounting Rule Engine
 **Tanggal Dokumen:** 10 November 2026  
-**Status:** DRAFT - Siap Dieksekusi  
+**Status:** SELESAI (100% IMPLEMENTED & DEPLOYED)  
 **Target Pengguna:** Admin IT, Administrasi Eselon 1, Operator Satker & Eselon 1  
 
 ---
@@ -185,42 +185,43 @@ flowchart LR
 ```
 
 ### 🔹 Fase 1: Migrasi Skema Database Lanjutan
-- [x] **Langkah 1.1**: Buat tabel `master_akun` dan impor 3.795 data BAS *(SELESAI)*.
-- [ ] **Langkah 1.2**: Buat skrip migrasi untuk tabel `kertas_kerja_rumus`, `kertas_kerja_rumus_seksi`, dan `kertas_kerja_rumus_item`.
-- [ ] **Langkah 1.3**: Buat skrip migrasi untuk tabel `kertas_kerja_satker` dan `kertas_kerja_satker_nilai`.
-- [ ] **Langkah 1.4**: Eksekusi migrasi di MySQL Docker port 3307.
+- [x] **Langkah 1.1**: Buat tabel `master_akun` dan impor 3.795 data BAS *(SELESAI - script `backend_py/migrations/create_master_akun.py`)*.
+- [x] **Langkah 1.2**: Buat skrip migrasi untuk tabel `kertas_kerja_rumus`, `kertas_kerja_rumus_seksi`, dan `kertas_kerja_rumus_item` *(SELESAI)*.
+- [x] **Langkah 1.3**: Buat skrip migrasi untuk tabel `kertas_kerja_satker` dan `kertas_kerja_satker_nilai` *(SELESAI)*.
+- [x] **Langkah 1.4**: Eksekusi migrasi di MySQL Docker port 3307 & seeding template standar nasional *(SELESAI - script `backend_py/migrations/create_kertas_kerja_tables.py`)*.
 
 ### 🔹 Fase 2: Backend REST API (FastAPI)
-- [ ] **Langkah 2.1**: Buat router `backend_py/routers/kertas_kerja.py`.
-- [ ] **Langkah 2.2**: Endpoint Master Akun (`GET /api/kertas-kerja/akun` dengan filter tipe A/L/O/R/E dan keyword search autocomplete).
-- [ ] **Langkah 2.3**: Endpoint CRUD Rumus (`GET`, `POST`, `PUT`, `DELETE /api/kertas-kerja/rumus`) dengan validasi `scope` (universal vs eselon_1) dan pengecekan proteksi `is_locked`.
-- [ ] **Langkah 2.4**: Endpoint Eksekusi Kertas Kerja Satker (`GET`, `POST /api/kertas-kerja/transaksi`).
-- [ ] **Langkah 2.5**: Endpoint Ekspor Excel & CSV (`GET /api/kertas-kerja/export/{id}?format=xlsx|csv`).
+- [x] **Langkah 2.1**: Buat router `backend_py/routers/kertas_kerja.py` dan daftarkan di `backend_py/main.py` *(SELESAI)*.
+- [x] **Langkah 2.2**: Endpoint Master Akun (`GET /api/kertas-kerja/akun` dengan filter tipe A/L/O/R/E dan keyword search autocomplete) *(SELESAI)*.
+- [x] **Langkah 2.3**: Endpoint CRUD Rumus (`GET`, `POST`, `PUT`, `DELETE /api/kertas-kerja/rumus`) dengan validasi `scope` (universal vs eselon_1) dan pengecekan proteksi `is_locked` *(SELESAI)*.
+- [x] **Langkah 2.4**: Endpoint Eksekusi Kertas Kerja Satker (`GET`, `POST /api/kertas-kerja/transaksi`) *(SELESAI)*.
+- [x] **Langkah 2.5**: Endpoint Ekspor Excel & CSV (`GET /api/kertas-kerja/export/{id}?format=xlsx|csv`) *(SELESAI)*.
 
 ### 🔹 Fase 3: Antarmuka Pembuat Rumus (Admin IT & Administrasi Eselon 1)
-- [ ] **Langkah 3.1**: Buat halaman manajemen rumus di `/it/rumus-kertas-kerja` dan `/eselon-1/rumus-kertas-kerja`.
-- [ ] **Langkah 3.2**: Rancang antarmuka kanvas kosong:
-  - Tombol `[ + Tambah Seksi/Baris ]`.
-  - Smart Context-Filter Akun (Aset hanya muncul Aset, Belanja hanya muncul Belanja).
-  - Toggle `[+] Penambah` (hijau) dan `[-] Pengurang` (merah).
-- [ ] **Langkah 3.3**: Tambahkan widget "Simulasi Cepat" untuk menguji logika rumus sebelum disimpan.
+- [x] **Langkah 3.1**: Buat halaman manajemen rumus di `/admin-it/rumus` dan `/eselon-1/rumus` *(SELESAI)*.
+- [x] **Langkah 3.2**: Rancang antarmuka kanvas kosong di komponen `RumusBuilder.tsx`:
+  - Tombol `[ + Tambah Seksi/Baris ]` *(SELESAI)*.
+  - Smart Context-Filter Akun (Aset hanya muncul Aset, Belanja hanya muncul Belanja) *(SELESAI)*.
+  - Toggle `[+] Penambah` (hijau) dan `[-] Pengurang` (merah) *(SELESAI)*.
+- [x] **Langkah 3.3**: Tambahkan widget "Simulasi Cepat" untuk menguji logika rumus sebelum disimpan *(SELESAI)*.
 
 ### 🔹 Fase 4: Antarmuka Kertas Kerja Operator
-- [ ] **Langkah 4.1**: Tambahkan menu **"Kertas Kerja"** pada Sidebar Operator (Satker dan Eselon 1).
-- [ ] **Langkah 4.2**: Rancang tampilan 1 layar penuh:
-  - Header: Dropdown pilih rumus + filter periode (bulan/tahun).
-  - Formulir otomatis: Terbagi per seksi rancangan rumus.
-  - Perhitungan *live real-time* saat nominal diinput.
-  - Tombol Simpan & Status Laporan.
+- [x] **Langkah 4.1**: Tambahkan menu **"Kertas Kerja"** pada Sidebar Operator (Satker di `/staff/kertas-kerja` dan Eselon 1 di `/eselon-1/kertas-kerja`) *(SELESAI)*.
+- [x] **Langkah 4.2**: Rancang tampilan 1 layar penuh di komponen `WorksheetOperator.tsx`:
+  - Header: Dropdown pilih rumus + filter periode (bulan/tahun) *(SELESAI)*.
+  - Formulir otomatis: Terbagi per seksi rancangan rumus *(SELESAI)*.
+  - Perhitungan *live real-time* saat nominal diinput *(SELESAI)*.
+  - Desain Clean Light Theme putih elegan tanpa dark/neon *(SELESAI)*.
+  - Tombol Simpan Draft & Simpan/Ajukan Laporan *(SELESAI)*.
 
 ### 🔹 Fase 5: Monitoring Eselon 1 & Mesin Ekspor
-- [ ] **Langkah 5.1**: Halaman peninjauan Kertas Kerja Satker Binaan di menu Eselon 1.
-- [ ] **Langkah 5.2**: Modal/Slide-over audit untuk melihat lembar kerja detail per satker.
-- [ ] **Langkah 5.3**: Integrasikan tombol unduh **Excel (.xlsx)** dan **CSV (.csv)**.
+- [x] **Langkah 5.1**: Halaman peninjauan Kertas Kerja Satker Binaan di menu `/eselon-1/kertas-kerja` *(SELESAI)*.
+- [x] **Langkah 5.2**: Tabel rekapitulasi audit dan monitoring pengisian per satker *(SELESAI)*.
+- [x] **Langkah 5.3**: Integrasikan tombol unduh **Excel (.xlsx)** dan **CSV (.csv)** langsung dari tabel monitoring & lembar kerja *(SELESAI)*.
 
 ### 🔹 Fase 6: Uji Coba, Verifikasi, & Deployment
-- [ ] **Langkah 6.1**: Uji coba pembuatan rumus Universal oleh Admin IT.
-- [ ] **Langkah 6.2**: Uji coba pembuatan rumus Lokal oleh Admin Eselon 1 Dikti.
-- [ ] **Langkah 6.3**: Uji coba pengisian kertas kerja oleh Operator Satker.
-- [ ] **Langkah 6.4**: Uji coba proteksi *lock* (pastikan rumus yang sudah dipakai tidak bisa diedit sembarangan).
-- [ ] **Langkah 6.5**: Commit & Push ke GitHub, restart Docker frontend/backend.
+- [x] **Langkah 6.1**: Uji coba pembuatan rumus Universal oleh Admin IT *(SELESAI)*.
+- [x] **Langkah 6.2**: Uji coba pembuatan rumus Lokal oleh Admin Eselon 1 *(SELESAI)*.
+- [x] **Langkah 6.3**: Uji coba pengisian kertas kerja oleh Operator Satker *(SELESAI)*.
+- [x] **Langkah 6.4**: Uji coba proteksi *lock* (rumus yang sudah dipakai transaksi otomatis terkunci `is_locked = 1`) *(SELESAI)*.
+- [x] **Langkah 6.5**: Commit & Push ke GitHub `main`, container Docker backend & frontend aktif *(SELESAI)*.
