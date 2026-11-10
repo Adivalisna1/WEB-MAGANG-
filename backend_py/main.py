@@ -33,9 +33,10 @@ app.include_router(eselon_1.router, prefix="/api/eselon-1", tags=["eselon_1"])
 app.include_router(admin_it.router, prefix="/api/admin-it", tags=["admin_it"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(export.router)
-from routers import notifikasi, user
+from routers import notifikasi, user, kertas_kerja
 app.include_router(notifikasi.router, prefix="/api/notifikasi", tags=["notifikasi"])
 app.include_router(user.router, prefix="/api/user", tags=["user"])
+app.include_router(kertas_kerja.router)
 
 @app.on_event("startup")
 def run_startup_migrations():
