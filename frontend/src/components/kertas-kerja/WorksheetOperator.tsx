@@ -567,64 +567,64 @@ export default function WorksheetOperator({
             );
           })}
 
-          {/* KOTAK HASIL AKHIR & RINGKASAN REKONSILIASI KERTAS KERJA */}
-          <div className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-6 shadow-xl space-y-5">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          {/* KOTAK HASIL AKHIR & RINGKASAN REKONSILIASI KERTAS KERJA (LIGHT / WHITE THEME) */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-blue-300 font-bold block">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-blue-600 font-bold block">
                   KESIMPULAN PERHITUNGAN OTOMATIS
                 </span>
-                <h3 className="text-base font-bold text-white mt-0.5">
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">
                   Ringkasan Saldo Akhir Kertas Kerja
                 </h3>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-white border border-white/20">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                 Periode: {BULAN_NAMES[bulan - 1]} {tahun}
               </span>
             </div>
 
             {/* 4 Kotak Kalkulasi */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white/10 p-3.5 rounded-xl border border-white/10">
-                <span className="text-[10px] uppercase font-bold text-slate-300 block">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">
                   Saldo Awal
                 </span>
-                <p className="text-sm font-bold text-white mt-1 truncate">
+                <p className="text-sm font-bold text-slate-900 mt-1 truncate">
                   {formatRupiah(saldoAwal)}
                 </p>
               </div>
 
-              <div className="bg-emerald-500/20 p-3.5 rounded-xl border border-emerald-400/30">
-                <span className="text-[10px] uppercase font-bold text-emerald-300 block">
+              <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 block">
                   (+) Total Penambah
                 </span>
-                <p className="text-sm font-bold text-emerald-200 mt-1 truncate">
+                <p className="text-sm font-bold text-emerald-800 mt-1 truncate">
                   {formatRupiah(calculation.totalPenambah)}
                 </p>
               </div>
 
-              <div className="bg-rose-500/20 p-3.5 rounded-xl border border-rose-400/30">
-                <span className="text-[10px] uppercase font-bold text-rose-300 block">
+              <div className="bg-rose-50/60 p-3.5 rounded-xl border border-rose-200">
+                <span className="text-[10px] uppercase font-bold text-rose-700 block">
                   (-) Total Pengurang
                 </span>
-                <p className="text-sm font-bold text-rose-200 mt-1 truncate">
+                <p className="text-sm font-bold text-rose-800 mt-1 truncate">
                   {formatRupiah(calculation.totalPengurang)}
                 </p>
               </div>
 
-              <div className="bg-blue-600/50 p-3.5 rounded-xl border border-blue-400/40">
-                <span className="text-[10px] uppercase font-bold text-blue-200 block">
+              <div className="bg-blue-50 p-3.5 rounded-xl border border-blue-200">
+                <span className="text-[10px] uppercase font-bold text-blue-700 block">
                   (=) Saldo Akhir Kas
                 </span>
-                <p className="text-base font-extrabold text-white mt-0.5 truncate">
+                <p className="text-base font-extrabold text-blue-900 mt-0.5 truncate">
                   {formatRupiah(calculation.saldoAkhir)}
                 </p>
               </div>
             </div>
 
             {/* Catatan Kertas Kerja */}
-            <div className="space-y-1.5 pt-2 border-t border-white/10">
-              <label className="text-xs font-semibold text-slate-300 block">
+            <div className="space-y-1.5 pt-2 border-t border-slate-100">
+              <label className="text-xs font-semibold text-slate-700 block">
                 Catatan / Keterangan Tambahan Kertas Kerja (Opsional):
               </label>
               <textarea
@@ -632,7 +632,7 @@ export default function WorksheetOperator({
                 placeholder="Tuliskan catatan rekonsiliasi atau penjelasan perbedaan saldo jika ada..."
                 value={catatan}
                 onChange={(e) => setCatatan(e.target.value)}
-                className="w-full text-xs px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               />
             </div>
 
@@ -646,7 +646,7 @@ export default function WorksheetOperator({
                   type="button"
                   onClick={() => handleSave("draft")}
                   disabled={saving}
-                  className="px-4 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl transition-colors"
+                  className="px-4 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl transition-colors shadow-2xs"
                 >
                   Simpan Draft
                 </button>
@@ -654,7 +654,7 @@ export default function WorksheetOperator({
                   type="button"
                   onClick={() => handleSave("diajukan")}
                   disabled={saving}
-                  className="px-5 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md transition-colors flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   {saving ? "Memproses..." : "Simpan & Ajukan Kertas Kerja"}
