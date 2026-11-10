@@ -213,6 +213,29 @@ export default function Sidebar({
             {!isCollapsed && <span className="truncate">Dokumen</span>}
           </Link>
 
+          {/* Kertas Kerja */}
+          <Link
+            href="/staff/kertas-kerja"
+            className={clsx(
+              "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
+              pathname.startsWith("/staff/kertas-kerja")
+                ? "bg-[#475569] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
+              isCollapsed ? "justify-center" : "gap-3 w-full"
+            )}
+            title={isCollapsed ? "Kertas Kerja" : undefined}
+          >
+            <FileSpreadsheet
+              className={clsx(
+                "w-5 h-5 shrink-0",
+                pathname.startsWith("/staff/kertas-kerja")
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-slate-900"
+              )}
+            />
+            {!isCollapsed && <span className="truncate">Kertas Kerja</span>}
+          </Link>
+
           {/* Kas Parent Navigation + Accordion */}
           <div>
             <div

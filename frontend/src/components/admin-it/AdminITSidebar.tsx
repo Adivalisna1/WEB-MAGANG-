@@ -37,6 +37,7 @@ const TOP_MENU_ITEMS = [
   { href: "/admin-it/satker", label: "Manajemen Satker", icon: Building2 },
   { href: "/admin-it/users", label: "User Management", icon: Users },
   { href: "/admin-it/kategori", label: "Kategori Dokumen", icon: Tags },
+  { href: "/admin-it/rumus", label: "Rumus Kertas Kerja", icon: Scale },
 ];
 
 const KAS_SUB_MENU = [

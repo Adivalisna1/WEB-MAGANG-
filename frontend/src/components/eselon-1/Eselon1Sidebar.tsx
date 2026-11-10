@@ -29,6 +29,7 @@ import {
   FileSignature,
   CheckCheck,
   Scale,
+  Calculator,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -91,6 +92,16 @@ export default function Eselon1Sidebar({
       href: "/eselon-1/dokumen",
       icon: FileSearch,
       label: isOperator ? "Dokumen Satker" : "Verifikasi Dokumen",
+    },
+    {
+      href: "/eselon-1/kertas-kerja",
+      icon: FileSpreadsheet,
+      label: "Kertas Kerja",
+    },
+    {
+      href: "/eselon-1/rumus",
+      icon: Calculator,
+      label: "Rumus Kertas Kerja",
     },
   ];
 
