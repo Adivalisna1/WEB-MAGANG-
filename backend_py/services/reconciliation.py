@@ -60,14 +60,29 @@ KATEGORI_PATTERNS = [
 def parse_indonesian_number(val_str: str) -> Optional[float]:
     """
     Mengubah representasi string angka (misal '12.345.678,90' atau '12,345,678.90')
-    menjadi float murni.
+    menjadi float murni dengan penanganan noise hasil scan/OCR.
     """
     if not val_str:
         return None
-    s = val_str.strip().replace("Rp", "").replace("IDR", "").replace("rp", "").strip()
+    s = str(val_str).strip()
+    # Bersihkan prefix mata uang dan variasi noise OCR (misal: 'Pp', 'Bp', 'RP', 'Rp:', 'KD', 'IDR')
+    s = re.sub(r"^(?:Rp\.?|Pp\.?|Bp\.?|KD\.?|IDR|rp\.?)\s*[:=]?\s*", "", s, flags=re.IGNORECASE)
+    s = s.replace("Rp", "").replace("IDR", "").replace("rp", "").strip()
+    
     # Hapus spasi antar angka akibat hasil scan/OCR (misal '29,136, 656,982. 94')
     s = re.sub(r"(?<=\d)\s+(?=\d)", "", s)
     s = re.sub(r"(?<=[,\.])\s+(?=\d)", "", s)
+    s = re.sub(r"(?<=\d)\s+(?=[,\.])", "", s)
+    
+    # Perbaiki huruf yang sering tertukar dengan angka pada OCR scan/print:
+    # 'O' atau 'o' diapit angka atau tanda baca -> '0'
+    s = re.sub(r"(?<=\d)[Oo](?=\d)", "0", s)
+    s = re.sub(r"(?<=[,\.])[Oo](?=\d)", "0", s)
+    s = re.sub(r"(?<=\d)[Oo](?=[,\.])", "0", s)
+    # 'l' atau 'I' diapit angka -> '1'
+    s = re.sub(r"(?<=\d)[lI](?=\d)", "1", s)
+    # 'S' atau 's' diapit angka -> '5'
+    s = re.sub(r"(?<=\d)[Ss](?=\d)", "5", s)
     
     # Deteksi format: 12.345.678,90 (Indonesia) vs 12,345,678.90 (Internasional)
     if "." in s and "," in s:
@@ -120,7 +135,7 @@ def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional
     # 2. Prioritas 1: Cari nomor rekening yang secara spesifik berlabel Satker / Sub-Account / Giro / Operasional
     detected_rek = None
     satker_rek_match = re.search(
-        r"(?:No\.?\s*(?:Rek(?:ening)?|Account)?\s*(?:Satker|Anak|Giro|Operasional|Unit|Pengeluaran|Penerimaan|Sub-Account)|Sub-Account(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
+        r"(?:N[oa]\.?\s*(?:Rek(?:ening)?|Account)?\s*(?:Satker|Anak|Giro|Operasional|Unit|Pengeluaran|Penerimaan|Sub-Account)|Sub-Account(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
         text,
         re.IGNORECASE
     )
@@ -132,7 +147,7 @@ def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional
     # 3. Prioritas 2: Cari semua nomor rekening dan pastikan BUKAN nomor rekening induk
     if not detected_rek:
         all_rek_matches = re.findall(
-            r"(?:No\.?\s*(?:Rekening|Rek|Account)|Rekening|Acc(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
+            r"(?:(?:N[oa]\.?|Nomor|Nomer|Nr\.?)\s*(?:Rekening|Rek|Account)|Rekening|Acc(?:\s*No)?\.?)[:\s]+([0-9\s\-]{8,25})",
             text,
             re.IGNORECASE
         )
@@ -159,14 +174,14 @@ def extract_bank_info(text: str) -> Tuple[Optional[str], Optional[str], Optional
     # 5. Deteksi Nama Rekening / Account Name / Atas Nama
     detected_nama_rek = None
     nm_match = re.search(
-        r"(?:Nama\s*(?:Rekening|Rek|Giro|Akun|Pemilik)|Account\s*Name|A/?N|Atas\s*Nama)[:\s]+([A-Za-z0-9\s\.\,\-\/\&]{3,60})",
+        r"(?:Nama\s*(?:Rekening|Rek|Giro|Akun|Pemilik)|Account\s*Name|\b(?:A\s*/\s*N|Atas\s*Nama)\b)[:\s]+([A-Za-z0-9\s\.\,\-\/\&]{3,60})",
         text,
         re.IGNORECASE
     )
     if nm_match:
         cand_nm = nm_match.group(1).strip().split("\n")[0].strip()
         # Bersihkan jika terdapat kata kunci header
-        if cand_nm and not any(w in cand_nm.upper() for w in ["IDR", "RUPIAH", "INDONESIA", "PERIODE", "TANGGAL", "NOMOR"]):
+        if cand_nm and not any(w in cand_nm.upper() for w in ["IDR", "RUPIAH", "INDONESIA", "PERIODE", "TANGGAL", "NOMOR", "STATEMENT", "KORAN"]):
             detected_nama_rek = cand_nm
 
     # 6. Deteksi dari Kode Bank 3 digit (misal: BPG 008, RPL 009, Kode Bank : 008, Bank Code : 451)
@@ -261,7 +276,7 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         # "Closing Balance 0.00" atau "Closing Balance : 0.00"
         # "Ending Balance : 12,345,678.00"
         explicit_m = re.search(
-            r"(?:Saldo\s+Akhir|Ending\s+Balance|Closing\s+Balance)(?:\s*\([^)]*\))?\s*[:\s=]+(?:(?:IDR|Rp\.?)\s*)?([0-9\.,\s]+)",
+            r"(?:Saldo\s+(?:Akhir|Penutupan|Buku|Bank|Kas|Akun)|Ending\s+Balance|Closing\s+Balance)(?:\s*\([^)]*\))?\s*[:\s=]+(?:(?:IDR|Rp\.?|Pp\.?|Bp\.?)\s*)?([0-9\.,\s]+)",
             text,
             re.IGNORECASE
         )
@@ -453,6 +468,120 @@ def extract_chronological_closing_balance(pages_text: List[str], tables_data: Li
         
     return None
 
+def preprocess_image_for_ocr(pil_img: Any) -> Any:
+    """
+    Optimalisasi gambar hasil scan / foto kamera / printout agar teks dan angka tajam dan terbaca sempurna oleh Tesseract OCR.
+    1. Konversi ke mode RGB jika RGBA/P, lalu Grayscale (L).
+    2. Upscale resolusi jika ukuran kecil (< 1800px) menggunakan interpolasi Lanczos.
+    3. Tingkatkan kontras (contrast enhance) agar teks hitam di atas kertas pudar/stempel menjadi jelas.
+    4. Pertajam font (sharpness filter) agar pemisah ribuan titik/koma tegas.
+    """
+    try:
+        from PIL import Image, ImageEnhance, ImageFilter
+
+        if not hasattr(pil_img, "convert"):
+            return pil_img
+
+        if pil_img.mode not in ("RGB", "L"):
+            pil_img = pil_img.convert("RGB")
+
+        # 1. Konversi ke Grayscale
+        gray = pil_img.convert("L")
+
+        # 2. Upscaling jika resolusi rendah (standar scan print butuh >= 1800px untuk angka 8-10pt)
+        w, h = gray.size
+        if w < 1800 or h < 1800:
+            scale = max(2.0, 1800.0 / max(w, h))
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            gray = gray.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        # 3. Enhance Contrast (1.8x)
+        enhancer = ImageEnhance.Contrast(gray)
+        contrasted = enhancer.enhance(1.8)
+
+        # 4. Sharpen font
+        sharpened = contrasted.filter(ImageFilter.SHARPEN)
+        return sharpened
+    except Exception as e:
+        print(f"[PREPROCESS OCR ERROR] {e}")
+        return pil_img
+
+def ocr_image_to_text(pil_img: Any) -> str:
+    """
+    Mengekstrak teks dari gambar menggunakan Tesseract OCR dengan preprocessing otomatis.
+    Mendukung bahasa Indonesia ('ind') dan Inggris ('eng').
+    """
+    try:
+        import pytesseract
+        prep = preprocess_image_for_ocr(pil_img)
+        # Coba dengan gabungan ind+eng
+        try:
+            text = pytesseract.image_to_string(prep, lang="ind+eng")
+        except Exception:
+            text = pytesseract.image_to_string(prep, lang="eng")
+        return text or ""
+    except Exception as e:
+        print(f"[OCR ERROR] {e}")
+        return ""
+
+def extract_from_image(file_source: Any, filename: str = "") -> Dict[str, Any]:
+    """
+    Mengekstrak data rekening koran / dokumen langsung dari file gambar (JPG, JPEG, PNG, WEBP, BMP).
+    Menggunakan OCR resolusi tinggi dengan image enhancement.
+    """
+    try:
+        from PIL import Image
+        if isinstance(file_source, bytes):
+            img = Image.open(io.BytesIO(file_source))
+        elif hasattr(file_source, "read"):
+            if hasattr(file_source, "seek"):
+                file_source.seek(0)
+            img = Image.open(file_source)
+        else:
+            img = Image.open(file_source)
+    except Exception as e:
+        return {"success": False, "error": f"Gagal membuka berkas gambar: {str(e)}"}
+
+    full_text = ocr_image_to_text(img).strip()
+    combined_search_text = f"{filename}\n{full_text}" if filename else full_text
+
+    meta = extract_metadata_from_text(combined_search_text)
+    bank, rek, nama_rek = extract_bank_info(combined_search_text)
+
+    # Jika terdeteksi bank atau nomor rekening dan ada saldo, default ke Rekening_koran jika masih Lainnya
+    if meta["kategori"] == "Lainnya" and (bank or rek or meta["nominal"] is not None):
+        meta["kategori"] = "Rekening_koran"
+
+    lines = [line.strip() for line in full_text.split("\n") if len(line.strip()) > 5]
+    first_title = lines[0] if lines else os.path.splitext(filename)[0].replace("_", " ")
+    if len(first_title) > 90:
+        first_title = first_title[:87] + "..."
+
+    has_data = (meta["nominal"] is not None) or (bank is not None) or (rek is not None)
+
+    return {
+        "success": True,
+        "judul": first_title,
+        "tahun": meta["tahun"],
+        "semester": meta["semester"],
+        "bulan": meta["bulan"],
+        "kategori": meta["kategori"],
+        "nominal": meta["nominal"],
+        "bank": bank,
+        "nomor_rekening": rek,
+        "nama_rekening": nama_rek,
+        "tanggal_surat": meta.get("tanggal_surat"),
+        "nama_debitur": meta.get("nama_debitur"),
+        "dasar_temuan": meta.get("dasar_temuan"),
+        "deskripsi": f"Hasil ekstraksi OCR foto/scan {meta['kategori']} Tahun {meta['tahun']}" + (f" - {bank}" if bank else ""),
+        "confidence": "high" if has_data else "medium",
+        "raw_text_snippet": full_text[:400],
+        "is_scanned_image": True,
+        "is_ocr": True,
+        "warning": None if has_data else "Teks pada gambar foto/scan print kurang jelas. Mohon periksa dan lengkapi isian formulir jika perlu."
+    }
+
 def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
     """
     Mengekstrak teks, tabel, saldo akhir (berurutan tanggal & waktu), dan metadata dari file PDF.
@@ -486,34 +615,57 @@ def extract_from_pdf(file_source: Any, filename: str = "") -> Dict[str, Any]:
 
     # Deteksi apakah PDF berupa scan gambar (JPG, JPEG, PNG) tanpa teks digital yang bisa dibaca
     is_scanned_image = False
+    is_ocr = False
     warning_msg = None
     if len(full_text) < 30 and (has_images or total_pages > 0):
-        # Jalankan OCR Tesseract untuk membaca teks langsung dari lembaran foto scan di PDF
+        # Jalankan OCR Tesseract beresolusi tinggi dengan pypdfium2 / pdfplumber
         ocr_texts = []
         try:
-            import pytesseract
-            from PIL import Image
+            import pypdfium2
+            if hasattr(file_source, "seek"):
+                file_source.seek(0)
+            doc = pypdfium2.PdfDocument(file_source)
+            num_pages = len(doc)
+            if num_pages <= 6:
+                target_indices = list(range(num_pages))
+            else:
+                target_indices = [0, 1, 2, num_pages - 2, num_pages - 1]
 
-            with pdfplumber.open(file_source) as ocr_pdf:
-                # Ambil halaman scan (maksimal 6 halaman: depan & belakang laporan)
-                target_pages = ocr_pdf.pages if len(ocr_pdf.pages) <= 6 else [ocr_pdf.pages[0], ocr_pdf.pages[1], ocr_pdf.pages[-2], ocr_pdf.pages[-1]]
-                for p in target_pages:
-                    if hasattr(p, 'images') and len(p.images) > 0:
-                        raw_b = p.images[0]['stream'].get_rawdata()
-                        img = Image.open(io.BytesIO(raw_b))
-                        t = pytesseract.image_to_string(img, lang='ind+eng')
-                        if t and len(t.strip()) > 10:
-                            ocr_texts.append(t)
-        except Exception:
-            pass
+            for idx in target_indices:
+                try:
+                    pil_page = doc[idx].render(scale=2.0).to_pil()
+                    txt = ocr_image_to_text(pil_page)
+                    if txt and len(txt.strip()) > 10:
+                        ocr_texts.append(txt)
+                except Exception as ex_page:
+                    print(f"[OCR PAGE {idx} ERROR] {ex_page}")
+        except Exception as e_pdfium:
+            print(f"[PYPDFIUM2 OCR ERROR] {e_pdfium}")
+            try:
+                from PIL import Image
+                if hasattr(file_source, "seek"):
+                    file_source.seek(0)
+                with pdfplumber.open(file_source) as ocr_pdf:
+                    target_pages = ocr_pdf.pages if len(ocr_pdf.pages) <= 6 else [ocr_pdf.pages[0], ocr_pdf.pages[1], ocr_pdf.pages[-2], ocr_pdf.pages[-1]]
+                    for p in target_pages:
+                        if hasattr(p, 'images') and len(p.images) > 0:
+                            raw_b = p.images[0]['stream'].get_rawdata()
+                            img = Image.open(io.BytesIO(raw_b))
+                            t = ocr_image_to_text(img)
+                            if t and len(t.strip()) > 10:
+                                ocr_texts.append(t)
+            except Exception:
+                pass
 
         if ocr_texts:
             full_text = "\n".join(ocr_texts).strip()
             pages_text = ocr_texts
             combined_search_text = f"{filename}\n{full_text}" if filename else full_text
+            is_scanned_image = True
+            is_ocr = True
         else:
             is_scanned_image = True
-            warning_msg = "Dokumen PDF terdeteksi berupa hasil scan atau gambar tanpa teks digital. Sistem tidak dapat membaca data secara otomatis, mohon isi formulir secara manual."
+            warning_msg = "Dokumen PDF terdeteksi berupa hasil scan atau gambar tanpa teks yang terbaca. Mohon periksa kembali isian formulir."
 
     meta = extract_metadata_from_text(combined_search_text)
     bank, rek, nama_rek = extract_bank_info(combined_search_text)
@@ -675,20 +827,8 @@ def scan_uploaded_file(file_bytes: bytes, filename: str) -> Dict[str, Any]:
         result = extract_from_pdf(stream, filename=filename)
     elif ext in [".xlsx", ".xls"]:
         result = extract_from_excel(stream)
-    elif ext in [".jpg", ".jpeg", ".png"]:
-        result = {
-            "success": True,
-            "judul": os.path.splitext(filename)[0].replace("_", " "),
-            "tahun": 2026,
-            "kategori": "Lainnya",
-            "nominal": None,
-            "bank": None,
-            "nomor_rekening": None,
-            "nama_rekening": None,
-            "confidence": "low",
-            "is_scanned_image": True,
-            "warning": "Dokumen berupa gambar (JPG/PNG). Sistem tidak dapat membaca data secara otomatis, mohon isi formulir secara manual."
-        }
+    elif ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]:
+        result = extract_from_image(stream, filename=filename)
     else:
         # Fallback text scan
         result = {
