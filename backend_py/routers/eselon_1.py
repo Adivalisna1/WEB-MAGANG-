@@ -233,6 +233,45 @@ async def get_users(
         rows = cursor.fetchall()
         return {"success": True, "data": rows}
 
+def _format_dokumen_row(r: dict) -> dict:
+    if not r:
+        return r
+    t_date = r.get("tenggat_waktu")
+    if t_date:
+        if isinstance(t_date, (datetime.date, datetime.datetime)):
+            d_val = t_date if isinstance(t_date, datetime.date) else t_date.date()
+            diff = (d_val - datetime.date.today()).days
+            r["tenggat_waktu"] = str(d_val)
+            r["sisa_hari_piutang"] = diff
+            if r.get("status_piutang") == "lunas":
+                r["aging_status"] = "lunas"
+            elif diff < 0:
+                r["aging_status"] = "lewat_jatuh_tempo"
+            elif diff <= 30:
+                r["aging_status"] = "mendekati_jatuh_tempo"
+            else:
+                r["aging_status"] = "lancar"
+        elif isinstance(t_date, str):
+            try:
+                d_val = datetime.date.fromisoformat(t_date[:10])
+                diff = (d_val - datetime.date.today()).days
+                r["sisa_hari_piutang"] = diff
+                if r.get("status_piutang") == "lunas":
+                    r["aging_status"] = "lunas"
+                elif diff < 0:
+                    r["aging_status"] = "lewat_jatuh_tempo"
+                elif diff <= 30:
+                    r["aging_status"] = "mendekati_jatuh_tempo"
+                else:
+                    r["aging_status"] = "lancar"
+            except Exception:
+                r["sisa_hari_piutang"] = None
+                r["aging_status"] = None
+    else:
+        r["sisa_hari_piutang"] = None
+        r["aging_status"] = None
+    return r
+
 @router.get("/dokumen")
 async def get_dokumen(
     status: Optional[str] = None,
@@ -256,7 +295,7 @@ async def get_dokumen(
         
     with db.cursor(dictionary=True) as cursor:
         sql_dok = (
-            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.nama_debitur, d.dasar_temuan, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.tenggat_waktu, d.status_piutang, d.nama_rekening, d.nama_debitur, d.dasar_temuan, "
             "       d.tahun, d.bulan, d.semester, d.nomor_laporan, d.status, d.catatan, d.file_nama, "
             "       d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
             "       k.nama AS kategori, k.slug AS kategori_slug, u.nama AS uploaded_by, u.username AS uploaded_username, "
@@ -271,7 +310,8 @@ async def get_dokumen(
         )
         cursor.execute(sql_dok, tuple(params + [limit]))
         rows = cursor.fetchall()
-        return {"success": True, "data": rows}
+        formatted_rows = [_format_dokumen_row(r) for r in rows]
+        return {"success": True, "data": formatted_rows}
 
 @router.get("/dokumen/menunggu")
 async def get_dokumen_menunggu(
@@ -288,7 +328,7 @@ async def get_dokumen_menunggu(
         
     with db.cursor(dictionary=True) as cursor:
         sql_wait = (
-            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.nama_debitur, d.dasar_temuan, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.tenggat_waktu, d.status_piutang, d.nama_rekening, d.nama_debitur, d.dasar_temuan, "
             "       d.tahun, d.bulan, d.semester, d.nomor_laporan, "
             "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, d.file_mime, "
             "       d.nilai_rekening_koran, d.nilai_excel, d.created_at, d.updated_at, "
@@ -304,7 +344,8 @@ async def get_dokumen_menunggu(
         )
         cursor.execute(sql_wait, tuple(params))
         rows = cursor.fetchall()
-        return {"success": True, "data": rows}
+        formatted_rows = [_format_dokumen_row(r) for r in rows]
+        return {"success": True, "data": formatted_rows}
 
 @router.patch("/users/{user_id}/toggle")
 async def toggle_user_active(

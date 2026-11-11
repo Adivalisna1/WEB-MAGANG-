@@ -79,6 +79,8 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
   const [namaBank,    setNamaBank]    = useState('');
   const [nomorRekening, setNomorRekening] = useState('');
   const [tanggalSurat, setTanggalSurat] = useState('');
+  const [tenggatWaktu, setTenggatWaktu] = useState('');
+  const [statusPiutang, setStatusPiutang] = useState('belum_lunas');
   const [namaRekening, setNamaRekening] = useState('');
   const [namaDebitur,  setNamaDebitur]  = useState('');
   const [dasarTemuan,  setDasarTemuan]  = useState('');
@@ -474,6 +476,8 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
       if (namaBank) fd.append('nama_bank', namaBank);
       if (nomorRekening) fd.append('nomor_rekening', nomorRekening);
       if (tanggalSurat) fd.append('tanggal_surat', tanggalSurat);
+      if (tenggatWaktu) fd.append('tenggat_waktu', tenggatWaktu);
+      if (statusPiutang) fd.append('status_piutang', statusPiutang);
       if (namaDebitur) fd.append('nama_debitur', namaDebitur);
       if (dasarTemuan) fd.append('dasar_temuan', dasarTemuan);
 
@@ -1089,13 +1093,25 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                           className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-mono"
                         />
                       </div>
-                      <div className="sm:col-span-2">
+                      <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Penetapan SK</label>
                         <input
                           type="date"
                           value={tanggalSurat}
                           onChange={e => setTanggalSurat(e.target.value)}
                           className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-rose-700 mb-1 flex items-center justify-between">
+                          <span>Tenggat Waktu (Jatuh Tempo) <span className="text-rose-500">*</span></span>
+                          <span className="text-[10px] text-slate-400 font-normal">Batas Pelunasan</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={tenggatWaktu}
+                          onChange={e => setTenggatWaktu(e.target.value)}
+                          className="w-full px-3 py-2 text-xs border border-rose-300 rounded-lg bg-white focus:ring-rose-500 font-semibold text-slate-800"
                         />
                       </div>
                     </div>

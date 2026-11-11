@@ -182,6 +182,45 @@ async def get_dokumen_publik(
         "meta": {"total": total, "page": page, "limit": limit, "totalPages": math.ceil(total / limit)}
     }
 
+def _format_dokumen_row(r: dict) -> dict:
+    if not r:
+        return r
+    t_date = r.get("tenggat_waktu")
+    if t_date:
+        if isinstance(t_date, (datetime.date, datetime.datetime)):
+            d_val = t_date if isinstance(t_date, datetime.date) else t_date.date()
+            diff = (d_val - datetime.date.today()).days
+            r["tenggat_waktu"] = str(d_val)
+            r["sisa_hari_piutang"] = diff
+            if r.get("status_piutang") == "lunas":
+                r["aging_status"] = "lunas"
+            elif diff < 0:
+                r["aging_status"] = "lewat_jatuh_tempo"
+            elif diff <= 30:
+                r["aging_status"] = "mendekati_jatuh_tempo"
+            else:
+                r["aging_status"] = "lancar"
+        elif isinstance(t_date, str):
+            try:
+                d_val = datetime.date.fromisoformat(t_date[:10])
+                diff = (d_val - datetime.date.today()).days
+                r["sisa_hari_piutang"] = diff
+                if r.get("status_piutang") == "lunas":
+                    r["aging_status"] = "lunas"
+                elif diff < 0:
+                    r["aging_status"] = "lewat_jatuh_tempo"
+                elif diff <= 30:
+                    r["aging_status"] = "mendekati_jatuh_tempo"
+                else:
+                    r["aging_status"] = "lancar"
+            except Exception:
+                r["sisa_hari_piutang"] = None
+                r["aging_status"] = None
+    else:
+        r["sisa_hari_piutang"] = None
+        r["aging_status"] = None
+    return r
+
 @router.get("/all")
 async def get_all_dokumen(
     status: Optional[str] = None,
@@ -240,7 +279,7 @@ async def get_all_dokumen(
         
     with db.cursor(dictionary=True) as cursor:
         query = (
-            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.nama_rekening, d.nama_debitur, d.dasar_temuan, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
+            "SELECT d.id, d.judul, d.nama_bank, d.nomor_rekening, d.tanggal_surat, d.tenggat_waktu, d.status_piutang, d.nama_rekening, d.nama_debitur, d.dasar_temuan, d.tahun, d.bulan, d.semester, d.nomor_laporan, "
             "       d.status, d.catatan, d.catatan_oleh, d.file_nama, d.file_size, "
             "       d.download_count, d.is_public, d.created_at, d.updated_at, "
             "       d.nilai_rekening_koran, d.nilai_excel, "
@@ -268,9 +307,10 @@ async def get_all_dokumen(
         cursor.execute(sql_count, tuple(params))
         total = cursor.fetchone()["total"]
         
+    formatted_rows = [_format_dokumen_row(r) for r in rows]
     return {
         "success": True,
-        "data": rows,
+        "data": formatted_rows,
         "meta": {"total": total, "page": page, "limit": limit, "totalPages": math.ceil(total / limit)}
     }
 
@@ -291,6 +331,8 @@ async def upload_dokumen(
     nama_rekening: Optional[str] = Form(None),
     nama_debitur: Optional[str] = Form(None),
     dasar_temuan: Optional[str] = Form(None),
+    tenggat_waktu: Optional[str] = Form(None),
+    status_piutang: Optional[str] = Form("belum_lunas"),
     file: Optional[UploadFile] = File(None),
     temp_gdrive_filename: Optional[str] = Form(None),
     link_drive: Optional[str] = Form(None),
@@ -359,6 +401,18 @@ async def upload_dokumen(
         except Exception:
             tgl_surat_final = None
 
+    # Validasi format tenggat_waktu (jatuh tempo piutang) jika dikirim
+    tgl_tenggat_final = None
+    if tenggat_waktu and str(tenggat_waktu).strip():
+        try:
+            tgl_tenggat_final = str(tenggat_waktu).strip()[:10]
+        except Exception:
+            tgl_tenggat_final = None
+
+    status_piutang_final = "belum_lunas"
+    if status_piutang and str(status_piutang).strip() in ["belum_lunas", "proses_cicilan", "lunas"]:
+        status_piutang_final = str(status_piutang).strip()
+
     if is_surat_rek:
         nilai_rekening_koran = None
         nilai_excel = None
@@ -400,21 +454,21 @@ async def upload_dokumen(
         try:
             cursor.execute("""
                 INSERT INTO dokumen
-                 (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
+                 (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, tenggat_waktu, status_piutang, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
                   file_nama, file_path, file_size, file_mime, status, is_public,
                   nilai_rekening_koran, nilai_excel, link_drive)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
-            """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
+            """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, tgl_tenggat_final, status_piutang_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
                   filename, r2_key, file_size, file_mime, status_awal,
                   nilai_rekening_koran, nilai_excel, link_drive))
         except Exception:
             cursor.execute("""
                 INSERT INTO dokumen
-                 (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
+                 (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, tenggat_waktu, status_piutang, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
                   file_nama, file_path, file_size, file_mime, status, is_public,
                   nilai_rekening_koran, nilai_excel)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
-            """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+            """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, tgl_tenggat_final, status_piutang_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
                   filename, r2_key, file_size, file_mime, status_awal,
                   nilai_rekening_koran, nilai_excel))
         insert_id = cursor.lastrowid
@@ -438,7 +492,8 @@ async def upload_dokumen(
             """, (satker_target_id,))
             if is_sk_piutang:
                 nom_str = f"Rp {int(nilai_rekening_koran):,}".replace(",", ".") if nilai_rekening_koran else "-"
-                notif_msg = f"Pengajuan SK Piutang baru \"{judul}\" (Debitur: {nama_debitur or '-'}, Dasar: {dasar_temuan or '-'}, Nominal: {nom_str}) siap ditinjau dan disahkan Eselon 1"
+                tenggat_info = f", Jatuh Tempo: {tgl_tenggat_final}" if tgl_tenggat_final else ""
+                notif_msg = f"Pengajuan SK Piutang baru \"{judul}\" (Debitur: {nama_debitur or '-'}, Dasar: {dasar_temuan or '-'}, Nominal: {nom_str}{tenggat_info}) siap ditinjau dan disahkan Eselon 1"
             else:
                 surat_label = "Pembukaan" if kat_row.get("slug") == "surat-pembukaan-rekening-koran" else "Penutupan"
                 notif_msg = f"Pengajuan Surat {surat_label} Rekening Koran ({nama_bank or 'Bank'} - {nomor_rekening or '-'}) siap ditinjau dan disetujui"
@@ -1509,6 +1564,50 @@ async def batch_save_dokumen(
         "message": f"Berhasil menyimpan {len(saved_items)} berkas sekaligus!",
         "saved_count": len(saved_items)
     }
+
+class UpdateStatusPiutangPayload(BaseModel):
+    status_piutang: str
+    catatan: Optional[str] = None
+
+@router.patch("/{id}/status-piutang")
+async def update_status_piutang(
+    id: int,
+    payload: UpdateStatusPiutangPayload,
+    user: dict = Depends(get_current_user),
+    db=Depends(get_db)
+):
+    valid_status = ["belum_lunas", "proses_cicilan", "lunas"]
+    status_clean = payload.status_piutang.strip().lower()
+    if status_clean not in valid_status:
+        raise HTTPException(400, f"Status piutang tidak valid. Pilihan: {', '.join(valid_status)}")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT id, judul, status_piutang, uploaded_by FROM dokumen WHERE id = %s", (id,))
+        dok = cursor.fetchone()
+        if not dok:
+            raise HTTPException(404, "Dokumen tidak ditemukan")
+
+        cursor.execute("""
+            UPDATE dokumen
+            SET status_piutang = %s, updated_at = NOW()
+            WHERE id = %s
+        """, (status_clean, id))
+        db.commit()
+
+        # Kirim notifikasi jika status berubah menjadi lunas
+        if status_clean == "lunas":
+            await buat_notifikasi(
+                db, dok["uploaded_by"], "audit_lolos", dok["judul"],
+                f"Piutang pada SK \"{dok['judul']}\" telah dinyatakan LUNAS.",
+                id
+            )
+
+    return {
+        "success": True,
+        "message": f"Status piutang dokumen #{id} berhasil diubah menjadi '{status_clean}'",
+        "data": {"id": id, "status_piutang": status_clean}
+    }
+
 
 
 

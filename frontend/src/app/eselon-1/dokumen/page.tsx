@@ -31,6 +31,10 @@ interface Dokumen {
   nama_rekening?: string;
   nama_debitur?: string | null;
   dasar_temuan?: string | null;
+  tenggat_waktu?: string | null;
+  status_piutang?: 'belum_lunas' | 'proses_cicilan' | 'lunas' | string;
+  sisa_hari_piutang?: number | null;
+  aging_status?: 'lancar' | 'mendekati_jatuh_tempo' | 'lewat_jatuh_tempo' | 'lunas' | null;
   catatan: string | null;
   uploaded_by: string;
   uploaded_username?: string;
@@ -403,6 +407,30 @@ export default function KetuaDokumenPage() {
                           </span>
                         </div>
                       )}
+                      {dok.tenggat_waktu && (
+                        <div className="flex items-center gap-2 mt-1.5 text-xs flex-wrap">
+                          <span className="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium">
+                            Jatuh Tempo: <strong>{new Date(dok.tenggat_waktu).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                          </span>
+                          {dok.status_piutang === 'lunas' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                              ✓ Lunas
+                            </span>
+                          ) : dok.aging_status === 'lewat_jatuh_tempo' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 animate-pulse">
+                              ⚠ Lewat Jatuh Tempo ({Math.abs(dok.sisa_hari_piutang || 0)} hari)
+                            </span>
+                          ) : dok.aging_status === 'mendekati_jatuh_tempo' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              ⏱ Sisa {dok.sisa_hari_piutang} hari lagi
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              ● Lancar (Sisa {dok.sisa_hari_piutang} hari)
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {(dok.nama_bank || dok.nomor_rekening) && (
                         <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-700 flex-wrap">
                           <span className="bg-slate-100 text-slate-800 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium">
@@ -493,7 +521,30 @@ export default function KetuaDokumenPage() {
                     <td className="px-5 py-3 text-gray-500 text-xs">
                       {dok.nomor_laporan ?? <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-5 py-3 text-gray-600">{dok.kategori}</td>
+                    <td className="px-5 py-3 text-gray-600">
+                      <div>{dok.kategori}</div>
+                      {dok.tenggat_waktu && (
+                        <div className="mt-1">
+                          {dok.status_piutang === 'lunas' ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                              ✓ Lunas
+                            </span>
+                          ) : dok.aging_status === 'lewat_jatuh_tempo' ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 animate-pulse" title={`Jatuh tempo: ${dok.tenggat_waktu}`}>
+                              ⚠ Lewat ({Math.abs(dok.sisa_hari_piutang || 0)} hr)
+                            </span>
+                          ) : dok.aging_status === 'mendekati_jatuh_tempo' ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title={`Jatuh tempo: ${dok.tenggat_waktu}`}>
+                              ⏱ Sisa {dok.sisa_hari_piutang} hr
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Jatuh tempo: ${dok.tenggat_waktu}`}>
+                              ● Lancar ({dok.sisa_hari_piutang} hr)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-gray-600">{periodeLabel(dok)}</td>
                     <td className="px-5 py-3">
                       <div className="flex flex-col">

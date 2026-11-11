@@ -30,6 +30,12 @@ interface Dokumen {
   catatan: string | null;
   catatan_oleh: string | null;
   periode?: string;
+  tenggat_waktu?: string | null;
+  status_piutang?: 'belum_lunas' | 'proses_cicilan' | 'lunas' | string;
+  sisa_hari_piutang?: number | null;
+  aging_status?: 'lancar' | 'mendekati_jatuh_tempo' | 'lewat_jatuh_tempo' | 'lunas' | null;
+  nama_debitur?: string | null;
+  dasar_temuan?: string | null;
 }
 
 const statusConfig: Record<string, { label: string; badgeClass: string; step: number }> = {
@@ -506,6 +512,27 @@ export default function StaffDokumenPage() {
                         </td>
                         <td>
                           <span className="staff-category-pill">{dok.kategori || '-'}</span>
+                          {dok.tenggat_waktu && (
+                            <div className="mt-1">
+                              {dok.status_piutang === 'lunas' ? (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                  ✓ Lunas
+                                </span>
+                              ) : dok.aging_status === 'lewat_jatuh_tempo' ? (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 animate-pulse" title={`Jatuh tempo: ${dok.tenggat_waktu}`}>
+                                  ⚠ Lewat ({Math.abs(dok.sisa_hari_piutang || 0)} hr)
+                                </span>
+                              ) : dok.aging_status === 'mendekati_jatuh_tempo' ? (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title={`Jatuh tempo: ${dok.tenggat_waktu}`}>
+                                  ⏱ Sisa {dok.sisa_hari_piutang} hr
+                                </span>
+                              ) : (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Jatuh tempo: ${dok.tenggat_waktu}`}>
+                                  ● Lancar ({dok.sisa_hari_piutang} hr)
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <div className="text-sm font-medium text-slate-700">{dok.tahun}</div>
@@ -783,6 +810,40 @@ export default function StaffDokumenPage() {
                   )}
                 </span>
               </div>
+
+              {/* SK Piutang Special Card */}
+              {(detailModalDoc.nama_debitur || detailModalDoc.tenggat_waktu) && (
+                <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1.5 text-xs text-blue-950">
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-1.5 text-blue-900">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Informasi SK Piutang Satker
+                    </span>
+                    {detailModalDoc.status_piutang === 'lunas' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                        ✓ Lunas
+                      </span>
+                    ) : detailModalDoc.aging_status === 'lewat_jatuh_tempo' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                        ⚠ Lewat Jatuh Tempo ({Math.abs(detailModalDoc.sisa_hari_piutang || 0)} hari)
+                      </span>
+                    ) : detailModalDoc.aging_status === 'mendekati_jatuh_tempo' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        ⏱ Sisa {detailModalDoc.sisa_hari_piutang} hari lagi
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        ● Lancar (Sisa {detailModalDoc.sisa_hari_piutang} hari)
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11.5px]">
+                    <div>Debitur: <strong>{detailModalDoc.nama_debitur || '-'}</strong></div>
+                    <div>Dasar Temuan: <strong className="font-mono">{detailModalDoc.dasar_temuan || '-'}</strong></div>
+                    <div>Jatuh Tempo: <strong>{detailModalDoc.tenggat_waktu ? new Date(detailModalDoc.tenggat_waktu).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</strong></div>
+                    <div>Status: <strong className="capitalize">{detailModalDoc.status_piutang ? detailModalDoc.status_piutang.replace('_', ' ') : 'Belum Lunas'}</strong></div>
+                  </div>
+                </div>
+              )}
 
               {/* Stepper Alur Dokumen 4 Tahap */}
               <div>
