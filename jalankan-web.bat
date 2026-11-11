@@ -2,11 +2,22 @@
 title Menjalankan Web Laporan Keuangan...
 cls
 echo ==============================================================================
-echo   MENYALAKAN SEMUA CONTAINER DOCKER (DATABASE, BACKEND, FRONTEND)...
-echo ==============================================================================
-echo.
-
-docker compose up -d
+if "%1"=="build" (
+    echo   MENJALANKAN DOCKER COMPOSE DENGAN OPSI --BUILD (REBUILD KODINGAN)...
+    echo ==============================================================================
+    echo.
+    docker compose up -d --build
+) else if "%1"=="--build" (
+    echo   MENJALANKAN DOCKER COMPOSE DENGAN OPSI --BUILD (REBUILD KODINGAN)...
+    echo ==============================================================================
+    echo.
+    docker compose up -d --build
+) else (
+    echo   MENYALAKAN SEMUA CONTAINER DOCKER (DATABASE, BACKEND, FRONTEND)...
+    echo ==============================================================================
+    echo.
+    docker compose up -d
+)
 
 echo.
 echo ==============================================================================
