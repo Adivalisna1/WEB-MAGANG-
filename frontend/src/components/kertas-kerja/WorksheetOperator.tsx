@@ -773,41 +773,81 @@ export default function WorksheetOperator({
                     })
                   )}
 
-                  {/* BARIS LOKASI SUB TOTAL SEKSI (Indented / Agak Masuk Sesuai Lajur Akuntansi) */}
-                  {isSubtotalMode && seksi.items?.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-dashed border-slate-300">
-                      <div className="ml-4 md:ml-10 p-3 rounded-xl bg-blue-50/50 border-l-4 border-l-blue-600 border border-blue-200/60 flex items-center justify-between shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-blue-600 font-bold text-sm">↳</span>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
-                                Subtotal {seksi.nama_seksi || `Kelompok ${sIdx + 1}`}
-                              </span>
-                              <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[9px] font-semibold rounded font-mono">
-                                Lajur Rincian
+                  {/* BARIS LOKASI SUB TOTAL ATAU TOTAL SEKSI */}
+                  {seksi.items?.length > 0 && (
+                    isSubtotalMode ? (
+                      /* JIKA TIPE SUBTOTAL: Indented / Agak Masuk Sesuai Lajur Rincian Akuntansi */
+                      <div className="mt-3 pt-3 border-t border-dashed border-slate-300">
+                        <div className="ml-4 md:ml-10 p-3 rounded-xl bg-blue-50/50 border-l-4 border-l-blue-600 border border-blue-200/60 flex items-center justify-between shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-600 font-bold text-sm">↳</span>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                                  Subtotal {seksi.nama_seksi || `Kelompok ${sIdx + 1}`}
+                                </span>
+                                <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[9px] font-semibold rounded font-mono">
+                                  Lajur Rincian
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500">
+                                Akumulasi {seksi.items.length} akun di atas
                               </span>
                             </div>
-                            <span className="text-[10px] text-slate-500">
-                              Akumulasi {seksi.items.length} akun di atas
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                              Subtotal
+                            </span>
+                            <span
+                              className={clsx(
+                                "font-extrabold text-sm font-mono",
+                                subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
+                              )}
+                            >
+                              {formatRupiah(subtotalSeksi)}
                             </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
-                            Subtotal
-                          </span>
-                          <span
-                            className={clsx(
-                              "font-extrabold text-sm font-mono",
-                              subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
-                            )}
-                          >
-                            {formatRupiah(subtotalSeksi)}
-                          </span>
+                      </div>
+                    ) : (
+                      /* JIKA TIPE TOTAL: Tegas & Lebar di Lajur Utama */
+                      <div className="mt-3 pt-3 border-t-2 border-slate-300">
+                        <div className="p-3.5 rounded-xl bg-slate-100/90 border border-slate-300 flex items-center justify-between shadow-xs">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-6 h-6 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                              ∑
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                                  TOTAL {seksi.nama_seksi || `Kelompok ${sIdx + 1}`}
+                                </span>
+                                <span className="px-1.5 py-0.2 bg-slate-200 text-slate-800 text-[9px] font-bold rounded font-mono">
+                                  Lajur Utama
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500">
+                                Total akumulasi kelompok akun ke saldo kas
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] uppercase font-bold text-slate-500 block tracking-wider">
+                              Total Utama
+                            </span>
+                            <span
+                              className={clsx(
+                                "font-black text-base font-mono",
+                                subtotalSeksi >= 0 ? "text-slate-900" : "text-rose-700"
+                              )}
+                            >
+                              {formatRupiah(subtotalSeksi)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )
                   )}
                 </div>
               </div>
@@ -1231,6 +1271,32 @@ export default function WorksheetOperator({
         </div>
       )}
 
+      {/* STYLE KHUSUS PRINT A4 & MULTI-PAGE AGAR TIDAK TERPOTONG */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 12mm 12mm;
+          }
+          html, body, #__next, main, div[class*="overflow-"] {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          header, nav, aside, footer, [role="navigation"] {
+            display: none !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        }
+      `}</style>
+
       {/* DOKUMEN CETAK RESMI PEMERINTAHAN (A4 PORTRAIT) - HANYA MUNCUL SAAT PRINT */}
       {activeRumusDetail && (
         <div id="printable-kertas-kerja" className="hidden print:block text-black bg-white">
@@ -1375,21 +1441,39 @@ export default function WorksheetOperator({
                       })
                     )}
 
-                    {/* Baris Subtotal Kelompok - INDENTED & NOMINAL DI KOLOM SUBTOTAL */}
-                    {isSubtotalMode && seksi.items?.length > 0 && (
-                      <tr className="bg-slate-100/90 font-bold border-t border-b border-black">
-                        <td colSpan={5} className="py-1 px-2 text-right uppercase pl-6 text-[9.5px]">
-                          ↳ SUBTOTAL {seksi.nama_seksi || `KELOMPOK ${sIdx + 1}`} :
-                        </td>
-                        {/* Subtotal Masuk Kolom Rincian/Subtotal */}
-                        <td className="border border-black py-1 px-2 text-right font-mono font-bold bg-slate-50 text-[10px] underline">
-                          {formatRupiah(subtotalSeksi)}
-                        </td>
-                        {/* Kolom Total Utama Kosong */}
-                        <td className="border border-black py-1 px-2 text-center text-slate-300 font-mono">
-                          -
-                        </td>
-                      </tr>
+                    {/* Baris Akumulasi Kelompok (Subtotal atau Total Sesuai Pilihan Pembina) */}
+                    {seksi.items?.length > 0 && (
+                      isSubtotalMode ? (
+                        /* JIKA TIPE SUBTOTAL: Teks menjorok masuk (↳ SUBTOTAL), nominal di kolom Rincian/Subtotal */
+                        <tr className="bg-slate-100/90 font-bold border-t border-b border-black">
+                          <td colSpan={5} className="py-1 px-2 text-right uppercase pl-6 text-[9.5px]">
+                            ↳ SUBTOTAL {seksi.nama_seksi || `KELOMPOK ${sIdx + 1}`} :
+                          </td>
+                          {/* Subtotal Masuk Kolom Rincian/Subtotal */}
+                          <td className="border border-black py-1 px-2 text-right font-mono font-bold bg-slate-50 text-[10px] underline">
+                            {formatRupiah(subtotalSeksi)}
+                          </td>
+                          {/* Kolom Total Utama Kosong */}
+                          <td className="border border-black py-1 px-2 text-center text-slate-300 font-mono">
+                            -
+                          </td>
+                        </tr>
+                      ) : (
+                        /* JIKA TIPE TOTAL: Teks rata luar (TOTAL), nominal di kolom TOTAL UTAMA (PALING LUAR) */
+                        <tr className="bg-slate-200/90 font-black border-t-2 border-b-2 border-black">
+                          <td colSpan={5} className="py-1.5 px-2 text-right uppercase text-[10px] tracking-wide">
+                            TOTAL {seksi.nama_seksi || `KELOMPOK ${sIdx + 1}`} :
+                          </td>
+                          {/* Kolom Rincian/Subtotal Kosong */}
+                          <td className="border border-black py-1.5 px-2 text-center text-slate-300 font-mono">
+                            -
+                          </td>
+                          {/* Total Masuk Kolom Total Utama */}
+                          <td className="border border-black py-1.5 px-2 text-right font-mono font-black text-[10.5px] bg-slate-100">
+                            {formatRupiah(subtotalSeksi)}
+                          </td>
+                        </tr>
+                      )
                     )}
                   </React.Fragment>
                 );
