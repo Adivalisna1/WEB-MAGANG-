@@ -46,15 +46,17 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative">
-      <Eselon1Sidebar 
-        isMobileOpen={isMobileOpen} 
-        setIsMobileOpen={setIsMobileOpen} 
-        isCollapsed={isCollapsed} 
-        setIsCollapsed={setIsCollapsed} 
-      />
-      <div className="flex-1 flex flex-col h-screen relative bg-slate-50 min-w-0">
-        <header className="h-20 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border-b border-slate-200 flex justify-between items-center px-4 md:px-10 z-20 sticky top-0 w-full">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative print:bg-white print:overflow-visible print:block print:min-h-0 print:h-auto">
+      <div className="print:hidden">
+        <Eselon1Sidebar 
+          isMobileOpen={isMobileOpen} 
+          setIsMobileOpen={setIsMobileOpen} 
+          isCollapsed={isCollapsed} 
+          setIsCollapsed={setIsCollapsed} 
+        />
+      </div>
+      <div className="flex-1 flex flex-col h-screen relative bg-slate-50 min-w-0 print:bg-white print:h-auto print:overflow-visible print:block">
+        <header className="h-20 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border-b border-slate-200 flex justify-between items-center px-4 md:px-10 z-20 sticky top-0 w-full print:hidden">
           <div className="flex items-center gap-4 h-full pt-1">
             <button 
               onClick={() => setIsMobileOpen(true)}
@@ -86,8 +88,8 @@ export default function KetuaLayout({ children }: { children: React.ReactNode })
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6 md:p-8" id="main-content">
-          <div className="max-w-[1400px] mx-auto animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 print:p-0 print:m-0 print:overflow-visible print:h-auto" id="main-content">
+          <div className="max-w-[1400px] mx-auto animate-fade-in print:max-w-none print:m-0 print:p-0">
             {children}
           </div>
         </main>

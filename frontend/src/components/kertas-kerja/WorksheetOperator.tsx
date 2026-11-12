@@ -364,8 +364,10 @@ export default function WorksheetOperator({
   }
 
   return (
-    <div className="space-y-6">
-      {/* TOOLBAR ATAS: PILIH RUMUS & PERIODE & AKSI */}
+    <>
+      {/* KONTEN OPERASIONAL INPUT LEMBAR KERJA (DISEMBUNYIKAN TOTAL SAAT PRINT PDF) */}
+      <div className="space-y-6 print:hidden">
+        {/* TOOLBAR ATAS: PILIH RUMUS & PERIODE & AKSI */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
@@ -1136,10 +1138,11 @@ export default function WorksheetOperator({
           </div>
         </div>
       )}
+      </div>
 
       {/* MODAL PENGATURAN CETAK PDF RESMI BERITA ACARA */}
       {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200 no-print print:hidden">
           <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Header Modal */}
             <div className="px-6 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
@@ -1590,33 +1593,6 @@ export default function WorksheetOperator({
           </div>
         </div>
       )}
-
-      {/* STYLE KHUSUS PRINT DOKUMEN RESMI A4 */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #printable-kertas-kerja, #printable-kertas-kerja * {
-            visibility: visible;
-          }
-          #printable-kertas-kerja {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 8mm 12mm;
-            background: white !important;
-            color: black !important;
-            display: block !important;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-        }
-      `}</style>
-    </div>
+    </>
   );
 }

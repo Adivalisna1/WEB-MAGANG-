@@ -172,8 +172,10 @@ export default function PimpinanKertasKerjaPage() {
   const totalSaldoAkhir = submissions.reduce((acc, curr) => acc + (Number(curr.saldo_akhir) || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto py-2">
-      {/* HEADER WITH BADGE ROLE */}
+    <>
+      {/* KONTEN UTAMA MONITORING (SEMBUNYIKAN TOTAL SAAT MENCETAK DOKUMEN PDF RESMI) */}
+      <div className="space-y-6 max-w-7xl mx-auto py-2 print:hidden">
+        {/* HEADER WITH BADGE ROLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -468,6 +470,7 @@ export default function PimpinanKertasKerjaPage() {
           </div>
         </div>
       )}
+      </div>
 
       {/* MODAL CETAK PDF RESMI BERITA ACARA SATKER */}
       {printModalData && (
@@ -483,6 +486,6 @@ export default function PimpinanKertasKerjaPage() {
           bulan={printModalData.submission.bulan}
         />
       )}
-    </div>
+    </>
   );
 }

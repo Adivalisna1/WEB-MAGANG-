@@ -153,10 +153,12 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative">
-      {renderSidebar()}
-      <div className="flex-1 flex flex-col h-screen relative min-w-0">
-        <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-4 md:px-8 z-20 sticky top-0 w-full">
+    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased overflow-hidden relative print:bg-white print:overflow-visible print:block print:min-h-0 print:h-auto">
+      <div className="print:hidden">
+        {renderSidebar()}
+      </div>
+      <div className="flex-1 flex flex-col h-screen relative min-w-0 print:bg-white print:h-auto print:overflow-visible print:block">
+        <header className="h-20 bg-white shadow-sm border-b border-slate-200 flex justify-between items-center px-4 md:px-8 z-20 sticky top-0 w-full print:hidden">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsMobileOpen(true)}
@@ -251,9 +253,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8" id="main-content">
+        <main className="flex-1 overflow-y-auto p-8 print:p-0 print:m-0 print:overflow-visible print:h-auto" id="main-content">
           <SearchContext.Provider value={searchTerm}>
-            <div className="animate-fade-in h-full">
+            <div className="animate-fade-in h-full print:m-0 print:p-0">
               {children}
             </div>
           </SearchContext.Provider>
