@@ -215,12 +215,12 @@ export default function RumusBuilder({
     }
   }, [activeSeksiIndex, searchQuery, fetchAkunResults, seksiList]);
 
-  // Handler: Tambah Seksi Baru
+  // Handler: Tambah Kelompok Akun Baru
   const handleAddSeksi = () => {
     setSeksiList([
       ...seksiList,
       {
-        nama_seksi: `Seksi ${seksiList.length + 1}`,
+        nama_seksi: `Kelompok Akun ${seksiList.length + 1}`,
         tipe_akun_filter: "ALL",
         tipe_subtotal: "subtotal",
         urutan: seksiList.length + 1,
@@ -255,9 +255,9 @@ export default function RumusBuilder({
     if (activeSeksiIndex === null) return;
     const currentSeksi = seksiList[activeSeksiIndex];
 
-    // Cek apakah akun sudah ada di seksi ini
+    // Cek apakah akun sudah ada di kelompok ini
     if (currentSeksi.items.some((it) => it.akun_id === akun.id)) {
-      toast.error(`Akun ${akun.kode_akun} sudah ada di seksi ini.`);
+      toast.error(`Akun ${akun.kode_akun} sudah ada di kelompok ini.`);
       return;
     }
 
@@ -555,7 +555,7 @@ export default function RumusBuilder({
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
             <Layers className="w-4 h-4 text-blue-600" />
-            Susunan Seksi & Akun Perhitungan ({seksiList.length} Seksi Terpasang)
+            Susunan Kelompok Akun ({seksiList.length} Kelompok Terpasang)
           </h3>
           <button
             type="button"
@@ -564,7 +564,7 @@ export default function RumusBuilder({
             className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
-            Tambah Seksi / Baris Kelompok
+            Tambah Kelompok Akun
           </button>
         </div>
 
@@ -573,12 +573,12 @@ export default function RumusBuilder({
             key={sIdx}
             className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3"
           >
-            {/* Header Seksi */}
+            {/* Header Kelompok */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="text"
-                  placeholder="Nama Seksi (misal: Penerimaan Kas Pendapatan)"
+                  placeholder="Tulis Judul / Nama Kelompok (misal: Penerimaan Kas Pendapatan)"
                   value={seksi.nama_seksi}
                   onChange={(e) => handleUpdateSeksi(sIdx, "nama_seksi", e.target.value)}
                   disabled={isLocked}
@@ -621,7 +621,7 @@ export default function RumusBuilder({
                     onClick={() => handleDeleteSeksi(sIdx)}
                     disabled={isLocked}
                     className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    title="Hapus Seksi"
+                    title="Hapus Kelompok"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -732,7 +732,7 @@ export default function RumusBuilder({
                             type="button"
                             onClick={() => handleDeleteItem(sIdx, iIdx)}
                             className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                            title="Hapus Akun dari Seksi"
+                            title="Hapus Akun dari Kelompok"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -752,7 +752,7 @@ export default function RumusBuilder({
                     LOKASI SUBTOTAL
                   </span>
                   <span className="text-xs font-bold text-slate-700">
-                    Subtotal {seksi.nama_seksi || `Seksi ${sIdx + 1}`}
+                    Subtotal: {seksi.nama_seksi || `Kelompok ${sIdx + 1}`}
                   </span>
                 </div>
                 <span className="text-xs font-mono font-bold text-blue-800">
@@ -762,7 +762,7 @@ export default function RumusBuilder({
             ) : (
               <div className="mt-3 p-2 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-between text-slate-400">
                 <span className="text-[11px] font-medium">
-                  Akun di seksi ini langsung diakumulasikan ke Saldo Akhir (tanpa baris subtotal).
+                  Akun di kelompok ini langsung diakumulasikan ke Saldo Akhir (tanpa baris subtotal).
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Langsung Total
@@ -784,7 +784,7 @@ export default function RumusBuilder({
                   Pilih Akun Pemerintahan (BAS)
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Seksi: <strong className="text-slate-800">{seksiList[activeSeksiIndex]?.nama_seksi}</strong> &bull;
+                  Target Kelompok: <strong className="text-slate-800">{seksiList[activeSeksiIndex]?.nama_seksi}</strong> &bull;
                   Smart Filter: <span className="font-semibold text-blue-600">{seksiList[activeSeksiIndex]?.tipe_akun_filter}</span>
                 </p>
               </div>

@@ -529,7 +529,7 @@ export default function WorksheetOperator({
       {/* LEMBAR UTAMA KERTAS KERJA SATU LAYAR PENUH */}
       {detailLoading ? (
         <div className="py-20 text-center text-xs text-slate-400">
-          Memuat susunan seksi & akun rumus...
+          Memuat susunan kelompok & akun rumus...
         </div>
       ) : !activeRumusDetail ? (
         <div className="py-20 text-center text-xs text-slate-400">
@@ -634,7 +634,7 @@ export default function WorksheetOperator({
                 <div className="p-4 space-y-2.5">
                   {seksi.items?.length === 0 ? (
                     <div className="py-6 text-center text-xs text-slate-400">
-                      Tidak ada akun pada seksi ini.
+                      Tidak ada akun pada kelompok ini.
                     </div>
                   ) : (
                     seksi.items.map((it: any) => {
@@ -723,10 +723,10 @@ export default function WorksheetOperator({
                         </span>
                         <div>
                           <span className="text-xs font-bold text-slate-800 block">
-                            Subtotal {seksi.nama_seksi}
+                            Subtotal
                           </span>
-                          <span className="text-[10px] text-slate-400">
-                            Total akumulasi akun pada seksi ini
+                          <span className="text-[10px] text-slate-500">
+                            {seksi.nama_seksi || "Akumulasi kelompok akun"}
                           </span>
                         </div>
                       </div>
