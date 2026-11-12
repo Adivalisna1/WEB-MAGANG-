@@ -21,7 +21,8 @@ import {
   Lock,
   FileCheck,
   X,
-  Printer
+  Printer,
+  Upload
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -82,6 +83,8 @@ export default function WorksheetOperator({
   }, [nominalMap]);
   const [savedSubmissionId, setSavedSubmissionId] = useState<number | null>(null);
   const [statusLaporan, setStatusLaporan] = useState<string>("draft");
+  const [importingExcel, setImportingExcel] = useState<boolean>(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // State Permohonan Memo Koreksi (Buka Gembok K/L)
   const [showKoreksiModal, setShowKoreksiModal] = useState<boolean>(false);
@@ -413,6 +416,91 @@ export default function WorksheetOperator({
       .catch((err) => toast.error(err.message));
   };
 
+  // Handler Unduh Template Excel Resmi Rumus Aktif
+  const handleDownloadTemplate = () => {
+    if (!selectedRumusId) {
+      toast.error("Pilih rumus kertas kerja terlebih dahulu!");
+      return;
+    }
+    const session = getSession();
+    const tplUrl = `${API}/kertas-kerja/template/${selectedRumusId}`;
+
+    fetch(tplUrl, {
+      headers: { Authorization: `Bearer ${session?.token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal mengunduh template Excel");
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const cleanName = activeRumusDetail?.nama_rumus?.replace(/[^a-zA-Z0-9]/g, "_") || "Format";
+        a.download = `Template_Kertas_Kerja_${cleanName}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast.success("Template Excel berhasil diunduh! Silakan isi kolom nominal lalu import kembali.");
+      })
+      .catch((err) => toast.error(err.message));
+  };
+
+  // Handler Upload & Import Excel ke Kertas Kerja
+  const handleImportExcelFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!selectedRumusId) {
+      toast.error("Pilih rumus kertas kerja terlebih dahulu sebelum mengimpor!");
+      return;
+    }
+
+    setImportingExcel(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/import-excel?rumus_id=${selectedRumusId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Gagal mengimpor file Excel");
+      }
+
+      if (data.success) {
+        if (data.saldo_awal !== undefined && data.saldo_awal !== 0) {
+          setSaldoAwal(data.saldo_awal);
+        }
+        if (data.catatan && String(data.catatan).trim()) {
+          setCatatan(data.catatan);
+        }
+        if (data.nominal_map && Object.keys(data.nominal_map).length > 0) {
+          setNominalMap((prev) => ({
+            ...prev,
+            ...data.nominal_map,
+          }));
+        }
+
+        toast.success(
+          `Berhasil import Excel! ${data.matched_count} akun otomatis terisi dan terkalkulasi.`,
+          { duration: 4500 }
+        );
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setImportingExcel(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-24 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
@@ -458,6 +546,49 @@ export default function WorksheetOperator({
 
           {/* Tombol Ekspor & Simpan */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Input Tersembunyi untuk Import File Excel */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImportExcelFile}
+              accept=".xlsx,.xls,.xlsm"
+              className="hidden"
+            />
+
+            {/* Tombol Unduh Template Excel Resmi */}
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              disabled={!selectedRumusId}
+              className={clsx(
+                "px-3 py-2 text-xs font-semibold rounded-xl border transition-colors flex items-center gap-1.5 shadow-2xs",
+                selectedRumusId
+                  ? "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"
+                  : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+              )}
+              title="Unduh template Excel berformat resmi untuk rumus aktif (bisa diisi offline)"
+            >
+              <Download className="w-4 h-4 text-teal-600" />
+              Unduh Template Excel
+            </button>
+
+            {/* Tombol Import Excel */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!selectedRumusId || isLockedStatus || readOnly || importingExcel}
+              className={clsx(
+                "px-3 py-2 text-xs font-semibold rounded-xl border transition-colors flex items-center gap-1.5 shadow-2xs",
+                !selectedRumusId || isLockedStatus || readOnly || importingExcel
+                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                  : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 cursor-pointer"
+              )}
+              title="Upload & import data nominal dari file Excel template atau laporan"
+            >
+              <Upload className={clsx("w-4 h-4 text-amber-600", importingExcel && "animate-spin")} />
+              {importingExcel ? "Mengimpor Excel..." : "Import dari Excel"}
+            </button>
+
             <button
               type="button"
               onClick={() => handleExport("xlsx")}

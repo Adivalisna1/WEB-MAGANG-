@@ -1,7 +1,7 @@
 import io
 import csv
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, File, UploadFile
 from pydantic import BaseModel
 from db import get_db
 from auth import get_current_user
@@ -750,6 +750,370 @@ async def export_kertas_kerja(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename_base}.xlsx"}
     )
+
+
+# ==============================================================
+# 4.B ENDPOINT TEMPLATE & IMPORT EXCEL KERTAS KERJA
+# ==============================================================
+@router.get("/template/{rumus_id}")
+async def download_excel_template(
+    rumus_id: int,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Menghasilkan template berkas Excel (.xlsx) rapi dan terstandarisasi untuk rumus kertas kerja yang dipilih.
+    Memudahkan satker menginput ratusan transaksi offline lalu mengunggahnya (import) dalam 1 klik.
+    """
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT * FROM kertas_kerja_rumus WHERE id = %s", (rumus_id,))
+        rumus = cursor.fetchone()
+        if not rumus:
+            raise HTTPException(status_code=404, detail="Rumus kertas kerja tidak ditemukan.")
+
+        cursor.execute("""
+            SELECT ri.id as item_id, ri.seksi_id, ri.akun_id, ri.operator, ri.urutan,
+                   s.nama_seksi, s.tipe_subtotal,
+                   ma.kode_akun, ma.nama_akun, ma.tipe_akun
+            FROM kertas_kerja_rumus_seksi s
+            JOIN kertas_kerja_rumus_item ri ON ri.seksi_id = s.id
+            JOIN master_akun ma ON ma.id = ri.akun_id
+            WHERE s.rumus_id = %s
+            ORDER BY s.urutan ASC, ri.urutan ASC, ri.id ASC
+        """, (rumus_id,))
+        items = cursor.fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Template Kertas Kerja"
+
+    # Styling
+    font_title = Font(name="Calibri", size=13, bold=True, color="1E3A8A")
+    font_subtitle = Font(name="Calibri", size=10, bold=False, color="475569")
+    font_bold = Font(name="Calibri", size=10, bold=True, color="0F172A")
+    font_instruction = Font(name="Calibri", size=9, italic=True, color="1E40AF")
+    font_header = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    font_item = Font(name="Calibri", size=10)
+    font_input = Font(name="Calibri", size=10, bold=True, color="0F172A")
+
+    fill_header = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
+    fill_input = PatternFill(start_color="FEF9C3", end_color="FEF9C3", fill_type="solid")  # Kuning lembut / emas untuk sel inputan
+    fill_meta = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+
+    thin_border = Border(
+        left=Side(style="thin", color="CBD5E1"),
+        right=Side(style="thin", color="CBD5E1"),
+        top=Side(style="thin", color="CBD5E1"),
+        bottom=Side(style="thin", color="CBD5E1"),
+    )
+
+    # Kop & Metadata Dokumen
+    ws.merge_cells("A1:F1")
+    ws["A1"] = "TEMPLATE IMPORT KERTAS KERJA REKONSILIASI KAS"
+    ws["A1"].font = font_title
+
+    ws.merge_cells("A2:F2")
+    ws["A2"] = f"Format Rumus: {rumus['nama_rumus']} (ID Rumus: #{rumus_id})"
+    ws["A2"].font = font_subtitle
+
+    # Field Saldo Awal (B4)
+    ws["A4"] = "Saldo Awal Kas (Rp):"
+    ws["A4"].font = font_bold
+    cell_saldo = ws["B4"]
+    cell_saldo.value = 0
+    cell_saldo.font = font_input
+    cell_saldo.fill = fill_input
+    cell_saldo.border = thin_border
+    cell_saldo.number_format = '#,##0'
+    cell_saldo.alignment = Alignment(horizontal="right")
+
+    # Field Catatan (B5)
+    ws["A5"] = "Catatan Rekonsiliasi:"
+    ws["A5"].font = font_bold
+    cell_catatan = ws["B5"]
+    cell_catatan.value = ""
+    cell_catatan.font = font_item
+    cell_catatan.border = thin_border
+
+    # Petunjuk Singkat Pengisian
+    ws.merge_cells("A6:F6")
+    ws["A6"] = "💡 PETUNJUK: Masukkan angka nominal di Kolom F (kuning) dan Saldo Awal di sel B4. Jangan ubah Kode Akun (Kolom C) agar otomatis terbaca sistem saat di-import."
+    ws["A6"].font = font_instruction
+
+    # Header Tabel (Baris 8)
+    headers = [
+        "No",
+        "Kelompok / Seksi Rumus",
+        "Kode Akun",
+        "Uraian / Nama Akun (BAS)",
+        "Sifat Mutasi",
+        "Nominal (Rp) [INPUT DI SINI]"
+    ]
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=8, column=col_idx, value=h)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = thin_border
+    ws.row_dimensions[8].height = 28
+
+    curr_row = 9
+    for idx, it in enumerate(items, 1):
+        # Col 1: No
+        c1 = ws.cell(row=curr_row, column=1, value=idx)
+        c1.alignment = Alignment(horizontal="center")
+        c1.font = font_item
+        c1.border = thin_border
+
+        # Col 2: Seksi
+        c2 = ws.cell(row=curr_row, column=2, value=it["nama_seksi"])
+        c2.font = font_item
+        c2.border = thin_border
+
+        # Col 3: Kode Akun (teks string)
+        c3 = ws.cell(row=curr_row, column=3, value=str(it["kode_akun"]))
+        c3.alignment = Alignment(horizontal="center")
+        c3.font = font_bold
+        c3.border = thin_border
+        c3.number_format = "@"
+
+        # Col 4: Nama Akun
+        c4 = ws.cell(row=curr_row, column=4, value=it["nama_akun"])
+        c4.font = font_item
+        c4.border = thin_border
+
+        # Col 5: Sifat Mutasi
+        sifat_label = "(+) Kas Masuk" if it["operator"] == "tambah" else "(-) Kas Keluar"
+        c5 = ws.cell(row=curr_row, column=5, value=sifat_label)
+        c5.alignment = Alignment(horizontal="center")
+        c5.font = font_item
+        c5.border = thin_border
+
+        # Col 6: Nominal Input
+        c6 = ws.cell(row=curr_row, column=6, value=0)
+        c6.font = font_input
+        c6.fill = fill_input
+        c6.border = thin_border
+        c6.number_format = '#,##0'
+        c6.alignment = Alignment(horizontal="right")
+
+        ws.row_dimensions[curr_row].height = 20
+        curr_row += 1
+
+    # Lebar Kolom
+    ws.column_dimensions["A"].width = 6
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 16
+    ws.column_dimensions["D"].width = 46
+    ws.column_dimensions["E"].width = 18
+    ws.column_dimensions["F"].width = 28
+
+    excel_stream = io.BytesIO()
+    wb.save(excel_stream)
+    excel_stream.seek(0)
+
+    clean_nama = "".join(c for c in rumus["nama_rumus"] if c.isalnum() or c in (" ", "_", "-")).strip().replace(" ", "_")
+    filename = f"Template_Kertas_Kerja_{clean_nama}.xlsx"
+
+    return Response(
+        content=excel_stream.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.post("/import-excel")
+async def import_excel_kertas_kerja(
+    rumus_id: int = Query(...),
+    file: UploadFile = File(...),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Menerima file Excel (.xlsx / .xls), baik hasil unduhan Template resmi maupun file ekspor,
+    dan memetakan nominal akun secara otomatis berdasarkan Kode Akun (BAS).
+    """
+    if not file.filename.lower().endswith((".xlsx", ".xls", ".xlsm")):
+        raise HTTPException(status_code=400, detail="Format file tidak didukung. Harap unggah file Excel (.xlsx / .xls).")
+
+    file_bytes = await file.read()
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="File yang diunggah kosong.")
+
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Gagal membaca format file Excel: {str(e)}")
+
+    ws = wb.active
+    if not ws:
+        raise HTTPException(status_code=400, detail="Lembar kerja (sheet) tidak ditemukan dalam berkas Excel.")
+
+    # 1. Parsing Helper Angka Rupiah
+    def parse_float(val) -> float:
+        if val is None:
+            return 0.0
+        if isinstance(val, (int, float)):
+            return float(val)
+        s = str(val).strip()
+        if not s or s in ["-", "Rp", "Rp.", "rp"]:
+            return 0.0
+        s = s.replace("Rp", "").replace("rp", "").strip()
+        if "," in s and "." in s:
+            if s.rfind(",") > s.rfind("."):
+                # 1.250.000,50 -> 1250000.50
+                s = s.replace(".", "").replace(",", ".")
+            else:
+                # 1,250,000.50 -> 1250000.50
+                s = s.replace(",", "")
+        elif "," in s:
+            parts = s.split(",")
+            if len(parts[-1]) <= 2:
+                s = s.replace(",", ".")
+            else:
+                s = s.replace(",", "")
+        elif "." in s:
+            parts = s.split(".")
+            if len(parts) > 1 and all(len(p) == 3 for p in parts[1:]):
+                s = s.replace(".", "")
+        try:
+            return float(s)
+        except Exception:
+            return 0.0
+
+    # 2. Ekstrak Saldo Awal & Catatan dari Meta Dokumen
+    saldo_awal = 0.0
+    catatan = ""
+
+    # Cek lokasi sel standar Template (B4 dan B5)
+    cell_b4 = ws["B4"].value if ws.max_row >= 4 else None
+    cell_b5 = ws["B5"].value if ws.max_row >= 5 else None
+
+    if cell_b4 is not None:
+        saldo_awal = parse_float(cell_b4)
+    if cell_b5 is not None and str(cell_b5).strip():
+        catatan = str(cell_b5).strip()
+
+    # Scan alternatif jika Saldo Awal berada di baris lain
+    if saldo_awal == 0.0:
+        for r in range(1, min(ws.max_row + 1, 15)):
+            for c in range(1, min(ws.max_column + 1, 6)):
+                v = str(ws.cell(row=r, column=c).value or "").lower()
+                if "saldo awal" in v:
+                    next_val = ws.cell(row=r, column=c + 1).value
+                    parsed_next = parse_float(next_val)
+                    if parsed_next != 0:
+                        saldo_awal = parsed_next
+                        break
+
+    # 3. Cari Baris Header Tabel
+    header_row = None
+    col_kode = None
+    col_nominal = None
+    col_total = None
+
+    for r in range(1, min(ws.max_row + 1, 25)):
+        for c in range(1, min(ws.max_column + 1, 15)):
+            txt = str(ws.cell(row=r, column=c).value or "").strip().lower()
+            if ("kode" in txt and "akun" in txt) or txt == "kode":
+                header_row = r
+                col_kode = c
+                break
+        if header_row is not None:
+            break
+
+    # Cari kolom nominal pada baris header yang ditemukan
+    if header_row is not None:
+        for c in range(1, min(ws.max_column + 1, 15)):
+            txt = str(ws.cell(row=header_row, column=c).value or "").strip().lower()
+            if any(k in txt for k in ["nominal", "rincian", "subtotal", "jumlah", "nilai"]):
+                if col_nominal is None:
+                    col_nominal = c
+            if "total utama" in txt or txt == "total":
+                col_total = c
+
+    # Fallback jika header tidak terdeteksi otomatis
+    if header_row is None:
+        header_row = 8
+    if col_kode is None:
+        col_kode = 3
+    if col_nominal is None:
+        col_nominal = 6
+
+    # 4. Ambil Akun-Akun Rumus dari Database
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT ri.id as item_id, ri.seksi_id, ri.akun_id, ri.operator,
+                   s.nama_seksi, ma.kode_akun, ma.nama_akun
+            FROM kertas_kerja_rumus_seksi s
+            JOIN kertas_kerja_rumus_item ri ON ri.seksi_id = s.id
+            JOIN master_akun ma ON ma.id = ri.akun_id
+            WHERE s.rumus_id = %s
+        """, (rumus_id,))
+        formula_items = cursor.fetchall()
+
+        cursor.execute("SELECT id, kode_akun, nama_akun FROM master_akun")
+        all_master_akun = cursor.fetchall()
+
+    def clean_code(c_str: Any) -> str:
+        if c_str is None:
+            return ""
+        s = str(c_str).strip()
+        return s.replace("#", "").replace("'", "").strip()
+
+    formula_by_code: Dict[str, Any] = {clean_code(it["kode_akun"]): it for it in formula_items}
+    master_by_code: Dict[str, int] = {clean_code(a["kode_akun"]): a["id"] for a in all_master_akun}
+
+    nominal_map: Dict[str, float] = {}
+    matched_count = 0
+    unmatched_codes = []
+
+    # 5. Baca Baris-Baris Data Akun
+    start_row = header_row + 1
+    for r in range(start_row, ws.max_row + 1):
+        raw_kode = ws.cell(row=r, column=col_kode).value
+        code = clean_code(raw_kode)
+        if not code:
+            continue
+
+        # Lewati teks subtotal / total / ringkasan
+        if any(w in code.lower() for w in ["total", "subtotal", "saldo", "ringkasan", "penerimaan", "pengeluaran"]):
+            continue
+
+        val_nom = ws.cell(row=r, column=col_nominal).value
+        nominal = parse_float(val_nom)
+
+        # Cek kolom total jika file yang diimport adalah hasil ekspor laporan
+        if nominal == 0.0 and col_total is not None:
+            val_tot = ws.cell(row=r, column=col_total).value
+            alt_nom = parse_float(val_tot)
+            if alt_nom != 0:
+                nominal = alt_nom
+
+        # Pemetaan nilai akun ke rumus
+        if code in formula_by_code:
+            it = formula_by_code[code]
+            nominal_map[str(it["item_id"])] = nominal
+            nominal_map[str(it["akun_id"])] = nominal
+            matched_count += 1
+        elif code in master_by_code:
+            ak_id = master_by_code[code]
+            nominal_map[str(ak_id)] = nominal
+            matched_count += 1
+        else:
+            if code not in unmatched_codes and len(code) >= 3:
+                unmatched_codes.append(code)
+
+    return {
+        "success": True,
+        "message": f"Berhasil membaca {matched_count} data akun dari berkas Excel.",
+        "saldo_awal": saldo_awal,
+        "catatan": catatan,
+        "matched_count": matched_count,
+        "unmatched_count": len(unmatched_codes),
+        "unmatched_codes": unmatched_codes[:10],
+        "nominal_map": nominal_map
+    }
 
 
 # ==============================================================
