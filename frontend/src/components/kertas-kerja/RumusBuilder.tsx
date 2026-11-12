@@ -648,7 +648,7 @@ export default function RumusBuilder({
                     )}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block"></span>
-                    <span>Subtotal Seksi</span>
+                    <span>Subtotal</span>
                   </button>
                   <button
                     type="button"
@@ -749,14 +749,14 @@ export default function RumusBuilder({
               <div className="mt-3 p-2.5 rounded-lg bg-blue-50/70 border border-blue-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
-                    LOKASI SUB TOTAL
+                    LOKASI SUBTOTAL
                   </span>
                   <span className="text-xs font-bold text-slate-700">
                     Subtotal {seksi.nama_seksi || `Seksi ${sIdx + 1}`}
                   </span>
                 </div>
                 <span className="text-xs font-mono font-bold text-blue-800">
-                  [ ∑ Subtotal Seksi ]
+                  [ ∑ Subtotal ]
                 </span>
               </div>
             ) : (

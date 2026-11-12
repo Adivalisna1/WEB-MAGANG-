@@ -611,7 +611,7 @@ export default function WorksheetOperator({
 
                   <div className="text-right">
                     <span className="text-[10px] uppercase font-semibold text-slate-400 block">
-                      {isSubtotalMode ? "Subtotal Seksi" : "Perhitungan"}
+                      {isSubtotalMode ? "Subtotal" : "Perhitungan"}
                     </span>
                     {isSubtotalMode ? (
                       <span
