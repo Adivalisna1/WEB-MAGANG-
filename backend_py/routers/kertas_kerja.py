@@ -380,8 +380,8 @@ async def get_kertas_kerja_transaksi(
         cursor.execute(sql, tuple(params))
         submissions = cursor.fetchall()
 
-        # Ambil rincian nilai per item untuk submission pertama jika spesifik
-        if submissions and target_satker_id and rumus_id:
+        # Ambil rincian nilai per item untuk submission pertama jika spesifik rumus_id atau ada data
+        if submissions and rumus_id:
             sub = submissions[0]
             cursor.execute("""
                 SELECT kn.rumus_item_id, kn.akun_id, kn.nominal, ma.kode_akun, ma.nama_akun
@@ -393,6 +393,38 @@ async def get_kertas_kerja_transaksi(
             return {"success": True, "data": sub}
 
         return {"success": True, "data": submissions}
+
+
+@router.get("/transaksi/{kertas_kerja_id}")
+async def get_kertas_kerja_transaksi_by_id(
+    kertas_kerja_id: int,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Mengambil data kertas kerja spesifik berdasarkan ID langsung beserta seluruh rincian nilai akunnya.
+    """
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT kks.*, s.nama as satker_nama, s.NO_Satker as satker_kode, r.nama_rumus, u.nama as pengisi_nama
+            FROM kertas_kerja_satker kks
+            JOIN satkers s ON s.id = kks.satker_id
+            JOIN kertas_kerja_rumus r ON r.id = kks.rumus_id
+            LEFT JOIN users u ON u.id = kks.created_by_user_id
+            WHERE kks.id = %s
+        """, (kertas_kerja_id,))
+        sub = cursor.fetchone()
+        if not sub:
+            raise HTTPException(status_code=404, detail="Data Kertas Kerja tidak ditemukan")
+
+        cursor.execute("""
+            SELECT kn.rumus_item_id, kn.akun_id, kn.nominal, ma.kode_akun, ma.nama_akun
+            FROM kertas_kerja_satker_nilai kn
+            JOIN master_akun ma ON ma.id = kn.akun_id
+            WHERE kn.kertas_kerja_id = %s
+        """, (kertas_kerja_id,))
+        sub["nilai_detail"] = cursor.fetchall()
+        return {"success": True, "data": sub}
 
 
 @router.post("/transaksi")

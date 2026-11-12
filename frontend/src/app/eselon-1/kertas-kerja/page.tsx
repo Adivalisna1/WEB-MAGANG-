@@ -227,26 +227,31 @@ export default function Eselon1KertasKerjaPage() {
       });
       const jsonRumus = await resRumus.json();
 
-      // 2. Ambil detail transaksi (nilai detail)
-      const resTx = await fetch(
-        `${API}/kertas-kerja/transaksi?tahun=${s.tahun}&bulan=${s.bulan}&satker_id=${s.satker_id}&rumus_id=${s.rumus_id}`,
-        { headers: { Authorization: `Bearer ${session?.token}` } }
-      );
+      // 2. Ambil detail transaksi langsung by ID agar nilai_detail akurat
+      const resTx = await fetch(`${API}/kertas-kerja/transaksi/${s.id}`, {
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
       const jsonTx = await resTx.json();
 
       if (!jsonRumus.success || !jsonRumus.data) {
         throw new Error("Gagal memuat struktur rumus");
       }
 
-      const nMap: Record<number, number> = {};
-      if (jsonTx.success && jsonTx.data?.nilai_detail) {
-        jsonTx.data.nilai_detail.forEach((nd: any) => {
-          nMap[nd.rumus_item_id] = Number(nd.nominal) || 0;
+      const txData = jsonTx.success && jsonTx.data ? jsonTx.data : s;
+      const nMap: Record<string | number, number> = {};
+      if (txData && Array.isArray(txData.nilai_detail)) {
+        txData.nilai_detail.forEach((nd: any) => {
+          const nom = Number(nd.nominal) || 0;
+          if (nd.rumus_item_id) nMap[nd.rumus_item_id] = nom;
+          if (nd.akun_id) {
+            nMap[nd.akun_id] = nom;
+            nMap[`akun_${nd.akun_id}`] = nom;
+          }
         });
       }
 
       setPrintModalData({
-        submission: s,
+        submission: txData,
         rumus: jsonRumus.data,
         nominalMap: nMap,
       });

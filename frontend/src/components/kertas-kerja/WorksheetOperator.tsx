@@ -63,11 +63,23 @@ export default function WorksheetOperator({
 
   const [saldoAwal, setSaldoAwal] = useState<number>(0);
   const [catatan, setCatatan] = useState<string>("");
-  const [nominalMap, setNominalMap] = useState<Record<number, number>>({}); // rumus_item_id -> nominal
+  const [nominalMap, setNominalMap] = useState<Record<string | number, number>>({}); // rumus_item_id & akun_id -> nominal
 
   const [loading, setLoading] = useState<boolean>(true);
   const [detailLoading, setDetailLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+
+  // Helper mengambil nominal akun secara tahan banting (berdasarkan item_id maupun akun_id)
+  const getItemNominal = useCallback((it: any): number => {
+    if (!it) return 0;
+    return (
+      nominalMap[it.item_id] ??
+      nominalMap[it.akun_id] ??
+      nominalMap[`akun_${it.akun_id}`] ??
+      nominalMap[it.id] ??
+      0
+    );
+  }, [nominalMap]);
   const [savedSubmissionId, setSavedSubmissionId] = useState<number | null>(null);
   const [statusLaporan, setStatusLaporan] = useState<string>("draft");
 
@@ -144,7 +156,7 @@ export default function WorksheetOperator({
     }
   };
 
-  // 1. Ambil daftar rumus yang tersedia
+  // 1. Ambil daftar rumus yang tersedia (dan auto-select rumus yang sudah pernah tersimpan)
   const fetchRumusList = useCallback(async () => {
     try {
       const session = getSession();
@@ -155,7 +167,21 @@ export default function WorksheetOperator({
       if (json.success && Array.isArray(json.data)) {
         setRumusList(json.data);
         if (json.data.length > 0 && !selectedRumusId) {
-          setSelectedRumusId(json.data[0].id);
+          // Cek apakah sudah ada submission aktif untuk bulan ini agar otomatis memilih rumus yang tersimpan
+          try {
+            const resCek = await fetch(`${API}/kertas-kerja/transaksi?tahun=${tahun}&bulan=${bulan}`, {
+              headers: { Authorization: `Bearer ${session?.token}` },
+            });
+            const jsonCek = await resCek.json();
+            const listCek = Array.isArray(jsonCek.data) ? jsonCek.data : (jsonCek.data ? [jsonCek.data] : []);
+            if (listCek.length > 0 && listCek[0].rumus_id) {
+              setSelectedRumusId(listCek[0].rumus_id);
+            } else {
+              setSelectedRumusId(json.data[0].id);
+            }
+          } catch {
+            setSelectedRumusId(json.data[0].id);
+          }
         }
       }
     } catch (err: any) {
@@ -163,7 +189,7 @@ export default function WorksheetOperator({
     } finally {
       setLoading(false);
     }
-  }, [selectedRumusId]);
+  }, [selectedRumusId, tahun, bulan]);
 
   useEffect(() => {
     fetchRumusList();
@@ -185,22 +211,47 @@ export default function WorksheetOperator({
       }
 
       // Ambil transaksi tersimpan untuk satker & periode ini
-      const resTx = await fetch(`${API}/kertas-kerja/transaksi?tahun=${t}&bulan=${b}&rumus_id=${rumusId}`, {
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
+      const satkerId = session?.user?.satker_id;
+      const resTx = await fetch(
+        `${API}/kertas-kerja/transaksi?tahun=${t}&bulan=${b}&rumus_id=${rumusId}${satkerId ? `&satker_id=${satkerId}` : ""}`,
+        {
+          headers: { Authorization: `Bearer ${session?.token}` },
+        }
+      );
       const jsonTx = await resTx.json();
-      if (jsonTx.success && jsonTx.data) {
-        const saved = jsonTx.data;
+      let saved = jsonTx.success && jsonTx.data ? (Array.isArray(jsonTx.data) ? jsonTx.data[0] : jsonTx.data) : null;
+
+      // Jika data transaksi ditemukan tapi belum memiliki nilai_detail lengkap, ambil via endpoint by ID langsung
+      if (saved && saved.id && (!saved.nilai_detail || !Array.isArray(saved.nilai_detail))) {
+        try {
+          const resDirect = await fetch(`${API}/kertas-kerja/transaksi/${saved.id}`, {
+            headers: { Authorization: `Bearer ${session?.token}` },
+          });
+          const jsonDirect = await resDirect.json();
+          if (jsonDirect.success && jsonDirect.data) {
+            saved = jsonDirect.data;
+          }
+        } catch {
+          // fallback ke saved biasa
+        }
+      }
+
+      if (saved && saved.id) {
         setSavedSubmissionId(saved.id || null);
         setSaldoAwal(Number(saved.saldo_awal) || 0);
         setCatatan(saved.catatan || "");
         setStatusLaporan(saved.status || "draft");
 
-        // Map nilai rincian akun
-        const nMap: Record<number, number> = {};
+        // Map nilai rincian akun dengan DUA lapis kunci: rumus_item_id dan akun_id (mencegah hilang saat rumus di-reload)
+        const nMap: Record<string | number, number> = {};
         if (Array.isArray(saved.nilai_detail)) {
           saved.nilai_detail.forEach((nd: any) => {
-            nMap[nd.rumus_item_id] = Number(nd.nominal) || 0;
+            const nom = Number(nd.nominal) || 0;
+            if (nd.rumus_item_id) nMap[nd.rumus_item_id] = nom;
+            if (nd.akun_id) {
+              nMap[nd.akun_id] = nom;
+              nMap[`akun_${nd.akun_id}`] = nom;
+            }
           });
         }
         setNominalMap(nMap);
@@ -234,7 +285,7 @@ export default function WorksheetOperator({
       activeRumusDetail.seksi_list.forEach((seksi: any) => {
         if (Array.isArray(seksi.items)) {
           seksi.items.forEach((it: any) => {
-            const val = nominalMap[it.item_id] || 0;
+            const val = getItemNominal(it);
             if (it.operator === "tambah") {
               totalPenambah += val;
             } else {
@@ -247,14 +298,22 @@ export default function WorksheetOperator({
 
     const saldoAkhir = (Number(saldoAwal) || 0) + totalPenambah - totalPengurang;
     return { totalPenambah, totalPengurang, saldoAkhir };
-  }, [activeRumusDetail, nominalMap, saldoAwal]);
+  }, [activeRumusDetail, getItemNominal, saldoAwal]);
 
-  // Handler input perubahan nominal akun
-  const handleNominalChange = (itemId: number, rawVal: string) => {
+  // Handler input perubahan nominal akun (simpan dengan kunci item_id dan akun_id)
+  const handleNominalChange = (it: any, rawVal: string) => {
     // Bersihkan karakter selain angka
     const clean = rawVal.replace(/\D/g, "");
     const val = clean ? parseInt(clean, 10) : 0;
-    setNominalMap((prev) => ({ ...prev, [itemId]: val }));
+    setNominalMap((prev) => {
+      const nextMap = { ...prev };
+      if (it.item_id) nextMap[it.item_id] = val;
+      if (it.akun_id) {
+        nextMap[it.akun_id] = val;
+        nextMap[`akun_${it.akun_id}`] = val;
+      }
+      return nextMap;
+    });
   };
 
   // Handler Simpan Kertas Kerja
@@ -277,7 +336,7 @@ export default function WorksheetOperator({
               nilaiList.push({
                 rumus_item_id: it.item_id,
                 akun_id: it.akun_id,
-                nominal: nominalMap[it.item_id] || 0,
+                nominal: getItemNominal(it),
               });
             });
           }
@@ -645,7 +704,7 @@ export default function WorksheetOperator({
             let subtotalSeksi = 0;
             if (Array.isArray(seksi.items)) {
               seksi.items.forEach((it: any) => {
-                const val = nominalMap[it.item_id] || 0;
+                const val = getItemNominal(it);
                 if (it.operator === "tambah") {
                   subtotalSeksi += val;
                 } else {
@@ -700,7 +759,7 @@ export default function WorksheetOperator({
                   ) : (
                     seksi.items.map((it: any) => {
                       const isAdd = it.operator === "tambah";
-                      const currentVal = nominalMap[it.item_id] || 0;
+                      const currentVal = getItemNominal(it);
 
                       // Analisis Vertikal: Hitung Proporsi (%)
                       let pctStr = "0.0%";
@@ -718,7 +777,7 @@ export default function WorksheetOperator({
 
                       return (
                         <div
-                          key={it.item_id}
+                          key={it.item_id || it.id || it.akun_id}
                           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50/50 transition-colors"
                         >
                           <div className="min-w-0 flex-1">
@@ -753,7 +812,7 @@ export default function WorksheetOperator({
                                 placeholder="0"
                                 disabled={isLockedStatus}
                                 value={currentVal ? currentVal.toLocaleString("id-ID") : ""}
-                                onChange={(e) => handleNominalChange(it.item_id, e.target.value)}
+                                onChange={(e) => handleNominalChange(it, e.target.value)}
                                 className={clsx(
                                   "w-full pl-9 pr-3 py-1.5 text-right font-bold text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500",
                                   isLockedStatus
@@ -1377,7 +1436,7 @@ export default function WorksheetOperator({
                 let subtotalSeksi = 0;
                 if (Array.isArray(seksi.items)) {
                   seksi.items.forEach((it: any) => {
-                    const val = nominalMap[it.item_id] || 0;
+                    const val = getItemNominal(it);
                     if (it.operator === "tambah") subtotalSeksi += val;
                     else subtotalSeksi -= val;
                   });
@@ -1402,7 +1461,7 @@ export default function WorksheetOperator({
                     ) : (
                       seksi.items.map((it: any, itIdx: number) => {
                         const isAdd = it.operator === "tambah";
-                        const currentVal = nominalMap[it.item_id] || 0;
+                        const currentVal = getItemNominal(it);
 
                         let pctStr = "0.0%";
                         if (isSubtotalMode) {

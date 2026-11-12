@@ -22,12 +22,24 @@ export interface OfficialPdfPrintModalProps {
   onClose: () => void;
   rumus: any;
   submission: any;
-  nominalMap: Record<number, number>;
+  nominalMap: Record<string | number, number>;
   satkerNama?: string;
   satkerKode?: string;
   tahun: number;
   bulan: number;
 }
+
+const getPdfItemNominal = (it: any, nMap: Record<string | number, number>): number => {
+  if (!it || !nMap) return 0;
+  return (
+    nMap[it.item_id] ??
+    nMap[it.akun_id] ??
+    nMap[`akun_${it.akun_id}`] ??
+    nMap[it.id] ??
+    nMap[`kode_${it.kode_akun}`] ??
+    0
+  );
+};
 
 export default function OfficialPdfPrintModal({
   isOpen,
@@ -301,7 +313,7 @@ export default function OfficialPdfPrintModal({
               let subtotalSeksi = 0;
               if (Array.isArray(seksi.items)) {
                 seksi.items.forEach((it: any) => {
-                  const val = nominalMap[it.item_id] || nominalMap[it.id] || 0;
+                  const val = getPdfItemNominal(it, nominalMap);
                   if (it.operator === "tambah") subtotalSeksi += val;
                   else subtotalSeksi -= val;
                 });
@@ -326,7 +338,7 @@ export default function OfficialPdfPrintModal({
                   ) : (
                     seksi.items.map((it: any, itIdx: number) => {
                       const isAdd = it.operator === "tambah";
-                      const currentVal = nominalMap[it.item_id] || nominalMap[it.id] || 0;
+                      const currentVal = getPdfItemNominal(it, nominalMap);
 
                       let pctStr = "0.0%";
                       if (isSubtotalMode) {
