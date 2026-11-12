@@ -773,31 +773,39 @@ export default function WorksheetOperator({
                     })
                   )}
 
-                  {/* BARIS LOKASI SUB TOTAL SEKSI (Tepat di Bagian Bawah Seksi Sesuai Kaidah Akuntansi) */}
+                  {/* BARIS LOKASI SUB TOTAL SEKSI (Indented / Agak Masuk Sesuai Lajur Akuntansi) */}
                   {isSubtotalMode && seksi.items?.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-200/80 flex items-center justify-between p-3 rounded-xl bg-slate-50/90 border border-slate-200/60 shadow-2xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
-                          ∑
-                        </span>
-                        <div>
-                          <span className="text-xs font-bold text-slate-800 block">
+                    <div className="mt-3 pt-3 border-t border-dashed border-slate-300">
+                      <div className="ml-4 md:ml-10 p-3 rounded-xl bg-blue-50/50 border-l-4 border-l-blue-600 border border-blue-200/60 flex items-center justify-between shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-blue-600 font-bold text-sm">↳</span>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                                Subtotal {seksi.nama_seksi || `Kelompok ${sIdx + 1}`}
+                              </span>
+                              <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[9px] font-semibold rounded font-mono">
+                                Lajur Rincian
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-500">
+                              Akumulasi {seksi.items.length} akun di atas
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
                             Subtotal
                           </span>
-                          <span className="text-[10px] text-slate-500">
-                            {seksi.nama_seksi || "Akumulasi kelompok akun"}
+                          <span
+                            className={clsx(
+                              "font-extrabold text-sm font-mono",
+                              subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
+                            )}
+                          >
+                            {formatRupiah(subtotalSeksi)}
                           </span>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <span
-                          className={clsx(
-                            "font-extrabold text-sm font-mono",
-                            subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
-                          )}
-                        >
-                          {formatRupiah(subtotalSeksi)}
-                        </span>
                       </div>
                     </div>
                   )}
@@ -1281,16 +1289,17 @@ export default function WorksheetOperator({
             </table>
           </div>
 
-          {/* TABEL DETAIL AKUN & SUB-TOTAL RESMI */}
-          <table className="w-full border-collapse border border-black text-[10.5px] mb-4">
+          {/* TABEL DETAIL AKUN & SUB-TOTAL RESMI (MULTI-COLUMN LAJUR AKUNTANSI) */}
+          <table className="w-full border-collapse border border-black text-[10px] mb-4">
             <thead>
               <tr className="bg-slate-100 border-b border-black text-center font-bold">
-                <th className="border border-black py-1.5 px-2 w-8">No</th>
-                <th className="border border-black py-1.5 px-2 w-24">Kode Akun</th>
-                <th className="border border-black py-1.5 px-2 text-left">Uraian Akun Bagan Standar (BAS)</th>
-                <th className="border border-black py-1.5 px-2 w-24">Sifat Mutasi</th>
-                <th className="border border-black py-1.5 px-2 w-16">Porsi (%)</th>
-                <th className="border border-black py-1.5 px-2 w-32 text-right">Nominal (Rp)</th>
+                <th className="border border-black py-1 px-1.5 w-7">No</th>
+                <th className="border border-black py-1 px-1.5 w-20">Kode Akun</th>
+                <th className="border border-black py-1 px-2 text-left">Uraian Akun Bagan Standar (BAS)</th>
+                <th className="border border-black py-1 px-1.5 w-22">Sifat Mutasi</th>
+                <th className="border border-black py-1 px-1 w-12">Porsi</th>
+                <th className="border border-black py-1 px-2 w-32 text-right">Rincian / Subtotal (Rp)</th>
+                <th className="border border-black py-1 px-2 w-32 text-right">Total Utama (Rp)</th>
               </tr>
             </thead>
             <tbody>
@@ -1309,7 +1318,7 @@ export default function WorksheetOperator({
                   <React.Fragment key={seksi.id || sIdx}>
                     {/* Baris Judul Kelompok Akun */}
                     <tr className="bg-slate-200/90 font-bold border-t border-b border-black">
-                      <td colSpan={6} className="py-1 px-2 text-xs uppercase tracking-wide">
+                      <td colSpan={7} className="py-1 px-2 text-[10.5px] uppercase tracking-wide">
                         {seksi.nama_seksi || `Kelompok Akun ${sIdx + 1}`}
                       </td>
                     </tr>
@@ -1317,7 +1326,7 @@ export default function WorksheetOperator({
                     {/* Baris Akun-Akun */}
                     {seksi.items?.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-2 text-center text-slate-400 italic">
+                        <td colSpan={7} className="py-2 text-center text-slate-400 italic">
                           (Tidak ada akun terdaftar pada kelompok ini)
                         </td>
                       </tr>
@@ -1341,37 +1350,88 @@ export default function WorksheetOperator({
 
                         return (
                           <tr key={it.item_id} className="border-b border-slate-300">
-                            <td className="border border-black py-1 px-1.5 text-center font-mono">{itIdx + 1}</td>
-                            <td className="border border-black py-1 px-2 font-mono font-bold text-center">#{it.kode_akun}</td>
-                            <td className="border border-black py-1 px-2">{it.nama_akun}</td>
-                            <td className="border border-black py-1 px-1.5 text-center font-semibold">
-                              {isAdd ? "(+) Kas Masuk" : "(-) Belanja / Kas Keluar"}
+                            <td className="border border-black py-0.5 px-1 text-center font-mono">{itIdx + 1}</td>
+                            <td className="border border-black py-0.5 px-1.5 font-mono font-bold text-center">#{it.kode_akun}</td>
+                            <td className="border border-black py-0.5 px-2 pl-3">
+                              <span className="text-slate-400 mr-1">•</span>
+                              {it.nama_akun}
                             </td>
-                            <td className="border border-black py-1 px-1 text-center font-mono text-[10px]">
+                            <td className="border border-black py-0.5 px-1 text-center font-medium text-[9px]">
+                              {isAdd ? "(+) Kas Masuk" : "(-) Belanja Keluar"}
+                            </td>
+                            <td className="border border-black py-0.5 px-1 text-center font-mono text-[9px]">
                               {currentVal > 0 ? pctStr : "-"}
                             </td>
-                            <td className="border border-black py-1 px-2 text-right font-mono font-bold">
+                            {/* LAJUR RINCIAN / SUBTOTAL (AGAK MASUK / TENGAH) */}
+                            <td className="border border-black py-0.5 px-2 text-right font-mono font-semibold">
                               {formatRupiah(currentVal)}
+                            </td>
+                            {/* LAJUR TOTAL UTAMA (KOSONG UNTUK RINCIAN AKUN) */}
+                            <td className="border border-black py-0.5 px-2 text-center text-slate-300 font-mono">
+                              -
                             </td>
                           </tr>
                         );
                       })
                     )}
 
-                    {/* Baris Subtotal Kelompok */}
+                    {/* Baris Subtotal Kelompok - INDENTED & NOMINAL DI KOLOM SUBTOTAL */}
                     {isSubtotalMode && seksi.items?.length > 0 && (
-                      <tr className="bg-slate-100 font-extrabold border-t-2 border-b-2 border-black">
-                        <td colSpan={5} className="py-1 px-2 text-right uppercase">
-                          SUBTOTAL {seksi.nama_seksi || `KELOMPOK ${sIdx + 1}`} :
+                      <tr className="bg-slate-100/90 font-bold border-t border-b border-black">
+                        <td colSpan={5} className="py-1 px-2 text-right uppercase pl-6 text-[9.5px]">
+                          ↳ SUBTOTAL {seksi.nama_seksi || `KELOMPOK ${sIdx + 1}`} :
                         </td>
-                        <td className="py-1 px-2 text-right font-mono text-xs">
+                        {/* Subtotal Masuk Kolom Rincian/Subtotal */}
+                        <td className="border border-black py-1 px-2 text-right font-mono font-bold bg-slate-50 text-[10px] underline">
                           {formatRupiah(subtotalSeksi)}
+                        </td>
+                        {/* Kolom Total Utama Kosong */}
+                        <td className="border border-black py-1 px-2 text-center text-slate-300 font-mono">
+                          -
                         </td>
                       </tr>
                     )}
                   </React.Fragment>
                 );
               })}
+
+              {/* REKAPITULASI TOTAL UTAMA (BERADA DI KOLOM PALING LUAR / KANAN) */}
+              <tr className="bg-slate-50 font-bold border-t-2 border-black">
+                <td colSpan={5} className="py-1 px-2 text-right uppercase text-slate-700">
+                  SALDO AWAL KAS RIIL :
+                </td>
+                <td className="border border-black py-1 px-2 text-center text-slate-300 font-mono">-</td>
+                <td className="border border-black py-1 px-2 text-right font-mono font-bold">
+                  {formatRupiah(saldoAwal)}
+                </td>
+              </tr>
+              <tr className="bg-emerald-50/50 font-bold border-b border-black">
+                <td colSpan={5} className="py-1 px-2 text-right uppercase text-emerald-900">
+                  (+) TOTAL PENAMBAH KAS :
+                </td>
+                <td className="border border-black py-1 px-2 text-center text-slate-300 font-mono">-</td>
+                <td className="border border-black py-1 px-2 text-right font-mono font-bold text-emerald-900">
+                  {formatRupiah(calculation.totalPenambah)}
+                </td>
+              </tr>
+              <tr className="bg-rose-50/50 font-bold border-b border-black">
+                <td colSpan={5} className="py-1 px-2 text-right uppercase text-rose-900">
+                  (-) TOTAL PENGURANG KAS :
+                </td>
+                <td className="border border-black py-1 px-2 text-center text-slate-300 font-mono">-</td>
+                <td className="border border-black py-1 px-2 text-right font-mono font-bold text-rose-900">
+                  {formatRupiah(calculation.totalPengurang)}
+                </td>
+              </tr>
+              <tr className="bg-slate-200 font-extrabold border-b-2 border-t-2 border-black">
+                <td colSpan={5} className="py-1.5 px-2 text-right uppercase text-[10.5px]">
+                  (=) TOTAL SALDO AKHIR REKONSILIASI KAS :
+                </td>
+                <td className="border border-black py-1.5 px-2 text-center text-slate-300 font-mono">-</td>
+                <td className="border-t-2 border-b-4 border-double border-black py-1.5 px-2 text-right font-mono font-black text-xs bg-slate-100">
+                  {formatRupiah(calculation.saldoAkhir)}
+                </td>
+              </tr>
             </tbody>
           </table>
 

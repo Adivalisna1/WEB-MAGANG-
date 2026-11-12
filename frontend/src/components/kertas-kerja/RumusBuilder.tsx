@@ -744,10 +744,11 @@ export default function RumusBuilder({
               </div>
             )}
 
-            {/* BARIS LOKASI SUB TOTAL SEKSI (Tepat di Bagian Bawah Seksi) */}
+            {/* BARIS LOKASI SUB TOTAL SEKSI (Tepat di Bagian Bawah Seksi - Indented Sesuai Lajur Akuntansi) */}
             {(seksi.tipe_subtotal || "subtotal") === "subtotal" ? (
-              <div className="mt-3 p-2.5 rounded-lg bg-blue-50/70 border border-blue-100 flex items-center justify-between">
+              <div className="mt-3 ml-4 md:ml-8 p-2.5 rounded-lg bg-blue-50/70 border-l-4 border-l-blue-600 border border-blue-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <span className="text-blue-600 font-bold text-sm">↳</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
                     LOKASI SUBTOTAL
                   </span>
@@ -756,7 +757,7 @@ export default function RumusBuilder({
                   </span>
                 </div>
                 <span className="text-xs font-mono font-bold text-blue-800">
-                  [ ∑ Subtotal ]
+                  [ ∑ Lajur Subtotal ]
                 </span>
               </div>
             ) : (
