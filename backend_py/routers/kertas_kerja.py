@@ -498,9 +498,9 @@ async def export_kertas_kerja(
         if not kk:
             raise HTTPException(status_code=404, detail="Data Kertas Kerja tidak ditemukan")
 
-        # Ambil rincian seksi & nilai akun
+        # Ambil rincian seksi & nilai akun beserta tipe_subtotal
         cursor.execute("""
-            SELECT s.id as seksi_id, s.nama_seksi, s.urutan as seksi_urutan,
+            SELECT s.id as seksi_id, s.nama_seksi, s.tipe_subtotal, s.urutan as seksi_urutan,
                    ri.id as item_id, ri.operator, ma.kode_akun, ma.nama_akun,
                    COALESCE(kn.nominal, 0) as nominal
             FROM kertas_kerja_rumus_seksi s
@@ -515,27 +515,56 @@ async def export_kertas_kerja(
     bulan_nama = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][kk["bulan"] - 1]
     filename_base = f"Kertas_Kerja_{kk['satker_kode']}_{bulan_nama}_{kk['tahun']}"
 
+    # Kelompokkan data per seksi untuk perhitungan Subtotal vs Total
+    from itertools import groupby
+    seksi_groups = []
+    for seksi_id, group_items in groupby(rows, key=lambda x: x["seksi_id"]):
+        items = list(group_items)
+        seksi_groups.append({
+            "seksi_id": seksi_id,
+            "nama_seksi": items[0]["nama_seksi"],
+            "tipe_subtotal": items[0].get("tipe_subtotal") or "subtotal",
+            "items": items
+        })
+
     # EXPORT CSV
     if format == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["LAPORAN KERTAS KERJA KEUANGAN SATKER"])
+        writer.writerow(["LAPORAN KERTAS KERJA KEUANGAN SATKER (MULTI-COLUMN LAJUR AKUNTANSI)"])
         writer.writerow(["Nama Satker", kk["satker_nama"]])
         writer.writerow(["Kode Satker", kk["satker_kode"]])
         writer.writerow(["Periode", f"{bulan_nama} {kk['tahun']}"])
         writer.writerow(["Nama Rumus", kk["nama_rumus"]])
         writer.writerow([])
-        writer.writerow(["No", "Seksi / Kategori", "Kode Akun", "Nama Akun", "Sifat (+/-)", "Nominal (Rp)"])
+        writer.writerow(["No", "Seksi / Kategori", "Kode Akun", "Nama Akun", "Sifat (+/-)", "Rincian / Subtotal (Rp)", "Total Utama (Rp)"])
 
-        writer.writerow(["-", "SALDO AWAL", "-", "Saldo Awal Kas", "+", f"{kk['saldo_awal']:,.2f}"])
-        for idx, r in enumerate(rows, 1):
-            sifat = "(+) Penambah" if r["operator"] == "tambah" else "(-) Pengurang"
-            writer.writerow([idx, r["nama_seksi"], r["kode_akun"], r["nama_akun"], sifat, f"{r['nominal']:,.2f}"])
+        row_counter = 1
+        for grp in seksi_groups:
+            subtotal_seksi = 0.0
+            for r in grp["items"]:
+                val = float(r["nominal"])
+                if r["operator"] == "tambah":
+                    subtotal_seksi += val
+                else:
+                    subtotal_seksi -= val
+
+                sifat = "(+) Penambah" if r["operator"] == "tambah" else "(-) Pengurang"
+                writer.writerow([row_counter, grp["nama_seksi"], r["kode_akun"], r["nama_akun"], sifat, f"{val:,.2f}", ""])
+                row_counter += 1
+
+            # Baris Akumulasi Seksi (Subtotal vs Total)
+            is_sub = (grp["tipe_subtotal"] == "subtotal")
+            if is_sub:
+                writer.writerow(["", f"↳ SUBTOTAL {grp['nama_seksi']}", "", "", "Subtotal", f"{subtotal_seksi:,.2f}", ""])
+            else:
+                writer.writerow(["", f"TOTAL {grp['nama_seksi']}", "", "", "Total Utama", "", f"{subtotal_seksi:,.2f}"])
 
         writer.writerow([])
-        writer.writerow(["", "", "", "TOTAL PENAMBAH", "+", f"{kk['total_penambah']:,.2f}"])
-        writer.writerow(["", "", "", "TOTAL PENGURANG", "-", f"{kk['total_pengurang']:,.2f}"])
-        writer.writerow(["", "", "", "SALDO AKHIR", "=", f"{kk['saldo_akhir']:,.2f}"])
+        writer.writerow(["", "SALDO AWAL KAS", "-", "Saldo Awal Kas", "+", "", f"{kk['saldo_awal']:,.2f}"])
+        writer.writerow(["", "TOTAL PENAMBAH KAS", "", "", "+", "", f"{kk['total_penambah']:,.2f}"])
+        writer.writerow(["", "TOTAL PENGURANG KAS", "", "", "-", "", f"{kk['total_pengurang']:,.2f}"])
+        writer.writerow(["", "SALDO AKHIR REKONSILIASI KAS", "", "", "=", "", f"{kk['saldo_akhir']:,.2f}"])
 
         csv_data = output.getvalue()
         return Response(
@@ -555,11 +584,12 @@ async def export_kertas_kerja(
     font_header = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     fill_header = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
     fill_subtotal = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+    fill_total = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
     fill_saldo_akhir = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
     font_saldo_akhir = Font(name="Calibri", size=12, bold=True, color="166534")
 
     # Header Dokumen
-    ws.merge_cells("A1:F1")
+    ws.merge_cells("A1:G1")
     ws["A1"] = "LEMBAR KERTAS KERJA REKONSILIASI KAS SATKER"
     ws["A1"].font = font_title
 
@@ -575,8 +605,8 @@ async def export_kertas_kerja(
     for row_idx in range(3, 7):
         ws[f"A{row_idx}"].font = font_bold
 
-    # Table Header (Row 8)
-    headers = ["No", "Seksi / Kategori", "Kode Akun", "Nama Akun", "Sifat", "Nominal (Rp)"]
+    # Table Header (Row 8) - Multi Column Akuntansi
+    headers = ["No", "Seksi / Kategori", "Kode Akun", "Nama Akun", "Sifat", "Rincian / Subtotal (Rp)", "Total Utama (Rp)"]
     for col_idx, h in enumerate(headers, 1):
         cell = ws.cell(row=8, column=col_idx, value=h)
         cell.font = font_header
@@ -584,45 +614,80 @@ async def export_kertas_kerja(
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
     curr_row = 9
+    row_no = 1
 
-    # Baris Saldo Awal
-    ws.cell(row=curr_row, column=1, value=1)
-    ws.cell(row=curr_row, column=2, value="SALDO AWAL")
-    ws.cell(row=curr_row, column=3, value="-")
-    ws.cell(row=curr_row, column=4, value="Saldo Awal Kas")
-    ws.cell(row=curr_row, column=5, value="(+) Awal")
-    val_cell = ws.cell(row=curr_row, column=6, value=float(kk["saldo_awal"]))
-    val_cell.number_format = '#,##0'
-    ws.row_dimensions[curr_row].font = font_bold
-    curr_row += 1
+    for grp in seksi_groups:
+        subtotal_seksi = 0.0
+        for r in grp["items"]:
+            val = float(r["nominal"])
+            if r["operator"] == "tambah":
+                subtotal_seksi += val
+            else:
+                subtotal_seksi -= val
 
-    # Rincian Akun
-    for idx, r in enumerate(rows, 2):
-        ws.cell(row=curr_row, column=1, value=idx)
-        ws.cell(row=curr_row, column=2, value=r["nama_seksi"])
-        ws.cell(row=curr_row, column=3, value=r["kode_akun"])
-        ws.cell(row=curr_row, column=4, value=r["nama_akun"])
-        ws.cell(row=curr_row, column=5, value="(+) Penambah" if r["operator"] == "tambah" else "(-) Pengurang")
-        n_cell = ws.cell(row=curr_row, column=6, value=float(r["nominal"]))
-        n_cell.number_format = '#,##0'
+            ws.cell(row=curr_row, column=1, value=row_no).alignment = Alignment(horizontal="center")
+            ws.cell(row=curr_row, column=2, value=grp["nama_seksi"])
+            ws.cell(row=curr_row, column=3, value=r["kode_akun"]).alignment = Alignment(horizontal="center")
+            ws.cell(row=curr_row, column=4, value=r["nama_akun"])
+            ws.cell(row=curr_row, column=5, value="(+) Penambah" if r["operator"] == "tambah" else "(-) Pengurang").alignment = Alignment(horizontal="center")
+            
+            # Nilai Akun masuk ke Kolom Rincian/Subtotal (Kolom 6)
+            c_val = ws.cell(row=curr_row, column=6, value=val)
+            c_val.number_format = '#,##0'
+            ws.cell(row=curr_row, column=7, value="-").alignment = Alignment(horizontal="center")
+            
+            curr_row += 1
+            row_no += 1
+
+        # Baris Subtotal atau Total Kelompok
+        is_sub = (grp["tipe_subtotal"] == "subtotal")
+        if is_sub:
+            # Subtotal: masuk ke Kolom 6
+            ws.cell(row=curr_row, column=2, value=f"↳ SUBTOTAL {grp['nama_seksi']}").font = font_bold
+            ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=5)
+            c_sub = ws.cell(row=curr_row, column=6, value=subtotal_seksi)
+            c_sub.font = font_bold
+            c_sub.number_format = '#,##0'
+            c_sub.fill = fill_subtotal
+            ws.cell(row=curr_row, column=7, value="-").alignment = Alignment(horizontal="center")
+        else:
+            # Total: masuk ke Kolom 7 (Total Utama)
+            ws.cell(row=curr_row, column=2, value=f"TOTAL {grp['nama_seksi']}").font = font_bold
+            ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=5)
+            ws.cell(row=curr_row, column=6, value="-").alignment = Alignment(horizontal="center")
+            c_tot = ws.cell(row=curr_row, column=7, value=subtotal_seksi)
+            c_tot.font = font_bold
+            c_tot.number_format = '#,##0'
+            c_tot.fill = fill_total
+
         curr_row += 1
 
-    # Rekap Total
+    # Rekapitulasi Total Utama di Kolom 7
     curr_row += 1
+    ws.cell(row=curr_row, column=4, value="SALDO AWAL KAS").font = font_bold
+    ws.cell(row=curr_row, column=6, value="-").alignment = Alignment(horizontal="center")
+    cell_saldo_awal = ws.cell(row=curr_row, column=7, value=float(kk["saldo_awal"]))
+    cell_saldo_awal.font = font_bold
+    cell_saldo_awal.number_format = '#,##0'
+    curr_row += 1
+
     ws.cell(row=curr_row, column=4, value="TOTAL PENAMBAH (+)").font = font_bold
-    cell_tot_penambah = ws.cell(row=curr_row, column=6, value=float(kk["total_penambah"]))
+    ws.cell(row=curr_row, column=6, value="-").alignment = Alignment(horizontal="center")
+    cell_tot_penambah = ws.cell(row=curr_row, column=7, value=float(kk["total_penambah"]))
     cell_tot_penambah.font = font_bold
     cell_tot_penambah.number_format = '#,##0'
     curr_row += 1
 
     ws.cell(row=curr_row, column=4, value="TOTAL PENGURANG (-)").font = font_bold
-    cell_tot_pengurang = ws.cell(row=curr_row, column=6, value=float(kk["total_pengurang"]))
+    ws.cell(row=curr_row, column=6, value="-").alignment = Alignment(horizontal="center")
+    cell_tot_pengurang = ws.cell(row=curr_row, column=7, value=float(kk["total_pengurang"]))
     cell_tot_pengurang.font = font_bold
     cell_tot_pengurang.number_format = '#,##0'
     curr_row += 1
 
-    ws.cell(row=curr_row, column=4, value="SALDO AKHIR KAS").font = font_saldo_akhir
-    cell_saldo_akhir = ws.cell(row=curr_row, column=6, value=float(kk["saldo_akhir"]))
+    ws.cell(row=curr_row, column=4, value="SALDO AKHIR REKONSILIASI KAS").font = font_saldo_akhir
+    ws.cell(row=curr_row, column=6, value="-").alignment = Alignment(horizontal="center")
+    cell_saldo_akhir = ws.cell(row=curr_row, column=7, value=float(kk["saldo_akhir"]))
     cell_saldo_akhir.font = font_saldo_akhir
     cell_saldo_akhir.fill = fill_saldo_akhir
     cell_saldo_akhir.number_format = '#,##0'
@@ -633,7 +698,8 @@ async def export_kertas_kerja(
     ws.column_dimensions["C"].width = 14
     ws.column_dimensions["D"].width = 45
     ws.column_dimensions["E"].width = 16
-    ws.column_dimensions["F"].width = 22
+    ws.column_dimensions["F"].width = 24
+    ws.column_dimensions["G"].width = 24
 
     excel_stream = io.BytesIO()
     wb.save(excel_stream)

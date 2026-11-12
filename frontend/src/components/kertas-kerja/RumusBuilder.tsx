@@ -662,14 +662,14 @@ export default function RumusBuilder({
                     )}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 inline-block"></span>
-                    <span>Langsung ke Total</span>
+                    <span>Total Utama</span>
                   </button>
                 </div>
               </div>
-              <span className="text-[10px] text-slate-400 italic">
+              <span className="text-[10px] text-slate-500 font-medium">
                 {(seksi.tipe_subtotal || "subtotal") === "subtotal"
-                  ? "✓ Baris Subtotal tampil di bawah seksi ini"
-                  : "✓ Langsung diakumulasi ke Total Akhir"}
+                  ? "✓ Muncul sebagai baris SUBTOTAL (agak masuk / lajur rincian)"
+                  : "✓ Muncul sebagai baris TOTAL (lajur utama paling luar)"}
               </span>
             </div>
 
@@ -761,12 +761,20 @@ export default function RumusBuilder({
                 </span>
               </div>
             ) : (
-              <div className="mt-3 p-2 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-between text-slate-400">
-                <span className="text-[11px] font-medium">
-                  Akun di kelompok ini langsung diakumulasikan ke Saldo Akhir (tanpa baris subtotal).
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Langsung Total
+              <div className="mt-3 p-3 rounded-xl bg-slate-100/90 border-2 border-slate-300 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded bg-slate-800 text-white flex items-center justify-center font-bold text-xs">
+                    ∑
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-800 bg-slate-200 px-2 py-0.5 rounded">
+                    LOKASI TOTAL
+                  </span>
+                  <span className="text-xs font-black text-slate-900">
+                    Total: {seksi.nama_seksi || `Kelompok ${sIdx + 1}`}
+                  </span>
+                </div>
+                <span className="text-xs font-mono font-black text-slate-900">
+                  [ ∑ Lajur Total Utama ]
                 </span>
               </div>
             )}

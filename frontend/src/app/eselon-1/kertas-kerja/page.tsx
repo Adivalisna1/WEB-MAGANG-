@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
+import OfficialPdfPrintModal from "@/components/kertas-kerja/OfficialPdfPrintModal";
 
 const API = typeof window !== "undefined" && window.location.hostname
   ? `${window.location.protocol}//${window.location.hostname}:5000/api`
@@ -59,6 +60,14 @@ export default function Eselon1KertasKerjaPage() {
   const [loadingKoreksi, setLoadingKoreksi] = useState<boolean>(false);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [koreksiStatusFilter, setKoreksiStatusFilter] = useState<string>("all");
+
+  // State Download / Cetak PDF Resmi
+  const [pdfLoadingId, setPdfLoadingId] = useState<number | null>(null);
+  const [printModalData, setPrintModalData] = useState<{
+    submission: any;
+    rumus: any;
+    nominalMap: Record<number, number>;
+  } | null>(null);
 
   // Ambil rekapitulasi pengisian kertas kerja satker binaan
   const fetchSubmissions = useCallback(async () => {
@@ -205,6 +214,47 @@ export default function Eselon1KertasKerjaPage() {
         toast.success(`Laporan (${fmt.toUpperCase()}) berhasil diunduh!`);
       })
       .catch((err) => toast.error(err.message));
+  };
+
+  // Handler Download / Cetak PDF Berita Acara
+  const handleDownloadPdf = async (s: any) => {
+    setPdfLoadingId(s.id);
+    try {
+      const session = getSession();
+      // 1. Ambil detail rumus
+      const resRumus = await fetch(`${API}/kertas-kerja/rumus/${s.rumus_id}`, {
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const jsonRumus = await resRumus.json();
+
+      // 2. Ambil detail transaksi (nilai detail)
+      const resTx = await fetch(
+        `${API}/kertas-kerja/transaksi?tahun=${s.tahun}&bulan=${s.bulan}&satker_id=${s.satker_id}&rumus_id=${s.rumus_id}`,
+        { headers: { Authorization: `Bearer ${session?.token}` } }
+      );
+      const jsonTx = await resTx.json();
+
+      if (!jsonRumus.success || !jsonRumus.data) {
+        throw new Error("Gagal memuat struktur rumus");
+      }
+
+      const nMap: Record<number, number> = {};
+      if (jsonTx.success && jsonTx.data?.nilai_detail) {
+        jsonTx.data.nilai_detail.forEach((nd: any) => {
+          nMap[nd.rumus_item_id] = Number(nd.nominal) || 0;
+        });
+      }
+
+      setPrintModalData({
+        submission: s,
+        rumus: jsonRumus.data,
+        nominalMap: nMap,
+      });
+    } catch (err: any) {
+      toast.error("Gagal menyiapkan dokumen PDF: " + err.message);
+    } finally {
+      setPdfLoadingId(null);
+    }
   };
 
   const filteredSubmissions = submissions.filter((s) => {
@@ -662,6 +712,18 @@ export default function Eselon1KertasKerjaPage() {
                             >
                               .csv
                             </button>
+                            <button
+                              onClick={() => handleDownloadPdf(s)}
+                              disabled={pdfLoadingId === s.id}
+                              className="px-2 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md border border-rose-200 transition-colors flex items-center gap-1"
+                              title="Cetak / Simpan Berita Acara Rekonsiliasi (PDF)"
+                            >
+                              {pdfLoadingId === s.id ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                ".pdf"
+                              )}
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -672,6 +734,21 @@ export default function Eselon1KertasKerjaPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* MODAL CETAK PDF RESMI BERITA ACARA SATKER */}
+      {printModalData && (
+        <OfficialPdfPrintModal
+          isOpen={Boolean(printModalData)}
+          onClose={() => setPrintModalData(null)}
+          rumus={printModalData.rumus}
+          submission={printModalData.submission}
+          nominalMap={printModalData.nominalMap}
+          satkerNama={printModalData.submission.satker_nama}
+          satkerKode={printModalData.submission.satker_kode}
+          tahun={printModalData.submission.tahun}
+          bulan={printModalData.submission.bulan}
+        />
       )}
     </div>
   );
