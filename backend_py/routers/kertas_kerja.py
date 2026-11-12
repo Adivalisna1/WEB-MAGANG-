@@ -278,12 +278,20 @@ async def update_rumus(
         if not existing:
             raise HTTPException(status_code=404, detail="Rumus tidak ditemukan")
 
-        # Cek proteksi lock
+        # Cek proteksi lock: jika terkunci, perbolehkan update opsi tampilan tipe_subtotal (Subtotal vs Total)
         if existing["is_locked"] == 1:
-            raise HTTPException(
-                status_code=400,
-                detail="Rumus ini sudah pernah digunakan dalam pelaporan satker dan TERKUNCI demi integritas audit riwayat data."
-            )
+            for s_idx, seksi_data in enumerate(req.seksi_list, 1):
+                sub_type = seksi_data.tipe_subtotal if seksi_data.tipe_subtotal in ["subtotal", "total"] else "subtotal"
+                cursor.execute("""
+                    UPDATE kertas_kerja_rumus_seksi
+                    SET tipe_subtotal = %s
+                    WHERE rumus_id = %s AND (nama_seksi = %s OR urutan = %s)
+                """, (sub_type, rumus_id, seksi_data.nama_seksi, seksi_data.urutan or s_idx))
+            db.commit()
+            return {
+                "success": True,
+                "message": "Pengaturan lajur Subtotal / Total Utama berhasil diperbarui."
+            }
 
         # Update header
         cursor.execute("""
