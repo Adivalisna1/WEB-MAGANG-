@@ -21,6 +21,7 @@ class RumusItemCreate(BaseModel):
 class RumusSeksiCreate(BaseModel):
     nama_seksi: str
     tipe_akun_filter: str = "ALL"  # A, L, O, R, E, ALL
+    tipe_subtotal: str = "subtotal"  # "subtotal" atau "total"
     urutan: int = 1
     items: List[RumusItemCreate] = []
 
@@ -182,7 +183,7 @@ async def get_rumus_detail(
 
         # Ambil seksi-seksi
         cursor.execute("""
-            SELECT id, rumus_id, nama_seksi, tipe_akun_filter, urutan
+            SELECT id, rumus_id, nama_seksi, tipe_akun_filter, tipe_subtotal, urutan
             FROM kertas_kerja_rumus_seksi
             WHERE rumus_id = %s
             ORDER BY urutan ASC, id ASC
@@ -234,10 +235,11 @@ async def create_rumus(
         rumus_id = cursor.lastrowid
 
         for s_idx, seksi_data in enumerate(req.seksi_list, 1):
+            sub_type = seksi_data.tipe_subtotal if seksi_data.tipe_subtotal in ["subtotal", "total"] else "subtotal"
             cursor.execute("""
-                INSERT INTO kertas_kerja_rumus_seksi (rumus_id, nama_seksi, tipe_akun_filter, urutan)
-                VALUES (%s, %s, %s, %s)
-            """, (rumus_id, seksi_data.nama_seksi, seksi_data.tipe_akun_filter, seksi_data.urutan or s_idx))
+                INSERT INTO kertas_kerja_rumus_seksi (rumus_id, nama_seksi, tipe_akun_filter, tipe_subtotal, urutan)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (rumus_id, seksi_data.nama_seksi, seksi_data.tipe_akun_filter, sub_type, seksi_data.urutan or s_idx))
             seksi_id = cursor.lastrowid
 
             for i_idx, item_data in enumerate(seksi_data.items, 1):
@@ -285,10 +287,11 @@ async def update_rumus(
 
         # Masukkan seksi & item baru
         for s_idx, seksi_data in enumerate(req.seksi_list, 1):
+            sub_type = seksi_data.tipe_subtotal if seksi_data.tipe_subtotal in ["subtotal", "total"] else "subtotal"
             cursor.execute("""
-                INSERT INTO kertas_kerja_rumus_seksi (rumus_id, nama_seksi, tipe_akun_filter, urutan)
-                VALUES (%s, %s, %s, %s)
-            """, (rumus_id, seksi_data.nama_seksi, seksi_data.tipe_akun_filter, seksi_data.urutan or s_idx))
+                INSERT INTO kertas_kerja_rumus_seksi (rumus_id, nama_seksi, tipe_akun_filter, tipe_subtotal, urutan)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (rumus_id, seksi_data.nama_seksi, seksi_data.tipe_akun_filter, sub_type, seksi_data.urutan or s_idx))
             seksi_id = cursor.lastrowid
 
             for i_idx, item_data in enumerate(seksi_data.items, 1):

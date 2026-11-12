@@ -9,7 +9,7 @@ import {
   FileText, Upload, Clock, CheckCircle,
   Archive, Send, Pencil, Loader2,
   RefreshCw, AlertCircle, MessageSquareWarning, Bell, Info, CloudUpload,
-  Eye, Download, BookOpen, AlertTriangle, CheckCircle2, ChevronRight, X, Folder
+  Eye, Download, BookOpen, AlertTriangle, CheckCircle2, ChevronRight, X, Folder, Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
 import UploadModal from '@/components/Staff/UploadModal';

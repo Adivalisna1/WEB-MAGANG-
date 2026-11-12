@@ -52,6 +52,7 @@ export interface RumusSeksi {
   id?: number;
   nama_seksi: string;
   tipe_akun_filter: "A" | "L" | "O" | "R" | "E" | "ALL";
+  tipe_subtotal?: "subtotal" | "total";
   urutan: number;
   items: RumusItem[];
 }
@@ -127,7 +128,11 @@ export default function RumusBuilder({
             setDeskripsi(json.data.deskripsi || "");
             setScope(json.data.scope || "universal");
             setIsLocked(Boolean(json.data.is_locked));
-            setSeksiList(json.data.seksi_list || []);
+            const parsedSeksi = (json.data.seksi_list || []).map((s: any) => ({
+              ...s,
+              tipe_subtotal: s.tipe_subtotal || "subtotal",
+            }));
+            setSeksiList(parsedSeksi);
           }
         } catch (err: any) {
           toast.error("Gagal memuat detail rumus: " + err.message);
@@ -142,12 +147,14 @@ export default function RumusBuilder({
         {
           nama_seksi: "I. Penerimaan Pendapatan & Kas Masuk (+)",
           tipe_akun_filter: "R",
+          tipe_subtotal: "subtotal",
           urutan: 1,
           items: [],
         },
         {
           nama_seksi: "II. Pengeluaran Belanja & Beban Kas (-)",
           tipe_akun_filter: "E",
+          tipe_subtotal: "subtotal",
           urutan: 2,
           items: [],
         },
@@ -200,6 +207,7 @@ export default function RumusBuilder({
       {
         nama_seksi: `Seksi ${seksiList.length + 1}`,
         tipe_akun_filter: "ALL",
+        tipe_subtotal: "subtotal",
         urutan: seksiList.length + 1,
         items: [],
       },
@@ -302,6 +310,7 @@ export default function RumusBuilder({
         seksi_list: seksiList.map((s, sIdx) => ({
           nama_seksi: s.nama_seksi,
           tipe_akun_filter: s.tipe_akun_filter,
+          tipe_subtotal: s.tipe_subtotal || "subtotal",
           urutan: sIdx + 1,
           items: s.items.map((it, iIdx) => ({
             akun_id: it.akun_id,
@@ -605,6 +614,50 @@ export default function RumusBuilder({
               </div>
             </div>
 
+            {/* OPSI PILIHAN SUB TOTAL VS TOTAL (ANALISIS AKUNTANSI) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1 py-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-600">
+                  Opsi Perhitungan:
+                </span>
+                <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100/80 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateSeksi(sIdx, "tipe_subtotal", "subtotal")}
+                    disabled={isLocked}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5",
+                      (seksi.tipe_subtotal || "subtotal") === "subtotal"
+                        ? "bg-white text-blue-700 shadow-2xs font-bold border border-blue-100"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block"></span>
+                    <span>Subtotal Seksi</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateSeksi(sIdx, "tipe_subtotal", "total")}
+                    disabled={isLocked}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5",
+                      seksi.tipe_subtotal === "total"
+                        ? "bg-white text-indigo-700 shadow-2xs font-bold border border-indigo-100"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 inline-block"></span>
+                    <span>Langsung ke Total</span>
+                  </button>
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-400 italic">
+                {(seksi.tipe_subtotal || "subtotal") === "subtotal"
+                  ? "✓ Baris Subtotal tampil di bawah seksi ini"
+                  : "✓ Langsung diakumulasi ke Total Akhir"}
+              </span>
+            </div>
+
             {/* List Akun di Seksi Ini */}
             {seksi.items.length === 0 ? (
               <div className="py-4 text-center border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400">
@@ -659,6 +712,32 @@ export default function RumusBuilder({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* BARIS LOKASI SUB TOTAL SEKSI (Tepat di Bagian Bawah Seksi) */}
+            {(seksi.tipe_subtotal || "subtotal") === "subtotal" ? (
+              <div className="mt-3 p-2.5 rounded-lg bg-blue-50/70 border border-blue-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                    LOKASI SUB TOTAL
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">
+                    Subtotal {seksi.nama_seksi || `Seksi ${sIdx + 1}`}
+                  </span>
+                </div>
+                <span className="text-xs font-mono font-bold text-blue-800">
+                  [ ∑ Subtotal Seksi ]
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3 p-2 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-medium">
+                  Akun di seksi ini langsung diakumulasikan ke Saldo Akhir (tanpa baris subtotal).
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Langsung Total
+                </span>
               </div>
             )}
           </div>

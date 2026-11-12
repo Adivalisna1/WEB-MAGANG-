@@ -464,6 +464,8 @@ export default function WorksheetOperator({
 
           {/* DAFTAR SEKSI-SEKSI RUMUS YANG SUDAH DITETAPKAN PEMBINA */}
           {activeRumusDetail.seksi_list.map((seksi: any, sIdx: number) => {
+            const isSubtotalMode = (seksi.tipe_subtotal || "subtotal") === "subtotal";
+
             // Hitung subtotal seksi ini
             let subtotalSeksi = 0;
             if (Array.isArray(seksi.items)) {
@@ -495,16 +497,22 @@ export default function WorksheetOperator({
 
                   <div className="text-right">
                     <span className="text-[10px] uppercase font-semibold text-slate-400 block">
-                      Subtotal Seksi
+                      {isSubtotalMode ? "Subtotal Seksi" : "Perhitungan"}
                     </span>
-                    <span
-                      className={clsx(
-                        "font-bold text-xs",
-                        subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
-                      )}
-                    >
-                      {formatRupiah(subtotalSeksi)}
-                    </span>
+                    {isSubtotalMode ? (
+                      <span
+                        className={clsx(
+                          "font-bold text-xs",
+                          subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
+                        )}
+                      >
+                        {formatRupiah(subtotalSeksi)}
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                        Langsung Total
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -518,6 +526,20 @@ export default function WorksheetOperator({
                     seksi.items.map((it: any) => {
                       const isAdd = it.operator === "tambah";
                       const currentVal = nominalMap[it.item_id] || 0;
+
+                      // Analisis Vertikal: Hitung Proporsi (%)
+                      let pctStr = "0.0%";
+                      if (isSubtotalMode) {
+                        const absSub = Math.abs(subtotalSeksi);
+                        if (absSub > 0 && currentVal > 0) {
+                          pctStr = `${((currentVal / absSub) * 100).toFixed(1)}%`;
+                        }
+                      } else {
+                        const baseTot = isAdd ? calculation.totalPenambah : calculation.totalPengurang;
+                        if (baseTot > 0 && currentVal > 0) {
+                          pctStr = `${((currentVal / baseTot) * 100).toFixed(1)}%`;
+                        }
+                      }
 
                       return (
                         <div
@@ -545,22 +567,60 @@ export default function WorksheetOperator({
                             </p>
                           </div>
 
-                          {/* Input Nominal Rupiah */}
-                          <div className="relative w-full sm:w-56 shrink-0">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
-                              Rp
-                            </span>
-                            <input
-                              type="text"
-                              placeholder="0"
-                              value={currentVal ? currentVal.toLocaleString("id-ID") : ""}
-                              onChange={(e) => handleNominalChange(it.item_id, e.target.value)}
-                              className="w-full pl-9 pr-3 py-1.5 text-right font-bold text-slate-800 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                            />
+                          {/* Input Nominal Rupiah & Analisis Vertikal */}
+                          <div className="flex flex-col items-end w-full sm:w-56 shrink-0">
+                            <div className="relative w-full">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                                Rp
+                              </span>
+                              <input
+                                type="text"
+                                placeholder="0"
+                                value={currentVal ? currentVal.toLocaleString("id-ID") : ""}
+                                onChange={(e) => handleNominalChange(it.item_id, e.target.value)}
+                                className="w-full pl-9 pr-3 py-1.5 text-right font-bold text-slate-800 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                              />
+                            </div>
+                            {currentVal > 0 && (
+                              <div className="flex items-center justify-end gap-1 mt-1 text-[10px] font-medium text-slate-400">
+                                <span className="bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">
+                                  📊 {pctStr} dari {isSubtotalMode ? "Subtotal" : "Total"}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
                     })
+                  )}
+
+                  {/* BARIS LOKASI SUB TOTAL SEKSI (Tepat di Bagian Bawah Seksi Sesuai Kaidah Akuntansi) */}
+                  {isSubtotalMode && seksi.items?.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-200/80 flex items-center justify-between p-3 rounded-xl bg-slate-50/90 border border-slate-200/60 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                          ∑
+                        </span>
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">
+                            Subtotal {seksi.nama_seksi}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Total akumulasi akun pada seksi ini
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span
+                          className={clsx(
+                            "font-extrabold text-sm font-mono",
+                            subtotalSeksi >= 0 ? "text-emerald-700" : "text-rose-700"
+                          )}
+                        >
+                          {formatRupiah(subtotalSeksi)}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -619,6 +679,37 @@ export default function WorksheetOperator({
                 <p className="text-base font-extrabold text-blue-900 mt-0.5 truncate">
                   {formatRupiah(calculation.saldoAkhir)}
                 </p>
+              </div>
+            </div>
+
+            {/* ANALISIS AKUNTANSI (RINGKASAN PROPORSI VERTIKAL) */}
+            <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                  📊
+                </span>
+                <div>
+                  <span className="font-bold text-slate-800 block text-[11px]">
+                    Ringkasan Analisis Akuntansi:
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Proporsi Mutasi Penambah vs Pengurang:{" "}
+                    <strong className="text-emerald-700">
+                      {calculation.totalPenambah + calculation.totalPengurang > 0
+                        ? `${((calculation.totalPenambah / (calculation.totalPenambah + calculation.totalPengurang)) * 100).toFixed(1)}% Penambah`
+                        : "0% Penambah"}
+                    </strong>{" "}
+                    &bull;{" "}
+                    <strong className="text-rose-700">
+                      {calculation.totalPenambah + calculation.totalPengurang > 0
+                        ? `${((calculation.totalPengurang / (calculation.totalPenambah + calculation.totalPengurang)) * 100).toFixed(1)}% Pengurang`
+                        : "0% Pengurang"}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+              <div className="text-right text-[10px] text-slate-400 font-medium">
+                Sistem Validasi Rule Engine Pemerintah
               </div>
             </div>
 

@@ -163,8 +163,8 @@ export default function Eselon1KertasKerjaPage() {
       {activeTab === "input" ? (
         <WorksheetOperator
           isEselonRole={true}
-          satkerNamaProp={user?.eselon_1_nama}
-          satkerKodeProp={user?.eselon_1_singkatan}
+          satkerNamaProp={user?.eselon_1_nama || undefined}
+          satkerKodeProp={user?.eselon_1_singkatan || undefined}
         />
       ) : (
         <div className="space-y-4">
