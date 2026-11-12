@@ -45,10 +45,12 @@ const formatRupiah = (val: number): string => {
 
 export default function WorksheetOperator({
   isEselonRole = false,
+  readOnly = false,
   satkerNamaProp,
   satkerKodeProp,
 }: {
   isEselonRole?: boolean;
+  readOnly?: boolean;
   satkerNamaProp?: string;
   satkerKodeProp?: string;
 }) {
@@ -94,8 +96,8 @@ export default function WorksheetOperator({
     }
   }, []);
 
-  const isLockedStatus = statusLaporan === "diajukan" || statusLaporan === "terverifikasi" || statusLaporan === "permohonan_koreksi";
-  const isKoreksiTerbuka = statusLaporan === "koreksi_terbuka";
+  const isLockedStatus = readOnly || statusLaporan === "diajukan" || statusLaporan === "terverifikasi" || statusLaporan === "permohonan_koreksi";
+  const isKoreksiTerbuka = !readOnly && statusLaporan === "koreksi_terbuka";
 
   // Handler Kirim Surat Memo Koreksi ke K/L
   const handleSubmitKoreksi = async (e: React.FormEvent) => {
@@ -450,8 +452,13 @@ export default function WorksheetOperator({
               Cetak PDF
             </button>
 
-            {/* Tombol Simpan / Ajukan / Koreksi */}
-            {isLockedStatus ? (
+            {/* Tombol Simpan / Ajukan / Koreksi / Read-Only */}
+            {readOnly ? (
+              <span className="px-3 py-2 text-xs font-bold rounded-xl border border-blue-200 bg-blue-50 text-blue-700 flex items-center gap-1.5 shadow-2xs">
+                <Lock className="w-3.5 h-3.5 text-blue-600" />
+                Mode Pemantauan (Read-Only)
+              </span>
+            ) : isLockedStatus ? (
               <button
                 type="button"
                 onClick={() => setShowKoreksiModal(true)}
@@ -493,8 +500,18 @@ export default function WorksheetOperator({
           </div>
         </div>
 
+        {/* BANNER KHUSUS MODE PEMANTAUAN ADMIN SATKER */}
+        {readOnly && (
+          <div className="p-3 bg-blue-50/90 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-900 mt-3 animate-in fade-in duration-200">
+            <Lock className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>Mode Pemantauan Pimpinan / Admin Satker:</strong> Anda memiliki hak akses melihat lembar kerja, memeriksa angka rekonsiliasi, dan mencetak laporan resmi. Penginputan transaksi dikerjakan oleh Operator Satker.
+            </span>
+          </div>
+        )}
+
         {/* BANNER NOTIFIKASI STATUS GEMBOK / KOREKSI */}
-        {statusLaporan === "permohonan_koreksi" && (
+        {!readOnly && statusLaporan === "permohonan_koreksi" && (
           <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-900 mt-3 animate-in fade-in duration-200">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
@@ -503,7 +520,7 @@ export default function WorksheetOperator({
           </div>
         )}
 
-        {isKoreksiTerbuka && (
+        {!readOnly && isKoreksiTerbuka && (
           <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-900 mt-3 animate-in fade-in duration-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
@@ -898,12 +915,29 @@ export default function WorksheetOperator({
             {/* Tombol Aksi Bawah */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <p className="text-xs text-slate-400">
-                {isLockedStatus
+                {readOnly
+                  ? "*Anda berada dalam mode pemantauan. Pengisian transaksi hanya dapat dilakukan oleh Operator Satker."
+                  : isLockedStatus
                   ? "*Lembar kerja terkunci permanen. Butuh Memo Penyesuaian ke K/L untuk koreksi."
                   : "*Kertas kerja otomatis terkunci saat diajukan untuk menjaga integritas data audit."}
               </p>
               <div className="flex items-center gap-2">
-                {isLockedStatus ? (
+                {readOnly ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!activeRumusDetail) {
+                        toast.error("Pilih rumus terlebih dahulu untuk mencetak!");
+                        return;
+                      }
+                      setShowPrintModal(true);
+                    }}
+                    className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Cetak PDF Berita Acara
+                  </button>
+                ) : isLockedStatus ? (
                   <button
                     type="button"
                     onClick={() => setShowKoreksiModal(true)}

@@ -410,6 +410,14 @@ async def save_kertas_kerja_transaksi(
     if not satker_id:
         raise HTTPException(status_code=400, detail="Akun Anda tidak terikat dengan Satker pelaksana.")
 
+    user_role = current_user.get("role")
+    user_tingkat = current_user.get("tingkat")
+    if user_role == "administrasi" and user_tingkat == "satker":
+        raise HTTPException(
+            status_code=403,
+            detail="Pimpinan / Admin Satker hanya berwenang memantau kertas kerja, tidak dapat menginput atau mengubah transaksi."
+        )
+
     with db.cursor(dictionary=True) as cursor:
         # Cek apakah sudah ada untuk periode & rumus ini
         cursor.execute("""

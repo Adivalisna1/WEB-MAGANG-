@@ -33,6 +33,7 @@ import clsx from "clsx";
 const TOP_MENU = [
   { href: "/pimpinan", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/pimpinan/dokumen", icon: FileText, label: "Dokumen" },
+  { href: "/pimpinan/kertas-kerja", icon: FileSpreadsheet, label: "Kertas Kerja" },
 ];
 
 const KAS_SUB_MENU = [
