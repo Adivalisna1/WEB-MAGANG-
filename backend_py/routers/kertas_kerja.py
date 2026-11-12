@@ -358,14 +358,14 @@ async def get_kertas_kerja_transaksi(
         target_satker_id = current_user.get("satker_id")
 
     with db.cursor(dictionary=True) as cursor:
-        where_clauses = ["tahun = %s", "bulan = %s"]
+        where_clauses = ["kks.tahun = %s", "kks.bulan = %s"]
         params = [tahun, bulan]
 
         if target_satker_id:
-            where_clauses.append("satker_id = %s")
+            where_clauses.append("kks.satker_id = %s")
             params.append(target_satker_id)
         if rumus_id:
-            where_clauses.append("rumus_id = %s")
+            where_clauses.append("kks.rumus_id = %s")
             params.append(rumus_id)
 
         sql = f"""
