@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
-import WorksheetOperator from "@/components/kertas-kerja/WorksheetOperator";
 
 const API = typeof window !== "undefined" && window.location.hostname
   ? `${window.location.protocol}//${window.location.hostname}:5000/api`
@@ -46,7 +45,7 @@ const formatRupiah = (val: number): string => {
 
 export default function Eselon1KertasKerjaPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"monitoring" | "koreksi" | "input">("monitoring");
+  const [activeTab, setActiveTab] = useState<"monitoring" | "koreksi">("monitoring");
 
   // State Monitoring Satker Binaan
   const [tahun, setTahun] = useState<number>(new Date().getFullYear());
@@ -242,10 +241,10 @@ export default function Eselon1KertasKerjaPage() {
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900">
-            Monitoring & Lembar Kertas Kerja
+            Monitoring & Audit Kertas Kerja Satker
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Audit kertas kerja yang telah diinput satker binaan atau isi lembar kerja mandiri unit Eselon 1.
+            Audit dan pantau kertas kerja rekonsiliasi kas yang telah diajukan oleh seluruh satuan kerja binaan.
           </p>
         </div>
 
@@ -278,27 +277,10 @@ export default function Eselon1KertasKerjaPage() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setActiveTab("input")}
-            className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
-              activeTab === "input"
-                ? "bg-white text-blue-600 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-            )}
-          >
-            Isi Kertas Kerja Unit
-          </button>
         </div>
       </div>
 
-      {activeTab === "input" ? (
-        <WorksheetOperator
-          isEselonRole={true}
-          satkerNamaProp={user?.eselon_1_nama || undefined}
-          satkerKodeProp={user?.eselon_1_singkatan || undefined}
-        />
-      ) : activeTab === "koreksi" ? (
+      {activeTab === "koreksi" ? (
         <div className="space-y-4">
           {/* HEADER PENJELASAN SOP PSAP 10 */}
           <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950">
