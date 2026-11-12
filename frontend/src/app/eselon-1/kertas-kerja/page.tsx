@@ -15,7 +15,13 @@ import {
   FileText,
   Eye,
   Layers,
-  ArrowRight
+  ArrowRight,
+  FileCheck,
+  Lock,
+  Unlock,
+  Check,
+  X,
+  AlertCircle
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -40,7 +46,7 @@ const formatRupiah = (val: number): string => {
 
 export default function Eselon1KertasKerjaPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"monitoring" | "input">("monitoring");
+  const [activeTab, setActiveTab] = useState<"monitoring" | "koreksi" | "input">("monitoring");
 
   // State Monitoring Satker Binaan
   const [tahun, setTahun] = useState<number>(new Date().getFullYear());
@@ -48,6 +54,12 @@ export default function Eselon1KertasKerjaPage() {
   const [search, setSearch] = useState<string>("");
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // State Permohonan Memo Koreksi Satker (PSAP 10)
+  const [koreksiList, setKoreksiList] = useState<any[]>([]);
+  const [loadingKoreksi, setLoadingKoreksi] = useState<boolean>(false);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [koreksiStatusFilter, setKoreksiStatusFilter] = useState<string>("all");
 
   // Ambil rekapitulasi pengisian kertas kerja satker binaan
   const fetchSubmissions = useCallback(async () => {
@@ -68,11 +80,108 @@ export default function Eselon1KertasKerjaPage() {
     }
   }, [tahun, bulan]);
 
+  // Ambil permohonan memo koreksi dari satker binaan
+  const fetchKoreksiRequests = useCallback(async () => {
+    setLoadingKoreksi(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/koreksi-requests`, {
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setKoreksiList(json.data);
+      }
+    } catch (err: any) {
+      console.error("Fetch koreksi requests error:", err);
+    } finally {
+      setLoadingKoreksi(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === "monitoring") {
       fetchSubmissions();
+    } else if (activeTab === "koreksi") {
+      fetchKoreksiRequests();
     }
-  }, [activeTab, fetchSubmissions]);
+  }, [activeTab, fetchSubmissions, fetchKoreksiRequests]);
+
+  // Load awal untuk mendapatkan jumlah pending memo koreksi
+  useEffect(() => {
+    fetchKoreksiRequests();
+  }, [fetchKoreksiRequests]);
+
+  // Handler Persetujuan Memo Koreksi (Buka Gembok Satker)
+  const handleApproveKoreksi = async (reqId: number) => {
+    const catatan = window.prompt(
+      "Catatan persetujuan pembukaan gembok (opsional):",
+      "Disetujui untuk perbaikan kesalahan pencatatan transaksi kertas kerja."
+    );
+    if (catatan === null) return; // User cancel
+
+    setActionLoadingId(reqId);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/koreksi-requests/${reqId}/approve`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({ catatan: catatan || "Disetujui" }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.detail || json.message || "Gagal menyetujui permohonan koreksi");
+      }
+      toast.success("Gembok Kertas Kerja Satker berhasil dibuka untuk sesi perbaikan!");
+      fetchKoreksiRequests();
+      fetchSubmissions();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Handler Penolakan Memo Koreksi (Kertas Kerja Tetap Terkunci)
+  const handleRejectKoreksi = async (reqId: number) => {
+    const catatan = window.prompt("Alasan penolakan pembukaan gembok:", "Alasan koreksi belum sesuai SOP pembetulan kesalahan.");
+    if (catatan === null) return; // User cancel
+    if (!catatan.trim()) {
+      toast.error("Alasan penolakan wajib dicantumkan!");
+      return;
+    }
+
+    setActionLoadingId(reqId);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/koreksi-requests/${reqId}/reject`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({ catatan }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.detail || json.message || "Gagal menolak permohonan koreksi");
+      }
+      toast.success("Permohonan koreksi ditolak. Kertas kerja tetap terkunci.");
+      fetchKoreksiRequests();
+      fetchSubmissions();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const pendingKoreksiCount = koreksiList.filter(
+    (k) => k.status === "menunggu_persetujuan"
+  ).length;
 
   // Handler Download Ekspor
   const handleExport = (kkId: number, satkerKode: string, fmt: "xlsx" | "csv") => {
@@ -110,6 +219,13 @@ export default function Eselon1KertasKerjaPage() {
     return true;
   });
 
+  const filteredKoreksiList = koreksiList.filter((k) => {
+    if (koreksiStatusFilter !== "all" && k.status !== koreksiStatusFilter) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto py-2">
       {/* HEADER WITH TABS */}
@@ -134,7 +250,7 @@ export default function Eselon1KertasKerjaPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl self-start sm:self-center">
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl self-start sm:self-center gap-1">
           <button
             onClick={() => setActiveTab("monitoring")}
             className={clsx(
@@ -145,6 +261,22 @@ export default function Eselon1KertasKerjaPage() {
             )}
           >
             Audit Satker Binaan
+          </button>
+          <button
+            onClick={() => setActiveTab("koreksi")}
+            className={clsx(
+              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+              activeTab === "koreksi"
+                ? "bg-white text-blue-600 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            )}
+          >
+            <span>Memo Koreksi Satker</span>
+            {pendingKoreksiCount > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] font-extrabold rounded-full bg-rose-500 text-white animate-pulse">
+                {pendingKoreksiCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("input")}
@@ -166,6 +298,237 @@ export default function Eselon1KertasKerjaPage() {
           satkerNamaProp={user?.eselon_1_nama || undefined}
           satkerKodeProp={user?.eselon_1_singkatan || undefined}
         />
+      ) : activeTab === "koreksi" ? (
+        <div className="space-y-4">
+          {/* HEADER PENJELASAN SOP PSAP 10 */}
+          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0 mt-0.5">
+                <FileCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-amber-900">
+                  Antrean Persetujuan Memo Koreksi & Pembukaan Gembok (PSAP 10)
+                </h3>
+                <p className="text-amber-800/90 mt-0.5">
+                  Setiap perubahan angka pada kertas kerja yang telah diajukan/terverifikasi memerlukan surat memo resmi dari Satker. Pejabat Pembina Eselon 1 / K/L memiliki otoritas membuka gembok untuk 1 (satu) sesi perbaikan sebelum sistem menguncinya kembali.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* TOOLBAR FILTER STATUS */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+              {[
+                { id: "all", label: "Semua Permohonan" },
+                { id: "menunggu_persetujuan", label: "Menunggu Persetujuan", badge: pendingKoreksiCount },
+                { id: "disetujui", label: "Disetujui (Gembok Terbuka)" },
+                { id: "ditolak", label: "Ditolak" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setKoreksiStatusFilter(tab.id)}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5",
+                    koreksiStatusFilter === tab.id
+                      ? "bg-white text-blue-700 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  {Boolean(tab.badge && tab.badge > 0) && (
+                    <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-rose-500 text-white">
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={fetchKoreksiRequests}
+              className="p-2 text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors shrink-0"
+              title="Segarkan data antrean"
+            >
+              <RefreshCw className={clsx("w-4 h-4", loadingKoreksi && "animate-spin")} />
+            </button>
+          </div>
+
+          {/* DAFTAR PERMOHONAN KOREKSI */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-800">
+                Daftar Memo Koreksi Masuk ({filteredKoreksiList.length} Permohonan)
+              </span>
+              <span className="text-slate-400 text-[11px]">
+                Standar Akuntansi Pemerintahan PP 71/2010
+              </span>
+            </div>
+
+            {loadingKoreksi ? (
+              <div className="py-24 text-center text-xs text-slate-400">
+                Memuat antrean permohonan memo koreksi...
+              </div>
+            ) : filteredKoreksiList.length === 0 ? (
+              <div className="py-20 text-center space-y-2">
+                <FileCheck className="w-10 h-10 text-slate-300 mx-auto" />
+                <h4 className="text-xs font-bold text-slate-700">Tidak Ada Permohonan Koreksi</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Belum ada permohonan memo koreksi kertas kerja yang masuk dari satker binaan.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {filteredKoreksiList.map((k) => {
+                  const isPending = k.status === "menunggu_persetujuan";
+                  const isApproved = k.status === "disetujui";
+
+                  return (
+                    <div
+                      key={k.id}
+                      className="p-5 hover:bg-slate-50/60 transition-colors flex flex-col md:flex-row md:items-start justify-between gap-4"
+                    >
+                      <div className="space-y-2.5 flex-1 min-w-0">
+                        {/* Header Satker & Status */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs">
+                            #{k.satker_kode}
+                          </span>
+                          <span className="font-bold text-slate-900 text-sm">
+                            {k.satker_nama}
+                          </span>
+                          <span
+                            className={clsx(
+                              "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                              isPending
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
+                                : isApproved
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : "bg-rose-50 text-rose-800 border-rose-200"
+                            )}
+                          >
+                            {isPending
+                              ? "⏳ MENUNGGU PERSETUJUAN"
+                              : isApproved
+                              ? "🔓 GEMBOK TERBUKA (DISETUJUI)"
+                              : "❌ DITOLAK"}
+                          </span>
+                        </div>
+
+                        {/* Rincian Surat Memo */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 block">
+                              Nomor Surat Memo:
+                            </span>
+                            <span className="font-bold text-slate-800 truncate block">
+                              {k.nomor_surat}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Tgl: {k.tanggal_surat}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 block">
+                              Target Kertas Kerja:
+                            </span>
+                            <span className="font-bold text-slate-800 truncate block" title={k.nama_rumus}>
+                              {k.nama_rumus}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Periode: {BULAN_NAMES[k.bulan - 1]} {k.tahun}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[10px] font-semibold text-slate-400 block">
+                              Diajukan Oleh:
+                            </span>
+                            <span className="font-bold text-slate-800 truncate block">
+                              {k.pemohon_nama || "Operator Satker"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {k.created_at ? new Date(k.created_at).toLocaleString("id-ID") : "-"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Kronologi Alasan Koreksi */}
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                            Alasan Penyesuaian & Kronologi Kesalahan:
+                          </span>
+                          <p className="text-slate-800 leading-relaxed italic whitespace-pre-line">
+                            "{k.alasan}"
+                          </p>
+                        </div>
+
+                        {/* Catatan Pejabat jika sudah di-review */}
+                        {k.catatan_pejabat && (
+                          <div className="text-xs p-2.5 rounded-lg bg-blue-50/70 border border-blue-100 text-blue-900">
+                            <span className="font-bold block text-[11px]">
+                              Catatan Pejabat Pembina:
+                            </span>
+                            <span>{k.catatan_pejabat}</span>
+                            {k.approved_by_nama && (
+                              <span className="text-[10px] text-blue-600 block mt-0.5">
+                                Diverifikasi oleh: <strong>{k.approved_by_nama}</strong>
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tombol Aksi Persetujuan */}
+                      <div className="flex md:flex-col items-center justify-end gap-2 shrink-0 self-end md:self-center">
+                        {isPending ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveKoreksi(k.id)}
+                              disabled={actionLoadingId === k.id}
+                              className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                              <Unlock className="w-3.5 h-3.5" />
+                              {actionLoadingId === k.id ? "Memproses..." : "Setujui & Buka Gembok"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectKoreksi(k.id)}
+                              disabled={actionLoadingId === k.id}
+                              className="px-4 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors flex items-center gap-1.5"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Tolak Memo
+                            </button>
+                          </>
+                        ) : isApproved ? (
+                          <div className="text-center p-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs">
+                            <CheckCircle2 className="w-4 h-4 mx-auto text-emerald-600 mb-1" />
+                            <span className="font-bold block">Gembok Terbuka</span>
+                            <span className="text-[10px] text-emerald-600">
+                              Satker sedang mengoreksi
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-center p-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-800 text-xs">
+                            <X className="w-4 h-4 mx-auto text-rose-600 mb-1" />
+                            <span className="font-bold block">Permohonan Ditolak</span>
+                            <span className="text-[10px] text-rose-600">
+                              Kertas kerja tetap terkunci
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           {/* TOOLBAR FILTER PERIODE & PENCARIAN SATKER */}

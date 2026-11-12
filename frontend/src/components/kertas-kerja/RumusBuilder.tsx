@@ -85,6 +85,21 @@ const TIPE_OPTIONS = [
   { value: "E", label: "Tipe E - Beban & Belanja (Barang, Modal)", badge: "bg-rose-50 text-rose-700" },
 ];
 
+export function getAkunBasisClassification(kodeAkun: string = "") {
+  const code = String(kodeAkun || "").trim();
+  const firstDigit = code.charAt(0);
+  if (firstDigit === "4") return { basis: "KAS", label: "Kas Murni (LRA)", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  if (firstDigit === "5") return { basis: "KAS", label: "Kas Murni (Belanja)", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  if (firstDigit === "7" || firstDigit === "8") return { basis: "AKRUAL", label: "Akrual Murni (LO)", badge: "bg-purple-50 text-purple-700 border-purple-200" };
+  if (firstDigit === "2" || firstDigit === "3") return { basis: "AKRUAL", label: "Akrual Murni (Utang/Ekuitas)", badge: "bg-purple-50 text-purple-700 border-purple-200" };
+  if (firstDigit === "1") {
+    if (code.startsWith("111")) return { basis: "KAS", label: "Aset Kas Fisik", badge: "bg-teal-50 text-teal-700 border-teal-200" };
+    if (code.startsWith("114119") || code.startsWith("13") || code.startsWith("16")) return { basis: "KONTRA", label: "Kontra Aset Pengurang (-)", badge: "bg-rose-50 text-rose-700 border-rose-200" };
+    return { basis: "TRANSISIONAL", label: "Aset/Piutang Akrual", badge: "bg-blue-50 text-blue-700 border-blue-200" };
+  }
+  return { basis: "UMUM", label: "Akun BAS", badge: "bg-slate-50 text-slate-700 border-slate-200" };
+}
+
 export default function RumusBuilder({
   initialRumusId,
   isITRole = false,
@@ -667,6 +682,17 @@ export default function RumusBuilder({
               <div className="space-y-2">
                 {seksi.items.map((it, iIdx) => {
                   const isAdd = it.operator === "tambah";
+                  const basisInfo = getAkunBasisClassification(it.kode_akun || "");
+                  const isBelanja = it.kode_akun?.startsWith("5");
+                  const isContra = it.kode_akun?.startsWith("114119") || it.kode_akun?.startsWith("13") || it.kode_akun?.startsWith("16");
+
+                  let opLabel = isAdd ? "(+) Penambah" : "(-) Pengurang";
+                  if (isBelanja) {
+                    opLabel = isAdd ? "(+) Pengembalian Belanja" : "(-) Belanja Kas";
+                  } else if (isContra) {
+                    opLabel = isAdd ? "(+) Penambah" : "(-) Kontra Aset";
+                  }
+
                   return (
                     <div
                       key={iIdx}
@@ -675,6 +701,9 @@ export default function RumusBuilder({
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-mono font-bold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded text-[11px] shrink-0">
                           #{it.kode_akun || it.akun_id}
+                        </span>
+                        <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0", basisInfo.badge)}>
+                          {basisInfo.label}
                         </span>
                         <span className="font-medium text-slate-800 truncate" title={it.nama_akun}>
                           {it.nama_akun || `Akun ID ${it.akun_id}`}
@@ -695,7 +724,7 @@ export default function RumusBuilder({
                           )}
                           title="Klik untuk mengubah sifat penambah/pengurang"
                         >
-                          {isAdd ? "(+) Penambah" : "(-) Pengurang"}
+                          {opLabel}
                         </button>
 
                         {!isLocked && (
@@ -806,9 +835,12 @@ export default function RumusBuilder({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
-                            {akun.kode_akun}
+                            #{akun.kode_akun}
                           </span>
-                          <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                          <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded border", getAkunBasisClassification(akun.kode_akun).badge)}>
+                            {getAkunBasisClassification(akun.kode_akun).label}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
                             {akun.kategori_nama}
                           </span>
                         </div>

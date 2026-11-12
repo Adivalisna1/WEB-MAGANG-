@@ -49,6 +49,16 @@ class KertasKerjaSaveRequest(BaseModel):
     status: str = "draft"  # "draft", "diajukan", "terverifikasi"
     nilai_list: List[TransaksiNilaiItem] = []
 
+class KoreksiRequestCreate(BaseModel):
+    submission_id: int
+    nomor_surat: str
+    tanggal_surat: str
+    alasan: str
+    file_surat_path: Optional[str] = None
+
+class KoreksiReviewAction(BaseModel):
+    catatan: Optional[str] = None
+
 
 # ==============================================================
 # 1. ENDPOINT MASTER AKUN (PENCARIAN & SMART FILTER)
@@ -410,13 +420,29 @@ async def save_kertas_kerja_transaksi(
 
         if existing:
             kk_id = existing["id"]
+            cursor.execute("SELECT status FROM kertas_kerja_satker WHERE id = %s", (kk_id,))
+            st_row = cursor.fetchone()
+            curr_status = st_row.get("status") if st_row else "draft"
+
+            # Proteksi gembok audit: jika diajukan/terverifikasi dan bukan revisi atau koreksi_terbuka
+            if curr_status in ["diajukan", "terverifikasi", "permohonan_koreksi"] and curr_status != "koreksi_terbuka":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Kertas kerja pada periode ini telah diajukan/terkunci. Untuk melakukan pembetulan data, silakan ajukan Surat Memo Permohonan Koreksi resmi ke Eselon 1 / K/L."
+                )
+
+            # Jika sebelumnya koreksi_terbuka dan disimpan ulang -> otomatis re-lock ke diajukan
+            new_status = req.status
+            if curr_status == "koreksi_terbuka" and req.status in ["diajukan", "terverifikasi"]:
+                new_status = "diajukan"
+
             cursor.execute("""
                 UPDATE kertas_kerja_satker
                 SET saldo_awal = %s, total_penambah = %s, total_pengurang = %s, saldo_akhir = %s,
                     catatan = %s, status = %s, created_by_user_id = %s, updated_at = NOW()
                 WHERE id = %s
             """, (req.saldo_awal, req.total_penambah, req.total_pengurang, req.saldo_akhir,
-                  req.catatan, req.status, current_user["id"], kk_id))
+                  req.catatan, new_status, current_user["id"], kk_id))
             # Hapus nilai detail lama
             cursor.execute("DELETE FROM kertas_kerja_satker_nilai WHERE kertas_kerja_id = %s", (kk_id,))
         else:
@@ -610,3 +636,137 @@ async def export_kertas_kerja(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename_base}.xlsx"}
     )
+
+
+# ==============================================================
+# 5. ENDPOINT KOREKSI RESMI KERTAS KERJA (MEMO PENYESUAIAN)
+# ==============================================================
+@router.post("/koreksi-request")
+async def create_koreksi_request(
+    req: KoreksiRequestCreate,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    satker_id = current_user.get("satker_id")
+    if not satker_id:
+        raise HTTPException(status_code=400, detail="Akun Anda tidak terikat dengan Satker.")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT * FROM kertas_kerja_satker WHERE id = %s", (req.submission_id,))
+        sub = cursor.fetchone()
+        if not sub:
+            raise HTTPException(status_code=404, detail="Data kertas kerja tidak ditemukan.")
+        if sub["satker_id"] != satker_id:
+            raise HTTPException(status_code=403, detail="Anda hanya dapat mengajukan koreksi untuk satker Anda sendiri.")
+
+        cursor.execute("""
+            INSERT INTO kertas_kerja_koreksi_request
+            (satker_id, submission_id, rumus_id, tahun, bulan, nomor_surat, tanggal_surat, alasan, file_surat_path, status, created_by_user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'menunggu_persetujuan', %s)
+        """, (satker_id, req.submission_id, sub["rumus_id"], sub["tahun"], sub["bulan"],
+              req.nomor_surat, req.tanggal_surat, req.alasan, req.file_surat_path, current_user["id"]))
+        req_id = cursor.lastrowid
+
+        cursor.execute("UPDATE kertas_kerja_satker SET status = 'permohonan_koreksi' WHERE id = %s", (req.submission_id,))
+        db.commit()
+
+        return {"success": True, "message": "Permohonan koreksi resmi berhasil diajukan ke Eselon 1 / K/L", "request_id": req_id}
+
+
+@router.get("/koreksi-requests")
+async def get_koreksi_requests(
+    status: Optional[str] = Query(None),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_tingkat = current_user.get("tingkat")
+    user_satker = current_user.get("satker_id")
+
+    with db.cursor(dictionary=True) as cursor:
+        where_clauses = ["1=1"]
+        params = []
+        if user_tingkat == "satker" and user_satker:
+            where_clauses.append("kr.satker_id = %s")
+            params.append(user_satker)
+        if status:
+            where_clauses.append("kr.status = %s")
+            params.append(status)
+
+        sql = f"""
+            SELECT kr.*, s.nama as satker_nama, s.NO_Satker as satker_kode, r.nama_rumus, u.nama as pemohon_nama,
+                   ap.nama as approved_by_nama
+            FROM kertas_kerja_koreksi_request kr
+            JOIN satkers s ON s.id = kr.satker_id
+            JOIN kertas_kerja_rumus r ON r.id = kr.rumus_id
+            LEFT JOIN users u ON u.id = kr.created_by_user_id
+            LEFT JOIN users ap ON ap.id = kr.approved_by_user_id
+            WHERE {' AND '.join(where_clauses)}
+            ORDER BY kr.created_at DESC
+        """
+        cursor.execute(sql, tuple(params))
+        requests = cursor.fetchall()
+        return {"success": True, "data": requests}
+
+
+@router.patch("/koreksi-requests/{request_id}/approve")
+async def approve_koreksi_request(
+    request_id: int,
+    body: KoreksiReviewAction,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_role = current_user.get("role")
+    user_tingkat = current_user.get("tingkat")
+    is_authorized = (user_tingkat in ["eselon_1", "kl"] or user_role in ["it", "admin_it", "administrasi"])
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Hanya pejabat Eselon 1 / K/L yang berhak menyetujui pembukaan gembok koreksi.")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT * FROM kertas_kerja_koreksi_request WHERE id = %s", (request_id,))
+        req_item = cursor.fetchone()
+        if not req_item:
+            raise HTTPException(status_code=404, detail="Permohonan koreksi tidak ditemukan.")
+
+        cursor.execute("""
+            UPDATE kertas_kerja_koreksi_request
+            SET status = 'disetujui', catatan_pejabat = %s, approved_by_user_id = %s, approved_at = NOW()
+            WHERE id = %s
+        """, (body.catatan, current_user["id"], request_id))
+
+        # BUKA KUNCI KERTAS KERJA: status = 'koreksi_terbuka'
+        cursor.execute("UPDATE kertas_kerja_satker SET status = 'koreksi_terbuka' WHERE id = %s", (req_item["submission_id"],))
+        db.commit()
+
+        return {"success": True, "message": "Gembok Kertas Kerja berhasil dibuka untuk sesi koreksi satker."}
+
+
+@router.patch("/koreksi-requests/{request_id}/reject")
+async def reject_koreksi_request(
+    request_id: int,
+    body: KoreksiReviewAction,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_role = current_user.get("role")
+    user_tingkat = current_user.get("tingkat")
+    is_authorized = (user_tingkat in ["eselon_1", "kl"] or user_role in ["it", "admin_it", "administrasi"])
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Hanya pejabat Eselon 1 / K/L yang berhak menolak permohonan koreksi.")
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT * FROM kertas_kerja_koreksi_request WHERE id = %s", (request_id,))
+        req_item = cursor.fetchone()
+        if not req_item:
+            raise HTTPException(status_code=404, detail="Permohonan koreksi tidak ditemukan.")
+
+        cursor.execute("""
+            UPDATE kertas_kerja_koreksi_request
+            SET status = 'ditolak', catatan_pejabat = %s, approved_by_user_id = %s, approved_at = NOW()
+            WHERE id = %s
+        """, (body.catatan, current_user["id"], request_id))
+
+        # KEMBALIKAN KE STATUS TERVERIFIKASI (TETAP TERKUNCI)
+        cursor.execute("UPDATE kertas_kerja_satker SET status = 'terverifikasi' WHERE id = %s", (req_item["submission_id"],))
+        db.commit()
+
+        return {"success": True, "message": "Permohonan koreksi ditolak. Kertas kerja tetap berstatus terkunci."}

@@ -17,7 +17,10 @@ import {
   ArrowRight,
   RefreshCw,
   Coins,
-  Scale
+  Scale,
+  Lock,
+  FileCheck,
+  X
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -64,6 +67,61 @@ export default function WorksheetOperator({
   const [saving, setSaving] = useState<boolean>(false);
   const [savedSubmissionId, setSavedSubmissionId] = useState<number | null>(null);
   const [statusLaporan, setStatusLaporan] = useState<string>("draft");
+
+  // State Permohonan Memo Koreksi (Buka Gembok K/L)
+  const [showKoreksiModal, setShowKoreksiModal] = useState<boolean>(false);
+  const [nomorSuratKoreksi, setNomorSuratKoreksi] = useState<string>("");
+  const [tanggalSuratKoreksi, setTanggalSuratKoreksi] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [alasanKoreksi, setAlasanKoreksi] = useState<string>("");
+  const [submittingKoreksi, setSubmittingKoreksi] = useState<boolean>(false);
+
+  const isLockedStatus = statusLaporan === "diajukan" || statusLaporan === "terverifikasi" || statusLaporan === "permohonan_koreksi";
+  const isKoreksiTerbuka = statusLaporan === "koreksi_terbuka";
+
+  // Handler Kirim Surat Memo Koreksi ke K/L
+  const handleSubmitKoreksi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!savedSubmissionId) {
+      toast.error("Tidak ada laporan tersimpan untuk diajukan koreksi!");
+      return;
+    }
+    if (!nomorSuratKoreksi.trim() || !alasanKoreksi.trim()) {
+      toast.error("Nomor surat memo dan alasan koreksi wajib diisi!");
+      return;
+    }
+
+    setSubmittingKoreksi(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/kertas-kerja/koreksi-request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          submission_id: savedSubmissionId,
+          nomor_surat: nomorSuratKoreksi.trim(),
+          tanggal_surat: tanggalSuratKoreksi,
+          alasan: alasanKoreksi.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.detail || json.message || "Gagal mengajukan permohonan koreksi");
+      }
+
+      toast.success("Permohonan memo koreksi resmi berhasil diajukan ke Eselon 1 / K/L!");
+      setStatusLaporan("permohonan_koreksi");
+      setShowKoreksiModal(false);
+      setNomorSuratKoreksi("");
+      setAlasanKoreksi("");
+    } catch (err: any) {
+      toast.error("Gagal: " + err.message);
+    } finally {
+      setSubmittingKoreksi(false);
+    }
+  };
 
   // 1. Ambil daftar rumus yang tersedia
   const fetchRumusList = useCallback(async () => {
@@ -350,17 +408,67 @@ export default function WorksheetOperator({
               CSV
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleSave("draft")}
-              disabled={saving}
-              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? "Menyimpan..." : "Simpan Kertas Kerja"}
-            </button>
+            {/* Tombol Simpan / Ajukan / Koreksi */}
+            {isLockedStatus ? (
+              <button
+                type="button"
+                onClick={() => setShowKoreksiModal(true)}
+                disabled={statusLaporan === "permohonan_koreksi"}
+                className={clsx(
+                  "px-3.5 py-2 text-xs font-bold rounded-xl border transition-colors flex items-center gap-1.5 shadow-xs",
+                  statusLaporan === "permohonan_koreksi"
+                    ? "bg-amber-50 text-amber-700 border-amber-200 cursor-not-allowed"
+                    : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                )}
+                title="Ajukan surat memo penyesuaian untuk membuka gembok pembetulan"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                {statusLaporan === "permohonan_koreksi"
+                  ? "Permohonan Ditinjau K/L"
+                  : "Ajukan Memo Koreksi (Buka Gembok)"}
+              </button>
+            ) : isKoreksiTerbuka ? (
+              <button
+                type="button"
+                onClick={() => handleSave("diajukan")}
+                disabled={saving}
+                className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 animate-pulse"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {saving ? "Menyimpan..." : "Simpan & Kunci Kembali Hasil Koreksi"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSave("draft")}
+                disabled={saving}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? "Menyimpan..." : "Simpan Kertas Kerja"}
+              </button>
+            )}
           </div>
         </div>
+
+        {/* BANNER NOTIFIKASI STATUS GEMBOK / KOREKSI */}
+        {statusLaporan === "permohonan_koreksi" && (
+          <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-900 mt-3 animate-in fade-in duration-200">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Permohonan Memo Koreksi Sedang Diproses:</strong> Satker telah mengajukan surat memo koreksi resmi. Gembok formulir akan otomatis terbuka begitu disetujui oleh pejabat Eselon 1 / K/L.
+            </span>
+          </div>
+        )}
+
+        {isKoreksiTerbuka && (
+          <div className="p-3 bg-emerald-50/90 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-900 mt-3 animate-in fade-in duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>Gembok Koreksi Telah Dibuka Resmi oleh Eselon 1 / K/L:</strong> Silakan lakukan perbaikan angka akun yang keliru. Setelah selesai, klik tombol <em>"Simpan & Kunci Kembali Hasil Koreksi"</em> untuk mengunci data secara otomatis demi integritas audit.
+            </span>
+          </div>
+        )}
 
         {/* BARIS SELEKTOR: DROPDOWN RUMUS + BULAN + TAHUN */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
@@ -451,12 +559,18 @@ export default function WorksheetOperator({
                 <input
                   type="text"
                   placeholder="0"
+                  disabled={isLockedStatus}
                   value={saldoAwal ? saldoAwal.toLocaleString("id-ID") : ""}
                   onChange={(e) => {
                     const clean = e.target.value.replace(/\D/g, "");
                     setSaldoAwal(clean ? parseInt(clean, 10) : 0);
                   }}
-                  className="w-full pl-9 pr-3 py-2.5 text-right font-bold text-slate-900 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                  className={clsx(
+                    "w-full pl-9 pr-3 py-2.5 text-right font-bold text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500",
+                    isLockedStatus
+                      ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
+                      : "bg-slate-50 border-slate-200 text-slate-900 focus:bg-white"
+                  )}
                 />
               </div>
             </div>
@@ -576,9 +690,15 @@ export default function WorksheetOperator({
                               <input
                                 type="text"
                                 placeholder="0"
+                                disabled={isLockedStatus}
                                 value={currentVal ? currentVal.toLocaleString("id-ID") : ""}
                                 onChange={(e) => handleNominalChange(it.item_id, e.target.value)}
-                                className="w-full pl-9 pr-3 py-1.5 text-right font-bold text-slate-800 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                                className={clsx(
+                                  "w-full pl-9 pr-3 py-1.5 text-right font-bold text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500",
+                                  isLockedStatus
+                                    ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
+                                    : "bg-slate-50 text-slate-800 border-slate-200 focus:bg-white"
+                                )}
                               />
                             </div>
                             {currentVal > 0 && (
@@ -720,38 +840,175 @@ export default function WorksheetOperator({
               </label>
               <textarea
                 rows={2}
+                disabled={isLockedStatus}
                 placeholder="Tuliskan catatan rekonsiliasi atau penjelasan perbedaan saldo jika ada..."
                 value={catatan}
                 onChange={(e) => setCatatan(e.target.value)}
-                className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                className={clsx(
+                  "w-full text-xs px-3 py-2 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500",
+                  isLockedStatus
+                    ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
+                    : "bg-slate-50 border-slate-200 text-slate-800 focus:bg-white"
+                )}
               />
             </div>
 
             {/* Tombol Aksi Bawah */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <p className="text-xs text-slate-400">
-                *Rumus ini terkunci otomatis begitu data berhasil disimpan ke database satker.
+                {isLockedStatus
+                  ? "*Lembar kerja terkunci permanen. Butuh Memo Penyesuaian ke K/L untuk koreksi."
+                  : "*Kertas kerja otomatis terkunci saat diajukan untuk menjaga integritas data audit."}
               </p>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSave("draft")}
-                  disabled={saving}
-                  className="px-4 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl transition-colors shadow-2xs"
-                >
-                  Simpan Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSave("diajukan")}
-                  disabled={saving}
-                  className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {saving ? "Memproses..." : "Simpan & Ajukan Kertas Kerja"}
-                </button>
+                {isLockedStatus ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowKoreksiModal(true)}
+                    disabled={statusLaporan === "permohonan_koreksi"}
+                    className={clsx(
+                      "px-4 py-2 text-xs font-bold rounded-xl border transition-colors flex items-center gap-1.5 shadow-xs",
+                      statusLaporan === "permohonan_koreksi"
+                        ? "bg-amber-50 text-amber-700 border-amber-200 cursor-not-allowed"
+                        : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                    )}
+                  >
+                    <Lock className="w-4 h-4" />
+                    {statusLaporan === "permohonan_koreksi"
+                      ? "Permohonan Koreksi Ditinjau K/L"
+                      : "Ajukan Memo Koreksi Resmi (Buka Gembok)"}
+                  </button>
+                ) : isKoreksiTerbuka ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSave("diajukan")}
+                    disabled={saving}
+                    className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5 animate-pulse"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {saving ? "Memproses..." : "Simpan & Kunci Kembali Hasil Koreksi"}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleSave("draft")}
+                      disabled={saving}
+                      className="px-4 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl transition-colors shadow-2xs"
+                    >
+                      Simpan Draft
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSave("diajukan")}
+                      disabled={saving}
+                      className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {saving ? "Memproses..." : "Simpan & Ajukan Kertas Kerja"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PERMOHONAN MEMO KOREKSI KE K/L (PSAP 10 AUDIT SOP) */}
+      {showKoreksiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Header Modal */}
+            <div className="px-6 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                  <FileCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Pengajuan Memo Koreksi / Berita Acara
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    SOP Pembetulan Kesalahan Kertas Kerja (PSAP 10)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKoreksiModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Konten & Form Surat Permohonan */}
+            <form onSubmit={handleSubmitKoreksi} className="p-6 space-y-4">
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
+                <span className="font-bold block mb-0.5">Ketentuan Akuntansi Pemerintah:</span>
+                Kertas kerja yang telah berstatus <strong>Diajukan</strong> atau <strong>Terverifikasi</strong> tidak dapat diubah sepihak. Pengajuan ini akan diteruskan ke Pejabat Pembina Eselon 1 / K/L untuk diverifikasi sebelum gembok dibuka untuk satu sesi pembetulan.
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Nomor Surat Memo / Nota Dinas / Berita Acara <span className="text-rose-600">*</span>:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: ND-102/KPA/2026 atau BA-KOR/04/2026"
+                  value={nomorSuratKoreksi}
+                  onChange={(e) => setNomorSuratKoreksi(e.target.value)}
+                  className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Tanggal Surat Memo <span className="text-rose-600">*</span>:
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={tanggalSuratKoreksi}
+                  onChange={(e) => setTanggalSuratKoreksi(e.target.value)}
+                  className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Alasan Koreksi / Kronologi Kesalahan Akun <span className="text-rose-600">*</span>:
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Jelaskan detail kesalahan pencatatan, misalnya: koreksi nominal belanja akun 521211 karena terdapat retur/pengembalian belanja atau penyesuaian penyisihan piutang..."
+                  value={alasanKoreksi}
+                  onChange={(e) => setAlasanKoreksi(e.target.value)}
+                  className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowKoreksiModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingKoreksi}
+                  className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                >
+                  <FileCheck className="w-4 h-4" />
+                  {submittingKoreksi ? "Mengirim Permohonan..." : "Kirim Permohonan ke K/L"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
