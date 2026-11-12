@@ -99,66 +99,57 @@ Bagian ini khusus mengatur operasional pada tingkat unit pelaksana riil di lapan
 ---
 
 ### 1.5 Batasan Hak Akses Satker Kampus
-- ❌ **Tidak Bisa Approve Final:** Pimpinan kampus tidak memiliki hak mengeluarkan status `terverifikasi` (stempel final adalah wewenang Eselon 1).
+- 📌 **Tanggung Jawab Hukum Dokumen:** Dokumen yang diunggah Satker menjadi tanggung jawab penuh Kuasa Pengguna Anggaran (KPA) Satker bersangkutan (*sistem tidak menggunakan sistem blocking approver*).
 - ❌ **Isolasi Kampus:** Tidak dapat melihat atau mengakses dokumen, transaksi kas, maupun rekening koran dari kampus lain.
 - ❌ **Dilarang Akses Rute Pembina:** Akses ke rute `/eselon-1` dan `/admin-it` diblokir otomatis oleh sistem middleware.
 
 ---
 ---
 
-# 🏢 BAGIAN 2: ALUR DOKUMEN SATKER ESELON 1 (TINGKAT DITJEN / PEMBINA)
+# 🏢 BAGIAN 2: ALUR MONITORING SATKER ESELON 1 (TINGKAT DITJEN / PEMBINA)
 
 Bagian ini khusus mengatur operasional pada tingkat Unit Utama Pembina (Eselon 1), seperti **Direktorat Jenderal Pendidikan Tinggi (Ditjen Dikti)**, **Sekretariat Jenderal (Setjen)**, **Ditjen Saintek**, dan **Inspektorat Jenderal (Itjen)**.
 
 ---
 
 ### 2.1 Karakteristik & Peran Satker Eselon 1
-- **Posisi Sistem:** Pengawas, koordinator, dan validator final (*validator & aggregator*).
+- **Posisi Sistem:** Pengawas, koordinator, dan pemantau kepatuhan (*monitoring & audit aggregator*). Sistem **TIDAK memiliki peran approver**.
 - **Ruang Lingkup (Scope Data):** **Menaungi Seluruh Satker Binaannya**.
   - **Ditjen Dikti:** Membina **149 Satker** (seluruh PTN BH, PTN BLU/Satker, Institut, Politeknik, dan LLDIKTI I-XVII).
   - **Setjen:** Membina **4 Satker** (Pusdatin, Pusat Pembiayaan & Asesmen Dikti, Badan Industri Mineral, Setjen).
   - **Ditjen Saintek:** Membina **7 Satker** (SMA Unggul Garuda & Balai Risbang).
   - **Itjen:** Membina **1 Satker** (Inspektorat Jenderal).
 - **Aktor Pengguna:**
-  1. **Staff Eselon 1 (`operator`)**: Pelaksana Ditjen untuk rekapitulasi data, monitoring 149 satker, kompilasi RK, dan upload dokumen pendukung Ditjen *(tanpa hak approval)*.
-  2. **Pimpinan Eselon 1 (`manajemen`)**: Direktur Jenderal / Sekretaris Ditjen yang memegang wewenang pengesahan final atau penolakan kembali ke kampus.
+  1. **Staff Eselon 1 (`operator`)**: Pelaksana Ditjen untuk rekapitulasi data, monitoring 149 satker, kompilasi RK, dan pengerjaan kertas kerja unit Ditjen pusat.
+  2. **Pimpinan Eselon 1 (`administrasi` / `manajemen`)**: Pejabat Ditjen pembina yang memantau kepatuhan, mengaudit rekonsiliasi kas, serta memproses pembukaan gembok memo koreksi (SOP PSAP 10).
 
 ---
 
-### 2.2 Diagram Aliran Berkas di Meja Eselon 1
+### 2.2 Diagram Aliran Berkas di Meja Eselon 1 (Monitoring & Audit)
 
 ```text
-      [ Dokumen Lolos dari Kampus ]
-          (Status: "lolos_admin")
-                     │
-                     ▼
-      [ Masuk Antrian Verifikasi Eselon 1 ]
-                     │
-       ┌─────────────┴─────────────────────────────┐
-       │                                           │
-  [ Staff Eselon 1 (Operator Ditjen) ]     [ Pimpinan Eselon 1 (Dirjen/Sesditjen) ]
-  • Monitoring kepatuhan 149 satker        • Meninjau rekonsiliasi kas vs bank
-  • Rekapitulasi & Kompilasi RK            • Memeriksa kelengkapan laporan
-  • Export ZIP berkas per satker           • MEMUTUSKAN APPROVAL FINAL:
-  • Upload dokumen kebijakan Ditjen                    │
-  (DIBLOKIR DARI TOMBOL APPROVAL)          ┌───────────┴───────────┐
-                                           │                       │
-                                [ Tombol: Kembalikan ]    [ Tombol: Setujui & Sahkan ]
-                                           │                       │
-                                           ▼                       ▼
-                                   Status: "revisi"      Status: "terverifikasi"
-                             (Dokumen mental balik       (DOKUMEN SAH & FINAL,
-                              ke Satker Kampus dengan     diterbitkan ke Publik &
-                              catatan resmi dari Ditjen)  Menteri di K/L Pusat)
+      [ Dokumen Masuk dari Satker Kampus ]
+           (Dokumen Langsung Tercatat)
+                      │
+                      ▼
+      [ Masuk Dashboard Monitoring Eselon 1 ]
+                      │
+        ┌─────────────┴─────────────────────────────┐
+        │                                           │
+   [ Staff Eselon 1 (Operator Ditjen) ]     [ Pimpinan Eselon 1 (Dirjen/Sesditjen) ]
+   • Monitoring kepatuhan 149 satker        • Meninjau rekonsiliasi kas vs bank
+   • Rekapitulasi & Kompilasi RK            • Memeriksa kelengkapan laporan
+   • Export ZIP berkas per satker           • Memberikan Catatan Audit Kepatuhan
+   • Mengisi Kertas Kerja Unit Ditjen       • Menyetujui Buka Gembok Memo Koreksi (PSAP 10)
 ```
 
 ---
 
 ### 2.3 Langkah Demi Langkah Alur Satker Eselon 1
 
-#### Tahap 1: Dokumen Lolos Masuk ke Antrian Ditjen (`lolos_admin`)
-- Dokumen yang telah diloloskan oleh Pimpinan Satker kampus otomatis muncul pada halaman monitor Eselon 1 (`/eselon-1/dokumen`).
-- Dokumen masuk ke widget khusus **"Menunggu Persetujuan Saya"** bagi akun Pimpinan Eselon 1.
+#### Tahap 1: Dokumen Masuk ke Dashboard Ditjen
+- Dokumen yang diajukan oleh Satker kampus otomatis muncul pada halaman monitor Eselon 1 (`/eselon-1/dokumen`).
+- Berkas dapat langsung diaudit tanpa perlu menunggu antrean approval berjenjang yang memperlambat birokrasi.
 
 #### Tahap 2: Telaah & Pengawasan oleh Staff Eselon 1
 - Dilakukan oleh: **Staff Eselon 1** (`/eselon-1`)
@@ -167,22 +158,15 @@ Bagian ini khusus mengatur operasional pada tingkat Unit Utama Pembina (Eselon 1
   - Memfilter dokumen berdasarkan kampus, kategori, dan periode.
   - Mengunduh atau memeriksa pratinjau dokumen PDF/Excel yang dikirim kampus.
   - Membantu pimpinan menyiapkan kompilasi rekening koran dan ekspor ZIP berkas bukti.
-- **Batasan Penting:** Staff Eselon 1 **tidak memiliki wewenang approval**. Tombol persetujuan disembunyikan di UI dan jika memanggil API verifikasi secara langsung akan menerima error **`403 Forbidden`**.
+  - Mengerjakan pengisian kertas kerja kas unit kantor pusat Ditjen.
 
-#### Tahap 3: Keputusan Final oleh Pimpinan Eselon 1
-- Dilakukan oleh: **Pimpinan Eselon 1** (`/eselon-1/dokumen`)
-- Antarmuka: Modal Keputusan Persetujuan Final dengan verifikasi kecocokan saldo:
+#### Tahap 3: Pengawasan Audit & Memo Koreksi oleh Pimpinan Eselon 1
+- Dilakukan oleh: **Pimpinan Eselon 1** (`/eselon-1/dokumen` & `/eselon-1/kertas-kerja`)
+- Antarmuka: Modal Tinjauan Audit & Persetujuan Memo Koreksi (PSAP 10):
   - Nilai Rekening Koran vs Nilai Kas Excel satker ditampilkan berdampingan.
   - Indikator kecocokan otomatis: Lencana hijau *"Klop / Tidak Ada Selisih"* jika selisih = 0.
-- Opsi Keputusan:
-  1. **Jika Laporan Belum Sesuai $\rightarrow$ Klik "Kembalikan untuk Revisi"**:
-     - Pimpinan Eselon 1 wajib menyertakan alasan penolakan/catatan arahan Ditjen.
-     - Status dokumen berubah menjadi **`revisi`**.
-     - Dokumen dikembalikan langsung ke akun kampus pengunggah agar diperbaiki.
-  2. **Jika Laporan Valid & Sah $\rightarrow$ Klik "Setujui & Terbitkan"**:
-     - Status dokumen berubah menjadi **`terverifikasi`** (*Status Tertinggi / Final*).
-     - Dokumen diberi stempel digital `verified_by: Pimpinan Eselon 1` dan `verified_at: NOW()`.
-     - Dokumen dipublikasikan (`is_public = 1`) dan siap dilaporkan ke tingkat Kementerian (K/L) serta Kementerian Keuangan.
+- Penanganan Kesalahan:
+  - Jika satker melaporkan kekeliruan input angka akun kas/akrual, Pimpinan Eselon 1 dapat membuka gembok lembar kerja via permohonan **Memo Koreksi Resmi (PSAP 10)**.
 
 ---
 
@@ -199,17 +183,19 @@ Bagian ini khusus mengatur operasional pada tingkat Unit Utama Pembina (Eselon 1
 4. **Rekapitulasi Rekening Koran & Export ZIP (`/eselon-1/rekening-koran`):**
    - Mengompilasi kertas kerja rekonsiliasi bank per satker.
    - Tombol **"Export ZIP"** untuk mengunduh seluruh file bukti lampiran per kampus dalam satu arsip terkompresi.
-5. **Manajemen Akun & Log Audit Binaan (`/eselon-1/users` & `/eselon-1/logs`):**
+5. **Kertas Kerja Terkonsolidasi & Buka Gembok PSAP 10 (`/eselon-1/kertas-kerja`):**
+   - Mengaudit hasil kertas kerja 149 satker binaan.
+   - Mengisi kertas kerja unit mandiri kantor Ditjen pusat.
+   - Menyetujui pembukaan gembok memo koreksi resmi.
+6. **Manajemen Akun & Log Audit Binaan (`/eselon-1/users` & `/eselon-1/logs`):**
    - Pimpinan Eselon 1 dapat memantau status aktif akun operator & pimpinan dari 149 kampus binaannya serta riwayat aktivitas log.
 
 ---
 
 ### 2.5 Aturan Isolasi Antar-Eselon 1 (Cross-Eselon Guard)
-Sistem menerapkan isolasi data dan hak approval yang sangat ketat:
+Sistem menerapkan isolasi data dan wewenang pengawasan yang sangat ketat:
 - **Isolasi Daftar Satker:** Pimpinan Ditjen Dikti hanya menerima 149 satker Dikti di endpoint `/api/satker`. Satker milik Setjen (4 satker), Saintek (7 satker), dan Itjen (1 satker) otomatis di-filter keluar.
-- **Isolasi Approval Dokumen:** Jika Pimpinan Ditjen Dikti mencoba menyetujui dokumen milik Satker Setjen/Saintek/Itjen melalui manipulasi request API, server akan menolak dengan pesan:
-  > **HTTP 403 Forbidden:** *"Akses ditolak. Anda hanya berwenang menyetujui dokumen dari Satker binaan Eselon 1 Anda."*
-- **Otoritas Mandiri:** Masing-masing Eselon 1 (Setjen, Dikti, Saintek, Itjen) berdaulat penuh menyetujui dokumen satker binaan mereka sendiri tanpa campur tangan Ditjen lain.
+- **Isolasi Pembinaan Satker:** Masing-masing Eselon 1 (Setjen, Dikti, Saintek, Itjen) berdaulat penuh membina satker binaan mereka sendiri tanpa campur tangan Ditjen lain.
 
 ---
 ---

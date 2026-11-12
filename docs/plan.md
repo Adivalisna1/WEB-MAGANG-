@@ -38,4 +38,4 @@ Untuk memfasilitasi pelaporan di tingkat Eselon 1, fiturnya akan dipisah secara 
 Untuk menghindari kompleksitas kode, sistem verifikasi (seperti status "Menunggu Verifikasi", "Terverifikasi", "Revisi") akan **dihapus**. 
 Dengan begitu:
 - Setiap kali Satker mengunggah data (baik Pencatatan maupun Dokumen), datanya akan **langsung masuk dan final**, tanpa perlu *approval* berbelit-belit dari Admin/Eselon 1.
-- Eselon 1 / Pimpinan bertugas murni sebagai pengawas (memantau selisih saldo di Rekening Koran dan menarik laporan Dokumen), bukan sebagai *approver*.
+- Eselon 1 / Pimpinan bertugas murni sebagai pengawas & auditor (memantau selisih saldo di Rekening Koran dan menarik laporan Dokumen). Sistem **TIDAK memiliki peran atau wewenang approver** (tanggung jawab hukum mutlak pada KPA Satker).

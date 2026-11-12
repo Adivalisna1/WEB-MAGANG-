@@ -763,7 +763,7 @@ async def submit_verifikasi(id: int, request: Request, user: dict = Depends(get_
         
         cursor.execute("UPDATE dokumen SET status = 'menunggu_verifikasi', catatan = NULL, catatan_oleh = NULL WHERE id = %s", (id,))
         
-        # Cari approver (Manajemen) di satker yang bersangkutan atau global
+        # Cari Pimpinan / Admin Satker di satker yang bersangkutan atau global
         satker_id = user.get("satker_id")
         if satker_id:
             cursor.execute("""

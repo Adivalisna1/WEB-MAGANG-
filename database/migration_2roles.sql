@@ -1,11 +1,11 @@
 -- Migration: Refactor Roles to 2 Roles: Operator & Manajemen
 -- Role 1: Operator (Operasional, Teknis Data, Upload, Rekapitulasi & IT)
--- Role 2: Manajemen (Pimpinan, Verifikator, Approver, Pengawas)
+-- Role 2: Manajemen (Pimpinan, Verifikator, Pengawas)
 
 -- 1. Update roles: rename administrasi -> manajemen
 UPDATE roles 
 SET nama = 'manajemen', 
-    deskripsi = 'Manajemen / Pimpinan - Review, verifikasi, approval dokumen, pengawasan, dan pengambil kebijakan'
+    deskripsi = 'Manajemen / Pimpinan - Review, audit dokumen, pengawasan, dan pengambil kebijakan'
 WHERE id = 2;
 
 -- 2. Update role 1 operator deskripsi

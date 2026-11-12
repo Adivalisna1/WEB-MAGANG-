@@ -199,7 +199,8 @@
    - Memperbarui informasi akun dan mengganti password pribadi.
 
 #### 🚫 Batasan Akses:
-* **Tanpa Hak Verifikasi/Approval:** Tidak memiliki wewenang mengesahkan/menolak dokumen satker (endpoint backend `PATCH /api/dokumen/{id}/eselon-1-verify` mengembalikan status `403 Forbidden`).
+* **Peran Monitoring & Audit:** Murni bertindak sebagai pengawas dan auditor kepatuhan berkas satker (sistem tidak lagi menggunakan peran *approver*).
+* **Bukan Approver:** Tanggung jawab hukum dokumen mutlak berada pada Kuasa Pengguna Anggaran (KPA) Satker pelaksana.
 * Menu `Manajemen User` (`/eselon-1/users`) dan `Log Aktivitas` (`/eselon-1/logs`) disembunyikan dari sidebar staf (khusus Pimpinan).
 * Terbatas hanya pada 96 satker di bawah naungan Ditjen Dikti.
 
@@ -226,11 +227,11 @@
 1. **Eksekutif Dashboard Ditjen Dikti (`/eselon-1`):**
    - Evaluasi kepatuhan pelaporan seluruh 96 kampus binaan.
    - Rekapitulasi status kepatuhan, keterlambatan setor, atau potensi selisih saldo rekening koran.
-2. **Approval Final Dokumen Laporan (`/eselon-1/dokumen`):**
-   - Antrian dokumen **"Menunggu Eselon 1"** (berkas yang sudah disetujui pimpinan kampus/`lolos_admin`).
+2. **Monitoring & Audit Dokumen Laporan (`/eselon-1/dokumen`):**
+   - Meninjau berkas dokumen yang telah diajukan satker binaan (*sistem tidak menggunakan sistem blocking approver*).
    - Modal tinjauan berkas lengkap dengan pratinjau PDF resolusi penuh.
-   - **Tombol "Setujui & Sahkan":** Memberikan pengesahan final institusi. Status dokumen berubah menjadi **`terverifikasi`** (dokumen sah untuk dilaporkan ke K/L).
-   - **Tombol "Kembalikan Revisi":** Mengembalikan dokumen ke kampus bersangkutan dengan catatan resmi Ditjen.
+   - Evaluasi kesesuaian saldo buku dan rekening koran.
+   - Jika terdapat kekeliruan, Eselon 1 dapat memberikan catatan audit atau membuka gembok koreksi kertas kerja via SOP Memo Penyesuaian (PSAP 10).
 3. **Pengawasan Rekap Kas & Rekening Koran Satker Binaan:**
    - Melihat history pencatatan kas dan saldo rekening koran 96 satker binaan.
    - Mode view-only & audit trail: Ekspor Excel dan unduh arsip ZIP bukti berkas.
@@ -374,7 +375,7 @@
 | `/pimpinan/dokumen` | Verifikasi Berkas Tahap 1 | ❌ | ✅ *(Lolos/Revisi)*| ❌ | ❌ | ❌ | ❌ | ✅ |
 | `/pimpinan/users` | Monitoring Staf Satker | ❌ | ✅ *(Satker)* | ❌ | ❌ | ❌ | ❌ | ✅ |
 | `/eselon-1` | Dashboard Ditjen & K/L | ❌ | ❌ | ✅ *(Utama)* | ✅ *(Utama)* | ✅ *(Utama)* | ✅ *(Utama)* | ✅ |
-| `/eselon-1/dokumen` | Approval Final & Monitor Dokumen | ❌ | ❌ | ✅ *(Upload)* | ✅ *(Final Approve)*| ✅ *(Monitor)* | ✅ *(Monitor)* | ✅ |
+| `/eselon-1/dokumen` | Monitoring & Audit Dokumen Binaan | ❌ | ❌ | ✅ *(Upload)* | ✅ *(Audit & Pantau)*| ✅ *(Monitor)* | ✅ *(Monitor)* | ✅ |
 | `/eselon-1/pencatatan` | History & Input Kas Satker Binaan | ❌ | ❌ | ✅ *(Input & Scan)* | ✅ *(Rekap & Audit)*| ❌ | ❌ | ✅ |
 | `/eselon-1/rekening-koran` | Rekapitulasi Rekening Koran | ❌ | ❌ | ✅ *(96 Satker)* | ✅ *(96 Satker)* | ✅ *(153 Satker)*| ✅ *(153 Satker)*| ✅ |
 | `/eselon-1/users` | Manajemen Akun Binaan | ❌ | ❌ | ❌ | ✅ *(Reset/Toggle)*| ✅ *(Lihat)* | ✅ *(Lihat)* | ✅ |
