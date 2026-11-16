@@ -260,11 +260,11 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
         setTahun(String(result.tahun));
         filled.push('tahun');
       }
-      if (result.kategori && cats.length > 0) {
-        const match = cats.find(k =>
-          k.nama.toLowerCase().includes(result.kategori.toLowerCase()) ||
-          result.kategori.toLowerCase().includes(k.nama.toLowerCase())
-        );
+      if (result.kategori && cats.length > 0 && !(defaultKategoriSlug && result.kategori.toLowerCase() === 'lainnya')) {
+        const resKatLow = result.kategori.toLowerCase();
+        const match =
+          cats.find(k => k.nama.toLowerCase() === resKatLow || k.slug.toLowerCase() === resKatLow) ||
+          cats.find(k => k.nama.toLowerCase().includes(resKatLow) || resKatLow.includes(k.nama.toLowerCase()));
         if (match) {
           setKategoriId(String(match.id));
           filled.push('kategori');

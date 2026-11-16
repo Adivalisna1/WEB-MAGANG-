@@ -41,20 +41,19 @@ BANK_CODE_MAP = {
     "014": "Bank BCA",
 }
 
-# Kategori dokumen pemerintah
+# Kategori dokumen pemerintah (urutan dari yang paling spesifik)
 KATEGORI_PATTERNS = [
     (r"PEMBUKAAN\s+REKENING|SURAT\s+(?:IZIN\s+|PERMOHONAN\s+)?PEMBUKAAN|IZIN\s+PEMBUKAAN\s+REKENING", "Surat Pembukaan Rekening Koran"),
     (r"PENUTUPAN\s+REKENING|SURAT\s+(?:PERSETUJUAN\s+|PERMOHONAN\s+)?PENUTUPAN|IZIN\s+PENUTUPAN\s+REKENING", "Surat Penutupan Rekening Koran"),
-    (r"PENETAPAN\s+PIUTANG|SK\s+PIUTANG|SURAT\s+KEPUTUSAN[\s\S]{0,60}PIUTANG|SKTJM|TUNTUTAN\s+GANTI\s+RUGI", "SK Piutang Satker"),
-    (r"\bLKjIP\b|LAPORAN\s+KINERJA\s+INSTANSI", "LKjIP"),
-    (r"\bRENSTRA\b|RENCANA\s+STRATEGIS", "Renstra"),
-    (r"\bRENJA\b|RENCANA\s+KERJA\b", "Renja"),
-    (r"\bLAKIP\b|AKUNTABILITAS\s+KINERJA", "LAKIP"),
-    (r"\bPK\b|PERJANJIAN\s+KINERJA", "PK"),
-    (r"\bRKT\b|RENCANA\s+KINERJA\s+TAHUNAN", "RKT"),
-    (r"\bIKU\b|INDIKATOR\s+KINERJA\s+UTAMA", "IKU"),
+    (r"SK\s+PEMBEBANAN|\bSKTJM\b|\bSKP2K\b|TANGGUNG\s+JAWAB\s+MUTLAK|TUNTUTAN\s+GANTI\s+RUGI", "SK Pembebanan / SKTJM"),
+    (r"SK\s+PENGHAPUSAN|PENGHAPUSAN\s+PIUTANG|HAPUS\s+BUKU|HAPUS\s+TAGIH", "SK Penghapusan Piutang"),
+    (r"SK\s+PENETAPAN|PENETAPAN\s+PIUTANG|KURANG\s+BAYAR|SK\s+PIUTANG|SURAT\s+KEPUTUSAN[\s\S]{0,60}PIUTANG", "SK Penetapan / Kurang Bayar"),
+    (r"\bBAP[\s_\-]+KAS\b|BERITA\s+ACARA\s+PEMERIKSAAN\s+KAS|CASH\s+OPNAME|PEMERIKSAAN\s+(?:FISIK\s+)?KAS", "BAP Kas"),
+    (r"\bLPJ\b|LAPORAN\s+PERTANGGUNGJAWABAN\s+BENDAHARA|PERTANGGUNGJAWABAN\s+BENDAHARA", "LPJ Bendahara"),
+    (r"KONFIRMASI\s+SALDO|SURAT\s+KONFIRMASI\s+(?:SALDO\s+)?BANK|AUDIT\s+CONFIRMATION|KONFIRMASI\s+REKENING", "Konfirmasi Saldo Bank"),
+    (r"\bNTPN\b|BUKTI\s+SETOR|BUKTI\s+PENERIMAAN\s+NEGARA|\bBPN\b|SISA\s+UP|PENGEMBALIAN\s+UANG\s+PERSEDIAAN|\bSSBP\b", "Bukti Setor Sisa UP (NTPN)"),
+    (r"PEROLEHAN\s+(?:ASET\s+)?LAINNYA|HIBAH\s+(?:BMN|ASET)|TRANSFER\s+(?:MASUK|BMN|ASET)|SITAAN|RAMPASAN|BARANG\s+MILIK\s+NEGARA|\bBAST\s+ASET\b", "Perolehan Aset Lainnya"),
     (r"REKENING\s+KORAN|MUTASI\s+REKENING|GIRO|ACCOUNT\s+STATEMENT|BANK\s+STATEMENT", "Rekening_koran"),
-    (r"LPJ|PERTANGGUNGJAWABAN|BUKU\s+KAS", "LPJ"),
 ]
 
 def parse_indonesian_number(val_str: str) -> Optional[float]:

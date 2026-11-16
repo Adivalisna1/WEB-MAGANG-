@@ -1372,10 +1372,15 @@ async def batch_scan_dokumen(
 
         detected_kat_name = scan_res.get("kategori") or "Rekening_koran"
         matched_kat_id = 1
-        for k in all_kats:
-            if k["slug"].lower() in detected_kat_name.lower() or detected_kat_name.lower() in k["nama"].lower():
-                matched_kat_id = k["id"]
-                break
+        det_low = detected_kat_name.lower()
+        exact_kat = next((k for k in all_kats if k["nama"].lower() == det_low or k["slug"].lower() == det_low), None)
+        if exact_kat:
+            matched_kat_id = exact_kat["id"]
+        else:
+            for k in all_kats:
+                if k["slug"].lower() in det_low or det_low in k["nama"].lower():
+                    matched_kat_id = k["id"]
+                    break
 
         bulan_num = scan_res.get("bulan")
         tahun_num = scan_res.get("tahun") or datetime.date.today().year
