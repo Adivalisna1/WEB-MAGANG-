@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Activity, Clock, ShieldAlert, Monitor, LogIn, LogOut, Database } from 'lucide-react';
+import ClientPagination from '@/components/ui/ClientPagination';
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
@@ -10,10 +11,12 @@ export default function LogsPage() {
   const { token } = useAuth();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${API}/admin-it/logs`, {
+    fetch(`${API}/admin-it/logs?limit=200`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(r => r.json())
@@ -87,8 +90,8 @@ export default function LogsPage() {
               ) : logs.length === 0 ? (
                 <tr><td colSpan={6} className="p-4 text-center text-gray-500 font-sans">No activity logs found.</td></tr>
               ) : (
-                logs.map(log => (
-                  <tr key={log.id} className="hover:bg-gray-50/50">
+                logs.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((log, idx) => (
+                  <tr key={`${log.aksi}-${log.id}-${idx}`} className="hover:bg-gray-50/50">
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5" />
@@ -115,6 +118,15 @@ export default function LogsPage() {
             </tbody>
           </table>
         </div>
+        {!loading && (
+          <ClientPagination
+            currentPage={currentPage}
+            totalItems={logs.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            itemLabel="log"
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );
