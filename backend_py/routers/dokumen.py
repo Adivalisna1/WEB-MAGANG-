@@ -457,7 +457,7 @@ async def upload_dokumen(
                  (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, tenggat_waktu, status_piutang, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
                   file_nama, file_path, file_size, file_mime, status, is_public,
                   nilai_rekening_koran, nilai_excel, link_drive)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
             """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, tgl_tenggat_final, status_piutang_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
                   filename, r2_key, file_size, file_mime, status_awal,
                   nilai_rekening_koran, nilai_excel, link_drive))
@@ -467,7 +467,7 @@ async def upload_dokumen(
                  (kategori_id, uploaded_by, judul, nama_bank, nomor_rekening, tanggal_surat, tenggat_waktu, status_piutang, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan, semester,
                   file_nama, file_path, file_size, file_mime, status, is_public,
                   nilai_rekening_koran, nilai_excel)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
             """, (kategori_id, user["id"], judul, nama_bank, nomor_rekening, tgl_surat_final, tgl_tenggat_final, status_piutang_final, nama_rekening, nama_debitur, dasar_temuan, deskripsi, tahun, bulan_final, semester_final,
                   filename, r2_key, file_size, file_mime, status_awal,
                   nilai_rekening_koran, nilai_excel))
