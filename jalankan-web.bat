@@ -7,11 +7,17 @@ if "%1"=="build" (
     echo ==============================================================================
     echo.
     docker compose up -d --build
+    echo.
+    echo   MEMBERSIHKAN IMAGE LAMA OTOMATIS (AGAR STORAGE TIDAK PENUH)...
+    docker image prune -f
 ) else if "%1"=="--build" (
     echo   MENJALANKAN DOCKER COMPOSE DENGAN OPSI --BUILD (REBUILD KODINGAN)...
     echo ==============================================================================
     echo.
     docker compose up -d --build
+    echo.
+    echo   MEMBERSIHKAN IMAGE LAMA OTOMATIS (AGAR STORAGE TIDAK PENUH)...
+    docker image prune -f
 ) else (
     echo   MENYALAKAN SEMUA CONTAINER DOCKER (DATABASE, BACKEND, FRONTEND)...
     echo ==============================================================================
