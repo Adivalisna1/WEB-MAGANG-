@@ -44,7 +44,12 @@ def run_startup_migrations():
         from migrations.add_sk_piutang import run_migration as migrate_sk_piutang
         migrate_sk_piutang()
     except Exception as e:
-        print(f"Startup migration notice: {e}")
+        print(f"Startup migration notice (sk_piutang): {e}")
+    try:
+        from migrations.add_aset_category import run_migration as migrate_aset_category
+        migrate_aset_category()
+    except Exception as e:
+        print(f"Startup migration notice (aset_category): {e}")
 
 @app.get("/")
 def read_root():

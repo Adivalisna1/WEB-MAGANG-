@@ -53,7 +53,7 @@ export default function PerolehanLainnyaPage() {
     setError('');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/dokumen/all`, {
+      const res = await fetch(`${API}/dokumen/all?limit=100`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
@@ -230,6 +230,7 @@ export default function PerolehanLainnyaPage() {
       {/* Modal Upload */}
       <UploadModal
         isOpen={isModalOpen}
+        defaultKategoriSlug="perolehan-lainnya"
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => {
           setIsModalOpen(false);
