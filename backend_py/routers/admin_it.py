@@ -398,7 +398,16 @@ async def get_logs(
         params.append(satker_id)
         
     query = (
-        "SELECT l.id, l.aksi, l.entitas, l.entitas_id, l.detail, l.ip_address AS ip, l.created_at, u.nama AS user_nama, u.username, u.satker_id "
+        "SELECT l.id, "
+        "CONVERT(l.aksi USING utf8mb4) COLLATE utf8mb4_unicode_ci AS aksi, "
+        "CONVERT(l.entitas USING utf8mb4) COLLATE utf8mb4_unicode_ci AS entitas, "
+        "l.entitas_id, "
+        "CONVERT(l.detail USING utf8mb4) COLLATE utf8mb4_unicode_ci AS detail, "
+        "CONVERT(l.ip_address USING utf8mb4) COLLATE utf8mb4_unicode_ci AS ip, "
+        "l.created_at, "
+        "CONVERT(u.nama USING utf8mb4) COLLATE utf8mb4_unicode_ci AS user_nama, "
+        "CONVERT(u.username USING utf8mb4) COLLATE utf8mb4_unicode_ci AS username, "
+        "u.satker_id "
         "FROM aktivitas_log l "
         "LEFT JOIN users u ON u.id = l.user_id "
         "WHERE " + where_clause
@@ -407,8 +416,16 @@ async def get_logs(
     if not satker_id:
         query += """
             UNION ALL
-            SELECT id, 'login_failed' AS aksi, 'system' AS entitas, NULL AS entitas_id, 
-                   JSON_OBJECT('username_tried', username_tried, 'location', COALESCE(location, 'Unknown')) AS detail, ip_address AS ip, created_at, 'System' AS user_nama, username_tried AS username, NULL AS satker_id
+            SELECT id,
+                   CONVERT('login_failed' USING utf8mb4) COLLATE utf8mb4_unicode_ci AS aksi,
+                   CONVERT('system' USING utf8mb4) COLLATE utf8mb4_unicode_ci AS entitas,
+                   NULL AS entitas_id,
+                   CONVERT(JSON_OBJECT('username_tried', username_tried, 'location', COALESCE(location, 'Unknown')) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS detail,
+                   CONVERT(ip_address USING utf8mb4) COLLATE utf8mb4_unicode_ci AS ip,
+                   created_at,
+                   CONVERT('System' USING utf8mb4) COLLATE utf8mb4_unicode_ci AS user_nama,
+                   CONVERT(username_tried USING utf8mb4) COLLATE utf8mb4_unicode_ci AS username,
+                   NULL AS satker_id
             FROM login_attempts
             WHERE status = 'failed'
         """
