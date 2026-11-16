@@ -132,8 +132,7 @@ export default function SkPiutangPage() {
               <AlertOctagon className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Tahap 1</span>
-              <h3 className="font-bold text-slate-900 text-sm leading-tight">SK Penetapan / Kurang Bayar</h3>
+              <h3 className="font-bold text-slate-900 text-sm leading-tight">1. SK Penetapan / Kurang Bayar</h3>
             </div>
           </div>
           <p className="text-xs text-slate-500 mt-1">Dokumen awal penetapan timbulnya piutang satker.</p>
@@ -148,8 +147,7 @@ export default function SkPiutangPage() {
               <FileSignature className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Tahap 2</span>
-              <h3 className="font-bold text-slate-900 text-sm leading-tight">SK Pembebanan / SKTJM</h3>
+              <h3 className="font-bold text-slate-900 text-sm leading-tight">2. SK Pembebanan / SKTJM</h3>
             </div>
           </div>
           <p className="text-xs text-slate-500 mt-1">Surat Pernyataan Tanggung Jawab Mutlak & SKP2K.</p>
@@ -164,8 +162,7 @@ export default function SkPiutangPage() {
               <CheckCheck className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Tahap 3</span>
-              <h3 className="font-bold text-slate-900 text-sm leading-tight">SK Penghapusan Piutang</h3>
+              <h3 className="font-bold text-slate-900 text-sm leading-tight">3. SK Penghapusan Piutang</h3>
             </div>
           </div>
           <p className="text-xs text-slate-500 mt-1">Pengesahan pelunasan atau penghapusan piutang negara.</p>
