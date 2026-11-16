@@ -104,9 +104,6 @@ export default function PerolehanLainnyaPage() {
             <PackagePlus className="w-7 h-7 text-[#1E90FF]" />
             Dokumen Perolehan Aset Lainnya
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Pengelolaan dan pengarsipan berkas Berita Acara / SK Perolehan Barang Milik Negara (BMN) dari sumber perolehan lainnya (hibah, transfer, sitaan, dll).
-          </p>
         </div>
 
         <button

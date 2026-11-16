@@ -94,9 +94,6 @@ export default function SkPenghapusanPage() {
             <CheckCheck className="w-7 h-7 text-[#1E90FF]" />
             SK Penghapusan Piutang
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Surat Keputusan Menteri / Pimpinan K/L mengenai penghapusan piutang negara yang telah lunas atau disetujui hapus buku / hapus tagih.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

@@ -100,9 +100,6 @@ export default function SuratRekeningPage() {
             <Building2 className="w-7 h-7 text-[#1E90FF]" />
             Surat Penutup / Pembukaan Rekening
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Kelola dan arsipkan surat izin pembukaan serta penutupan rekening resmi satker.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

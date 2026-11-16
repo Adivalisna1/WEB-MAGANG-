@@ -294,9 +294,6 @@ export default function KasOverviewPage() {
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Pantau arus kas riil, mutasi penerimaan/pengeluaran dari bukti yang diunggah, dan rekonsiliasi saldo buku terhadap rekening koran bank.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

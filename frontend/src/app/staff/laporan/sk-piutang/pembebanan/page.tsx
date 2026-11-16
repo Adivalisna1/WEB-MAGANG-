@@ -94,9 +94,6 @@ export default function SkPembebananPage() {
             <FileSignature className="w-7 h-7 text-[#1E90FF]" />
             SK Pembebanan / SKP2K / SKTJM
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Surat Keterangan Tanggung Jawab Mutlak (SKTJM) dan Surat Keputusan Pembebanan Penggantian Kerugian Negara.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

@@ -94,9 +94,6 @@ export default function SkPenetapanPage() {
             <AlertOctagon className="w-7 h-7 text-[#1E90FF]" />
             SK Penetapan Piutang / Surat Ketetapan Kurang Bayar
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Dokumen resmi penetapan timbulnya piutang satker akibat temuan pemeriksaan, kelebihan bayar, atau piutang lainnya.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

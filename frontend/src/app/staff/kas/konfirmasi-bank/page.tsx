@@ -120,9 +120,6 @@ export default function KonfirmasiBankPage() {
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Surat konfirmasi saldo kas resmi dari bank mitra per tanggal cut-off pelaporan (audit trail).
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

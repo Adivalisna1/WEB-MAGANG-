@@ -120,9 +120,6 @@ export default function LpjBendaharaPage() {
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Laporan pertanggungjawaban kas bendahara berkala berikut surat konfirmasi dan verifikasi SAKTI / KPPN.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

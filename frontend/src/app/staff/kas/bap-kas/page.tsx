@@ -120,9 +120,6 @@ export default function BapKasPage() {
               </span>
             )}
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Berita acara hasil cash opname (pemeriksaan fisik brankas dan saldo rekening) yang ditandatangani Bendahara dan KPA.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

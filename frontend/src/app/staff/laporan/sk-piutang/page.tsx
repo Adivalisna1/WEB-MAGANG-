@@ -97,9 +97,6 @@ export default function SkPiutangPage() {
             <FileCheck2 className="w-7 h-7 text-[#1E90FF]" />
             SK Piutang Satker
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Pusat pengelolaan berkas piutang negara: SK Penetapan Kurang Bayar, SK Pembebanan / SKTJM, dan SK Penghapusan Piutang.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

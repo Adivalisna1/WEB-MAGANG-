@@ -94,9 +94,6 @@ export default function BuktiSetorUpPage() {
             <Receipt className="w-7 h-7 text-[#1E90FF]" />
             Bukti Setor Sisa UP / TUP (NTPN)
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Bukti Penerimaan Negara (BPN) dan Nomor Transaksi Penerimaan Negara (NTPN) penyetoran kembali sisa kas ke Kas Negara.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
