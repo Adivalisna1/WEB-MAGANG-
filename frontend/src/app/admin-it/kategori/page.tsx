@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Plus, Trash2, Edit, Tags } from 'lucide-react';
+import ClientPagination from '@/components/ui/ClientPagination';
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
@@ -12,6 +13,8 @@ export default function KategoriManagementPage() {
   const { token } = useAuth();
   const [kategoris, setKategoris] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -147,7 +150,7 @@ export default function KategoriManagementPage() {
               {loading ? (
                 <tr><td colSpan={4} className="p-4 text-center text-gray-500">Loading kategori...</td></tr>
               ) : (
-                kategoris.map(k => (
+                kategoris.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(k => (
                   <tr key={k.id} className="hover:bg-gray-50/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -181,6 +184,15 @@ export default function KategoriManagementPage() {
             </tbody>
           </table>
         </div>
+        {!loading && (
+          <ClientPagination
+            currentPage={currentPage}
+            totalItems={kategoris.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            itemLabel="kategori"
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Plus, Edit, Tags, FileText, Trash2 } from "lucide-react";
 import clsx from "clsx";
+import ClientPagination from "@/components/ui/ClientPagination";
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
@@ -33,6 +34,9 @@ export default function AdminpencatatanPage() {
 
   // Data State
   const [transaksi, setTransaksi] = useState<any[]>([]);
+  const [transaksiPage, setTransaksiPage] = useState(1);
+  const [kategoriPage, setKategoriPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [satkers, setSatkers] = useState<any[]>([]);
   const [kategoris, setKategoris] = useState<any[]>([]);
   const [filterSatker, setFilterSatker] = useState<string>("");
@@ -77,6 +81,10 @@ export default function AdminpencatatanPage() {
   const filteredTransaksi = filterSatker
     ? transaksi.filter((t) => t.satker_id?.toString() === filterSatker)
     : transaksi;
+
+  useEffect(() => {
+    setTransaksiPage(1);
+  }, [filterSatker]);
 
   const handleSaveKategori = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,7 +250,7 @@ export default function AdminpencatatanPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredTransaksi.map((t) => (
+                  filteredTransaksi.slice((transaksiPage - 1) * ITEMS_PER_PAGE, transaksiPage * ITEMS_PER_PAGE).map((t) => (
                     <tr key={t.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded text-xs">
@@ -277,6 +285,15 @@ export default function AdminpencatatanPage() {
                 )}
               </tbody>
             </table>
+            {!loading && (
+              <ClientPagination
+                currentPage={transaksiPage}
+                totalItems={filteredTransaksi.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                itemLabel="transaksi"
+                onPageChange={setTransaksiPage}
+              />
+            )}
           </div>
         )}
 
@@ -310,7 +327,7 @@ export default function AdminpencatatanPage() {
                     </td>
                   </tr>
                 ) : (
-                  kategoris.map((k) => (
+                  kategoris.slice((kategoriPage - 1) * ITEMS_PER_PAGE, kategoriPage * ITEMS_PER_PAGE).map((k) => (
                     <tr key={k.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-gray-500">#{k.id}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">
@@ -335,6 +352,15 @@ export default function AdminpencatatanPage() {
                 )}
               </tbody>
             </table>
+            {!loading && (
+              <ClientPagination
+                currentPage={kategoriPage}
+                totalItems={kategoris.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                itemLabel="kategori"
+                onPageChange={setKategoriPage}
+              />
+            )}
           </div>
         )}
       </div>

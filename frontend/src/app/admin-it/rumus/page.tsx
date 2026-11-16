@@ -20,6 +20,7 @@ import {
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import RumusBuilder from "@/components/kertas-kerja/RumusBuilder";
+import ClientPagination from "@/components/ui/ClientPagination";
 
 const API = typeof window !== "undefined" && window.location.hostname
   ? `${window.location.protocol}//${window.location.hostname}:5000/api`
@@ -30,6 +31,12 @@ export default function AdminITRumusPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>("");
   const [filterScope, setFilterScope] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterScope]);
 
   // Mode: "list" atau "builder"
   const [mode, setMode] = useState<"list" | "builder">("list");
@@ -186,8 +193,9 @@ export default function AdminITRumusPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredRumus.map((r) => {
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredRumus.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((r) => {
                 const isUniv = r.scope === "universal";
                 const isLocked = Boolean(r.is_locked);
 
@@ -291,6 +299,16 @@ export default function AdminITRumusPage() {
                 );
               })}
             </div>
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                <ClientPagination
+                  currentPage={currentPage}
+                  totalItems={filteredRumus.length}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  itemLabel="rumus"
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            </>
           )}
         </>
       )}
