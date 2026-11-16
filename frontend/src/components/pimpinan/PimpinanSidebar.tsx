@@ -253,7 +253,6 @@ export default function PimpinanSidebar({
               <Link
                 href="/staff/kas"
                 onClick={() => {
-                  if (isCollapsed) setIsCollapsed(false);
                   setIsKasOpen(true);
                 }}
                 className={clsx(
@@ -361,7 +360,6 @@ export default function PimpinanSidebar({
               <Link
                 href="/staff/laporan/sk-piutang"
                 onClick={() => {
-                  if (isCollapsed) setIsCollapsed(false);
                   setIsLaporanOpen(true);
                 }}
                 className={clsx(
@@ -525,7 +523,6 @@ export default function PimpinanSidebar({
               <Link
                 href="/staff/aset/perolehan-lainnya"
                 onClick={() => {
-                  if (isCollapsed) setIsCollapsed(false);
                   setIsAsetOpen(true);
                 }}
                 className={clsx(
