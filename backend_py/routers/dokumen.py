@@ -386,7 +386,9 @@ async def upload_dokumen(
     semester_final = int(semester) if semester else None
     
     is_surat_rek = kat_slug in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"]
-    if is_sk_piutang:
+    if kat_slug == "perolehan-lainnya":
+        status_awal = 'terverifikasi'
+    elif is_sk_piutang:
         status_awal = 'lolos_admin'
     elif is_surat_rek:
         status_awal = 'menunggu_verifikasi'

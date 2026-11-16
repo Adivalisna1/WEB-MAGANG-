@@ -31,11 +31,11 @@ interface Dokumen {
 }
 
 const statusConfig: Record<string, { label: string; badgeClass: string }> = {
-  draft: { label: 'Draft', badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200' },
-  menunggu_verifikasi: { label: 'Menunggu Pimpinan', badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  lolos_pimpinan: { label: 'Menunggu Eselon 1', badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  lolos_admin: { label: 'Menunggu Eselon 1', badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  terverifikasi: { label: 'Selesai', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  draft: { label: 'Tersimpan', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  menunggu_verifikasi: { label: 'Tersimpan', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  lolos_pimpinan: { label: 'Tersimpan', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  lolos_admin: { label: 'Tersimpan', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  terverifikasi: { label: 'Tersimpan', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   revisi: { label: 'Perlu Perbaikan', badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200' },
   diarsipkan: { label: 'Diarsipkan', badgeClass: 'bg-gray-100 text-gray-700 border border-gray-200' },
 };
@@ -159,7 +159,7 @@ export default function PerolehanLainnyaPage() {
                 <th className="py-3 px-4">Tahun</th>
                 <th className="py-3 px-4">Kategori</th>
                 <th className="py-3 px-4">Ukuran</th>
-                <th className="py-3 px-4">Status Verifikasi</th>
+                <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
               </tr>
             </thead>
@@ -210,7 +210,7 @@ export default function PerolehanLainnyaPage() {
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <a
-                            href={`${API}/dokumen/download/${doc.id}`}
+                            href={`${API}/dokumen/${doc.id}/download`}
                             className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Unduh Berkas"
                           >
