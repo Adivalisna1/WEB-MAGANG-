@@ -1214,9 +1214,6 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
                   <p className="font-bold text-slate-800 text-sm">Sedang Mengekstrak & Memindai Berkas...</p>
-                  <p className="text-xs text-slate-500 max-w-sm text-center">
-                    Sistem sedang membaca nomor rekening satker, nama bank, dan menghitung saldo akhir tiap berkas secara mandiri.
-                  </p>
                 </div>
               ) : batchItems.length === 0 ? (
                 <div className="space-y-4">
