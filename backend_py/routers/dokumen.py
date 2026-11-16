@@ -368,8 +368,6 @@ async def upload_dokumen(
         
     kat_slug = kat_row.get("slug") if kat_row else ""
     is_sk_piutang = kat_slug in ("sk-piutang-satker", "sk-penetapan-piutang", "sk-pembebanan-piutang", "sk-penghapusan-piutang")
-    if is_sk_piutang and not is_admin_role:
-        raise HTTPException(403, "Akses ditolak. Dokumen SK Piutang hanya dapat diunggah oleh Akun Administrasi.")
 
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
@@ -386,14 +384,8 @@ async def upload_dokumen(
     semester_final = int(semester) if semester else None
     
     is_surat_rek = kat_slug in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"]
-    if kat_slug == "perolehan-lainnya":
-        status_awal = 'terverifikasi'
-    elif is_sk_piutang:
-        status_awal = 'lolos_admin'
-    elif is_surat_rek:
-        status_awal = 'menunggu_verifikasi'
-    else:
-        status_awal = 'draft'
+    # Semua dokumen langsung berstatus selesai/terverifikasi tanpa perlu menunggu persetujuan Pimpinan atau Eselon 1
+    status_awal = 'terverifikasi'
     
     # Validasi format tanggal_surat jika dikirim
     tgl_surat_final = None
@@ -1480,7 +1472,7 @@ async def batch_save_dokumen(
 
             kat_info = kat_map.get(item.kategori_id)
             is_surat_rek = bool(kat_info and kat_info.get("slug") in ["surat-pembukaan-rekening-koran", "surat-penutupan-rekening-koran"])
-            status_awal = 'menunggu_verifikasi' if is_surat_rek else 'terverifikasi'
+            status_awal = 'terverifikasi'
 
             final_nom = float(item.nominal) if item.nominal is not None and not is_surat_rek else None
 

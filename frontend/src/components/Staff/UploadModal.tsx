@@ -220,17 +220,6 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
         if (list.length > 0) {
           setKategoriId(String(list[0].id));
         }
-      } else {
-        const isAdminRole = Boolean(
-          u && !isIT && (
-            ['administrasi', 'manajemen', 'pimpinan_satker'].includes(u.role || '') ||
-            Number(u.role_id) === 2 ||
-            u.is_manajemen
-          )
-        );
-        if (!isAdminRole) {
-          list = list.filter(k => !SK_PIUTANG_SLUGS.includes(k.slug));
-        }
       }
       if (list.length === 0) {
         setKategoriError('Belum ada kategori yang sesuai wewenang akun Anda.');
