@@ -23,6 +23,12 @@ export default function UserManagementPage() {
   const [unitEselon1, setUnitEselon1] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Form State
   const [showAddForm, setShowAddForm] = useState(false);
@@ -534,6 +540,20 @@ export default function UserManagementPage() {
     </form>
   );
 
+  const filteredUsers = users.filter(u =>
+    (u.nama || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.satker || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.eselon_1_nama || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = filteredUsers.slice(
+    (safePage - 1) * ITEMS_PER_PAGE,
+    safePage * ITEMS_PER_PAGE
+  );
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Page Header */}
@@ -607,20 +627,14 @@ export default function UserManagementPage() {
                     Memuat daftar pengguna...
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-gray-400 font-medium">
-                    Belum ada data pengguna.
+                    {users.length === 0 ? 'Belum ada data pengguna.' : 'Tidak ada pengguna yang sesuai dengan pencarian.'}
                   </td>
                 </tr>
               ) : (
-                users.filter(u =>
-                  (u.nama || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (u.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (u.satker || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (u.eselon_1_nama || '').toLowerCase().includes(searchQuery.toLowerCase())
-                ).map(u => {
+                paginatedUsers.map(u => {
                   const roleName = u.role?.toLowerCase();
                   const tingkatCode = u.tingkat?.toLowerCase();
 
@@ -749,6 +763,67 @@ export default function UserManagementPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar (Per 10 User) */}
+        {!loading && filteredUsers.length > 0 && (
+          <div className="px-5 py-3.5 border-t border-gray-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-gray-500 font-medium">
+              Menampilkan{' '}
+              <span className="font-bold text-gray-800">{(safePage - 1) * ITEMS_PER_PAGE + 1}</span>
+              {'–'}
+              <span className="font-bold text-gray-800">
+                {Math.min(safePage * ITEMS_PER_PAGE, filteredUsers.length)}
+              </span>{' '}
+              dari <span className="font-bold text-gray-800">{filteredUsers.length}</span> pengguna
+            </p>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Sebelumnya
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('ellipsis');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === 'ellipsis' ? (
+                    <span key={`el-${idx}`} className="px-1.5 text-xs text-gray-400">...</span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCurrentPage(item)}
+                      className={`min-w-[32px] h-8 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                        safePage === item
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MODAL: TAMBAH USER */}
