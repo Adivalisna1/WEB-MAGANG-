@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Trash2, Edit, Building2, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit, Building2, Download, Upload, Search } from 'lucide-react';
 import { useRef } from 'react';
 import * as XLSX from 'xlsx';
 import ClientPagination from '@/components/ui/ClientPagination';
@@ -15,8 +15,18 @@ export default function SatkerManagementPage() {
   const { token } = useAuth();
   const [satkers, setSatkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const filteredSatkers = satkers.filter(k =>
+    (k.nama || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    String(k.NO_Satker || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Import State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -236,6 +246,21 @@ export default function SatkerManagementPage() {
       )}
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-200 bg-gray-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari kode atau nama satker..."
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            />
+          </div>
+          <div className="text-xs text-gray-500 font-medium">
+            Total: <span className="font-bold text-gray-800">{filteredSatkers.length}</span> satker
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -249,10 +274,10 @@ export default function SatkerManagementPage() {
             <tbody className="divide-y divide-gray-200 text-sm">
               {loading ? (
                 <tr><td colSpan={4} className="p-4 text-center text-gray-500">Loading satker...</td></tr>
-              ) : satkers.length === 0 ? (
-                <tr><td colSpan={4} className="p-4 text-center text-gray-500">Belum ada data satker.</td></tr>
+              ) : filteredSatkers.length === 0 ? (
+                <tr><td colSpan={4} className="p-4 text-center text-gray-500">{satkers.length === 0 ? 'Belum ada data satker.' : 'Tidak ada satker yang sesuai pencarian.'}</td></tr>
               ) : (
-                satkers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(k => (
+                filteredSatkers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(k => (
                   <tr key={k.id} className="hover:bg-gray-50/50">
                     <td className="px-4 py-3 text-gray-900 font-medium">
                       {k.NO_Satker || '-'}
@@ -293,7 +318,7 @@ export default function SatkerManagementPage() {
         {!loading && (
           <ClientPagination
             currentPage={currentPage}
-            totalItems={satkers.length}
+            totalItems={filteredSatkers.length}
             itemsPerPage={ITEMS_PER_PAGE}
             itemLabel="satker"
             onPageChange={setCurrentPage}
