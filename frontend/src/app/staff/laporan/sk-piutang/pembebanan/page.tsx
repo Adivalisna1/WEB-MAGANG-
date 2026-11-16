@@ -88,7 +88,7 @@ export default function SkPembebananPage() {
           <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
             <Link href="/staff/laporan/sk-piutang" className="hover:underline">SK Piutang Satker</Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span>Tahap 2: Penagihan & Pembebanan</span>
+            <span>2. Penagihan &amp; Pembebanan</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
             <FileSignature className="w-7 h-7 text-[#1E90FF]" />
