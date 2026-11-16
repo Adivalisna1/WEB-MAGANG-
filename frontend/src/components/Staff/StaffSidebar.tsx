@@ -26,6 +26,8 @@ import {
   FileSignature,
   CheckCheck,
   Scale,
+  Package,
+  PackagePlus,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -83,6 +85,14 @@ const StaffLaporanLainSubMenu = [
   },
 ];
 
+const StaffAsetSubMenu = [
+  {
+    href: "/staff/aset/perolehan-lainnya",
+    icon: PackagePlus,
+    label: "Perolehan Lainnya",
+  },
+];
+
 interface SidebarProps {
   isMobileOpen: boolean;
   setIsMobileOpen: (val: boolean) => void;
@@ -119,18 +129,28 @@ export default function Sidebar({
     pathname === "/staff/laporan/sk-piutang" ||
     pathname.startsWith("/staff/laporan/sk-piutang");
 
+  const isAsetActive =
+    pathname === "/staff/aset" || pathname.startsWith("/staff/aset");
+
   const isProfilActive =
     pathname === "/staff/profil" || pathname.startsWith("/staff/profil");
 
   const [isKasOpen, setIsKasOpen] = useState(isKasActive);
   const [isLaporanOpen, setIsLaporanOpen] = useState(isLaporanActive);
   const [isPiutangOpen, setIsPiutangOpen] = useState(isPiutangActive);
+  const [isAsetOpen, setIsAsetOpen] = useState(isAsetActive);
 
   useEffect(() => {
     if (isKasActive) {
       setIsKasOpen(true);
     }
   }, [isKasActive]);
+
+  useEffect(() => {
+    if (isAsetActive) {
+      setIsAsetOpen(true);
+    }
+  }, [isAsetActive]);
 
   useEffect(() => {
     if (isLaporanActive) {
@@ -484,6 +504,92 @@ export default function Sidebar({
 
                 {/* 2. Sibling Menu Laporan Lainnya */}
                 {StaffLaporanLainSubMenu.map(({ href, icon: SubIcon, label }) => {
+                  const active = pathname === href || pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        active
+                          ? "bg-[#475569] text-white shadow-sm font-semibold"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
+                      )}
+                    >
+                      <SubIcon
+                        className={clsx(
+                          "w-4 h-4 shrink-0",
+                          active
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Aset Accordion */}
+          <div>
+            <div
+              className={clsx(
+                "w-full flex items-center rounded-xl font-medium transition-all group",
+                isAsetActive
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/60"
+              )}
+            >
+              <Link
+                href="/staff/aset/perolehan-lainnya"
+                onClick={() => {
+                  if (isCollapsed) setIsCollapsed(false);
+                  setIsAsetOpen(true);
+                }}
+                className={clsx(
+                  "flex items-center flex-1 px-4 py-3",
+                  isCollapsed ? "justify-center" : "gap-3"
+                )}
+                title={isCollapsed ? "Aset" : undefined}
+              >
+                <Package
+                  className={clsx(
+                    "w-5 h-5 shrink-0",
+                    isAsetActive
+                      ? "text-[#1E90FF]"
+                      : "text-slate-400 group-hover:text-slate-900"
+                  )}
+                />
+                {!isCollapsed && <span className="truncate">Aset</span>}
+              </Link>
+
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsAsetOpen(!isAsetOpen);
+                  }}
+                  className="p-3 text-slate-400 hover:text-slate-700 transition-colors"
+                  title={isAsetOpen ? "Ciutkan sub-menu" : "Buka sub-menu"}
+                >
+                  <ChevronDown
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-200",
+                      isAsetOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </div>
+
+            {/* Child Menu Aset */}
+            {!isCollapsed && isAsetOpen && (
+              <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
+                {StaffAsetSubMenu.map(({ href, icon: SubIcon, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
