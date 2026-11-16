@@ -70,7 +70,7 @@ export default function BapKasPage() {
     setError('');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/dokumen/all`, {
+      const res = await fetch(`${API}/dokumen/all?limit=500`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();

@@ -52,7 +52,7 @@ export default function SkPenetapanPage() {
     setError('');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/dokumen/all`, {
+      const res = await fetch(`${API}/dokumen/all?limit=500`, {
         headers: { Authorization: `Bearer ${session?.token}` },
       });
       const data = await res.json();
@@ -253,7 +253,7 @@ export default function SkPenetapanPage() {
             setIsModalOpen(false);
             fetchDokumen();
           }}
-          defaultKategoriSlug="sk-piutang-satker"
+          defaultKategoriSlug="sk-penetapan-piutang"
         />
       )}
     </div>

@@ -259,11 +259,20 @@ def extract_metadata_from_text(text: str) -> Dict[str, Any]:
         m_str = tgl_match.group(2).capitalize()
         d_year = int(tgl_match.group(3))
         m_idx = nama_bulan_list.index(m_str) + 1 if m_str in nama_bulan_list else 1
-        tanggal_surat = f"{d_year:04d}-{m_idx:02d}-{d_day:02d}"
+        if 1 <= d_day <= 31 and 1 <= m_idx <= 12:
+            tanggal_surat = f"{d_year:04d}-{m_idx:02d}-{d_day:02d}"
     else:
-        iso_match = re.search(r"\b(202[0-9])[-/](\d{1,2})[-/](\d{1,2})\b", text)
+        iso_match = re.search(r"\b(20[1-3][0-9])[-/](\d{1,2})[-/](\d{1,2})\b", text)
         if iso_match:
-            tanggal_surat = f"{iso_match.group(1)}-{int(iso_match.group(2)):02d}-{int(iso_match.group(3)):02d}"
+            d_year, m_idx, d_day = int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3))
+            if 1 <= d_day <= 31 and 1 <= m_idx <= 12:
+                tanggal_surat = f"{d_year:04d}-{m_idx:02d}-{d_day:02d}"
+        else:
+            dmy_match = re.search(r"\b(\d{1,2})[-/](\d{1,2})[-/](20[1-3][0-9])\b", text)
+            if dmy_match:
+                d_day, m_idx, d_year = int(dmy_match.group(1)), int(dmy_match.group(2)), int(dmy_match.group(3))
+                if 1 <= d_day <= 31 and 1 <= m_idx <= 12:
+                    tanggal_surat = f"{d_year:04d}-{m_idx:02d}-{d_day:02d}"
 
     # 4. Saldo Akhir / Nominal (Untuk Surat Pembukaan/Penutupan TIDAK ADA SALDO)
     nominal = None

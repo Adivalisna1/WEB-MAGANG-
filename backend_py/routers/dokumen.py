@@ -229,7 +229,7 @@ async def get_all_dokumen(
     satker: Optional[int] = None,
     only_mine: Optional[bool] = False,
     page: int = 1,
-    limit: int = 20,
+    limit: int = 500,
     user: dict = Depends(get_current_user),
     db=Depends(get_db)
 ):
@@ -367,7 +367,7 @@ async def upload_dokumen(
         kat_row = cursor.fetchone()
         
     kat_slug = kat_row.get("slug") if kat_row else ""
-    is_sk_piutang = (kat_slug == "sk-piutang-satker")
+    is_sk_piutang = kat_slug in ("sk-piutang-satker", "sk-penetapan-piutang", "sk-pembebanan-piutang", "sk-penghapusan-piutang")
     if is_sk_piutang and not is_admin_role:
         raise HTTPException(403, "Akses ditolak. Dokumen SK Piutang hanya dapat diunggah oleh Akun Administrasi.")
 
@@ -884,7 +884,7 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
         dok = cursor.fetchone()
         if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
         
-        is_surat_rek = dok.get("kat_slug") in ['surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran', 'sk-piutang-satker']
+        is_surat_rek = dok.get("kat_slug") in ['surat-pembukaan-rekening-koran', 'surat-penutupan-rekening-koran', 'sk-piutang-satker', 'sk-penetapan-piutang', 'sk-pembebanan-piutang', 'sk-penghapusan-piutang']
         valid_statuses = ['lolos_admin', 'terverifikasi', 'menunggu_verifikasi'] if is_surat_rek else ['lolos_admin', 'terverifikasi']
         if dok["status"] not in valid_statuses:
             raise HTTPException(400, "Dokumen belum disahkan satker atau status tidak valid untuk ditinjau")
@@ -971,7 +971,7 @@ async def verify_eselon(id: int, request: Request, user: dict = Depends(get_curr
                         WHERE satker_id = %s AND REPLACE(nomor_rekening, ' ', '') = REPLACE(%s, ' ', '')
                     """, (target_satker, nomor_rek))
 
-        if dok.get("kat_slug") == "sk-piutang-satker":
+        if dok.get("kat_slug") in ("sk-piutang-satker", "sk-penetapan-piutang", "sk-pembebanan-piutang", "sk-penghapusan-piutang"):
             extra_info = []
             if dok.get("nama_debitur"):
                 extra_info.append(f"Debitur: {dok['nama_debitur']}")

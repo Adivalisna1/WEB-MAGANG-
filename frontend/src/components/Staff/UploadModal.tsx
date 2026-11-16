@@ -20,6 +20,18 @@ const TAHUN_LIST = Array.from(
   (_, i) => new Date().getFullYear() - i
 );
 
+const SK_PIUTANG_SLUGS = ['sk-piutang-satker', 'sk-penetapan-piutang', 'sk-pembebanan-piutang', 'sk-penghapusan-piutang'];
+
+function addTwoYears(dateStr: string): string {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const newYear = y + 2;
+  // Handle 29 Feb -> 28 Feb on non-leap years
+  const isLeap = (newYear % 4 === 0 && newYear % 100 !== 0) || newYear % 400 === 0;
+  const newDay = m === 2 && d === 29 && !isLeap ? 28 : d;
+  return `${String(newYear).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
+}
+
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -141,6 +153,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
       setNamaBank('');
       setNomorRekening('');
       setTanggalSurat('');
+      setTenggatWaktu('');
       setNamaRekening('');
       setNamaDebitur('');
       setDasarTemuan('');
@@ -200,9 +213,10 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
       const d = await res.json();
       let list: Kategori[] = d.data ?? [];
       const u = session?.user as any;
-      if (defaultKategoriSlug === 'sk-piutang-satker') {
+      if (defaultKategoriSlug && SK_PIUTANG_SLUGS.includes(defaultKategoriSlug)) {
         // Jika modal dibuka khusus untuk SK Piutang Satker
-        list = list.filter(k => k.slug === 'sk-piutang-satker');
+        const match = list.filter(k => k.slug === defaultKategoriSlug);
+        list = match.length > 0 ? match : list.filter(k => SK_PIUTANG_SLUGS.includes(k.slug));
         if (list.length > 0) {
           setKategoriId(String(list[0].id));
         }
@@ -215,7 +229,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
           )
         );
         if (!isAdminRole) {
-          list = list.filter(k => k.slug !== 'sk-piutang-satker');
+          list = list.filter(k => !SK_PIUTANG_SLUGS.includes(k.slug));
         }
       }
       if (list.length === 0) {
@@ -439,15 +453,15 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
 
     let activeKatId = kategoriId;
     if (!activeKatId) {
-      const skCat = kategoriList.find(k => k.slug === 'sk-piutang-satker');
-      if (skCat && (defaultKategoriSlug === 'sk-piutang-satker' || isSkPiutang)) {
+      const skCat = kategoriList.find(k => k.slug === defaultKategoriSlug || SK_PIUTANG_SLUGS.includes(k.slug));
+      if (skCat && ((defaultKategoriSlug && SK_PIUTANG_SLUGS.includes(defaultKategoriSlug)) || isSkPiutang)) {
         activeKatId = String(skCat.id);
       }
     }
     if (!activeKatId) return setError('Kategori wajib dipilih');
 
     const selKat = kategoriList.find(k => String(k.id) === activeKatId);
-    const isSkPiutangActive = selKat?.slug === 'sk-piutang-satker' || defaultKategoriSlug === 'sk-piutang-satker';
+    const isSkPiutangActive = SK_PIUTANG_SLUGS.includes(selKat?.slug || '') || SK_PIUTANG_SLUGS.includes(defaultKategoriSlug || '');
     if (isSkPiutangActive) {
       if (!namaDebitur.trim()) return setError('Nama Debitur / Pihak Tertagih wajib diisi untuk SK Piutang');
       if (!dasarTemuan.trim()) return setError('Nomor Dasar Temuan BPK / SKTJM wajib diisi untuk SK Piutang');
@@ -664,7 +678,15 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
   const isSuratPembukaan = selectedKat?.slug === 'surat-pembukaan-rekening-koran';
   const isSuratPenutupan = selectedKat?.slug === 'surat-penutupan-rekening-koran';
   const isSuratRekening = isSuratPembukaan || isSuratPenutupan;
-  const isSkPiutang = selectedKat?.slug === 'sk-piutang-satker' || defaultKategoriSlug === 'sk-piutang-satker';
+  const isSkPiutang = SK_PIUTANG_SLUGS.includes(selectedKat?.slug || '') || SK_PIUTANG_SLUGS.includes(defaultKategoriSlug || '');
+
+  // Otomatis hitung Jatuh Tempo = Tanggal Penetapan SK + 2 Tahun
+  useEffect(() => {
+    if (isSkPiutang && tanggalSurat) {
+      const autoDue = addTwoYears(tanggalSurat);
+      if (autoDue) setTenggatWaktu(autoDue);
+    }
+  }, [isSkPiutang, tanggalSurat]);
 
   // Akumulasi saldo batch yang terdeteksi
   const totalNominalBatch = batchItems.reduce((acc, it) => acc + (Number(it.nominal) || 0), 0);
@@ -1105,7 +1127,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess, initialFile, d
                       <div>
                         <label className="block text-xs font-bold text-rose-700 mb-1 flex items-center justify-between">
                           <span>Tenggat Waktu (Jatuh Tempo) <span className="text-rose-500">*</span></span>
-                          <span className="text-[10px] text-slate-400 font-normal">Batas Pelunasan</span>
+                          <span className="text-[10px] text-slate-400 font-normal">+2 Tahun dari Penetapan</span>
                         </label>
                         <input
                           type="date"
