@@ -42,6 +42,42 @@ const statusConfig: Record<string, { label: string; badgeClass: string; step: nu
   diarsipkan: { label: 'Diarsipkan', badgeClass: 'bg-gray-100 text-gray-700 border border-gray-200', step: 4 },
 };
 
+const getKeteranganSurat = (doc: Dokumen) => {
+  const slug = (doc.kategori_slug || '').toLowerCase();
+  const kat = (doc.kategori || '').toLowerCase();
+  const judul = (doc.judul || '').toLowerCase();
+  const file = (doc.file_nama || '').toLowerCase();
+
+  if (
+    slug.includes('pembukaan') ||
+    kat.includes('pembukaan') ||
+    judul.includes('pembukaan') ||
+    file.includes('pembukaan')
+  ) {
+    return {
+      label: 'Pembukaan Rekening',
+      badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    };
+  }
+
+  if (
+    slug.includes('penutupan') ||
+    kat.includes('penutupan') ||
+    judul.includes('penutupan') ||
+    file.includes('penutupan')
+  ) {
+    return {
+      label: 'Penutupan Rekening',
+      badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+    };
+  }
+
+  return {
+    label: doc.kategori || '-',
+    badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+  };
+};
+
 export default function SuratRekeningPage() {
   const { user } = useAuth();
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
@@ -176,6 +212,7 @@ export default function SuratRekeningPage() {
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase font-semibold">
                 <tr>
                   <th className="px-6 py-3.5">Dokumen</th>
+                  <th className="px-6 py-3.5">Keterangan</th>
                   <th className="px-6 py-3.5">Tahun</th>
                   <th className="px-6 py-3.5">Status</th>
                   <th className="px-6 py-3.5">Waktu Unggah</th>
@@ -188,6 +225,7 @@ export default function SuratRekeningPage() {
                     label: doc.status,
                     badgeClass: 'bg-slate-100 text-slate-700',
                   };
+                  const keterangan = getKeteranganSurat(doc);
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-6 py-4">
@@ -200,6 +238,11 @@ export default function SuratRekeningPage() {
                             <p className="text-xs text-slate-400 mt-0.5">{doc.file_nama}</p>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={clsx("inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold", keterangan.badgeClass)}>
+                          {keterangan.label}
+                        </span>
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-700">{doc.tahun}</td>
                       <td className="px-6 py-4">
