@@ -100,7 +100,7 @@ export default function LandingPage() {
 
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
             Selamat Datang di<br />
-            <span className="text-amber-400">Sistem Informasi Pelaporan</span>
+            <span className="text-amber-400">SIP (Sistem Informasi Pelaporan)</span>
           </h1>
 
           <p className="text-white/65 text-base sm:text-lg leading-relaxed mb-10">
@@ -269,7 +269,7 @@ export default function LandingPage() {
 
       {/* ── FOOTER ───────────────────────────────────────────────── */}
       <footer className="bg-[#080f1c] text-white/40 py-5 px-6 text-center text-sm">
-        © {new Date().getFullYear()} <span className="text-white/65 font-medium">Instansi Pemerintah</span> — Sistem Manajemen Dokumen Laporan
+        © {new Date().getFullYear()} <span className="text-white/65 font-medium">SIP</span> — Sistem Informasi Pelaporan
       </footer>
     </div>
   );

@@ -91,9 +91,9 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity">
+          <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-90 transition-opacity" title="SIP — Sistem Informasi Pelaporan">
             <FileText className="w-6 h-6 text-blue-300" />
-            <span className="hidden sm:inline">Web Laporan</span>
+            <span className="hidden sm:inline">SIP</span>
           </Link>
 
           {/* Search Bar - Desktop & Tablet */}

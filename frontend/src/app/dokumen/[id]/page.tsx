@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props) {
   try {
     const res = await getDokumenById(Number(params.id));
     return {
-      title: `${res.data.judul} — Sistem Informasi Pelaporan`,
+      title: `${res.data.judul} — SIP (Sistem Informasi Pelaporan)`,
       description: res.data.deskripsi ?? `Unduh dokumen ${res.data.judul} tahun ${res.data.tahun}`,
     };
   } catch {

@@ -3,8 +3,8 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 export const metadata: Metadata = {
-  title: 'Sistem Informasi Pelaporan',
-  description: 'Platform pengelolaan dan pengarsipan dokumen laporan instansi secara digital, aman, dan terstruktur.',
+  title: 'SIP — Sistem Informasi Pelaporan',
+  description: 'SIP (Sistem Informasi Pelaporan): Platform pengelolaan dan pengarsipan dokumen laporan instansi secara digital, aman, dan terstruktur.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

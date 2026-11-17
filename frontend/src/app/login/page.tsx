@@ -116,9 +116,14 @@ export default function LoginPage() {
           <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#1D64EC] shadow-md shrink-0">
             <Landmark className="w-6 h-6" />
           </div>
-          <span className="text-white font-bold text-xl tracking-tight">
-            Portal Rekonsiliasi Satker
-          </span>
+          <div className="flex flex-col">
+            <span className="text-white font-bold text-xl tracking-tight leading-tight">
+              SIP
+            </span>
+            <span className="text-white/80 text-xs font-medium tracking-wide uppercase">
+              Sistem Informasi Pelaporan
+            </span>
+          </div>
         </div>
 
         {/* Center Content & Illustration */}
@@ -395,7 +400,7 @@ export default function LoginPage() {
 
         {/* Footer Copyright */}
         <p className="text-center text-xs text-gray-400 pt-8">
-          © 2026 Portal Rekonsiliasi Satker
+          © {new Date().getFullYear()} SIP (Sistem Informasi Pelaporan)
         </p>
       </div>
     </div>
