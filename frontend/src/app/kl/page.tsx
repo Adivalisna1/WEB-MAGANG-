@@ -235,6 +235,12 @@ export default function KLDashboardPage() {
   const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(null);
   const [auditEventFilter, setAuditEventFilter] = useState<string>('all');
 
+  // Password Change State (Pengaturan Eksekutif)
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+
   // Interactive Settings Toggles
   const [toggleEmail, setToggleEmail] = useState<boolean>(true);
   const [togglePmk, setTogglePmk] = useState<boolean>(true);
@@ -442,6 +448,62 @@ export default function KLDashboardPage() {
           setUsersList(mappedUsers);
         }
       }
+
+      // 6. Real Audit Logs (Log Audit Eksekutif)
+      const resLogs = await fetch(`${API}/eselon-1/logs?limit=50`, { headers });
+      if (resLogs.ok) {
+        const jsonLogs = await resLogs.json();
+        const logRows = jsonLogs.data || [];
+        if (Array.isArray(logRows)) {
+          const aksiMap: Record<string, { label: string; status: string; tone: string; icon: string }> = {
+            upload_dokumen: { label: 'Unggah Dokumen Baru', status: 'Terverifikasi', tone: 'green', icon: 'check' },
+            batch_upload: { label: 'Unggah Massal (Batch ZIP/Folder)', status: 'Terverifikasi', tone: 'green', icon: 'check' },
+            verifikasi_dokumen: { label: 'Verifikasi Dokumen', status: 'Terverifikasi', tone: 'green', icon: 'check' },
+            hapus_dokumen: { label: 'Penghapusan Dokumen', status: 'Perlu Klarifikasi', tone: 'amber', icon: 'shield' },
+            buat_user: { label: 'Pembuatan Akun Pengguna', status: 'Disetujui', tone: 'blue', icon: 'check' },
+            update_user: { label: 'Pembaruan Akun Pengguna', status: 'Disetujui', tone: 'blue', icon: 'check' },
+            reset_password: { label: 'Reset Kata Sandi Pengguna', status: 'Perlu Klarifikasi', tone: 'amber', icon: 'shield' },
+            ganti_password: { label: 'Perubahan Kata Sandi Mandiri', status: 'Terverifikasi', tone: 'green', icon: 'check' },
+            simpan_kertas_kerja: { label: 'Simpan Transaksi Kertas Kerja', status: 'Disetujui', tone: 'blue', icon: 'check' },
+            kunci_kertas_kerja: { label: 'Penguncian Kertas Kerja', status: 'Terverifikasi', tone: 'green', icon: 'check' },
+          };
+
+          const mappedLogs: AuditLogItem[] = logRows.map((l: any) => {
+            const info = aksiMap[l.aksi] || {
+              label: (l.aksi || 'Aktivitas Sistem').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+              status: 'Terverifikasi',
+              tone: 'blue',
+              icon: 'check',
+            };
+            let targetDesc = l.entitas ? `${String(l.entitas).toUpperCase()} #${l.entitas_id || '-'}` : 'Sistem SIP';
+            if (l.detail) {
+              try {
+                const det = typeof l.detail === 'string' ? JSON.parse(l.detail) : l.detail;
+                if (det?.judul) targetDesc = det.judul;
+                else if (det?.username) targetDesc = `Akun @${det.username}`;
+                else if (det?.nama) targetDesc = det.nama;
+              } catch {
+                // ignore JSON parse error
+              }
+            }
+            return {
+              id: `AUD-${l.id}`,
+              time: l.created_at
+                ? new Date(l.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB'
+                : '-',
+              actor: l.user_nama || l.username || 'Sistem',
+              role: l.username ? `@${l.username}` : 'SIP',
+              action: info.label,
+              target: targetDesc,
+              hash: `IP: ${l.ip_address || '127.0.0.1'}`,
+              status: info.status,
+              tone: info.tone,
+              icon: info.icon,
+            };
+          });
+          setAuditLogsList(mappedLogs);
+        }
+      }
     } catch (err) {
       console.warn("Backend API sync notice: Menggunakan data lokal terstruktur.", err);
     }
@@ -480,6 +542,47 @@ export default function KLDashboardPage() {
     setFindings(prev => prev.map(f => f.code === code ? { ...f, status: "Klarifikasi Terkirim" } : f));
     setReviewModalSatker(null);
     toast.success(`Surat instruksi klarifikasi resmi PMK berhasil dikirim ke ${name}.`);
+  };
+
+  // Handle Change Password (Real Backend)
+  const handleChangePasswordKL = async () => {
+    if (!pwCurrent) {
+      toast.error('Masukkan kata sandi saat ini.');
+      return;
+    }
+    if (!pwNew || pwNew.length < 6) {
+      toast.error('Kata sandi baru minimal 6 karakter.');
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      toast.error('Konfirmasi kata sandi tidak cocok.');
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/user/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.token}`,
+        },
+        body: JSON.stringify({
+          password_lama: pwCurrent,
+          password_baru: pwNew,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || json.message || 'Gagal memperbarui kata sandi');
+      toast.success(json.message || 'Kata sandi berhasil diperbarui.');
+      setPwCurrent('');
+      setPwNew('');
+      setPwConfirm('');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal memperbarui kata sandi');
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   // Handle Export
@@ -1550,7 +1653,7 @@ export default function KLDashboardPage() {
                   </div>
                 </div>
 
-                {/* Form Ganti Password Demo */}
+                {/* Form Ganti Password Mandiri */}
                 <div style={{ padding: 18, border: '1px solid #e2e8f0', borderRadius: 10 }}>
                   <strong style={{ fontSize: 13.5, color: '#0f172a', display: 'block', marginBottom: 4 }}>Keamanan Kata Sandi Mandiri</strong>
                   <p style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>Perbarui kata sandi akun eksekutif secara berkala sesuai standar audit BPK & Kemenkeu.</p>
@@ -1558,20 +1661,42 @@ export default function KLDashboardPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
                     <div>
                       <label style={{ fontSize: 11.5, color: '#475569', display: 'block', marginBottom: 4 }}>Kata Sandi Saat Ini</label>
-                      <input type="password" placeholder="••••••••" style={{ width: '100%', height: 36, padding: '0 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }} />
+                      <input
+                        type="password"
+                        value={pwCurrent}
+                        onChange={(e) => setPwCurrent(e.target.value)}
+                        placeholder="••••••••"
+                        style={{ width: '100%', height: 36, padding: '0 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+                      />
                     </div>
                     <div>
                       <label style={{ fontSize: 11.5, color: '#475569', display: 'block', marginBottom: 4 }}>Kata Sandi Baru</label>
-                      <input type="password" placeholder="••••••••" style={{ width: '100%', height: 36, padding: '0 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }} />
+                      <input
+                        type="password"
+                        value={pwNew}
+                        onChange={(e) => setPwNew(e.target.value)}
+                        placeholder="Minimal 6 karakter"
+                        style={{ width: '100%', height: 36, padding: '0 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+                      />
                     </div>
                     <div>
                       <label style={{ fontSize: 11.5, color: '#475569', display: 'block', marginBottom: 4 }}>Konfirmasi Kata Sandi</label>
-                      <input type="password" placeholder="••••••••" style={{ width: '100%', height: 36, padding: '0 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }} />
+                      <input
+                        type="password"
+                        value={pwConfirm}
+                        onChange={(e) => setPwConfirm(e.target.value)}
+                        placeholder="Ulangi kata sandi baru"
+                        style={{ width: '100%', height: 36, padding: '0 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12 }}
+                      />
                     </div>
                   </div>
 
-                  <button className="primary-button" onClick={() => toast.success('Kata sandi pejabat berhasil diperbarui secara aman.')}>
-                    ✓ Simpan Perubahan Kata Sandi
+                  <button
+                    className="primary-button"
+                    disabled={pwSaving}
+                    onClick={handleChangePasswordKL}
+                  >
+                    {pwSaving ? 'Menyimpan...' : '✓ Simpan Perubahan Kata Sandi'}
                   </button>
                 </div>
               </div>
