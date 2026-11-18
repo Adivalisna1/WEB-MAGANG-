@@ -206,9 +206,14 @@ async def get_users(
     db=Depends(get_db)
 ):
     eselon_id = current_user.get("eselon_1_id")
-    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
+    is_kl_or_it = (
+        current_user.get("tingkat") == "kl" or
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("is_it")
+    )
+    is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None and not is_kl_or_it)
     
-    where = "WHERE (u.role_id IN (1, 2) OR r.nama = 'staff_eselon_1')"
+    where = "WHERE 1=1" if is_kl_or_it else "WHERE (u.role_id IN (1, 2) OR r.nama = 'staff_eselon_1')"
     params = []
     if is_specific:
         where += " AND (st.eselon_1_id = %s OR u.eselon_1_id = %s)"
@@ -221,11 +226,13 @@ async def get_users(
             "       (SELECT is_online FROM user_sessions s "
             "        WHERE s.user_id = u.id AND s.is_online = 1 "
             "        ORDER BY s.last_active_at DESC LIMIT 1) AS is_online, "
-            "       st.nama AS satker_nama, st.NO_Satker AS satker_kode "
+            "       st.nama AS satker_nama, st.NO_Satker AS satker_kode, "
+            "       ue.nama AS eselon_1_nama, ue.singkatan AS eselon_1_singkatan "
             "FROM users u "
             "JOIN roles r ON r.id = u.role_id "
             "JOIN tingkats t ON t.id = u.tingkat_id "
             "LEFT JOIN satkers st ON st.id = u.satker_id "
+            "LEFT JOIN unit_eselon_1 ue ON ue.id = COALESCE(u.eselon_1_id, st.eselon_1_id) "
             + where + " "
             "ORDER BY u.created_at DESC"
         )

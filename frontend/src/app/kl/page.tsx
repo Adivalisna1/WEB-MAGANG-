@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { getSession } from '@/lib/auth';
 import toast from 'react-hot-toast';
+import TagihanDokumenModal, { TagihanTarget } from '@/components/eselon-1/TagihanDokumenModal';
 
 const SatkerIndonesiaMap = dynamic(
   () => import('@/components/maps/SatkerIndonesiaMap'),
@@ -52,6 +53,11 @@ interface UnitItem {
 }
 
 interface UserItem {
+  id?: number;
+  username?: string;
+  satker_id?: number | null;
+  satker_kode?: string | null;
+  eselon_1_id?: number | null;
   name: string;
   nip: string;
   role: string;
@@ -225,6 +231,8 @@ export default function KLDashboardPage() {
   // Filter chips in sub-views
   const [docFilter, setDocFilter] = useState<string>('all');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
+  const [userPage, setUserPage] = useState<number>(1);
+  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(null);
   const [auditEventFilter, setAuditEventFilter] = useState<string>('all');
 
   // Interactive Settings Toggles
@@ -364,6 +372,74 @@ export default function KLDashboardPage() {
             file_nama: d.file_nama || `${d.judul || 'dokumen'}.pdf`
           }));
           setDocsList(mappedDocs);
+        }
+      }
+
+      // 5. Real Users (Supervisi Pengguna Nasional)
+      const resUsers = await fetch(`${API}/eselon-1/users`, { headers });
+      if (resUsers.ok) {
+        const jsonUsers = await resUsers.json();
+        const uRows = jsonUsers.data || [];
+        if (Array.isArray(uRows)) {
+          const colors = ["satker-blue", "satker-teal", "satker-purple", "satker-amber"];
+          const mappedUsers: UserItem[] = uRows.map((u: any, idx: number) => {
+            const t = (u.tingkat || '').toLowerCase();
+            const r = (u.role || '').toLowerCase();
+            let roleLabel = 'Operator Satker';
+            let roleBadge = 'Operator';
+            if (r === 'it' || r === 'admin_it') {
+              roleLabel = 'IT Administrator';
+              roleBadge = 'Admin IT';
+            } else if (t === 'kl') {
+              roleLabel = 'Pimpinan Eksekutif';
+              roleBadge = r === 'administrasi' || r === 'manajemen' ? 'Pimpinan K/L' : 'Operator K/L';
+            } else if (t === 'eselon_1') {
+              if (r === 'staff_eselon_1') {
+                roleLabel = 'Staff Satker Eselon 1';
+                roleBadge = 'Staff Unit';
+              } else {
+                roleLabel = 'Pembina Eselon 1';
+                roleBadge = r === 'administrasi' || r === 'manajemen' ? 'Pimpinan Eselon 1' : 'Operator Eselon 1';
+              }
+            } else if (t === 'satker') {
+              roleLabel = r === 'administrasi' || r === 'manajemen' || r === 'pimpinan_satker' ? 'Pimpinan Satker' : 'Operator Satker';
+              roleBadge = r === 'administrasi' || r === 'manajemen' || r === 'pimpinan_satker' ? 'Manajemen Satker' : 'Operator';
+            }
+
+            const unitName = u.satker_nama
+              ? (u.satker_kode ? `[${u.satker_kode}] ${u.satker_nama}` : u.satker_nama)
+              : (u.eselon_1_singkatan || u.eselon_1_nama || (t === 'kl' ? 'Kementerian / Lembaga Pusat' : '-'));
+
+            const statusStr = u.is_online === 1 ? 'Online' : (u.is_active ? 'Aktif' : 'Nonaktif');
+            const lastAct = u.last_login
+              ? new Date(u.last_login).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : 'Belum pernah login';
+            const initials = (u.nama || u.username || 'US')
+              .split(' ')
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((p: string) => p[0].toUpperCase())
+              .join('') || 'US';
+
+            return {
+              id: u.id,
+              username: u.username,
+              satker_id: u.satker_id ?? null,
+              satker_kode: u.satker_kode ?? null,
+              eselon_1_id: u.eselon_1_id ?? null,
+              name: u.nama || u.username,
+              nip: u.username || '-',
+              role: roleLabel,
+              unit: unitName,
+              roleBadge,
+              status: statusStr,
+              lastActive: lastAct,
+              initials,
+              color: colors[idx % colors.length],
+              email: u.email || '-',
+            };
+          });
+          setUsersList(mappedUsers);
         }
       }
     } catch (err) {
@@ -1218,57 +1294,123 @@ export default function KLDashboardPage() {
               </div>
 
               <div className="table-tools">
-                <button className={`chip ${userRoleFilter === 'all' ? 'active' : ''}`} onClick={() => setUserRoleFilter('all')}>Semua Role ({usersList.length})</button>
-                <button className={`chip ${userRoleFilter === 'Pimpinan Eksekutif' ? 'active' : ''}`} onClick={() => setUserRoleFilter('Pimpinan Eksekutif')}>Pimpinan Eksekutif</button>
-                <button className={`chip ${userRoleFilter === 'Pembina Eselon 1' ? 'active' : ''}`} onClick={() => setUserRoleFilter('Pembina Eselon 1')}>Pembina Eselon 1</button>
-                <button className={`chip ${userRoleFilter === 'Auditor Internal' ? 'active' : ''}`} onClick={() => setUserRoleFilter('Auditor Internal')}>Auditor Itjen</button>
-                <button className={`chip ${userRoleFilter === 'Operator Satker' ? 'active' : ''}`} onClick={() => setUserRoleFilter('Operator Satker')}>Operator Satker</button>
+                <button className={`chip ${userRoleFilter === 'all' ? 'active' : ''}`} onClick={() => { setUserRoleFilter('all'); setUserPage(1); }}>Semua Role ({usersList.length})</button>
+                <button className={`chip ${userRoleFilter === 'Pimpinan Eksekutif' ? 'active' : ''}`} onClick={() => { setUserRoleFilter('Pimpinan Eksekutif'); setUserPage(1); }}>Pimpinan K/L</button>
+                <button className={`chip ${userRoleFilter === 'Pembina Eselon 1' ? 'active' : ''}`} onClick={() => { setUserRoleFilter('Pembina Eselon 1'); setUserPage(1); }}>Pembina Eselon 1</button>
+                <button className={`chip ${userRoleFilter === 'Staff Satker Eselon 1' ? 'active' : ''}`} onClick={() => { setUserRoleFilter('Staff Satker Eselon 1'); setUserPage(1); }}>Staff Eselon 1</button>
+                <button className={`chip ${userRoleFilter === 'Operator Satker' ? 'active' : ''}`} onClick={() => { setUserRoleFilter('Operator Satker'); setUserPage(1); }}>Operator Satker</button>
+                <button className={`chip ${userRoleFilter === 'Pimpinan Satker' ? 'active' : ''}`} onClick={() => { setUserRoleFilter('Pimpinan Satker'); setUserPage(1); }}>Pimpinan Satker</button>
               </div>
 
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nama Pejabat / Pengguna</th>
-                      <th>Unit Eselon 1 / Satker</th>
-                      <th>Kewenangan Akses</th>
-                      <th>Status Akun</th>
-                      <th>Aktivitas Terakhir</th>
-                      <th>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usersList
-                      .filter(u => (userRoleFilter === 'all' || u.role === userRoleFilter) && (!search || u.name.toLowerCase().includes(search.toLowerCase()) || u.nip.includes(search)))
-                      .map((u, i) => (
-                        <tr key={i}>
-                          <td>
-                            <div className="satker">
-                              <div className={`satker-avatar ${u.color}`}>{u.initials}</div>
-                              <div>
-                                <strong>{u.name}</strong>
-                                <span>NIP. {u.nip}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td><span className="unit-tag">{u.unit}</span></td>
-                          <td><strong>{u.role}</strong> ({u.roleBadge})</td>
-                          <td><span className={`pill ${u.status === 'Online' ? 'success' : (u.status === 'Aktif' ? 'blue' : 'amber')}`}>{u.status}</span></td>
-                          <td>{u.lastActive}</td>
-                          <td>
-                            <button
-                              className="secondary-button"
-                              style={{ padding: '4px 8px', fontSize: 11.5 }}
-                              onClick={() => setActiveDetailUser(u)}
-                            >
-                              Detail Akses
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+              {(() => {
+                const filteredUsersKL = usersList.filter(
+                  u =>
+                    (userRoleFilter === 'all' || u.role === userRoleFilter) &&
+                    (!search ||
+                      u.name.toLowerCase().includes(search.toLowerCase()) ||
+                      u.nip.toLowerCase().includes(search.toLowerCase()) ||
+                      u.unit.toLowerCase().includes(search.toLowerCase()))
+                );
+                const USER_PAGE_SIZE = 10;
+                const totalUserPages = Math.max(1, Math.ceil(filteredUsersKL.length / USER_PAGE_SIZE));
+                const safeUserPage = Math.min(userPage, totalUserPages);
+                const pagedUsersKL = filteredUsersKL.slice(
+                  (safeUserPage - 1) * USER_PAGE_SIZE,
+                  safeUserPage * USER_PAGE_SIZE
+                );
+
+                return (
+                  <>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Nama Pejabat / Pengguna</th>
+                            <th>Unit Eselon 1 / Satker</th>
+                            <th>Kewenangan Akses</th>
+                            <th>Status Akun</th>
+                            <th>Aktivitas Terakhir</th>
+                            <th>Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pagedUsersKL.map((u, i) => (
+                            <tr key={u.id || i}>
+                              <td>
+                                <div className="satker">
+                                  <div className={`satker-avatar ${u.color}`}>{u.initials}</div>
+                                  <div>
+                                    <strong>{u.name}</strong>
+                                    <span>@{u.nip}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td><span className="unit-tag">{u.unit}</span></td>
+                              <td><strong>{u.role}</strong> ({u.roleBadge})</td>
+                              <td><span className={`pill ${u.status === 'Online' ? 'success' : (u.status === 'Aktif' ? 'blue' : 'amber')}`}>{u.status}</span></td>
+                              <td>{u.lastActive}</td>
+                              <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button
+                                  className="secondary-button"
+                                  style={{ padding: '4px 8px', fontSize: 11.5 }}
+                                  onClick={() => setActiveDetailUser(u)}
+                                >
+                                  Detail Akses
+                                </button>
+                                {(u.satker_id || u.id) && (
+                                  <button
+                                    className="secondary-button"
+                                    style={{ padding: '4px 8px', fontSize: 11.5, color: '#1d4ed8', borderColor: '#bfdbfe', background: '#eff6ff' }}
+                                    onClick={() =>
+                                      setTagihanTarget({
+                                        satker_id: u.satker_id || null,
+                                        kode_satker: u.satker_kode || null,
+                                        target_user_id: u.id || null,
+                                        eselon_1_id: u.eselon_1_id || null,
+                                        nama_target: u.unit !== '-' ? u.unit : u.name,
+                                        sub_label: `Pengguna: ${u.name} (@${u.nip})`,
+                                      })
+                                    }
+                                  >
+                                    Kirim Pemberitahuan
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {filteredUsersKL.length > USER_PAGE_SIZE && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: '#64748b' }}>
+                        <span>
+                          Menampilkan {(safeUserPage - 1) * USER_PAGE_SIZE + 1} - {Math.min(safeUserPage * USER_PAGE_SIZE, filteredUsersKL.length)} dari {filteredUsersKL.length} pengguna
+                        </span>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <button
+                            className="secondary-button"
+                            style={{ padding: '4px 10px', fontSize: 11.5 }}
+                            disabled={safeUserPage <= 1}
+                            onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                          >
+                            Sebelumnya
+                          </button>
+                          <span>Hal {safeUserPage} / {totalUserPages}</span>
+                          <button
+                            className="secondary-button"
+                            style={{ padding: '4px 10px', fontSize: 11.5 }}
+                            disabled={safeUserPage >= totalUserPages}
+                            onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                          >
+                            Selanjutnya
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -1875,6 +2017,12 @@ export default function KLDashboardPage() {
           </div>
         </div>
       )}
+
+      <TagihanDokumenModal
+        isOpen={Boolean(tagihanTarget)}
+        onClose={() => setTagihanTarget(null)}
+        target={tagihanTarget}
+      />
     </div>
   );
 }
