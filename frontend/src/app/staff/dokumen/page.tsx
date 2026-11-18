@@ -65,6 +65,7 @@ export default function StaffDokumenPage() {
     currentUser?.role === 'operator' ||
     currentUser?.role === 'staff' ||
     currentUser?.role === 'staff_satker' ||
+    currentUser?.role === 'staff_eselon_1' ||
     currentUser?.role_id === 1 ||
     currentUser?.is_operator
   );
@@ -72,7 +73,6 @@ export default function StaffDokumenPage() {
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState<number | null>(null);
 
   // Filter States
   const [filterKategori, setFilterKategori] = useState('all');
@@ -111,25 +111,6 @@ export default function StaffDokumenPage() {
     fetchDokumen();
   }, [fetchDokumen]);
 
-  const submitVerifikasi = async (id: number) => {
-    setSubmitting(id);
-    try {
-      const session = getSession();
-      const res = await fetch(`${API}/dokumen/${id}/submit`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Gagal submit verifikasi');
-      toast.success('Pengajuan dokumen berhasil dikirim ke Pimpinan untuk verifikasi');
-      await fetchDokumen();
-    } catch (e: any) {
-      toast.error(e.message || 'Gagal submit verifikasi');
-    } finally {
-      setSubmitting(null);
-    }
-  };
-
   // Dropzone Handlers
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -157,16 +138,11 @@ export default function StaffDokumenPage() {
     setSelectedFile(null);
   };
 
-  // Dokumen revisi (banner)
-  const dokumenRevisiList = dokumenList.filter(d => d.status === 'revisi');
-
   // Stats Counters
   const stats = {
     total: dokumenList.length,
     draft: dokumenList.filter(d => d.status === 'draft').length,
-    menunggu: dokumenList.filter(d => d.status === 'menunggu_verifikasi' || d.status === 'lolos_pimpinan' || d.status === 'lolos_admin').length,
     verified: dokumenList.filter(d => d.status === 'terverifikasi').length,
-    revisi: dokumenRevisiList.length,
   };
 
   const calculatePercent = (val: number, total: number) => {
@@ -184,10 +160,8 @@ export default function StaffDokumenPage() {
       return false;
     }
     // 2. Filter Status
-    if (filterStatus !== 'all') {
-      if (filterStatus === 'pimpinan' && dok.status !== 'menunggu_verifikasi') return false;
-      else if (filterStatus === 'eselon' && !(dok.status === 'lolos_pimpinan' || dok.status === 'lolos_admin')) return false;
-      else if (filterStatus !== 'pimpinan' && filterStatus !== 'eselon' && dok.status !== filterStatus) return false;
+    if (filterStatus !== 'all' && dok.status !== filterStatus) {
+      return false;
     }
     // 3. Search (table or global)
     const term = (tableSearch || globalSearchTerm).toLowerCase().trim();
@@ -218,38 +192,8 @@ export default function StaffDokumenPage() {
 
   return (
     <div className="flex flex-col gap-6">
-
       {/* ================================================================
-           1. BANNER PERINGATAN AMBER (DOKUMEN PERLU REVISI)
-           ================================================================ */}
-      {dokumenRevisiList.length > 0 && (
-        <section className="staff-alert-banner">
-          <div className="staff-alert-left">
-            <div className="staff-alert-icon-circle">
-              <AlertTriangle className="w-5 h-5 text-amber-700" />
-            </div>
-            <div>
-              <h3 className="staff-alert-title flex items-center">
-                <span className="staff-alert-badge">{dokumenRevisiList.length}</span>
-                Dokumen Laporan Memerlukan Perbaikan / Revisi
-              </h3>
-              <p className="staff-alert-desc">
-                Pimpinan dan Eselon 1 telah memberikan catatan koreksi pada pengajuan dokumen Anda. Segera lakukan penyesuaian berkas agar dapat diproses ke tahap persetujuan berikutnya.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setFilterStatus('revisi')}
-            className="staff-btn staff-btn-sm staff-btn-primary shrink-0 bg-amber-600 hover:bg-amber-700 border-amber-600"
-          >
-            Lihat Dokumen Revisi
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </button>
-        </section>
-      )}
-
-      {/* ================================================================
-           2. GRID DASHBOARD UTAMA (KOLOM KIRI & KOLOM KANAN)
+           GRID DASHBOARD UTAMA (KOLOM KIRI & KOLOM KANAN)
            ================================================================ */}
       <div className="staff-dashboard-grid">
 
@@ -404,18 +348,15 @@ export default function StaffDokumenPage() {
                   <option value="IKU">IKU</option>
                 </select>
 
-                {/* Filter Status Workflow */}
+                {/* Filter Status */}
                 <select
                   className="staff-filter-select"
                   value={filterStatus}
                   onChange={e => setFilterStatus(e.target.value)}
                 >
                   <option value="all">Semua Status</option>
-                  <option value="draft">Draft (Abu)</option>
-                  <option value="pimpinan">Menunggu Pimpinan (Indigo)</option>
-                  <option value="eselon">Menunggu Eselon 1 (Biru)</option>
                   <option value="terverifikasi">Selesai (Hijau)</option>
-                  <option value="revisi">Perlu Perbaikan (Amber)</option>
+                  <option value="draft">Draft (Abu)</option>
                   <option value="diarsipkan">Diarsipkan (Ungu)</option>
                 </select>
 
@@ -487,8 +428,7 @@ export default function StaffDokumenPage() {
                       badgeClass: 'staff-badge-draft',
                       step: 1
                     };
-                    const canEdit = dok.status === 'draft' || dok.status === 'revisi';
-                    const canSubmit = dok.status === 'draft' || dok.status === 'revisi';
+                    const canEdit = dok.status === 'draft' || dok.status === 'terverifikasi';
                     const trackingCode = `${dok.kategori || 'DOC'}/${dok.tahun}/${String(dok.id).padStart(3, '0')}`;
 
                     return (
@@ -562,31 +502,15 @@ export default function StaffDokumenPage() {
                               <Eye className="w-4 h-4" />
                             </button>
 
-                            {/* Tombol Edit / Revisi */}
+                            {/* Tombol Edit */}
                             {canEdit && (
                               <Link
                                 href={`/staff/dokumen/${dok.id}/edit`}
                                 className="staff-action-icon warning hover:text-amber-600"
-                                title="Perbaiki & Edit Dokumen"
+                                title="Edit Dokumen"
                               >
                                 <Pencil className="w-4 h-4" />
                               </Link>
-                            )}
-
-                            {/* Tombol Kirim / Submit Verifikasi */}
-                            {canSubmit && (
-                              <button
-                                onClick={() => submitVerifikasi(dok.id)}
-                                disabled={submitting === dok.id}
-                                className="staff-action-icon hover:text-blue-600 disabled:opacity-40"
-                                title="Kirim untuk Verifikasi Pimpinan"
-                              >
-                                {submitting === dok.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                              </button>
                             )}
 
                             {/* Tombol Unduh Berkas */}
@@ -654,12 +578,12 @@ export default function StaffDokumenPage() {
 
             {/* Progress Bars Breakdown */}
             <div className="space-y-4">
-              {/* Selesai / Terverifikasi */}
+              {/* Selesai */}
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
                   <span className="flex items-center gap-2 text-slate-600 font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Terverifikasi (Selesai)
+                    Selesai (Tersimpan)
                   </span>
                   <span className="font-bold text-slate-800">{stats.verified}</span>
                 </div>
@@ -667,40 +591,6 @@ export default function StaffDokumenPage() {
                   <div
                     className="staff-progress-fill bg-emerald-500"
                     style={{ width: `${calculatePercent(stats.verified, stats.total)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Perlu Revisi */}
-              <div>
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="flex items-center gap-2 text-slate-600 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    Perlu Revisi
-                  </span>
-                  <span className="font-bold text-slate-800">{stats.revisi}</span>
-                </div>
-                <div className="staff-progress-bg">
-                  <div
-                    className="staff-progress-fill bg-amber-500"
-                    style={{ width: `${calculatePercent(stats.revisi, stats.total)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Menunggu Verifikasi */}
-              <div>
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="flex items-center gap-2 text-slate-600 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    Menunggu Verifikasi
-                  </span>
-                  <span className="font-bold text-slate-800">{stats.menunggu}</span>
-                </div>
-                <div className="staff-progress-bg">
-                  <div
-                    className="staff-progress-fill bg-blue-500"
-                    style={{ width: `${calculatePercent(stats.menunggu, stats.total)}%` }}
                   />
                 </div>
               </div>
