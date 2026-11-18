@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { getProfilePhotoUrl } from "@/lib/auth";
 import {
   LogOut,
   LayoutDashboard,
@@ -96,6 +97,7 @@ const LAPORAN_LAIN_SUB_MENU = [
 
 const BOTTOM_MENU_ITEMS = [
   { href: "/admin-it/logs", label: "Real-Time Logs", icon: Activity },
+  { href: "/admin-it/profil", label: "Profil", icon: Users },
 ];
 
 interface SidebarProps {
@@ -194,10 +196,18 @@ export default function AdminITSidebar({
         <div
           className={`p-4 border-b border-slate-200 bg-white ${isCollapsed ? "hidden md:flex justify-center" : ""}`}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1E90FF] flex flex-shrink-0 items-center justify-center text-white font-bold text-sm">
-              {user?.nama?.charAt(0) || "A"}
-            </div>
+          <Link href="/admin-it/profil" className="flex items-center gap-3 hover:opacity-85 transition-opacity" title="Lihat & Ubah Profil">
+            {getProfilePhotoUrl(user?.foto_profil) ? (
+              <img
+                src={getProfilePhotoUrl(user?.foto_profil)!}
+                alt={user?.nama || "Admin IT"}
+                className="w-10 h-10 rounded-full object-cover border border-blue-200 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#1E90FF] flex flex-shrink-0 items-center justify-center text-white font-bold text-sm">
+                {user?.nama?.charAt(0) || "A"}
+              </div>
+            )}
             {!isCollapsed && (
               <div className="overflow-hidden">
                 <p className="text-sm font-semibold text-slate-900 truncate">
@@ -210,7 +220,7 @@ export default function AdminITSidebar({
                 </p>
               </div>
             )}
-          </div>
+          </Link>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
