@@ -166,52 +166,35 @@ export default function SatkerIndonesiaMap({
     const selisih = useLiveSaldo ? Math.abs(saldoBank - saldoBuku) : Math.abs(satker.selisih);
     const isSeimbang = selisih === 0;
 
-    const arahSelisih =
-      saldoBank > saldoBuku
-        ? "Saldo Rekening Koran Bank lebih besar daripada Saldo Kas Buku (BKU)."
-        : saldoBank < saldoBuku
-        ? "Saldo Kas Buku (BKU) lebih besar daripada Saldo Rekening Koran Bank."
-        : "Saldo Kas Buku dan Saldo Rekening Koran Bank cocok 100%.";
+    const kalimatSelisih = isSeimbang
+      ? `Saldo Kas Buku (BKU) sebesar ${formatRupiah(saldoBuku)} dan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)} berada dalam kondisi seimbang dan cocok 100%, tanpa ada selisih (Rp 0).`
+      : `Saldo Kas Buku (BKU) tercatat sebesar ${formatRupiah(saldoBuku)}, sedangkan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)}, sehingga keduanya belum seimbang dan terdapat selisih sebesar ${formatRupiah(selisih)} (${saldoBank > saldoBuku ? "saldo Rekening Koran Bank lebih besar daripada saldo Kas Buku" : "saldo Kas Buku lebih besar daripada saldo Rekening Koran Bank"}).`;
 
-    let bagianDokumen = "";
-    let ringkasanDokumen = "";
-
+    let kalimatDokumen = "";
     if (dbInfo && dbInfo.total_dokumen_db > 0) {
-      const barisWajib = (dbInfo.dokumen_wajib || [])
-        .map((d: any) => `   ${d.lengkap ? "[✓]" : "[✗]"} ${d.nama} : ${d.lengkap ? `${d.jumlah} berkas` : "Belum diunggah"}`)
-        .join("\n");
+      const ada = (dbInfo.dokumen_wajib || []).filter((d: any) => d.lengkap).map((d: any) => `${d.nama} (${d.jumlah} berkas)`);
       const kurang = (dbInfo.dokumen_wajib || []).filter((d: any) => !d.lengkap).map((d: any) => d.nama);
-      bagianDokumen =
-        `   Kelengkapan Dokumen Wajib (${dbInfo.total_terpenuhi}/${dbInfo.total_wajib} terpenuhi):\n` +
-        barisWajib +
-        (kurang.length > 0
-          ? `\n   -> Dokumen belum lengkap: ${kurang.join(", ")}.`
-          : `\n   -> Seluruh dokumen wajib utama sudah lengkap.`);
-      ringkasanDokumen =
-        kurang.length === 0
-          ? "Seluruh dokumen wajib telah lengkap di sistem."
-          : `Masih terdapat ${kurang.length} kategori dokumen wajib yang belum diunggah (${kurang.join(", ")}).`;
+      if (kurang.length === 0) {
+        kalimatDokumen = `Dari sisi kelengkapan administrasi, seluruh ${dbInfo.total_wajib} dokumen wajib satker sudah lengkap seluruhnya di sistem, meliputi ${ada.join(", ")}.`;
+      } else {
+        kalimatDokumen = `Dari sisi kelengkapan administrasi, baru ${dbInfo.total_terpenuhi} dari ${dbInfo.total_wajib} dokumen wajib yang tersedia (${ada.length > 0 ? ada.join(", ") : "belum ada dokumen wajib"}), sedangkan dokumen yang belum diunggah yaitu ${kurang.join(", ")}.`;
+      }
     } else {
       const dokMap = satker.dokumenList || [];
-      const terverif = dokMap.filter((d) => d.status === "Terverifikasi").length;
-      const perluPerbaikan = dokMap.filter((d) => d.status !== "Terverifikasi");
-      const barisPeta = dokMap
-        .map((d) => `   ${d.status === "Terverifikasi" ? "[✓]" : "[!]"} ${d.kategori} — ${d.nama} (${d.status})`)
-        .join("\n");
-      bagianDokumen =
-        `   Dokumen Terlampir (${terverif}/${dokMap.length} selesai):\n` +
-        (barisPeta || "   - Belum ada berkas terlampir.");
-      ringkasanDokumen =
-        dokMap.length === 0
-          ? "Belum ada dokumen yang diunggah untuk satker ini."
-          : perluPerbaikan.length === 0
-          ? `Seluruh ${dokMap.length} dokumen pendukung satker sudah tersedia dan selesai.`
-          : `Terdapat ${perluPerbaikan.length} dokumen yang masih perlu perhatian (${perluPerbaikan.map((d) => d.nama).join(", ")}).`;
+      const selesai = dokMap.filter((d) => d.status === "Terverifikasi");
+      const belum = dokMap.filter((d) => d.status !== "Terverifikasi");
+      if (dokMap.length === 0) {
+        kalimatDokumen = "Dari sisi kelengkapan administrasi, belum terdapat dokumen pendukung yang diunggah untuk satker ini.";
+      } else if (belum.length === 0) {
+        kalimatDokumen = `Dari sisi kelengkapan administrasi, seluruh ${dokMap.length} dokumen pendukung yang dibutuhkan (${dokMap.map((d) => d.nama).join(", ")}) sudah tersedia seluruhnya.`;
+      } else {
+        kalimatDokumen = `Dari sisi kelengkapan administrasi, terdapat ${selesai.length} dari ${dokMap.length} dokumen yang sudah selesai, namun masih ada ${belum.length} dokumen yang perlu perhatian yaitu ${belum.map((d) => `${d.nama} (${d.status})`).join(", ")}.`;
+      }
     }
 
-    const kesimpulan = isSeimbang
-      ? "Saldo kas satker dalam kondisi SEIMBANG (tidak ada selisih). " + ringkasanDokumen
-      : `Ditemukan SELISIH sebesar ${formatRupiah(selisih)} sehingga rekonsiliasi belum seimbang. ${ringkasanDokumen} Disarankan untuk segera melakukan rekonsiliasi BKU vs Rekening Koran dan melengkapi dokumen pendukung.`;
+    const kalimatPenutup = isSeimbang
+      ? "Secara keseluruhan, rekonsiliasi kas satker ini sudah tertib dan tidak memerlukan penyesuaian selisih kas."
+      : `Secara keseluruhan, satker ini perlu segera melakukan penelusuran transaksi dan rekonsiliasi ulang untuk menyelesaikan selisih sebesar ${formatRupiah(selisih)} serta memastikan seluruh dokumen pendukung lengkap.`;
 
     const tanggalCetak = new Date().toLocaleDateString("id-ID", {
       day: "numeric",
@@ -220,26 +203,10 @@ export default function SatkerIndonesiaMap({
     });
 
     const teks =
-      `RANGKUMAN ANALISIS SATKER — SIP (SISTEM INFORMASI PELAPORAN)\n` +
-      `Tanggal Analisis : ${tanggalCetak}\n` +
-      `============================================================\n` +
-      `Nama Satker      : ${satker.nama}\n` +
-      `Kode Satker      : #${satker.kode}\n` +
-      `Unit Eselon 1    : ${satker.eselon1}\n` +
-      `Lokasi           : ${satker.kota}, ${satker.provinsi}\n\n` +
-      `1. KONDISI SALDO & KESEIMBANGAN\n` +
-      `   - Saldo Kas Buku (BKU)      : ${formatRupiah(saldoBuku)}\n` +
-      `   - Saldo Rekening Koran Bank : ${formatRupiah(saldoBank)}\n` +
-      `   - Status Keseimbangan       : ${isSeimbang ? "SEIMBANG (100% Cocok)" : "TIDAK SEIMBANG"}\n\n` +
-      `2. STATUS SELISIH\n` +
-      `   - Ada Selisih?              : ${isSeimbang ? "TIDAK ADA SELISIH" : "ADA SELISIH"}\n` +
-      `   - Nominal Selisih           : ${isSeimbang ? "Rp 0" : formatRupiah(selisih)}\n` +
-      `   - Keterangan                : ${arahSelisih}\n\n` +
-      `3. KELENGKAPAN DOKUMEN\n` +
-      `${bagianDokumen}\n\n` +
-      `4. KESIMPULAN & TINDAK LANJUT\n` +
-      `   ${kesimpulan}\n` +
-      `============================================================`;
+      `Berdasarkan hasil pemantauan SIP (Sistem Informasi Pelaporan) per ${tanggalCetak}, satuan kerja ${satker.nama} (Kode #${satker.kode}) yang berada di bawah pembinaan ${satker.eselon1} wilayah ${satker.kota}, ${satker.provinsi} menunjukkan kondisi sebagai berikut.\n\n` +
+      `${kalimatSelisih}\n\n` +
+      `${kalimatDokumen}\n\n` +
+      `${kalimatPenutup}`;
 
     setAnalysisText(teks);
     setAnalysisLoading(false);
