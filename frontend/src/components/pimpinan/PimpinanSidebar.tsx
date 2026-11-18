@@ -210,7 +210,7 @@ export default function PimpinanSidebar({
         {/* Menu */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {/* Top Menu Items */}
-          {TOP_MENU.map(({ href, icon: Icon, label, exact }) => {
+          {TOP_MENU.map(({ href, label, exact }) => {
             const active = exact
               ? pathname === href
               : pathname === href || pathname.startsWith(href);
@@ -222,20 +222,16 @@ export default function PimpinanSidebar({
                   "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
                   active
                     ? "bg-[#475569] text-white shadow-sm"
-                    : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-                  isCollapsed ? "justify-center" : "gap-3 w-full"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+                  isCollapsed ? "justify-center" : "w-full"
                 )}
                 title={isCollapsed ? label : undefined}
               >
-                <Icon
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    active
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-white"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">{label}</span>}
+                {isCollapsed ? (
+                  <span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>
+                ) : (
+                  <span className="truncate">{label}</span>
+                )}
               </Link>
             );
           })}
@@ -247,7 +243,7 @@ export default function PimpinanSidebar({
                 "w-full flex items-center rounded-xl font-medium transition-all group",
                 isKasActive
                   ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
               )}
             >
               <Link
@@ -257,19 +253,11 @@ export default function PimpinanSidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-4 py-3",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Kas" : undefined}
               >
-                <Wallet
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    isKasActive
-                      ? "text-[#1E90FF]"
-                      : "text-slate-400 group-hover:text-white"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Kas</span>}
+                {isCollapsed ? <span className="text-xs font-bold">KS</span> : <span className="truncate">Kas</span>}
               </Link>
 
               {!isCollapsed && (
@@ -295,27 +283,19 @@ export default function PimpinanSidebar({
             {/* Submenu Kas */}
             {!isCollapsed && isKasOpen && (
               <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
-                {KAS_SUB_MENU.map(({ href, icon: SubIcon, label }) => {
+                {KAS_SUB_MENU.map(({ href, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
                         active
                           ? "bg-[#475569] text-white shadow-sm font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                       )}
                     >
-                      <SubIcon
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{label}</span>
                     </Link>
                   );
@@ -331,20 +311,12 @@ export default function PimpinanSidebar({
               "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
               isBuktiActive
                 ? "bg-[#475569] text-white shadow-sm"
-                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-              isCollapsed ? "justify-center" : "gap-3 w-full"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+              isCollapsed ? "justify-center" : "w-full"
             )}
             title={isCollapsed ? "Verifikasi Bukti Kas" : undefined}
           >
-            <FileCheck2
-              className={clsx(
-                "w-5 h-5 shrink-0",
-                isBuktiActive
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-white"
-              )}
-            />
-            {!isCollapsed && <span className="truncate">Verifikasi Bukti Kas</span>}
+            {isCollapsed ? <span className="text-xs font-bold">VB</span> : <span className="truncate">Verifikasi Bukti Kas</span>}
           </Link>
 
           {/* Laporan Accordion Menu */}
@@ -354,7 +326,7 @@ export default function PimpinanSidebar({
                 "w-full flex items-center rounded-xl font-medium transition-all group",
                 isLaporanActive
                   ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
               )}
             >
               <Link
@@ -364,19 +336,11 @@ export default function PimpinanSidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-4 py-3",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Laporan" : undefined}
               >
-                <ClipboardList
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    isLaporanActive
-                      ? "text-[#1E90FF]"
-                      : "text-slate-400 group-hover:text-white"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Laporan</span>}
+                {isCollapsed ? <span className="text-xs font-bold">LP</span> : <span className="truncate">Laporan</span>}
               </Link>
 
               {!isCollapsed && (
@@ -415,17 +379,9 @@ export default function PimpinanSidebar({
                     <Link
                       href="/staff/laporan/sk-piutang"
                       onClick={() => setIsPiutangOpen(true)}
-                      className="flex items-center gap-2.5 flex-1 px-3 py-2"
+                      className="flex items-center flex-1 px-3 py-2"
                       title="Ringkasan SK Piutang"
                     >
-                      <Scale
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          isPiutangActive
-                            ? "text-[#1E90FF]"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">SK Piutang</span>
                     </Link>
 
@@ -451,27 +407,19 @@ export default function PimpinanSidebar({
                   {/* 3 Sub-menu SK Piutang (Nested Level 2) */}
                   {isPiutangOpen && (
                     <div className="mt-1 ml-3 pl-2.5 border-l-2 border-blue-200/60 space-y-1 py-0.5">
-                      {SK_PIUTANG_SUB_MENU.map(({ href, icon: SubIcon, label }) => {
+                      {SK_PIUTANG_SUB_MENU.map(({ href, label }) => {
                         const active = pathname === href || pathname.startsWith(href);
                         return (
                           <Link
                             key={href}
                             href={href}
                             className={clsx(
-                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
+                              "flex items-center px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
                               active
                                 ? "bg-[#475569] text-white shadow-xs font-semibold"
                                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                             )}
                           >
-                            <SubIcon
-                              className={clsx(
-                                "w-3.5 h-3.5 shrink-0",
-                                active
-                                  ? "text-white"
-                                  : "text-slate-400 group-hover:text-slate-700"
-                              )}
-                            />
                             <span className="truncate">{label}</span>
                           </Link>
                         );
@@ -481,27 +429,19 @@ export default function PimpinanSidebar({
                 </div>
 
                 {/* 2. Sibling Menu Laporan Lainnya */}
-                {LAPORAN_LAIN_SUB_MENU.map(({ href, icon: SubIcon, label }) => {
+                {LAPORAN_LAIN_SUB_MENU.map(({ href, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
                         active
                           ? "bg-[#475569] text-white shadow-sm font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                       )}
                     >
-                      <SubIcon
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{label}</span>
                     </Link>
                   );
@@ -517,7 +457,7 @@ export default function PimpinanSidebar({
                 "w-full flex items-center rounded-xl font-medium transition-all group",
                 isAsetActive
                   ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-400 hover:text-white hover:bg-[#475569]/50"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
               )}
             >
               <Link
@@ -527,19 +467,11 @@ export default function PimpinanSidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-4 py-3",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Aset" : undefined}
               >
-                <Package
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    isAsetActive
-                      ? "text-[#1E90FF]"
-                      : "text-slate-400 group-hover:text-white"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Aset</span>}
+                {isCollapsed ? <span className="text-xs font-bold">AS</span> : <span className="truncate">Aset</span>}
               </Link>
 
               {!isCollapsed && (
@@ -565,27 +497,19 @@ export default function PimpinanSidebar({
             {/* Submenu Aset */}
             {!isCollapsed && isAsetOpen && (
               <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
-                {ASET_SUB_MENU.map(({ href, icon: SubIcon, label }) => {
+                {ASET_SUB_MENU.map(({ href, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition-all group",
                         active
                           ? "bg-[#475569] text-white shadow-sm font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                       )}
                     >
-                      <SubIcon
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{label}</span>
                     </Link>
                   );
@@ -595,7 +519,7 @@ export default function PimpinanSidebar({
           </div>
 
           {/* Bottom Menu Items */}
-          {BOTTOM_MENU.map(({ href, icon: Icon, label }) => {
+          {BOTTOM_MENU.map(({ href, label }) => {
             const active = pathname === href || pathname.startsWith(href);
             return (
               <Link
@@ -605,20 +529,16 @@ export default function PimpinanSidebar({
                   "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
                   active
                     ? "bg-[#475569] text-white shadow-sm"
-                    : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-                  isCollapsed ? "justify-center" : "gap-3 w-full"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+                  isCollapsed ? "justify-center" : "w-full"
                 )}
                 title={isCollapsed ? label : undefined}
               >
-                <Icon
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    active
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-white"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">{label}</span>}
+                {isCollapsed ? (
+                  <span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>
+                ) : (
+                  <span className="truncate">{label}</span>
+                )}
               </Link>
             );
           })}

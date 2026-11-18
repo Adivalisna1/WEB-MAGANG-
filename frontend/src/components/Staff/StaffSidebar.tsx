@@ -217,20 +217,12 @@ export default function Sidebar({
               "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
               isDokumenActive
                 ? "bg-[#475569] text-white shadow-sm"
-                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-              isCollapsed ? "justify-center" : "gap-3 w-full"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+              isCollapsed ? "justify-center" : "w-full"
             )}
             title={isCollapsed ? "Dokumen" : undefined}
           >
-            <LayoutDashboard
-              className={clsx(
-                "w-5 h-5 shrink-0",
-                isDokumenActive
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-slate-900"
-              )}
-            />
-            {!isCollapsed && <span className="truncate">Dokumen</span>}
+            {isCollapsed ? <span className="text-xs font-bold">DK</span> : <span className="truncate">Dokumen</span>}
           </Link>
 
           {/* Kertas Kerja */}
@@ -240,20 +232,12 @@ export default function Sidebar({
               "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
               pathname.startsWith("/staff/kertas-kerja")
                 ? "bg-[#475569] text-white shadow-sm"
-                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-              isCollapsed ? "justify-center" : "gap-3 w-full"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+              isCollapsed ? "justify-center" : "w-full"
             )}
             title={isCollapsed ? "Kertas Kerja" : undefined}
           >
-            <FileSpreadsheet
-              className={clsx(
-                "w-5 h-5 shrink-0",
-                pathname.startsWith("/staff/kertas-kerja")
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-slate-900"
-              )}
-            />
-            {!isCollapsed && <span className="truncate">Kertas Kerja</span>}
+            {isCollapsed ? <span className="text-xs font-bold">KK</span> : <span className="truncate">Kertas Kerja</span>}
           </Link>
 
           {/* Kas Parent Navigation + Accordion */}
@@ -263,10 +247,10 @@ export default function Sidebar({
                 "w-full flex items-center rounded-xl font-medium transition-all group",
                 isKasActive
                   ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/60"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
               )}
             >
-              {/* Klik link teks/icon Kas -> navigasi ke /staff/kas */}
+              {/* Klik link teks Kas -> navigasi ke /staff/kas */}
               <Link
                 href="/staff/kas"
                 onClick={() => {
@@ -274,19 +258,11 @@ export default function Sidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-4 py-3",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Buku Kas & Rekonsiliasi" : undefined}
               >
-                <Wallet
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    isKasActive
-                      ? "text-[#1E90FF]"
-                      : "text-slate-400 group-hover:text-slate-900"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Kas</span>}
+                {isCollapsed ? <span className="text-xs font-bold">KS</span> : <span className="truncate">Kas</span>}
               </Link>
 
               {/* Tombol Chevron -> buka/tutup submenu */}
@@ -314,27 +290,19 @@ export default function Sidebar({
             {/* Child Menu Kas */}
             {!isCollapsed && isKasOpen && (
               <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
-                {StaffKasSubMenu.map(({ href, icon: SubIcon, label }) => {
+                {StaffKasSubMenu.map(({ href, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all group",
                         active
                           ? "bg-[#475569] text-white shadow-sm font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                       )}
                     >
-                      <SubIcon
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{label}</span>
                     </Link>
                   );
@@ -350,20 +318,12 @@ export default function Sidebar({
               "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
               isUploadBuktiActive
                 ? "bg-[#475569] text-white shadow-sm"
-                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-              isCollapsed ? "justify-center" : "gap-3 w-full"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+              isCollapsed ? "justify-center" : "w-full"
             )}
             title={isCollapsed ? "Upload Bukti" : undefined}
           >
-            <FileUp
-              className={clsx(
-                "w-5 h-5 shrink-0",
-                isUploadBuktiActive
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-slate-900"
-              )}
-            />
-            {!isCollapsed && <span className="truncate">Upload Bukti</span>}
+            {isCollapsed ? <span className="text-xs font-bold">UB</span> : <span className="truncate">Upload Bukti</span>}
           </Link>
 
           {/* Laporan Accordion */}
@@ -373,7 +333,7 @@ export default function Sidebar({
                 "w-full flex items-center rounded-xl font-medium transition-all group",
                 isLaporanActive
                   ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/60"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
               )}
             >
               <Link
@@ -383,19 +343,11 @@ export default function Sidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-4 py-3",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Laporan & SK Piutang" : undefined}
               >
-                <ClipboardList
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    isLaporanActive
-                      ? "text-[#1E90FF]"
-                      : "text-slate-400 group-hover:text-slate-900"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Laporan</span>}
+                {isCollapsed ? <span className="text-xs font-bold">LP</span> : <span className="truncate">Laporan</span>}
               </Link>
 
               {!isCollapsed && (
@@ -435,17 +387,9 @@ export default function Sidebar({
                     <Link
                       href="/staff/laporan/sk-piutang"
                       onClick={() => setIsPiutangOpen(true)}
-                      className="flex items-center gap-2.5 flex-1 px-3 py-2"
+                      className="flex items-center flex-1 px-3 py-2"
                       title="Ringkasan SK Piutang"
                     >
-                      <Scale
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          isPiutangActive
-                            ? "text-[#1E90FF]"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">SK Piutang</span>
                     </Link>
 
@@ -471,27 +415,19 @@ export default function Sidebar({
                   {/* 3 Sub-menu SK Piutang (Nested Level 2) */}
                   {isPiutangOpen && (
                     <div className="mt-1 ml-3 pl-2.5 border-l-2 border-blue-200/60 space-y-1 py-0.5">
-                      {StaffSKPiutangSubMenu.map(({ href, icon: SubIcon, label }) => {
+                      {StaffSKPiutangSubMenu.map(({ href, label }) => {
                         const active = pathname === href || pathname.startsWith(href);
                         return (
                           <Link
                             key={href}
                             href={href}
                             className={clsx(
-                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
+                              "flex items-center px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
                               active
                                 ? "bg-[#475569] text-white shadow-xs font-semibold"
                                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                             )}
                           >
-                            <SubIcon
-                              className={clsx(
-                                "w-3.5 h-3.5 shrink-0",
-                                active
-                                  ? "text-white"
-                                  : "text-slate-400 group-hover:text-slate-700"
-                              )}
-                            />
                             <span className="truncate">{label}</span>
                           </Link>
                         );
@@ -501,27 +437,19 @@ export default function Sidebar({
                 </div>
 
                 {/* 2. Sibling Menu Laporan Lainnya */}
-                {StaffLaporanLainSubMenu.map(({ href, icon: SubIcon, label }) => {
+                {StaffLaporanLainSubMenu.map(({ href, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all group",
                         active
                           ? "bg-[#475569] text-white shadow-sm font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                       )}
                     >
-                      <SubIcon
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{label}</span>
                     </Link>
                   );
@@ -537,7 +465,7 @@ export default function Sidebar({
                 "w-full flex items-center rounded-xl font-medium transition-all group",
                 isAsetActive
                   ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/60"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
               )}
             >
               <Link
@@ -547,19 +475,11 @@ export default function Sidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-4 py-3",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Aset" : undefined}
               >
-                <Package
-                  className={clsx(
-                    "w-5 h-5 shrink-0",
-                    isAsetActive
-                      ? "text-[#1E90FF]"
-                      : "text-slate-400 group-hover:text-slate-900"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Aset</span>}
+                {isCollapsed ? <span className="text-xs font-bold">AS</span> : <span className="truncate">Aset</span>}
               </Link>
 
               {!isCollapsed && (
@@ -586,27 +506,19 @@ export default function Sidebar({
             {/* Child Menu Aset */}
             {!isCollapsed && isAsetOpen && (
               <div className="mt-1 ml-5 pl-3 border-l-2 border-slate-200 space-y-1">
-                {StaffAsetSubMenu.map(({ href, icon: SubIcon, label }) => {
+                {StaffAsetSubMenu.map(({ href, label }) => {
                   const active = pathname === href || pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all group",
                         active
                           ? "bg-[#475569] text-white shadow-sm font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/70"
                       )}
                     >
-                      <SubIcon
-                        className={clsx(
-                          "w-4 h-4 shrink-0",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{label}</span>
                     </Link>
                   );
@@ -622,20 +534,12 @@ export default function Sidebar({
               "flex items-center px-4 py-3 rounded-xl font-medium transition-all group",
               isProfilActive
                 ? "bg-[#475569] text-white shadow-sm"
-                : "text-slate-400 hover:text-white hover:bg-[#475569]/50",
-              isCollapsed ? "justify-center" : "gap-3 w-full"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70",
+              isCollapsed ? "justify-center" : "w-full"
             )}
             title={isCollapsed ? "Profil" : undefined}
           >
-            <User
-              className={clsx(
-                "w-5 h-5 shrink-0",
-                isProfilActive
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-slate-900"
-              )}
-            />
-            {!isCollapsed && <span className="truncate">Profil</span>}
+            {isCollapsed ? <span className="text-xs font-bold">PR</span> : <span className="truncate">Profil</span>}
           </Link>
         </nav>
 

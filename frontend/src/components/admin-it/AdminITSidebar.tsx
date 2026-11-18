@@ -225,13 +225,14 @@ export default function AdminITSidebar({
                   isActive
                     ? "bg-[#1E90FF] text-white shadow-lg shadow-[#1E90FF]/30"
                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                } ${isCollapsed ? "justify-center" : "gap-3"}`}
+                } ${isCollapsed ? "justify-center" : ""}`}
                 title={isCollapsed ? item.label : undefined}
               >
-                <item.icon
-                  className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400"}`}
-                />
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {isCollapsed ? (
+                  <span className="text-xs font-bold">{item.label.slice(0, 2).toUpperCase()}</span>
+                ) : (
+                  <span className="truncate">{item.label}</span>
+                )}
               </Link>
             );
           })}
@@ -253,17 +254,11 @@ export default function AdminITSidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-3 py-2.5",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Kas" : undefined}
               >
-                <Wallet
-                  className={clsx(
-                    "w-5 h-5 flex-shrink-0",
-                    isKasActive ? "text-[#1E90FF]" : "text-slate-400 group-hover:text-slate-700"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Kas</span>}
+                {isCollapsed ? <span className="text-xs font-bold">KS</span> : <span className="truncate">Kas</span>}
               </Link>
 
               {!isCollapsed && (
@@ -296,18 +291,12 @@ export default function AdminITSidebar({
                       key={item.href}
                       href={item.href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all group",
                         isActive
                           ? "bg-[#1E90FF] text-white shadow-md shadow-[#1E90FF]/25 font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                       )}
                     >
-                      <item.icon
-                        className={clsx(
-                          "w-4 h-4 flex-shrink-0",
-                          isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{item.label}</span>
                     </Link>
                   );
@@ -323,13 +312,14 @@ export default function AdminITSidebar({
               isBuktiActive
                 ? "bg-[#1E90FF] text-white shadow-lg shadow-[#1E90FF]/30"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-            } ${isCollapsed ? "justify-center" : "gap-3"}`}
+            } ${isCollapsed ? "justify-center" : ""}`}
             title={isCollapsed ? "Master Bukti & Transaksi" : undefined}
           >
-            <FileUp
-              className={`w-5 h-5 flex-shrink-0 ${isBuktiActive ? "text-white" : "text-slate-400"}`}
-            />
-            {!isCollapsed && <span className="truncate">Master Bukti & Transaksi</span>}
+            {isCollapsed ? (
+              <span className="text-xs font-bold">MB</span>
+            ) : (
+              <span className="truncate">Master Bukti & Transaksi</span>
+            )}
           </Link>
 
           {/* Laporan Accordion Menu */}
@@ -349,17 +339,11 @@ export default function AdminITSidebar({
                 }}
                 className={clsx(
                   "flex items-center flex-1 px-3 py-2.5",
-                  isCollapsed ? "justify-center" : "gap-3"
+                  isCollapsed ? "justify-center" : ""
                 )}
                 title={isCollapsed ? "Laporan" : undefined}
               >
-                <ClipboardList
-                  className={clsx(
-                    "w-5 h-5 flex-shrink-0",
-                    isLaporanActive ? "text-[#1E90FF]" : "text-slate-400 group-hover:text-slate-700"
-                  )}
-                />
-                {!isCollapsed && <span className="truncate">Laporan</span>}
+                {isCollapsed ? <span className="text-xs font-bold">LP</span> : <span className="truncate">Laporan</span>}
               </Link>
 
               {!isCollapsed && (
@@ -398,17 +382,9 @@ export default function AdminITSidebar({
                     <Link
                       href="/staff/laporan/sk-piutang"
                       onClick={() => setIsPiutangOpen(true)}
-                      className="flex items-center gap-2.5 flex-1 px-3 py-2"
+                      className="flex items-center flex-1 px-3 py-2"
                       title="Ringkasan SK Piutang"
                     >
-                      <Scale
-                        className={clsx(
-                          "w-4 h-4 flex-shrink-0",
-                          isPiutangActive
-                            ? "text-[#1E90FF]"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">SK Piutang</span>
                     </Link>
 
@@ -441,20 +417,12 @@ export default function AdminITSidebar({
                             key={item.href}
                             href={item.href}
                             className={clsx(
-                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
+                              "flex items-center px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all group",
                               isActive
                                 ? "bg-[#1E90FF] text-white shadow-xs font-semibold"
                                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                             )}
                           >
-                            <item.icon
-                              className={clsx(
-                                "w-3.5 h-3.5 flex-shrink-0",
-                                isActive
-                                  ? "text-white"
-                                  : "text-slate-400 group-hover:text-slate-700"
-                              )}
-                            />
                             <span className="truncate">{item.label}</span>
                           </Link>
                         );
@@ -471,20 +439,12 @@ export default function AdminITSidebar({
                       key={item.href}
                       href={item.href}
                       className={clsx(
-                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                        "flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all group",
                         isActive
                           ? "bg-[#1E90FF] text-white shadow-md shadow-[#1E90FF]/25 font-semibold"
                           : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                       )}
                     >
-                      <item.icon
-                        className={clsx(
-                          "w-4 h-4 flex-shrink-0",
-                          isActive
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        )}
-                      />
                       <span className="truncate">{item.label}</span>
                     </Link>
                   );
@@ -504,13 +464,14 @@ export default function AdminITSidebar({
                   isActive
                     ? "bg-[#1E90FF] text-white shadow-lg shadow-[#1E90FF]/30"
                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                } ${isCollapsed ? "justify-center" : "gap-3"}`}
+                } ${isCollapsed ? "justify-center" : ""}`}
                 title={isCollapsed ? item.label : undefined}
               >
-                <item.icon
-                  className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400"}`}
-                />
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {isCollapsed ? (
+                  <span className="text-xs font-bold">{item.label.slice(0, 2).toUpperCase()}</span>
+                ) : (
+                  <span className="truncate">{item.label}</span>
+                )}
               </Link>
             );
           })}
