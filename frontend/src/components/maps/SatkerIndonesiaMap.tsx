@@ -167,37 +167,51 @@ export default function SatkerIndonesiaMap({
     const saldoBuku = useLiveSaldo ? Number(dbInfo.live_saldo_buku) : satker.saldoBuku;
     const saldoBank = useLiveSaldo ? Number(dbInfo.live_saldo_bank) : satker.saldoBank;
     const selisih = useLiveSaldo ? Math.abs(saldoBank - saldoBuku) : Math.abs(satker.selisih);
-    const isSeimbang = selisih === 0;
-
-    const kalimatSelisih = isSeimbang
-      ? `Saldo Kas Buku (BKU) sebesar ${formatRupiah(saldoBuku)} dan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)} berada dalam kondisi seimbang dan cocok 100%, tanpa ada selisih (Rp 0).`
-      : `Saldo Kas Buku (BKU) tercatat sebesar ${formatRupiah(saldoBuku)}, sedangkan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)}, sehingga keduanya belum seimbang dan terdapat selisih sebesar ${formatRupiah(selisih)} (${saldoBank > saldoBuku ? "saldo Rekening Koran Bank lebih besar daripada saldo Kas Buku" : "saldo Kas Buku lebih besar daripada saldo Rekening Koran Bank"}).`;
+    const isZeroBoth = saldoBuku === 0 && saldoBank === 0;
+    const isSeimbang = selisih === 0 && !isZeroBoth;
 
     let kalimatDokumen = "";
+    let dokumenLengkap = false;
+
     if (dbInfo && dbInfo.total_dokumen_db > 0) {
       const ada = (dbInfo.dokumen_wajib || []).filter((d: any) => d.lengkap).map((d: any) => `${d.nama} (${d.jumlah} berkas)`);
       const kurang = (dbInfo.dokumen_wajib || []).filter((d: any) => !d.lengkap).map((d: any) => d.nama);
-      if (kurang.length === 0) {
-        kalimatDokumen = `Dari sisi kelengkapan administrasi, seluruh ${dbInfo.total_wajib} dokumen wajib satker sudah lengkap seluruhnya di sistem, meliputi ${ada.join(", ")}.`;
+      dokumenLengkap = kurang.length === 0;
+      if (dokumenLengkap) {
+        kalimatDokumen = `Dari sisi kelengkapan administrasi di database, seluruh ${dbInfo.total_wajib} dokumen wajib satker sudah lengkap seluruhnya, meliputi ${ada.join(", ")}.`;
       } else {
-        kalimatDokumen = `Dari sisi kelengkapan administrasi, baru ${dbInfo.total_terpenuhi} dari ${dbInfo.total_wajib} dokumen wajib yang tersedia (${ada.length > 0 ? ada.join(", ") : "belum ada dokumen wajib"}), sedangkan dokumen yang belum diunggah yaitu ${kurang.join(", ")}.`;
+        kalimatDokumen = `Dari sisi kelengkapan administrasi di database, baru ${dbInfo.total_terpenuhi} dari ${dbInfo.total_wajib} dokumen wajib yang tersedia (${ada.length > 0 ? ada.join(", ") : "belum ada dokumen wajib"}), sedangkan dokumen yang belum diunggah yaitu ${kurang.join(", ")}.`;
       }
     } else {
       const dokMap = satker.dokumenList || [];
       const selesai = dokMap.filter((d) => d.status === "Terverifikasi");
       const belum = dokMap.filter((d) => d.status !== "Terverifikasi");
+      dokumenLengkap = dokMap.length > 0 && belum.length === 0;
       if (dokMap.length === 0) {
-        kalimatDokumen = "Dari sisi kelengkapan administrasi, belum terdapat dokumen pendukung yang diunggah untuk satker ini.";
-      } else if (belum.length === 0) {
+        kalimatDokumen = "Dari sisi kelengkapan administrasi, belum terdapat dokumen pendukung yang diunggah di database untuk satker ini.";
+      } else if (dokumenLengkap) {
         kalimatDokumen = `Dari sisi kelengkapan administrasi, seluruh ${dokMap.length} dokumen pendukung yang dibutuhkan (${dokMap.map((d) => d.nama).join(", ")}) sudah tersedia seluruhnya.`;
       } else {
-        kalimatDokumen = `Dari sisi kelengkapan administrasi, terdapat ${selesai.length} dari ${dokMap.length} dokumen yang sudah selesai, namun masih ada ${belum.length} dokumen yang perlu perhatian yaitu ${belum.map((d) => `${d.nama} (${d.status})`).join(", ")}.`;
+        kalimatDokumen = `Dari sisi kelengkapan administrasi, terdapat ${selesai.length} dari ${dokMap.length} dokumen yang sudah selesai, namun masih ada ${belum.length} dokumen yang belum lengkap yaitu ${belum.map((d) => `${d.nama} (${d.status})`).join(", ")}.`;
       }
     }
 
-    const kalimatPenutup = isSeimbang
-      ? "Secara keseluruhan, rekonsiliasi kas satker ini sudah tertib dan tidak memerlukan penyesuaian selisih kas."
-      : `Secara keseluruhan, satker ini perlu segera melakukan penelusuran transaksi dan rekonsiliasi ulang untuk menyelesaikan selisih sebesar ${formatRupiah(selisih)} serta memastikan seluruh dokumen pendukung lengkap.`;
+    const kalimatSelisih = isZeroBoth
+      ? "Saldo Kas Buku (BKU) dan Saldo Rekening Koran Bank satker ini masih tercatat sebesar Rp 0 karena belum ada data pelaporan kas maupun rekening koran yang masuk ke sistem."
+      : isSeimbang
+      ? `Saldo Kas Buku (BKU) sebesar ${formatRupiah(saldoBuku)} dan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)} berada dalam kondisi seimbang dan cocok 100%, tanpa ada selisih (Rp 0).`
+      : `Saldo Kas Buku (BKU) tercatat sebesar ${formatRupiah(saldoBuku)}, sedangkan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)}, sehingga keduanya belum seimbang dan terdapat selisih sebesar ${formatRupiah(selisih)} (${saldoBank > saldoBuku ? "saldo Rekening Koran Bank lebih besar daripada saldo Kas Buku" : "saldo Kas Buku lebih besar daripada saldo Rekening Koran Bank"}).`;
+
+    let kalimatPenutup = "";
+    if (isZeroBoth && !dokumenLengkap) {
+      kalimatPenutup = "Secara keseluruhan, satker ini belum tertib dan belum dapat dinyatakan seimbang karena belum menyampaikan laporan saldo maupun dokumen yang dipersyaratkan. Satker wajib segera mengunggah seluruh dokumen yang dibutuhkan.";
+    } else if (!isSeimbang && !isZeroBoth) {
+      kalimatPenutup = `Secara keseluruhan, satker ini belum tertib karena masih terdapat selisih kas sebesar ${formatRupiah(selisih)}${dokumenLengkap ? "" : " serta masih ada kekurangan dokumen"}. Satker wajib segera melakukan penelusuran transaksi, rekonsiliasi ulang, dan melengkapi seluruh dokumen pendukung.`;
+    } else if (!dokumenLengkap) {
+      kalimatPenutup = "Meskipun saldo kas sudah seimbang, secara keseluruhan pelaporan satker ini belum sepenuhnya lengkap karena masih terdapat dokumen yang belum diunggah. Satker diminta segera melengkapi kekurangan dokumen tersebut.";
+    } else {
+      kalimatPenutup = "Secara keseluruhan, satker ini sudah tertib baik dari sisi keseimbangan saldo kas maupun kelengkapan seluruh dokumen pendukung.";
+    }
 
     const tanggalCetak = new Date().toLocaleDateString("id-ID", {
       day: "numeric",

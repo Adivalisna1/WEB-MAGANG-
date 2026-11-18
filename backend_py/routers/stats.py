@@ -491,9 +491,11 @@ async def get_satker_analysis(
     with db.cursor(dictionary=True) as cursor:
         satker_row = None
         if kode and kode.strip():
+            clean_kode = kode.strip()
+            short_kode = clean_kode.split(".")[-1].strip()
             cursor.execute(
-                "SELECT id, NO_Satker, nama, eselon_1_id FROM satkers WHERE NO_Satker = %s LIMIT 1",
-                (kode.strip(),),
+                "SELECT id, NO_Satker, nama, eselon_1_id FROM satkers WHERE NO_Satker = %s OR NO_Satker = %s LIMIT 1",
+                (clean_kode, short_kode),
             )
             satker_row = cursor.fetchone()
 
