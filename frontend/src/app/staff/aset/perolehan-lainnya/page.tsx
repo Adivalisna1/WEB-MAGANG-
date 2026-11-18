@@ -6,7 +6,7 @@ import { getSession } from '@/lib/auth';
 import {
   FileText, Loader2, RefreshCw, AlertCircle,
   Download, ChevronRight,
-  PackagePlus, Plus, Search, Eye
+  PackagePlus, Plus, Search, Eye, X, ExternalLink
 } from 'lucide-react';
 import clsx from 'clsx';
 import UploadModal from '@/components/Staff/UploadModal';
@@ -47,6 +47,45 @@ export default function PerolehanLainnyaPage() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Preview Modal State
+  const [previewDoc, setPreviewDoc] = useState<Dokumen | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewDoc(null);
+    setPreviewError('');
+  };
+
+  const openPreview = async (doc: Dokumen) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewDoc(doc);
+    setPreviewLoading(true);
+    setPreviewError('');
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/dokumen/${doc.id}/download`, {
+        headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+      });
+      if (!res.ok) throw new Error('Gagal memuat pratinjau berkas');
+      const blob = await res.blob();
+      const ext = (doc.file_nama || '').split('.').pop()?.toLowerCase();
+      const typedBlob =
+        ext === 'pdf'
+          ? new Blob([blob], { type: 'application/pdf' })
+          : blob;
+      setPreviewUrl(URL.createObjectURL(typedBlob));
+    } catch (e: any) {
+      setPreviewError(e.message || 'Gagal memuat pratinjau berkas');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const fetchDokumen = useCallback(async () => {
     setLoading(true);
@@ -205,6 +244,15 @@ export default function PerolehanLainnyaPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openPreview(doc)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                            title="Preview Dokumen"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Preview
+                          </button>
                           <a
                             href={`${API}/dokumen/${doc.id}/download`}
                             className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -233,6 +281,87 @@ export default function PerolehanLainnyaPage() {
           fetchDokumen();
         }}
       />
+
+      {/* Modal Preview Dokumen */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={closePreview}
+        >
+          <div
+            className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 text-sm truncate">{previewDoc.judul}</h3>
+                <p className="text-xs text-slate-500 truncate">{previewDoc.file_nama}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {previewUrl && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(previewUrl, '_blank')}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Buka Tab Baru
+                  </button>
+                )}
+                <a
+                  href={`${API}/dokumen/${previewDoc.id}/download`}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-[#1E90FF] hover:bg-blue-600 rounded-lg transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Unduh
+                </a>
+                <button
+                  type="button"
+                  onClick={closePreview}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 bg-slate-100 overflow-hidden flex items-center justify-center">
+              {previewLoading ? (
+                <div className="flex flex-col items-center gap-2 text-slate-500 text-xs">
+                  <Loader2 className="w-7 h-7 animate-spin text-[#1E90FF]" />
+                  Memuat pratinjau dokumen...
+                </div>
+              ) : previewError ? (
+                <div className="text-center p-6 text-rose-600 text-xs font-semibold">
+                  {previewError}
+                </div>
+              ) : previewUrl ? (
+                /\.(pdf|png|jpe?g|webp)$/i.test(previewDoc.file_nama || '') ? (
+                  <iframe
+                    src={previewUrl}
+                    title={previewDoc.judul}
+                    className="w-full h-full border-0 bg-white"
+                  />
+                ) : (
+                  <div className="text-center p-8 space-y-3">
+                    <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+                    <p className="text-sm font-semibold text-slate-700">
+                      Pratinjau langsung hanya mendukung PDF dan gambar.
+                    </p>
+                    <a
+                      href={`${API}/dokumen/${previewDoc.id}/download`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#1E90FF] hover:bg-blue-600 rounded-xl"
+                    >
+                      <Download className="w-4 h-4" />
+                      Unduh {previewDoc.file_nama}
+                    </a>
+                  </div>
+                )
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
