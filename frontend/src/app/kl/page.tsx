@@ -455,7 +455,7 @@ export default function KLDashboardPage() {
         const jsonLogs = await resLogs.json();
         const logRows = jsonLogs.data || [];
         if (Array.isArray(logRows)) {
-          const aksiMap: Record<string, { label: string; status: string; tone: string; icon: string }> = {
+          const aksiMap: Record<string, { label: string; status: string; tone: 'green' | 'blue' | 'amber'; icon: string }> = {
             upload_dokumen: { label: 'Unggah Dokumen Baru', status: 'Terverifikasi', tone: 'green', icon: 'check' },
             batch_upload: { label: 'Unggah Massal (Batch ZIP/Folder)', status: 'Terverifikasi', tone: 'green', icon: 'check' },
             verifikasi_dokumen: { label: 'Verifikasi Dokumen', status: 'Terverifikasi', tone: 'green', icon: 'check' },
