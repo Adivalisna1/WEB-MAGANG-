@@ -242,6 +242,11 @@ export default function StaffDokumenPage() {
                       {t.periode ? ` (${t.periode})` : ''}
                       {t.pengirim_nama ? ` • Oleh ${t.pengirim_nama}` : ''}
                     </p>
+                    {t.tenggat_waktu && (
+                      <p className="text-[11px] text-rose-700 font-semibold mt-0.5 truncate">
+                        Tenggat: {new Date(t.tenggat_waktu).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    )}
                     {t.catatan && (
                       <p className="text-[11px] text-amber-700 mt-0.5 truncate">
                         Catatan: {t.catatan}

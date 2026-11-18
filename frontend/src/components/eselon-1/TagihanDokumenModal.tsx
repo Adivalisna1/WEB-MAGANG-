@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  X, Plus, Trash2, Send, Loader2, CheckCircle2, AlertCircle, FileText, BellRing
+  X, Plus, Trash2, Send, Loader2, CheckCircle2, AlertCircle, FileText, BellRing, Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -29,6 +29,7 @@ interface DraftDokumenItem {
   judul_dokumen: string;
   tahun: number;
   periode: string;
+  tenggat_waktu: string;
   catatan: string;
 }
 
@@ -39,6 +40,7 @@ interface TagihanRow {
   judul_dokumen: string;
   tahun: number;
   periode: string | null;
+  tenggat_waktu: string | null;
   catatan: string | null;
   status: 'belum_diunggah' | 'sudah_diunggah';
   pengirim_nama: string | null;
@@ -59,6 +61,8 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [sending, setSending] = useState(false);
   const [defaultTahun, setDefaultTahun] = useState<number>(new Date().getFullYear());
+  const [defaultTenggat, setDefaultTenggat] = useState<string>('');
+  const [defaultJudul, setDefaultJudul] = useState<string>('');
   const [defaultCatatan, setDefaultCatatan] = useState<string>('');
 
   const fetchKategori = useCallback(async () => {
@@ -102,6 +106,8 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
     if (isOpen && target) {
       setActiveTab('form');
       setDraftItems([]);
+      setDefaultTenggat('');
+      setDefaultJudul('');
       setDefaultCatatan('');
       fetchKategori();
       fetchStatusTagihan();
@@ -118,14 +124,16 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
     if (isCategoryChecked(kat.id)) {
       setDraftItems((prev) => prev.filter((item) => item.key !== key));
     } else {
+      const judul = defaultJudul.trim() ? `${defaultJudul.trim()} - ${kat.nama}` : kat.nama;
       setDraftItems((prev) => [
         ...prev,
         {
           key,
           kategori_id: kat.id,
-          judul_dokumen: kat.nama,
+          judul_dokumen: judul,
           tahun: defaultTahun,
           periode: '',
+          tenggat_waktu: defaultTenggat,
           catatan: defaultCatatan,
         },
       ]);
@@ -138,9 +146,10 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
       {
         key: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         kategori_id: kategoriList[0]?.id || '',
-        judul_dokumen: '',
+        judul_dokumen: defaultJudul.trim(),
         tahun: defaultTahun,
         periode: '',
+        tenggat_waktu: defaultTenggat,
         catatan: defaultCatatan,
       },
     ]);
@@ -156,11 +165,29 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
     setDraftItems((prev) => prev.filter((item) => item.key !== key));
   };
 
+  const totalToSend =
+    draftItems.length > 0 ? draftItems.length : defaultJudul.trim() ? 1 : 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validItems = draftItems.filter((i) => i.judul_dokumen.trim() || i.kategori_id !== '');
+    let validItems = draftItems.filter((i) => i.judul_dokumen.trim() || i.kategori_id !== '');
+
+    if (validItems.length === 0 && defaultJudul.trim()) {
+      validItems = [
+        {
+          key: 'single-default',
+          kategori_id: '',
+          judul_dokumen: defaultJudul.trim(),
+          tahun: defaultTahun,
+          periode: '',
+          tenggat_waktu: defaultTenggat,
+          catatan: defaultCatatan,
+        },
+      ];
+    }
+
     if (validItems.length === 0) {
-      toast.error('Pilih minimal 1 kategori dokumen atau tambah baris dokumen.');
+      toast.error('Isi Judul Dokumen, centang kategori, atau tambah baris dokumen.');
       return;
     }
 
@@ -184,6 +211,7 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
             judul_dokumen: i.judul_dokumen.trim(),
             tahun: Number(i.tahun) || defaultTahun,
             periode: i.periode.trim(),
+            tenggat_waktu: i.tenggat_waktu || defaultTenggat || null,
             catatan: i.catatan.trim() || defaultCatatan.trim(),
           })),
         }),
@@ -192,6 +220,7 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
       if (!res.ok) throw new Error(json.detail || json.message || 'Gagal mengirim pemberitahuan');
       toast.success(json.message || 'Pemberitahuan dokumen berhasil dikirim!');
       setDraftItems([]);
+      setDefaultJudul('');
       await fetchStatusTagihan();
       setActiveTab('status');
     } catch (err: any) {
@@ -262,7 +291,7 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             )}
           >
-            Kirim Pemberitahuan ({draftItems.length} dipilih)
+            Kirim Pemberitahuan ({totalToSend} dipilih)
           </button>
           <button
             type="button"
@@ -290,8 +319,8 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'form' ? (
             <form id="tagihan-dokumen-form" onSubmit={handleSubmit} className="space-y-5">
-              {/* Pengaturan Default Tahun & Catatan */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              {/* Pengaturan Tahun, Tenggat Waktu, Judul Dokumen & Catatan (Terpisah) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
                     Tahun Anggaran
@@ -303,13 +332,36 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
                     className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Catatan / Tenggat Waktu Umum (Opsional)
+                    Tenggat Waktu (Opsional)
+                  </label>
+                  <input
+                    type="date"
+                    value={defaultTenggat}
+                    onChange={(e) => setDefaultTenggat(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Judul Dokumen (Opsional)
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Mohon segera diunggah maksimal Jumat pukul 17.00 WIB"
+                    placeholder="Contoh: Rek. Koran BRI Bulan Oktober 2026"
+                    value={defaultJudul}
+                    onChange={(e) => setDefaultJudul(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Catatan (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Mohon pastikan berkas sudah ditandatangani KPA"
                     value={defaultCatatan}
                     onChange={(e) => setDefaultCatatan(e.target.value)}
                     className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -371,7 +423,9 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
 
                 {draftItems.length === 0 ? (
                   <div className="p-6 text-center border border-dashed border-slate-200 rounded-xl text-xs text-slate-400">
-                    Belum ada dokumen yang dipilih. Centang kategori di atas atau klik <strong>Tambah Baris 1 per 1</strong>.
+                    {defaultJudul.trim()
+                      ? `Judul "${defaultJudul.trim()}" siap dikirim langsung, atau centang kategori / klik Tambah Baris 1 per 1 untuk menambah lebih banyak.`
+                      : 'Belum ada dokumen yang dipilih. Isi Judul Dokumen di atas, centang kategori, atau klik Tambah Baris 1 per 1.'}
                   </div>
                 ) : (
                   <div className="space-y-2.5">
@@ -417,7 +471,7 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
                           <div className="sm:col-span-5">
                             <input
                               type="text"
-                              placeholder="Nama / Judul Dokumen spesifik..."
+                              placeholder="Judul Dokumen..."
                               value={item.judul_dokumen}
                               onChange={(e) => updateRow(item.key, 'judul_dokumen', e.target.value)}
                               className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
@@ -469,6 +523,12 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
                             {t.kategori_nama || 'Umum'} &bull; Tahun {t.tahun}
                             {t.periode ? ` (${t.periode})` : ''}
                           </p>
+                          {t.tenggat_waktu && (
+                            <p className="text-[11px] text-rose-700 font-semibold mt-0.5 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Tenggat Waktu: {new Date(t.tenggat_waktu).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          )}
                           {t.catatan && (
                             <p className="text-[11px] text-amber-700 mt-0.5">
                               Catatan: {t.catatan}
@@ -528,11 +588,11 @@ export default function TagihanDokumenModal({ isOpen, onClose, target }: Tagihan
             <button
               type="submit"
               form="tagihan-dokumen-form"
-              disabled={sending || draftItems.length === 0}
+              disabled={sending || totalToSend === 0}
               className="px-4 py-2 text-xs font-semibold text-white bg-[#1E90FF] hover:bg-blue-600 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
             >
               {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              Kirim Pemberitahuan ({draftItems.length})
+              Kirim Pemberitahuan ({totalToSend})
             </button>
           )}
         </div>

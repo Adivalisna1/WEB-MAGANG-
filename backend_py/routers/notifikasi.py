@@ -65,6 +65,7 @@ def _ensure_tagihan_table(cursor):
             judul_dokumen VARCHAR(255) NOT NULL,
             tahun INT NOT NULL,
             periode VARCHAR(100) NULL,
+            tenggat_waktu DATE NULL,
             catatan TEXT NULL,
             status ENUM('belum_diunggah', 'sudah_diunggah') NOT NULL DEFAULT 'belum_diunggah',
             dokumen_id INT NULL,
@@ -74,6 +75,15 @@ def _ensure_tagihan_table(cursor):
             INDEX idx_target_user (target_user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tagihan_dokumen' AND COLUMN_NAME = 'tenggat_waktu'
+        """)
+        if cursor.fetchone()["cnt"] == 0:
+            cursor.execute("ALTER TABLE tagihan_dokumen ADD COLUMN tenggat_waktu DATE NULL AFTER periode")
+    except Exception:
+        pass
 
 
 @router.get("/tagihan-dokumen")
@@ -120,7 +130,7 @@ async def get_tagihan_dokumen(
         cursor.execute(
             f"""
             SELECT td.id, td.satker_id, td.eselon_1_id, td.target_user_id, td.pengirim_id,
-                   td.kategori_id, td.judul_dokumen, td.tahun, td.periode, td.catatan,
+                   td.kategori_id, td.judul_dokumen, td.tahun, td.periode, td.tenggat_waktu, td.catatan,
                    td.status, td.dokumen_id, td.created_at, td.updated_at,
                    k.nama AS kategori_nama, k.slug AS kategori_slug,
                    u_pengirim.nama AS pengirim_nama,
@@ -196,6 +206,7 @@ async def create_tagihan_dokumen(
             judul_dok = str(item.get("judul_dokumen") or "").strip()
             tahun = int(item.get("tahun") or 2026)
             periode = str(item.get("periode") or "").strip() or None
+            tenggat_waktu = str(item.get("tenggat_waktu") or "").strip() or None
             catatan = str(item.get("catatan") or "").strip() or None
 
             if not judul_dok and kat_id:
@@ -238,10 +249,10 @@ async def create_tagihan_dokumen(
             cursor.execute(
                 """
                 INSERT INTO tagihan_dokumen
-                (satker_id, eselon_1_id, target_user_id, pengirim_id, kategori_id, judul_dokumen, tahun, periode, catatan, status, dokumen_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (satker_id, eselon_1_id, target_user_id, pengirim_id, kategori_id, judul_dokumen, tahun, periode, tenggat_waktu, catatan, status, dokumen_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (satker_id, eselon_1_id, target_user_id, current_user["id"], kat_id, judul_dok, tahun, periode, catatan, status_awal, existing_doc_id),
+                (satker_id, eselon_1_id, target_user_id, current_user["id"], kat_id, judul_dok, tahun, periode, tenggat_waktu, catatan, status_awal, existing_doc_id),
             )
             inserted_ids.append(cursor.lastrowid)
             judul_list.append(judul_dok)

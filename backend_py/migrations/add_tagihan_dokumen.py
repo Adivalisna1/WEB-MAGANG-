@@ -18,6 +18,7 @@ def run_migration():
                 judul_dokumen VARCHAR(255) NOT NULL,
                 tahun INT NOT NULL,
                 periode VARCHAR(100) NULL,
+                tenggat_waktu DATE NULL,
                 catatan TEXT NULL,
                 status ENUM('belum_diunggah', 'sudah_diunggah') NOT NULL DEFAULT 'belum_diunggah',
                 dokumen_id INT NULL,
@@ -27,6 +28,12 @@ def run_migration():
                 INDEX idx_target_user (target_user_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
+        cursor.execute("""
+            SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tagihan_dokumen' AND COLUMN_NAME = 'tenggat_waktu'
+        """)
+        if cursor.fetchone()["cnt"] == 0:
+            cursor.execute("ALTER TABLE tagihan_dokumen ADD COLUMN tenggat_waktu DATE NULL AFTER periode")
         conn.commit()
         print("[OK] Tabel 'tagihan_dokumen' siap digunakan.")
     except Exception as e:
