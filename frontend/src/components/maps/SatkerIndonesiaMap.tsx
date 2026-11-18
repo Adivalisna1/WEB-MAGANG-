@@ -232,7 +232,7 @@ export default function SatkerIndonesiaMap({
     setAnalysisLoading(false);
   };
 
-  const handleOpenWilayahAnalysis = (wilayah: WilayahPengawasanKL) => {
+  const handleOpenWilayahAnalysis = (wilayah: WilayahPengawasanKL, satkers: SatkerGeoData[]) => {
     setAnalysisMeta({
       badge: `ANALISIS WILAYAH ${wilayah.kodeWilayah}`,
       title: wilayah.nama,
@@ -241,7 +241,7 @@ export default function SatkerIndonesiaMap({
     setAnalysisLoading(false);
     setCopiedAnalysis(false);
 
-    const list = wilayah.satkers || [];
+    const list = satkers || [];
     const totalSatker = list.length;
     const totalBank = list.reduce((sum, s) => sum + s.saldoBank, 0);
     const totalBuku = list.reduce((sum, s) => sum + s.saldoBuku, 0);
@@ -1238,7 +1238,7 @@ export default function SatkerIndonesiaMap({
               </span>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => handleOpenWilayahAnalysis(selectedWilayah)}
+                  onClick={() => handleOpenWilayahAnalysis(selectedWilayah, activeWilayahSatkers)}
                   className="py-1.5 px-3 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
