@@ -349,8 +349,7 @@ function DokumenContent() {
       {/* HEADER UTAMA HALAMAN */}
       <div className="flex flex-wrap justify-between items-center mb-5 shrink-0 gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Layers className="w-7 h-7 text-[#1E90FF]" />
+          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
             Dokumen Satker
           </h1>
           <p className="text-xs md:text-sm text-slate-500 mt-0.5">

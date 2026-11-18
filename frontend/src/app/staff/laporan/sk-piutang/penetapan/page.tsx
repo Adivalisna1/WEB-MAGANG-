@@ -90,8 +90,7 @@ export default function SkPenetapanPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>1. Penetapan</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <AlertOctagon className="w-7 h-7 text-[#1E90FF]" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             SK Penetapan Piutang / Surat Ketetapan Kurang Bayar
           </h1>
         </div>

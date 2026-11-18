@@ -110,8 +110,7 @@ export default function LpjBendaharaPage() {
             <span>Pertanggungjawaban Bendahara</span>
           </div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <BookMarked className="w-7 h-7 text-[#1E90FF]" />
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               LPJ Bendahara Pengeluaran / Penerimaan
             </h1>
             {isITUser && (

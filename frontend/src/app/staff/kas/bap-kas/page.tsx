@@ -110,8 +110,7 @@ export default function BapKasPage() {
             <span>Pemeriksaan Kas</span>
           </div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-              <ClipboardCheck className="w-7 h-7 text-[#1E90FF]" />
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               Berita Acara Pemeriksaan Kas (BAP Kas)
             </h1>
             {isITUser && (

@@ -93,8 +93,7 @@ export default function SkPiutangPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>Dokumen Keuangan</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <FileCheck2 className="w-7 h-7 text-[#1E90FF]" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             SK Piutang Satker
           </h1>
         </div>

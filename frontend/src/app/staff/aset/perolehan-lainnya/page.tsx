@@ -100,8 +100,7 @@ export default function PerolehanLainnyaPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>Perolehan Lainnya</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <PackagePlus className="w-7 h-7 text-[#1E90FF]" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Dokumen Perolehan Aset Lainnya
           </h1>
         </div>

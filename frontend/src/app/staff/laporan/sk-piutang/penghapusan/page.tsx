@@ -90,8 +90,7 @@ export default function SkPenghapusanPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>3. Pelunasan / Penghapusan</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <CheckCheck className="w-7 h-7 text-[#1E90FF]" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             SK Penghapusan Piutang
           </h1>
         </div>

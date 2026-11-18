@@ -90,8 +90,7 @@ export default function BuktiSetorUpPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span>Setoran Kas Negara</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Receipt className="w-7 h-7 text-[#1E90FF]" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Bukti Setor Sisa UP / TUP (NTPN)
           </h1>
         </div>

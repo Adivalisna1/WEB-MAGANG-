@@ -571,8 +571,7 @@ export default function KertasKerjaPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileSpreadsheet className="w-7 h-7 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-gray-900">
             Rekening Koran Internal Eselon 1
           </h1>
           <p className="text-sm text-gray-500 mt-1">
