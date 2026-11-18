@@ -357,12 +357,18 @@ export default function SatkerIndonesiaMap({
         const L = (await import("leaflet")).default;
 
         if (!mapInstanceRef.current && mapContainerRef.current) {
-          // Center titik tengah Indonesia (Kepulauan Nusantara)
+          // Center titik tengah Indonesia (Kepulauan Nusantara) & kunci batas wilayah Indonesia
+          const indonesiaBounds = L.latLngBounds(
+            L.latLng(-12.5, 93.0),
+            L.latLng(7.5, 143.0)
+          );
           const map = L.map(mapContainerRef.current, {
             center: [-2.5, 118.0],
             zoom: 5,
-            minZoom: 4,
+            minZoom: 5,
             maxZoom: 14,
+            maxBounds: indonesiaBounds,
+            maxBoundsViscosity: 1.0,
             scrollWheelZoom: true,
             zoomControl: false,
             preferCanvas: true, // Hardware acceleration GPU
