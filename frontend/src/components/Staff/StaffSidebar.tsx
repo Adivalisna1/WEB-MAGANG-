@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { getProfilePhotoUrl } from "@/lib/auth";
 import {
   LayoutDashboard,
   LogOut,
@@ -553,9 +554,17 @@ export default function Sidebar({
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative shrink-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-400 text-white font-bold text-xs flex items-center justify-center">
-                  {(user?.nama || "ST").substring(0, 2).toUpperCase()}
-                </div>
+                {getProfilePhotoUrl(user?.foto_profil) ? (
+                  <img
+                    src={getProfilePhotoUrl(user?.foto_profil)!}
+                    alt={user?.nama || "Profil"}
+                    className="w-8 h-8 rounded-full object-cover border border-blue-200"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-400 text-white font-bold text-xs flex items-center justify-center">
+                    {(user?.nama || "ST").substring(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
               </div>
               {!isCollapsed && (

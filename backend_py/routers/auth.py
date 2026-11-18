@@ -39,7 +39,7 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     
     cursor.execute("""
         SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
-               u.password_hash, u.is_active, u.permissions,
+               u.password_hash, u.is_active, u.permissions, u.foto_profil,
                COALESCE(r.nama, 'operator') AS role,
                COALESCE(t.kode, 'satker') AS tingkat, COALESCE(t.nama, 'Tingkat Satker') AS tingkat_nama,
                s.nama AS satker_nama, s.NO_Satker AS satker_kode,
@@ -159,6 +159,7 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
         "eselon_1_kode": user.get('eselon_1_kode'),
         "eselon_1_nama": user.get('eselon_1_nama'),
         "eselon_1_singkatan": user.get('eselon_1_singkatan'),
+        "foto_profil": user.get('foto_profil'),
         "permissions": user['permissions']
     }
 

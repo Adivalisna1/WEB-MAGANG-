@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getSession } from '@/lib/auth';
-import { User, Lock, Loader2, AlertCircle, CheckCircle, Mail, AtSign, Clock, Eye, EyeOff } from 'lucide-react';
+import { getSession, getProfilePhotoUrl } from '@/lib/auth';
+import toast from 'react-hot-toast';
+import { User, Lock, Loader2, AlertCircle, CheckCircle, Mail, AtSign, Eye, EyeOff, Camera, Trash2 } from 'lucide-react';
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
 export default function ProfilContent() {
-  const { user } = useAuth();
+  const { user, updateUserLocal } = useAuth();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   const [passLama,    setPassLama]    = useState('');
   const [passBaru,    setPassBaru]    = useState('');
@@ -50,21 +53,121 @@ export default function ProfilContent() {
     }
   };
 
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Ukuran foto maksimal 2 MB');
+      return;
+    }
+    setPhotoUploading(true);
+    try {
+      const session = getSession();
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API}/user/profile-photo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.token}` },
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || json.message || 'Gagal mengunggah foto profil');
+      updateUserLocal({ foto_profil: json.data?.foto_profil || null });
+      toast.success('Foto profil berhasil diperbarui!');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengunggah foto profil');
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    setPhotoUploading(true);
+    try {
+      const session = getSession();
+      const res = await fetch(`${API}/user/profile-photo`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
+      if (!res.ok) throw new Error('Gagal menghapus foto profil');
+      updateUserLocal({ foto_profil: null });
+      toast.success('Foto profil dikembalikan ke default');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus foto profil');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const photoUrl = getProfilePhotoUrl(user?.foto_profil);
+
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="text-xl font-bold text-gray-900">Profil Saya</h1>
 
       {/* Info akun */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center font-bold text-white text-xl shadow-md">
-            {user?.nama?.charAt(0).toUpperCase()}
+        <div className="flex items-center justify-between gap-4 pb-4 border-b border-gray-100 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="relative group shrink-0">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={user?.nama || 'Foto Profil'}
+                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-200 shadow-md"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center font-bold text-white text-xl shadow-md">
+                  {user?.nama?.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={photoUploading}
+                onClick={() => photoInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                title="Ubah Foto Profil"
+              >
+                {photoUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleUploadPhoto}
+              />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-lg">{user?.nama}</p>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 mt-0.5">
+                {roleLabels[user?.role || ''] || user?.role}
+              </span>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900 text-lg">{user?.nama}</p>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700 mt-0.5">
-              {roleLabels[user?.role || ''] || user?.role}
-            </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={photoUploading}
+              onClick={() => photoInputRef.current?.click()}
+              className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              Ubah Foto
+            </button>
+            {photoUrl && (
+              <button
+                type="button"
+                disabled={photoUploading}
+                onClick={handleDeletePhoto}
+                className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors"
+                title="Hapus Foto Profil"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">

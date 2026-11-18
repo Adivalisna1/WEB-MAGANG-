@@ -13,6 +13,12 @@ export const getClientApi = (): string => {
 };
 export const API_URL = getClientApi();
 
+export const getProfilePhotoUrl = (fotoProfil?: string | null): string | null => {
+  if (!fotoProfil) return null;
+  if (fotoProfil.startsWith('http://') || fotoProfil.startsWith('https://')) return fotoProfil;
+  return `${getClientApi()}${fotoProfil.startsWith('/') ? '' : '/'}${fotoProfil}`;
+};
+
 export interface User {
   id: number;
   nama: string;
@@ -29,6 +35,7 @@ export interface User {
   eselon_1_id?: number | null;
   eselon_1_nama?: string | null;
   eselon_1_singkatan?: string | null;
+  foto_profil?: string | null;
   permissions?: Record<string, boolean> | any;
   is_operator?: boolean;
   is_manajemen?: boolean;

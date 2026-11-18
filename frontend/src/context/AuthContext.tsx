@@ -10,6 +10,7 @@ interface AuthContextType {
   loading:   boolean;
   loginFn:   (username: string, password: string) => Promise<void>;
   logoutFn:  () => Promise<void>;
+  updateUserLocal: (partial: Partial<User>) => void;
   isPimpinan:   boolean;
   isStaff:   boolean;
   isKetuaTim: boolean;
@@ -104,10 +105,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (!isPimpinan && !isKetuaTim && !isIt)
   );
 
+  const updateUserLocal = useCallback((partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...partial };
+      const session = getSession();
+      if (session?.token) {
+        saveSession(session.token, updated);
+      }
+      return updated;
+    });
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user, token, loading,
-      loginFn, logoutFn,
+      loginFn, logoutFn, updateUserLocal,
       isPimpinan,
       isStaff,
       isKetuaTim,
