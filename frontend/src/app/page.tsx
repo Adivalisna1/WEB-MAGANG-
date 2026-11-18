@@ -114,6 +114,7 @@ export default function LandingPage() {
             <Link
               href={
                 (user.is_it || user.role === 'admin_it' || user.role === 'it' || (user.tingkat === 'kl' && user.permissions?.can_manage_users)) ? '/admin-it' :
+                user.role === 'staff_eselon_1' ? '/staff/dokumen' :
                 (user.role === 'eselon_1' || user.tingkat === 'eselon_1' || user.tingkat === 'kl') ? '/eselon-1' :
                 (user.role === 'pimpinan_satker' || (user.tingkat === 'satker' && (user.role === 'manajemen' || user.role === 'administrasi'))) ? '/pimpinan' :
                 '/staff/dokumen'

@@ -1,12 +1,34 @@
 @echo off
 title Menjalankan Web Laporan Keuangan...
 cls
+
+:: Cek apakah Docker Desktop sudah berjalan
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ==============================================================================
+    echo   [ERROR] DOCKER DESKTOP BELUM MENYALA!
+    echo ==============================================================================
+    echo.
+    echo   Silakan buka aplikasi Docker Desktop terlebih dahulu, tunggu sampai
+    echo   ikon paus di pojok kanan bawah berhenti bergerak ^(status Running^),
+    echo   lalu jalankan ulang file ini.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo ==============================================================================
 if "%1"=="build" (
     echo   MENJALANKAN DOCKER COMPOSE DENGAN OPSI --BUILD (REBUILD KODINGAN)...
     echo ==============================================================================
     echo.
     docker compose up -d --build
+    if %errorlevel% neq 0 (
+        echo.
+        echo   [ERROR] Gagal menjalankan docker compose! Cek pesan error di atas.
+        pause
+        exit /b 1
+    )
     echo.
     echo   MEMBERSIHKAN IMAGE LAMA OTOMATIS (AGAR STORAGE TIDAK PENUH)...
     docker image prune -f
@@ -15,6 +37,12 @@ if "%1"=="build" (
     echo ==============================================================================
     echo.
     docker compose up -d --build
+    if %errorlevel% neq 0 (
+        echo.
+        echo   [ERROR] Gagal menjalankan docker compose! Cek pesan error di atas.
+        pause
+        exit /b 1
+    )
     echo.
     echo   MEMBERSIHKAN IMAGE LAMA OTOMATIS (AGAR STORAGE TIDAK PENUH)...
     docker image prune -f
@@ -23,6 +51,12 @@ if "%1"=="build" (
     echo ==============================================================================
     echo.
     docker compose up -d
+    if %errorlevel% neq 0 (
+        echo.
+        echo   [ERROR] Gagal menjalankan docker compose! Cek pesan error di atas.
+        pause
+        exit /b 1
+    )
 )
 
 echo.

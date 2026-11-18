@@ -76,6 +76,14 @@ async def get_rekening_koran(request: Request, user: dict = Depends(get_current_
             params.append(satker_id)
         else:
             where += " AND k.satker_id IS NULL"
+    elif role == "staff_eselon_1":
+        # Staff Satker Eselon 1 hanya melihat Rekening Koran unit Eselon 1 sendiri (bukan satker bawahan)
+        if eselon_1_id:
+            where += " AND k.satker_id IS NULL AND (u.eselon_1_id = %s OR k.uploaded_by = %s)"
+            params.extend([eselon_1_id, user.get("id")])
+        else:
+            where += " AND k.satker_id IS NULL AND k.uploaded_by = %s"
+            params.append(user.get("id"))
     elif tingkat == "eselon_1":
         filter_satker = request.query_params.get("satker_id")
         include_satkers = request.query_params.get("include_satkers")

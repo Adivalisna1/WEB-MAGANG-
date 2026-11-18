@@ -50,6 +50,11 @@ def run_startup_migrations():
         migrate_aset_category()
     except Exception as e:
         print(f"Startup migration notice (aset_category): {e}")
+    try:
+        from migrations.add_staff_eselon1_role import run_migration as migrate_staff_eselon1_role
+        migrate_staff_eselon1_role()
+    except Exception as e:
+        print(f"Startup migration notice (staff_eselon1_role): {e}")
 
 @app.get("/")
 def read_root():

@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (isIt) {
       router.push('/admin-it');
+    } else if (r === 'staff_eselon_1') {
+      router.push('/staff/dokumen');
     } else if (t === 'kl') {
       router.push('/kl');
     } else if (r === 'eselon_1' || t === 'eselon_1') {

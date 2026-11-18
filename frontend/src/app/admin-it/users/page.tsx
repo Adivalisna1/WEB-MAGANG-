@@ -21,6 +21,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [satkers, setSatkers] = useState<any[]>([]);
   const [unitEselon1, setUnitEselon1] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,20 +57,23 @@ export default function UserManagementPage() {
 
   const fetchUsers = async () => {
     try {
-      const [resUsers, resSatkers, resE1] = await Promise.all([
+      const [resUsers, resSatkers, resE1, resRoles] = await Promise.all([
         fetch(`${API}/admin-it/users`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/admin-it/satkers`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/admin-it/unit-eselon-1`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API}/admin-it/unit-eselon-1`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/admin-it/roles`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
-      const [jUsers, jSatkers, jE1] = await Promise.all([
+      const [jUsers, jSatkers, jE1, jRoles] = await Promise.all([
         resUsers.json(),
         resSatkers.json(),
-        resE1.json()
+        resE1.json(),
+        resRoles.json()
       ]);
 
       if (jUsers.success) setUsers(jUsers.data);
       if (jSatkers.success) setSatkers(jSatkers.data);
       if (jE1.success) setUnitEselon1(jE1.data);
+      if (jRoles.success) setRoles(jRoles.data);
     } catch (err) {
       console.error(err);
       toast.error('Gagal memuat data pengguna');
@@ -82,6 +86,8 @@ export default function UserManagementPage() {
     if (token) fetchUsers();
   }, [token]);
 
+  const staffEselon1RoleId = roles.find(r => r.nama === 'staff_eselon_1')?.id ?? 4;
+
   // Otomatis atur default permissions saat role berubah (hanya pada form tambah)
   const handleRoleChange = (newRoleId: number) => {
     let defaultPerms: Record<string, boolean> = {};
@@ -91,6 +97,8 @@ export default function UserManagementPage() {
       } else {
         defaultPerms = { can_upload: true };
       }
+    } else if (newRoleId === staffEselon1RoleId) {
+      defaultPerms = { can_upload: true };
     } else if (newRoleId === 2) {
       defaultPerms = { can_verify: true };
     }
@@ -105,6 +113,7 @@ export default function UserManagementPage() {
     setFormData(prev => ({
       ...prev,
       tingkat_id: newTingkatId,
+      role_id: newTingkatId !== 2 && prev.role_id === staffEselon1RoleId ? 1 : prev.role_id,
       satker_id: newTingkatId === 1 ? prev.satker_id : '',
       eselon_1_id: newTingkatId === 2 ? prev.eselon_1_id : ''
     }));
@@ -422,12 +431,28 @@ export default function UserManagementPage() {
             onChange={e => handleRoleChange(Number(e.target.value))}
             className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
           >
-            <option value={1}>
-              {formData.tingkat_id === 2 ? 'Operator (Pelaksana Teknis / Upload Rekening Koran Unit Eselon 1)' : 'Operator (Pelaksana Teknis / Upload Dokumen / Admin IT pada K/L)'}
-            </option>
-            <option value={2}>
-              {formData.tingkat_id === 2 ? 'Administrasi (Pimpinan Pembina / Verifikator / Approval / Pengawas)' : 'Manajemen / Administrasi (Pimpinan / Verifikator / Pengawas / Kebijakan)'}
-            </option>
+            {formData.tingkat_id === 2 ? (
+              <>
+                <option value={staffEselon1RoleId}>
+                  Staff Satker Eselon 1 (Upload &amp; Kelola Laporan Unit Eselon 1 Sendiri — Tanpa Pantau Satker Bawahan)
+                </option>
+                <option value={1}>
+                  Operator Eselon 1 (Memantau, Merekap &amp; Mendampingi Satker Bawahan Eselon 1)
+                </option>
+                <option value={2}>
+                  Admin / Manajemen Eselon 1 (Pimpinan Pembina / Verifikator / Pengawas)
+                </option>
+              </>
+            ) : (
+              <>
+                <option value={1}>
+                  Operator (Pelaksana Teknis / Upload Dokumen / Admin IT pada K/L)
+                </option>
+                <option value={2}>
+                  Manajemen / Administrasi (Pimpinan / Verifikator / Pengawas / Kebijakan)
+                </option>
+              </>
+            )}
           </select>
         </div>
 
@@ -489,7 +514,9 @@ export default function UserManagementPage() {
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              * Pengguna pada level ini memiliki wewenang memantau seluruh satker di bawah unit Eselon 1 ini.
+              {formData.role_id === staffEselon1RoleId
+                ? '* Staff Satker Eselon 1 hanya mengelola & mengunggah laporan milik unit Eselon 1 ini sendiri (tidak memantau satker bawahan).'
+                : '* Pengguna pada level ini memiliki wewenang memantau seluruh satker di bawah unit Eselon 1 ini.'}
             </p>
           </div>
         )}
@@ -668,6 +695,13 @@ export default function UserManagementPage() {
                             return (
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
                                 IT Administrator
+                              </span>
+                            );
+                          }
+                          if (roleName === 'staff_eselon_1') {
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Staff Satker Eselon 1
                               </span>
                             );
                           }

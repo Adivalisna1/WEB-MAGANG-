@@ -192,9 +192,9 @@ export default function Sidebar({
                 </h1>
                 <p
                   className="text-[10px] text-[#1E90FF] font-bold tracking-wider mt-0.5 m-0 uppercase truncate max-w-[170px]"
-                  title={user?.satker_nama || undefined}
+                  title={user?.satker_nama || user?.eselon_1_nama || undefined}
                 >
-                  {user?.satker_nama || "PORTAL SATKER"}
+                  {user?.satker_nama || user?.eselon_1_singkatan || user?.eselon_1_nama || "PORTAL SATKER"}
                 </p>
               </div>
             )}

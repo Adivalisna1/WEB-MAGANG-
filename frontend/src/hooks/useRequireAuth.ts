@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 // Hook untuk protect halaman — redirect ke /login kalau belum login
-export type Role = 'pimpinan_satker' | 'staff_satker' | 'eselon_1' | 'admin_it' | 'operator' | 'manajemen' | 'administrasi' | 'it';
+export type Role = 'pimpinan_satker' | 'staff_satker' | 'staff_eselon_1' | 'eselon_1' | 'admin_it' | 'operator' | 'manajemen' | 'administrasi' | 'it';
 
 export type AuthSection = 'staff' | 'pimpinan' | 'eselon_1' | 'kl' | 'admin_it' | Role;
 
@@ -35,13 +35,13 @@ export function useRequireAuth(role?: AuthSection | AuthSection[]) {
 
       for (const item of allowed) {
         if (item === 'staff' || item === 'staff_satker' || item === 'operator') {
-          if (r === 'operator' || r === 'staff_satker' || isIt) isAuthorized = true;
+          if (r === 'operator' || r === 'staff_satker' || r === 'staff_eselon_1' || isIt) isAuthorized = true;
         } else if (item === 'pimpinan' || item === 'pimpinan_satker' || item === 'manajemen' || item === 'administrasi') {
           if ((t === 'satker' && (r === 'manajemen' || r === 'administrasi')) || r === 'pimpinan_satker' || isIt) isAuthorized = true;
         } else if (item === 'kl') {
           if (t === 'kl' || isIt) isAuthorized = true;
         } else if (item === 'eselon_1') {
-          if (t === 'eselon_1' || t === 'kl' || r === 'eselon_1' || isIt) isAuthorized = true;
+          if ((t === 'eselon_1' && r !== 'staff_eselon_1') || t === 'kl' || r === 'eselon_1' || isIt) isAuthorized = true;
         } else if (item === 'admin_it' || item === 'it') {
           if (isIt) isAuthorized = true;
         } else if (r === item) {
@@ -53,6 +53,8 @@ export function useRequireAuth(role?: AuthSection | AuthSection[]) {
         // Redirect ke dashboard masing-masing jika tidak berhak
         if (isIt) {
           router.replace('/admin-it');
+        } else if (r === 'staff_eselon_1') {
+          router.replace('/staff/dokumen');
         } else if (t === 'kl') {
           router.replace('/kl');
         } else if (r === 'eselon_1' || t === 'eselon_1') {

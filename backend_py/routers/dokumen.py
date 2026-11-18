@@ -258,6 +258,14 @@ async def get_all_dokumen(
         else:
             where += ' AND d.uploaded_by = %s'
             params.append(user["id"])
+    elif role == "staff_eselon_1":
+        # Staff Satker Eselon 1 hanya melihat dokumen milik unit Eselon 1-nya sendiri (bukan satker bawahan)
+        if eselon_1_id:
+            where += " AND ((u.satker_id IS NULL AND u.eselon_1_id = %s AND r.nama = 'staff_eselon_1') OR d.uploaded_by = %s)"
+            params.extend([eselon_1_id, user["id"]])
+        else:
+            where += " AND d.uploaded_by = %s"
+            params.append(user["id"])
     elif tingkat == "eselon_1":
         # Eselon 1 Pembina strictly sees ONLY satkers under their Eselon 1 unit
         if eselon_1_id:
@@ -289,6 +297,7 @@ async def get_all_dokumen(
             "FROM dokumen d "
             "JOIN kategori_dokumen k ON k.id = d.kategori_id "
             "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN roles r ON r.id = u.role_id "
             "LEFT JOIN satkers s ON s.id = u.satker_id "
             "WHERE " + where + " "
             "ORDER BY d.created_at DESC "
@@ -301,6 +310,7 @@ async def get_all_dokumen(
             "SELECT COUNT(*) AS total FROM dokumen d "
             "JOIN kategori_dokumen k ON k.id = d.kategori_id "
             "JOIN users u ON u.id = d.uploaded_by "
+            "LEFT JOIN roles r ON r.id = u.role_id "
             "LEFT JOIN satkers s ON s.id = u.satker_id "
             "WHERE " + where
         )

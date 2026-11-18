@@ -41,6 +41,19 @@ async def get_dashboard_stats(
                 user_filter += " AND satker_id = 0"
                 kk_filter += " AND satker_id = 0"
                 doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE u.satker_id = 0"
+        elif role == "staff_eselon_1":
+            user_filter += " AND u.satker_id IS NULL" if False else " AND satker_id IS NULL"
+            if user_eselon_id:
+                user_filter += " AND eselon_1_id = %s"
+                params.append(user_eselon_id)
+                kk_filter += " AND satker_id IS NULL AND created_by IN (SELECT id FROM users WHERE eselon_1_id = %s AND satker_id IS NULL)"
+                kk_params.append(user_eselon_id)
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id LEFT JOIN roles r ON r.id = u.role_id WHERE u.satker_id IS NULL AND u.eselon_1_id = %s AND r.nama = 'staff_eselon_1'"
+                doc_params.append(user_eselon_id)
+            else:
+                kk_filter += " AND satker_id = 0"
+                doc_filter = "JOIN users u ON d.uploaded_by = u.id WHERE d.uploaded_by = %s"
+                doc_params.append(current_user["id"])
         elif tingkat == "eselon_1":
             if satker:
                 user_filter += " AND satker_id = %s"
