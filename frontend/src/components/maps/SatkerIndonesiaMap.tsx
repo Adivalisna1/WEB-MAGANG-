@@ -25,8 +25,14 @@ import {
   Radio,
   Landmark,
   Coins,
+  Copy,
+  Check,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import clsx from "clsx";
+import toast from "react-hot-toast";
+import { getClientApi, getSession } from "@/lib/auth";
 
 import {
   SatkerGeoData,
@@ -120,6 +126,135 @@ export default function SatkerIndonesiaMap({
   const [searchSatker, setSearchSatker] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
+
+  // State Pop-up Analisis Satker
+  const [analysisModalOpen, setAnalysisModalOpen] = useState<boolean>(false);
+  const [analysisLoading, setAnalysisLoading] = useState<boolean>(false);
+  const [analysisSatker, setAnalysisSatker] = useState<SatkerGeoData | null>(null);
+  const [analysisText, setAnalysisText] = useState<string>("");
+  const [copiedAnalysis, setCopiedAnalysis] = useState<boolean>(false);
+
+  const handleOpenAnalysis = async (satker: SatkerGeoData) => {
+    setAnalysisSatker(satker);
+    setAnalysisModalOpen(true);
+    setAnalysisLoading(true);
+    setCopiedAnalysis(false);
+
+    let dbInfo: any = null;
+    try {
+      const session = getSession();
+      const api = getClientApi();
+      const res = await fetch(
+        `${api}/stats/satker-analysis?kode=${encodeURIComponent(satker.kode)}&nama=${encodeURIComponent(satker.nama)}`,
+        {
+          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+        }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.found_in_db && json?.data) {
+          dbInfo = json.data;
+        }
+      }
+    } catch {
+      // Fallback ke data peta jika endpoint tidak terjangkau
+    }
+
+    const useLiveSaldo = Boolean(dbInfo?.has_live_saldo);
+    const saldoBuku = useLiveSaldo ? Number(dbInfo.live_saldo_buku) : satker.saldoBuku;
+    const saldoBank = useLiveSaldo ? Number(dbInfo.live_saldo_bank) : satker.saldoBank;
+    const selisih = useLiveSaldo ? Math.abs(saldoBank - saldoBuku) : Math.abs(satker.selisih);
+    const isSeimbang = selisih === 0;
+
+    const arahSelisih =
+      saldoBank > saldoBuku
+        ? "Saldo Rekening Koran Bank lebih besar daripada Saldo Kas Buku (BKU)."
+        : saldoBank < saldoBuku
+        ? "Saldo Kas Buku (BKU) lebih besar daripada Saldo Rekening Koran Bank."
+        : "Saldo Kas Buku dan Saldo Rekening Koran Bank cocok 100%.";
+
+    let bagianDokumen = "";
+    let ringkasanDokumen = "";
+
+    if (dbInfo && dbInfo.total_dokumen_db > 0) {
+      const barisWajib = (dbInfo.dokumen_wajib || [])
+        .map((d: any) => `   ${d.lengkap ? "[✓]" : "[✗]"} ${d.nama} : ${d.lengkap ? `${d.jumlah} berkas` : "Belum diunggah"}`)
+        .join("\n");
+      const kurang = (dbInfo.dokumen_wajib || []).filter((d: any) => !d.lengkap).map((d: any) => d.nama);
+      bagianDokumen =
+        `   Kelengkapan Dokumen Wajib (${dbInfo.total_terpenuhi}/${dbInfo.total_wajib} terpenuhi):\n` +
+        barisWajib +
+        (kurang.length > 0
+          ? `\n   -> Dokumen belum lengkap: ${kurang.join(", ")}.`
+          : `\n   -> Seluruh dokumen wajib utama sudah lengkap.`);
+      ringkasanDokumen =
+        kurang.length === 0
+          ? "Seluruh dokumen wajib telah lengkap di sistem."
+          : `Masih terdapat ${kurang.length} kategori dokumen wajib yang belum diunggah (${kurang.join(", ")}).`;
+    } else {
+      const dokMap = satker.dokumenList || [];
+      const terverif = dokMap.filter((d) => d.status === "Terverifikasi").length;
+      const perluPerbaikan = dokMap.filter((d) => d.status !== "Terverifikasi");
+      const barisPeta = dokMap
+        .map((d) => `   ${d.status === "Terverifikasi" ? "[✓]" : "[!]"} ${d.kategori} — ${d.nama} (${d.status})`)
+        .join("\n");
+      bagianDokumen =
+        `   Dokumen Terlampir (${terverif}/${dokMap.length} selesai):\n` +
+        (barisPeta || "   - Belum ada berkas terlampir.");
+      ringkasanDokumen =
+        dokMap.length === 0
+          ? "Belum ada dokumen yang diunggah untuk satker ini."
+          : perluPerbaikan.length === 0
+          ? `Seluruh ${dokMap.length} dokumen pendukung satker sudah tersedia dan selesai.`
+          : `Terdapat ${perluPerbaikan.length} dokumen yang masih perlu perhatian (${perluPerbaikan.map((d) => d.nama).join(", ")}).`;
+    }
+
+    const kesimpulan = isSeimbang
+      ? "Saldo kas satker dalam kondisi SEIMBANG (tidak ada selisih). " + ringkasanDokumen
+      : `Ditemukan SELISIH sebesar ${formatRupiah(selisih)} sehingga rekonsiliasi belum seimbang. ${ringkasanDokumen} Disarankan untuk segera melakukan rekonsiliasi BKU vs Rekening Koran dan melengkapi dokumen pendukung.`;
+
+    const tanggalCetak = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const teks =
+      `RANGKUMAN ANALISIS SATKER — SIP (SISTEM INFORMASI PELAPORAN)\n` +
+      `Tanggal Analisis : ${tanggalCetak}\n` +
+      `============================================================\n` +
+      `Nama Satker      : ${satker.nama}\n` +
+      `Kode Satker      : #${satker.kode}\n` +
+      `Unit Eselon 1    : ${satker.eselon1}\n` +
+      `Lokasi           : ${satker.kota}, ${satker.provinsi}\n\n` +
+      `1. KONDISI SALDO & KESEIMBANGAN\n` +
+      `   - Saldo Kas Buku (BKU)      : ${formatRupiah(saldoBuku)}\n` +
+      `   - Saldo Rekening Koran Bank : ${formatRupiah(saldoBank)}\n` +
+      `   - Status Keseimbangan       : ${isSeimbang ? "SEIMBANG (100% Cocok)" : "TIDAK SEIMBANG"}\n\n` +
+      `2. STATUS SELISIH\n` +
+      `   - Ada Selisih?              : ${isSeimbang ? "TIDAK ADA SELISIH" : "ADA SELISIH"}\n` +
+      `   - Nominal Selisih           : ${isSeimbang ? "Rp 0" : formatRupiah(selisih)}\n` +
+      `   - Keterangan                : ${arahSelisih}\n\n` +
+      `3. KELENGKAPAN DOKUMEN\n` +
+      `${bagianDokumen}\n\n` +
+      `4. KESIMPULAN & TINDAK LANJUT\n` +
+      `   ${kesimpulan}\n` +
+      `============================================================`;
+
+    setAnalysisText(teks);
+    setAnalysisLoading(false);
+  };
+
+  const handleCopyAnalysis = async () => {
+    try {
+      await navigator.clipboard.writeText(analysisText);
+      setCopiedAnalysis(true);
+      toast.success("Teks analisis berhasil disalin!");
+      setTimeout(() => setCopiedAnalysis(false), 2000);
+    } catch {
+      toast.error("Gagal menyalin teks");
+    }
+  };
 
   // Sinkronisasi filter saat prop inisial berubah (misal sesudah data user terambil)
   useEffect(() => {
@@ -950,14 +1085,24 @@ export default function SatkerIndonesiaMap({
                             )}
                           </button>
 
-                          <button
-                            onClick={() => handleFocusSatker(satker.lat, satker.lng, satker.id)}
-                            className="px-2 py-1 text-[10px] font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1"
-                            title="Arahkan Peta ke Satker Ini"
-                          >
-                            <Eye className="w-3 h-3 text-slate-400" />
-                            Fokus di Peta
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenAnalysis(satker)}
+                              className="px-2 py-1 text-[10px] font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1"
+                              title="Analisis Saldo, Selisih & Kelengkapan Dokumen"
+                            >
+                              <Sparkles className="w-3 h-3 text-blue-600" />
+                              Analisis
+                            </button>
+                            <button
+                              onClick={() => handleFocusSatker(satker.lat, satker.lng, satker.id)}
+                              className="px-2 py-1 text-[10px] font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1"
+                              title="Arahkan Peta ke Satker Ini"
+                            >
+                              <Eye className="w-3 h-3 text-slate-400" />
+                              Fokus di Peta
+                            </button>
+                          </div>
                         </div>
 
                         {/* Accordion Dokumen yang Terbuka */}
@@ -1144,8 +1289,15 @@ export default function SatkerIndonesiaMap({
             {/* Footer Action */}
             <div className="p-3 bg-slate-50 border-t border-slate-200/80 flex items-center gap-2">
               <button
+                onClick={() => handleOpenAnalysis(selectedSatker)}
+                className="flex-1 py-1.5 px-3 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Analisis Satker
+              </button>
+              <button
                 onClick={() => setSelectedSatker(null)}
-                className="flex-1 py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-lg text-xs border border-slate-200 transition-colors"
+                className="py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-lg text-xs border border-slate-200 transition-colors"
               >
                 Tutup
               </button>
@@ -1153,6 +1305,85 @@ export default function SatkerIndonesiaMap({
           </div>
         )}
       </div>
+
+      {/* ============================================================== */}
+      {/* MODAL POP-UP ANALISIS SATKER (TEXT SIAP SALIN)                */}
+      {/* ============================================================== */}
+      {analysisModalOpen && analysisSatker && (
+        <div
+          className="fixed inset-0 z-[1000] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setAnalysisModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              <div>
+                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-100 text-blue-800 mb-1">
+                  ANALISIS SATKER #{analysisSatker.kode}
+                </span>
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight">
+                  {analysisSatker.nama}
+                </h3>
+              </div>
+              <button
+                onClick={() => setAnalysisModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              {analysisLoading ? (
+                <div className="py-14 flex flex-col items-center justify-center gap-2 text-slate-500">
+                  <Loader2 className="w-7 h-7 animate-spin text-[#1E90FF]" />
+                  <p className="text-xs font-medium">Menghitung saldo, selisih, dan kelengkapan dokumen satker...</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500">
+                    Teks rangkuman di bawah otomatis menganalisis kondisi saldo, keseimbangan, selisih, dan kelengkapan dokumen satker. Anda bisa mengeditnya seperlunya lalu klik <strong>Salin Teks</strong>.
+                  </p>
+                  <textarea
+                    value={analysisText}
+                    onChange={(e) => setAnalysisText(e.target.value)}
+                    rows={15}
+                    className="w-full p-3.5 text-xs font-mono leading-relaxed text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E90FF]/30 focus:border-[#1E90FF] resize-y"
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2.5">
+              <button
+                onClick={() => setAnalysisModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={handleCopyAnalysis}
+                disabled={analysisLoading || !analysisText}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#1E90FF] hover:bg-blue-600 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                {copiedAnalysis ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Tersalin!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Salin Teks
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

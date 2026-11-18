@@ -465,3 +465,113 @@ async def get_dashboard_stats(
             }
         }
 
+
+REQUIRED_DOC_SLUGS = [
+    ("Rekening_koran", "Rekening Koran"),
+    ("bap-kas", "BAP Kas"),
+    ("lpj-bendahara", "LPJ Bendahara"),
+    ("konfirmasi-saldo-bank", "Konfirmasi Saldo Bank"),
+    ("bukti-setor-up", "Bukti Setor Sisa UP (NTPN)"),
+    ("perolehan-lainnya", "Perolehan Aset Lainnya"),
+]
+
+
+@router.get("/satker-analysis")
+async def get_satker_analysis(
+    kode: str = "",
+    nama: str = "",
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    role = current_user.get("role")
+    tingkat = current_user.get("tingkat")
+    if role == "staff_eselon_1" or (tingkat == "satker" and not current_user.get("is_it")):
+        raise HTTPException(status_code=403, detail="Akses ditolak")
+
+    with db.cursor(dictionary=True) as cursor:
+        satker_row = None
+        if kode and kode.strip():
+            cursor.execute(
+                "SELECT id, NO_Satker, nama, eselon_1_id FROM satkers WHERE NO_Satker = %s LIMIT 1",
+                (kode.strip(),),
+            )
+            satker_row = cursor.fetchone()
+
+        if not satker_row and nama and nama.strip():
+            cursor.execute(
+                "SELECT id, NO_Satker, nama, eselon_1_id FROM satkers WHERE LOWER(nama) LIKE %s LIMIT 1",
+                (f"%{nama.strip().lower()}%",),
+            )
+            satker_row = cursor.fetchone()
+
+        if not satker_row:
+            return {
+                "success": True,
+                "found_in_db": False,
+                "data": None,
+            }
+
+        sid = satker_row["id"]
+
+        # Cek kelengkapan dokumen di DB berdasarkan kategori
+        cursor.execute(
+            """
+            SELECT k.slug, k.nama, COUNT(d.id) AS jumlah
+            FROM dokumen d
+            JOIN kategori_dokumen k ON k.id = d.kategori_id
+            JOIN users u ON u.id = d.uploaded_by
+            WHERE u.satker_id = %s
+            GROUP BY k.slug, k.nama
+            """,
+            (sid,),
+        )
+        doc_counts = {r["slug"]: int(r["jumlah"]) for r in cursor.fetchall()}
+
+        # Cek saldo rekening koran & pencatatan buku di DB (jika ada)
+        cursor.execute(
+            "SELECT COALESCE(SUM(saldo_akhir), 0) AS total_bank, COUNT(*) AS cnt_rk FROM rekening_koran WHERE satker_id = %s AND is_active = 1",
+            (sid,),
+        )
+        rk_row = cursor.fetchone() or {"total_bank": 0, "cnt_rk": 0}
+
+        cursor.execute(
+            """
+            SELECT
+                COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN nominal ELSE 0 END), 0) -
+                COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN nominal ELSE 0 END), 0) AS total_buku,
+                COUNT(*) AS cnt_buku
+            FROM pencatatan
+            WHERE satker_id = %s
+            """,
+            (sid,),
+        )
+        buku_row = cursor.fetchone() or {"total_buku": 0, "cnt_buku": 0}
+
+        dokumen_wajib = []
+        sudah_ada = 0
+        for slug, label in REQUIRED_DOC_SLUGS:
+            cnt = doc_counts.get(slug, 0)
+            if slug == "Rekening_koran" and cnt == 0:
+                cnt = int(rk_row["cnt_rk"] or 0)
+            if cnt > 0:
+                sudah_ada += 1
+            dokumen_wajib.append({"slug": slug, "nama": label, "jumlah": cnt, "lengkap": cnt > 0})
+
+        return {
+            "success": True,
+            "found_in_db": True,
+            "data": {
+                "satker_id": sid,
+                "kode": satker_row.get("NO_Satker"),
+                "nama": satker_row.get("nama"),
+                "has_live_saldo": int(rk_row["cnt_rk"] or 0) > 0 or int(buku_row["cnt_buku"] or 0) > 0,
+                "live_saldo_bank": float(rk_row["total_bank"] or 0),
+                "live_saldo_buku": float(buku_row["total_buku"] or 0),
+                "dokumen_wajib": dokumen_wajib,
+                "total_wajib": len(REQUIRED_DOC_SLUGS),
+                "total_terpenuhi": sudah_ada,
+                "total_dokumen_db": sum(doc_counts.values()),
+            },
+        }
+
+
