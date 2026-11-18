@@ -221,7 +221,7 @@ async def get_users(
         
     with db.cursor(dictionary=True) as cursor:
         sql_users = (
-            "SELECT u.id, u.nama, u.username, u.email, u.is_active, u.satker_id, u.eselon_1_id, "
+            "SELECT u.id, u.nama, u.username, u.email, u.is_active, u.satker_id, u.eselon_1_id, u.foto_profil, "
             "       u.last_login, u.password_reset_at, u.created_at, r.nama AS role, t.kode AS tingkat, "
             "       (SELECT is_online FROM user_sessions s "
             "        WHERE s.user_id = u.id AND s.is_online = 1 "

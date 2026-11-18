@@ -98,7 +98,7 @@ async def get_stats(db=Depends(get_db), current_user: dict = Depends(verify_admi
 async def get_users(db=Depends(get_db), current_user: dict = Depends(verify_admin_it)):
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
-            SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions,
+            SELECT u.id, u.nama, u.username, u.email, u.is_active, u.permissions, u.foto_profil,
                    u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id,
                    u.last_login, u.created_at, 
                    r.nama AS role, 

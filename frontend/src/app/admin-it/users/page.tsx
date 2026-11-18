@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { getProfilePhotoUrl } from '@/lib/auth';
 import { Plus, Trash2, Key, Edit, X, Upload, Download, Eye, EyeOff, Search, Shield, Building2, Layers } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
@@ -670,13 +671,21 @@ export default function UserManagementPage() {
                       {/* Pengguna Column */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-xs ${
-                            roleName === 'it' ? 'bg-sky-100 text-sky-700' :
-                            roleName === 'administrasi' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
-                            {(u.nama || 'U').charAt(0).toUpperCase()}
-                          </div>
+                          {getProfilePhotoUrl(u.foto_profil) ? (
+                            <img
+                              src={getProfilePhotoUrl(u.foto_profil)!}
+                              alt={u.nama || 'User'}
+                              className="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-200 shadow-xs"
+                            />
+                          ) : (
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-xs ${
+                              roleName === 'it' ? 'bg-sky-100 text-sky-700' :
+                              roleName === 'administrasi' ? 'bg-amber-100 text-amber-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {(u.nama || 'U').charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 leading-tight truncate max-w-[200px] sm:max-w-xs">{u.nama}</p>
                             <p className="text-xs text-gray-400 mt-0.5 font-mono">@{u.username} · {u.email}</p>

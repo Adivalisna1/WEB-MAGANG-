@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { getSession } from '@/lib/auth';
+import { getSession, getProfilePhotoUrl } from '@/lib/auth';
 import {
   Users, Loader2, RefreshCw, AlertCircle, Search, BellRing
 } from 'lucide-react';
@@ -24,6 +24,7 @@ interface UserRow {
   satker_id?: number | null;
   satker_kode?: string | null;
   eselon_1_id?: number | null;
+  foto_profil?: string | null;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -159,9 +160,17 @@ export default function KetuaUsersPage() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
-                            {user.nama.charAt(0).toUpperCase()}
-                          </div>
+                          {getProfilePhotoUrl(user.foto_profil) ? (
+                            <img
+                              src={getProfilePhotoUrl(user.foto_profil)!}
+                              alt={user.nama}
+                              className="w-9 h-9 rounded-full object-cover border border-blue-200"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
+                              {user.nama.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           {user.is_online === 1 && (
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />
                           )}
