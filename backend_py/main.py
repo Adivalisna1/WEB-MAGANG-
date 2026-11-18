@@ -55,6 +55,11 @@ def run_startup_migrations():
         migrate_staff_eselon1_role()
     except Exception as e:
         print(f"Startup migration notice (staff_eselon1_role): {e}")
+    try:
+        from migrations.add_tagihan_dokumen import run_migration as migrate_tagihan_dokumen
+        migrate_tagihan_dokumen()
+    except Exception as e:
+        print(f"Startup migration notice (tagihan_dokumen): {e}")
 
 @app.get("/")
 def read_root():

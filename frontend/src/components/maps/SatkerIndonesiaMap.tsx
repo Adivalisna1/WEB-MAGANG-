@@ -29,10 +29,12 @@ import {
   Check,
   Sparkles,
   Loader2,
+  BellRing,
 } from "lucide-react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { getClientApi, getSession } from "@/lib/auth";
+import TagihanDokumenModal, { TagihanTarget } from "@/components/eselon-1/TagihanDokumenModal";
 
 import {
   SatkerGeoData,
@@ -133,6 +135,7 @@ export default function SatkerIndonesiaMap({
   const [analysisSatker, setAnalysisSatker] = useState<SatkerGeoData | null>(null);
   const [analysisText, setAnalysisText] = useState<string>("");
   const [copiedAnalysis, setCopiedAnalysis] = useState<boolean>(false);
+  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(null);
 
   const handleOpenAnalysis = async (satker: SatkerGeoData) => {
     setAnalysisSatker(satker);
@@ -1052,7 +1055,21 @@ export default function SatkerIndonesiaMap({
                             )}
                           </button>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            <button
+                              onClick={() =>
+                                setTagihanTarget({
+                                  kode_satker: satker.kode,
+                                  nama_target: satker.nama,
+                                  sub_label: `Kode #${satker.kode} • ${satker.eselon1}`,
+                                })
+                              }
+                              className="px-2 py-1 text-[10px] font-semibold text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors flex items-center gap-1"
+                              title="Kirim Pemberitahuan Dokumen ke Satker"
+                            >
+                              <BellRing className="w-3 h-3 text-amber-600" />
+                              Tagih
+                            </button>
                             <button
                               onClick={() => handleOpenAnalysis(satker)}
                               className="px-2 py-1 text-[10px] font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1"
@@ -1256,6 +1273,20 @@ export default function SatkerIndonesiaMap({
             {/* Footer Action */}
             <div className="p-3 bg-slate-50 border-t border-slate-200/80 flex items-center gap-2">
               <button
+                onClick={() =>
+                  setTagihanTarget({
+                    kode_satker: selectedSatker.kode,
+                    nama_target: selectedSatker.nama,
+                    sub_label: `Kode #${selectedSatker.kode} • ${selectedSatker.eselon1}`,
+                  })
+                }
+                className="py-1.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold rounded-lg text-xs transition-colors flex items-center justify-center gap-1"
+                title="Kirim Pemberitahuan Dokumen ke Satker"
+              >
+                <BellRing className="w-3.5 h-3.5" />
+                Tagih
+              </button>
+              <button
                 onClick={() => handleOpenAnalysis(selectedSatker)}
                 className="flex-1 py-1.5 px-3 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs"
               >
@@ -1351,6 +1382,12 @@ export default function SatkerIndonesiaMap({
           </div>
         </div>
       )}
+
+      <TagihanDokumenModal
+        isOpen={Boolean(tagihanTarget)}
+        onClose={() => setTagihanTarget(null)}
+        target={tagihanTarget}
+      />
     </div>
   );
 }

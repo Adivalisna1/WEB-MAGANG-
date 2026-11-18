@@ -208,7 +208,7 @@ async def get_users(
     eselon_id = current_user.get("eselon_1_id")
     is_specific = (current_user.get("tingkat") == "eselon_1" and eselon_id is not None)
     
-    where = "WHERE u.role_id IN (1, 2)"
+    where = "WHERE (u.role_id IN (1, 2) OR r.nama = 'staff_eselon_1')"
     params = []
     if is_specific:
         where += " AND (st.eselon_1_id = %s OR u.eselon_1_id = %s)"
@@ -216,12 +216,12 @@ async def get_users(
         
     with db.cursor(dictionary=True) as cursor:
         sql_users = (
-            "SELECT u.id, u.nama, u.username, u.email, u.is_active, "
+            "SELECT u.id, u.nama, u.username, u.email, u.is_active, u.satker_id, u.eselon_1_id, "
             "       u.last_login, u.password_reset_at, u.created_at, r.nama AS role, t.kode AS tingkat, "
             "       (SELECT is_online FROM user_sessions s "
             "        WHERE s.user_id = u.id AND s.is_online = 1 "
             "        ORDER BY s.last_active_at DESC LIMIT 1) AS is_online, "
-            "       st.nama AS satker_nama "
+            "       st.nama AS satker_nama, st.NO_Satker AS satker_kode "
             "FROM users u "
             "JOIN roles r ON r.id = u.role_id "
             "JOIN tingkats t ON t.id = u.tingkat_id "

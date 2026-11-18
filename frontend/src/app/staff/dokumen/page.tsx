@@ -71,6 +71,8 @@ export default function StaffDokumenPage() {
   );
 
   const [dokumenList, setDokumenList] = useState<Dokumen[]>([]);
+  const [tagihanList, setTagihanList] = useState<any[]>([]);
+  const [uploadKategoriSlug, setUploadKategoriSlug] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -94,12 +96,24 @@ export default function StaffDokumenPage() {
     setError('');
     try {
       const session = getSession();
-      const res = await fetch(`${API}/dokumen/all?limit=500`, {
-        headers: { Authorization: `Bearer ${session?.token}` },
-      });
+      const [res, resTagihan] = await Promise.all([
+        fetch(`${API}/dokumen/all?limit=500`, {
+          headers: { Authorization: `Bearer ${session?.token}` },
+        }),
+        fetch(`${API}/notifikasi/tagihan-dokumen`, {
+          headers: { Authorization: `Bearer ${session?.token}` },
+        }).catch(() => null),
+      ]);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Gagal memuat dokumen');
       setDokumenList(data.data || []);
+
+      if (resTagihan && resTagihan.ok) {
+        const jTagihan = await resTagihan.json();
+        if (jTagihan?.success && Array.isArray(jTagihan.data)) {
+          setTagihanList(jTagihan.data);
+        }
+      }
     } catch (e: any) {
       setError(e.message || 'Gagal memuat dokumen');
     } finally {
@@ -192,6 +206,81 @@ export default function StaffDokumenPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* ================================================================
+           PANEL PEMBERITAHUAN KELENGKAPAN DOKUMEN DARI ESELON 1 / K/L
+           ================================================================ */}
+      {tagihanList.length > 0 && (
+        <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Pemberitahuan Kelengkapan Dokumen ({tagihanList.filter((t) => t.status === 'belum_diunggah').length} Belum Diunggah)
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Daftar dokumen yang diminta oleh Eselon 1 / K/L. Status otomatis berubah menjadi Sudah Diunggah setelah Anda mengunggah dokumen terkait.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {tagihanList.map((t) => {
+              const isDone = t.status === 'sudah_diunggah';
+              return (
+                <div
+                  key={t.id}
+                  className={clsx(
+                    'p-3 rounded-xl border flex items-center justify-between gap-3',
+                    isDone
+                      ? 'bg-emerald-50/40 border-emerald-200/80'
+                      : 'bg-rose-50/40 border-rose-200/80'
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 truncate">{t.judul_dokumen}</p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {t.kategori_nama || 'Umum'} &bull; Tahun {t.tahun}
+                      {t.periode ? ` (${t.periode})` : ''}
+                      {t.pengirim_nama ? ` • Oleh ${t.pengirim_nama}` : ''}
+                    </p>
+                    {t.catatan && (
+                      <p className="text-[11px] text-amber-700 mt-0.5 truncate">
+                        Catatan: {t.catatan}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={clsx(
+                        'px-2 py-0.5 rounded text-[10px] font-bold border',
+                        isDone
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      )}
+                    >
+                      {isDone ? 'Sudah Diunggah' : 'Belum Diunggah'}
+                    </span>
+                    {!isDone && canUpload && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadKategoriSlug(t.kategori_slug || undefined);
+                          setModalInitialTab('single');
+                          setIsModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-semibold bg-[#1E90FF] hover:bg-blue-600 text-white rounded-lg transition-colors"
+                      >
+                        Upload
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* ================================================================
            GRID DASHBOARD UTAMA (KOLOM KIRI & KOLOM KANAN)
            ================================================================ */}
@@ -951,14 +1040,19 @@ export default function StaffDokumenPage() {
            ================================================================ */}
       <UploadModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setUploadKategoriSlug(undefined);
+        }}
         onSuccess={() => {
           setIsModalOpen(false);
+          setUploadKategoriSlug(undefined);
           setSelectedFile(null);
           fetchDokumen();
         }}
         initialFile={selectedFile}
         initialTab={modalInitialTab}
+        defaultKategoriSlug={uploadKategoriSlug}
       />
 
     </div>

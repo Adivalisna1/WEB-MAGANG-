@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getSession } from '@/lib/auth';
 import {
-  Users, Loader2, RefreshCw, AlertCircle, Search
+  Users, Loader2, RefreshCw, AlertCircle, Search, BellRing
 } from 'lucide-react';
 import clsx from 'clsx';
+import TagihanDokumenModal, { TagihanTarget } from '@/components/eselon-1/TagihanDokumenModal';
 
 const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
 
@@ -20,6 +21,9 @@ interface UserRow {
   last_login: string | null;
   password_reset_at: string | null;
   satker_nama: string | null;
+  satker_id?: number | null;
+  satker_kode?: string | null;
+  eselon_1_id?: number | null;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -29,6 +33,7 @@ const ROLE_BADGE: Record<string, string> = {
   it: 'bg-sky-100 text-sky-700',
   pimpinan_satker: 'bg-yellow-100 text-yellow-700',
   staff_satker: 'bg-blue-100 text-blue-700',
+  staff_eselon_1: 'bg-indigo-100 text-indigo-700',
   Pimpinan: 'bg-yellow-100 text-yellow-700',
   Satker: 'bg-blue-100 text-blue-700',
   ketua_tim: 'bg-blue-100 text-blue-700',
@@ -40,6 +45,7 @@ const ROLE_LABEL: Record<string, string> = {
   it: 'IT Admin',
   pimpinan_satker: 'Manajemen Satker',
   staff_satker: 'Operator Satker',
+  staff_eselon_1: 'Staff Satker Eselon 1',
   ketua_tim: 'Eselon 1',
   satker: 'Satker',
 };
@@ -59,6 +65,7 @@ export default function KetuaUsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(null);
   const itemsPerPage = 20;
 
   const fetchUsers = useCallback(async () => {
@@ -143,6 +150,7 @@ export default function KetuaUsersPage() {
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Login Terakhir</th>
                   <th className="px-5 py-3">Reset Password Terakhir</th>
+                  <th className="px-5 py-3 text-right">Pemberitahuan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -182,6 +190,25 @@ export default function KetuaUsersPage() {
                     </td>
                     <td className="px-5 py-3 text-gray-600">{formatTanggal(user.last_login)}</td>
                     <td className="px-5 py-3 text-gray-600">{formatTanggal(user.password_reset_at)}</td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTagihanTarget({
+                            satker_id: user.satker_id || null,
+                            kode_satker: user.satker_kode || null,
+                            target_user_id: user.id,
+                            eselon_1_id: user.eselon_1_id || null,
+                            nama_target: user.satker_nama || user.nama,
+                            sub_label: `Pengguna: ${user.nama} (@${user.username})`,
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                      >
+                        <BellRing className="w-3.5 h-3.5" />
+                        Kirim Pemberitahuan
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -222,6 +249,12 @@ export default function KetuaUsersPage() {
           </div>
         )}
       </div>
+
+      <TagihanDokumenModal
+        isOpen={Boolean(tagihanTarget)}
+        onClose={() => setTagihanTarget(null)}
+        target={tagihanTarget}
+      />
     </div>
   );
 }

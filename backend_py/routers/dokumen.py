@@ -479,6 +479,36 @@ async def upload_dokumen(
         
         nomor_laporan = buat_nomor_laporan(kat_row["slug"] if kat_row else "", tahun, insert_id)
         cursor.execute('UPDATE dokumen SET nomor_laporan = %s WHERE id = %s', (nomor_laporan, insert_id))
+
+        # Auto-update status tagihan dokumen jika ada pemberitahuan yang cocok
+        try:
+            u_satker = user.get("satker_id")
+            if u_satker:
+                cursor.execute(
+                    """
+                    UPDATE tagihan_dokumen
+                    SET status = 'sudah_diunggah', dokumen_id = %s
+                    WHERE status = 'belum_diunggah'
+                      AND (satker_id = %s OR target_user_id = %s)
+                      AND (kategori_id = %s OR kategori_id IS NULL)
+                      AND (tahun = %s OR tahun IS NULL)
+                    """,
+                    (insert_id, u_satker, user["id"], kategori_id, tahun),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE tagihan_dokumen
+                    SET status = 'sudah_diunggah', dokumen_id = %s
+                    WHERE status = 'belum_diunggah'
+                      AND target_user_id = %s
+                      AND (kategori_id = %s OR kategori_id IS NULL)
+                      AND (tahun = %s OR tahun IS NULL)
+                    """,
+                    (insert_id, user["id"], kategori_id, tahun),
+                )
+        except Exception:
+            pass
         
         # Jika Surat Pembukaan / Penutupan atau SK Piutang, langsung kirim notifikasi ke Admin Eselon 1
         if is_surat_rek or is_sk_piutang:
@@ -1508,6 +1538,21 @@ async def batch_save_dokumen(
             doc_id = cursor.lastrowid
             nomor_laporan = buat_nomor_laporan(kat_info["slug"] if kat_info else "", item.tahun, doc_id)
             cursor.execute("UPDATE dokumen SET nomor_laporan = %s WHERE id = %s", (nomor_laporan, doc_id))
+
+            try:
+                cursor.execute(
+                    """
+                    UPDATE tagihan_dokumen
+                    SET status = 'sudah_diunggah', dokumen_id = %s
+                    WHERE status = 'belum_diunggah'
+                      AND (satker_id = %s OR target_user_id = %s)
+                      AND (kategori_id = %s OR kategori_id IS NULL)
+                      AND (tahun = %s OR tahun IS NULL)
+                    """,
+                    (doc_id, target_satker_id, created_by, item.kategori_id, item.tahun),
+                )
+            except Exception:
+                pass
 
             # 2. Insert ke rekening_koran jika kategori Rekening Koran
             BULAN_NAMES_ID = {
