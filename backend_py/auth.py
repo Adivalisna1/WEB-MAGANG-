@@ -48,6 +48,20 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
                 raise HTTPException(status_code=401, detail="Sesi tidak valid: Akun tidak ditemukan di sistem")
             if not user.get('is_active', 1):
                 raise HTTPException(status_code=401, detail="Sesi berakhir: Akun telah dinonaktifkan oleh Administrator")
+
+            # Validasi apakah sesi sudah logout / dicabut
+            session_id = payload.get("sessionId")
+            if session_id:
+                cursor.execute(
+                    "SELECT is_online FROM user_sessions WHERE id = %s AND user_id = %s LIMIT 1",
+                    (session_id, user["id"])
+                )
+                sess_row = cursor.fetchone()
+                if sess_row and not sess_row.get("is_online"):
+                    raise HTTPException(status_code=401, detail="Sesi telah berakhir (logged out), silakan login kembali")
+                if sess_row:
+                    cursor.execute("UPDATE user_sessions SET last_active_at = NOW() WHERE id = %s", (session_id,))
+                    db.commit()
             
             payload['role_id'] = user['role_id']
             payload['role'] = user['role']

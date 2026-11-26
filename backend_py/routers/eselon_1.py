@@ -503,6 +503,11 @@ async def export_zip_rekening_koran(
         raise HTTPException(status_code=400, detail="satker_id diperlukan")
         
     with db.cursor(dictionary=True) as cursor:
+        if current_user.get("tingkat") == "eselon_1" and current_user.get("eselon_1_id"):
+            cursor.execute("SELECT id FROM satkers WHERE id = %s AND eselon_1_id = %s", (satker_id, current_user["eselon_1_id"]))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=403, detail="Akses ditolak: Satker berada di luar binaan Eselon 1 Anda")
+
         cursor.execute("""
             SELECT d.id, d.judul, d.file_nama, d.file_path, d.file_mime, u.nama AS satker_nama
             FROM dokumen d
@@ -550,6 +555,10 @@ async def get_logs(
     offset = (page - 1) * limit
     where = "l.aksi NOT IN ('login', 'logout')"
     params = []
+
+    if current_user.get("tingkat") == "eselon_1" and current_user.get("eselon_1_id"):
+        where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
+        params.extend([current_user["eselon_1_id"], current_user["eselon_1_id"]])
     
     if user_id:
         where += " AND l.user_id = %s"
@@ -574,7 +583,7 @@ async def get_logs(
         cursor.execute(sql_log, tuple(params + [limit, offset]))
         rows = cursor.fetchall()
         
-        sql_total = "SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id WHERE " + where
+        sql_total = "SELECT COUNT(*) AS total FROM aktivitas_log l LEFT JOIN users u ON u.id = l.user_id LEFT JOIN satkers s ON s.id = u.satker_id WHERE " + where
         cursor.execute(sql_total, tuple(params))
         total = cursor.fetchone()["total"]
         

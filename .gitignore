@@ -109,3 +109,7 @@ backend_py/.pytest_cache/
 
 test_ai_web/
 extracted_scan.*
+
+# Sensitive Account Credentials
+akun semua user.txt
+data_excel/akun/

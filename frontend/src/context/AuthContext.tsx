@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       res.data.user.is_it ||
       r === 'admin_it' ||
       r === 'it' ||
-      (t === 'kl' && (res.data.user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(res.data.user.username)))
+      (t === 'kl' && (res.data.user.permissions?.can_manage_users || res.data.user.username === 'it_admin'))
     );
 
     if (isIt) {
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user?.role === 'admin_it' ||
     user?.role === 'it' ||
     user?.role_id === 3 ||
-    (user?.tingkat === 'kl' && (user?.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user?.username || '')))
+    (user?.tingkat === 'kl' && (user?.permissions?.can_manage_users || user?.username === 'it_admin'))
   );
   const isPimpinan = Boolean(
     user?.role === 'pimpinan_satker' || 

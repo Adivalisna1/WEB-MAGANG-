@@ -1,14 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { getSession, getProfilePhotoUrl } from '@/lib/auth';
+import { useEffect, useState, useCallback } from "react";
+import { getSession, getProfilePhotoUrl } from "@/lib/auth";
 import {
-  Users, Loader2, RefreshCw, AlertCircle, Search, BellRing
-} from 'lucide-react';
-import clsx from 'clsx';
-import TagihanDokumenModal, { TagihanTarget } from '@/components/eselon-1/TagihanDokumenModal';
+  Users,
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  Search,
+  BellRing,
+} from "lucide-react";
+import clsx from "clsx";
+import TagihanDokumenModal, {
+  TagihanTarget,
+} from "@/components/eselon-1/TagihanDokumenModal";
 
-const API = typeof window !== "undefined" && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:5000/api` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
+const API =
+  typeof window !== "undefined" && window.location.hostname
+    ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 interface UserRow {
   id: number;
@@ -28,45 +38,50 @@ interface UserRow {
 }
 
 const ROLE_BADGE: Record<string, string> = {
-  operator: 'bg-blue-100 text-blue-700',
-  manajemen: 'bg-yellow-100 text-yellow-700',
-  administrasi: 'bg-yellow-100 text-yellow-700',
-  it: 'bg-sky-100 text-sky-700',
-  pimpinan_satker: 'bg-yellow-100 text-yellow-700',
-  staff_satker: 'bg-blue-100 text-blue-700',
-  staff_eselon_1: 'bg-indigo-100 text-indigo-700',
-  Pimpinan: 'bg-yellow-100 text-yellow-700',
-  Satker: 'bg-blue-100 text-blue-700',
-  ketua_tim: 'bg-blue-100 text-blue-700',
+  operator: "bg-blue-100 text-blue-700",
+  manajemen: "bg-yellow-100 text-yellow-700",
+  administrasi: "bg-yellow-100 text-yellow-700",
+  it: "bg-sky-100 text-sky-700",
+  pimpinan_satker: "bg-yellow-100 text-yellow-700",
+  staff_satker: "bg-blue-100 text-blue-700",
+  staff_eselon_1: "bg-indigo-100 text-indigo-700",
+  Pimpinan: "bg-yellow-100 text-yellow-700",
+  Satker: "bg-blue-100 text-blue-700",
+  ketua_tim: "bg-blue-100 text-blue-700",
 };
 const ROLE_LABEL: Record<string, string> = {
-  operator: 'Operator',
-  manajemen: 'Manajemen',
-  administrasi: 'Manajemen',
-  it: 'IT Admin',
-  pimpinan_satker: 'Manajemen Satker',
-  staff_satker: 'Operator Satker',
-  staff_eselon_1: 'Staff Satker Eselon 1',
-  ketua_tim: 'Eselon 1',
-  satker: 'Satker',
+  operator: "Operator",
+  manajemen: "Manajemen",
+  administrasi: "Manajemen",
+  it: "IT Admin",
+  pimpinan_satker: "Manajemen Satker",
+  staff_satker: "Operator Satker",
+  staff_eselon_1: "Staff Satker Eselon 1",
+  ketua_tim: "Eselon 1",
+  satker: "Satker",
 };
 
 function formatTanggal(dt: string | null): string {
-  if (!dt) return '-';
-  return new Date(dt).toLocaleString('id-ID', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+  if (!dt) return "-";
+  return new Date(dt).toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 export default function KetuaUsersPage() {
-  const [users,      setUsers]      = useState<UserRow[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(null);
+  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(
+    null,
+  );
   const itemsPerPage = 20;
 
   const fetchUsers = useCallback(async () => {
@@ -78,40 +93,52 @@ export default function KetuaUsersPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || json.message);
       setUsers(json.data);
-      setError('');
+      setError("");
     } catch (e: any) {
-      setError(e.message || 'Gagal memuat daftar user');
+      setError(e.message || "Gagal memuat daftar user");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const filteredUsers = users.filter(user =>
-    user.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.satker_nama?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter(
+    (user) =>
+      user.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.satker_nama?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const currentUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const currentUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pemantauan Pengguna</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Pemantauan Pengguna
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Memantau status dan riwayat login pengguna Satker & Unit binaan. Pengelolaan akun (reset password & aktivasi) dikelola oleh Staff IT.
+            Memantau status dan riwayat login pengguna Satker & Unit binaan.
+            Pengelolaan akun (reset password & aktivasi) dikelola oleh Staff IT.
           </p>
         </div>
         <button
-          onClick={() => { setLoading(true); fetchUsers(); }}
+          onClick={() => {
+            setLoading(true);
+            fetchUsers();
+          }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
         >
           <RefreshCw className="w-4 h-4" /> Refresh
@@ -176,29 +203,46 @@ export default function KetuaUsersPage() {
                           )}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{user.nama}</p>
-                          <p className="text-xs text-gray-400">@{user.username}</p>
+                          <p className="font-medium text-gray-900">
+                            {user.nama}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            @{user.username}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-3">
-                      <span className={clsx('px-2.5 py-1 rounded-full text-xs font-medium', ROLE_BADGE[user.role] || 'bg-gray-100')}>
+                      <span
+                        className={clsx(
+                          "px-2.5 py-1 rounded-full text-xs font-medium",
+                          ROLE_BADGE[user.role] || "bg-gray-100",
+                        )}
+                      >
                         {ROLE_LABEL[user.role] ?? user.role}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-gray-600 font-medium">
-                      {user.satker_nama || '-'}
+                      {user.satker_nama || "-"}
                     </td>
                     <td className="px-5 py-3">
-                      <span className={clsx(
-                        'px-2.5 py-1 rounded-full text-xs font-medium',
-                        user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                      )}>
-                        {user.is_active ? 'Aktif' : 'Nonaktif'}
+                      <span
+                        className={clsx(
+                          "px-2.5 py-1 rounded-full text-xs font-medium",
+                          user.is_active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-600",
+                        )}
+                      >
+                        {user.is_active ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-gray-600">{formatTanggal(user.last_login)}</td>
-                    <td className="px-5 py-3 text-gray-600">{formatTanggal(user.password_reset_at)}</td>
+                    <td className="px-5 py-3 text-gray-600">
+                      {formatTanggal(user.last_login)}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600">
+                      {formatTanggal(user.password_reset_at)}
+                    </td>
                     <td className="px-5 py-3 text-right">
                       <button
                         type="button"
@@ -228,16 +272,18 @@ export default function KetuaUsersPage() {
                 Belum ada pengguna
               </div>
             )}
-            
+
             {filteredUsers.length > 0 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
                 <div className="text-sm text-gray-500">
-                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredUsers.length)} dari {filteredUsers.length}
+                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{" "}
+                  {Math.min(currentPage * itemsPerPage, filteredUsers.length)}{" "}
+                  dari {filteredUsers.length}
                 </div>
                 <div className="flex gap-2">
-                  <button 
-                    disabled={currentPage === 1} 
-                    onClick={() => setCurrentPage(p => p - 1)} 
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
                     className="px-3 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Sebelumnya
@@ -245,9 +291,9 @@ export default function KetuaUsersPage() {
                   <span className="text-xs text-gray-500 self-center">
                     Hal {currentPage} dari {Math.max(1, totalPages)}
                   </span>
-                  <button 
-                    disabled={currentPage >= totalPages} 
-                    onClick={() => setCurrentPage(p => p + 1)} 
+                  <button
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
                     className="px-3 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Selanjutnya

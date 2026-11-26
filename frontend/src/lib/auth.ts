@@ -52,7 +52,7 @@ export interface LoginResponse {
   };
 }
 
-// Login â€” simpan token ke localStorage
+// Login — simpan token ke localStorage
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const apiUrl = getClientApi();
   const res = await fetch(`${apiUrl}/auth/login`, {
@@ -61,7 +61,15 @@ export async function login(username: string, password: string): Promise<LoginRe
     body: JSON.stringify({ username, password }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || data.message || 'Login gagal');
+  if (!res.ok) {
+    const err: any = new Error(data.detail || data.message || 'Login gagal');
+    err.status = res.status;
+    err.lock_level = data.lock_level || 0;
+    err.failed_attempts = data.failed_attempts || 0;
+    err.retry_after_seconds = data.retry_after_seconds || 0;
+    err.contact_it = Boolean(data.contact_it);
+    throw err;
+  }
   return data;
 }
 

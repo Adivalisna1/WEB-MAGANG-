@@ -270,13 +270,22 @@ async def update_rumus(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Mengubah rumus jika is_locked == 0
+    Mengubah rumus jika is_locked == 0 (Khusus Admin IT atau Administrasi Eselon 1/KL)
     """
+    user_role = current_user.get("role")
+    user_tingkat = current_user.get("tingkat")
+    is_it = bool(current_user.get("is_it") or user_role in ["it", "admin_it"] or current_user.get("role_id") == 3)
+    is_admin = bool(user_role in ["administrasi", "manajemen"] or current_user.get("role_id") == 2)
+    if not is_it and not (is_admin and user_tingkat in ["eselon_1", "kl"]):
+        raise HTTPException(status_code=403, detail="Hanya Admin IT atau Administrasi Eselon 1 yang berhak mengubah rumus.")
+
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM kertas_kerja_rumus WHERE id = %s", (rumus_id,))
         existing = cursor.fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="Rumus tidak ditemukan")
+        if not is_it and user_tingkat == "eselon_1" and existing.get("eselon_1_id") != current_user.get("eselon_1_id"):
+            raise HTTPException(status_code=403, detail="Akses ditolak: Anda hanya dapat mengubah rumus unit Eselon 1 Anda.")
 
         # Cek proteksi lock: jika terkunci, perbolehkan update opsi tampilan tipe_subtotal (Subtotal vs Total)
         if existing["is_locked"] == 1:
@@ -328,11 +337,20 @@ async def delete_rumus(
     db=Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    user_role = current_user.get("role")
+    user_tingkat = current_user.get("tingkat")
+    is_it = bool(current_user.get("is_it") or user_role in ["it", "admin_it"] or current_user.get("role_id") == 3)
+    is_admin = bool(user_role in ["administrasi", "manajemen"] or current_user.get("role_id") == 2)
+    if not is_it and not (is_admin and user_tingkat in ["eselon_1", "kl"]):
+        raise HTTPException(status_code=403, detail="Hanya Admin IT atau Administrasi Eselon 1 yang berhak menghapus rumus.")
+
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM kertas_kerja_rumus WHERE id = %s", (rumus_id,))
         existing = cursor.fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="Rumus tidak ditemukan")
+        if not is_it and user_tingkat == "eselon_1" and existing.get("eselon_1_id") != current_user.get("eselon_1_id"):
+            raise HTTPException(status_code=403, detail="Akses ditolak: Anda hanya dapat menghapus rumus unit Eselon 1 Anda.")
 
         if existing["is_locked"] == 1:
             raise HTTPException(
@@ -372,6 +390,9 @@ async def get_kertas_kerja_transaksi(
         if target_satker_id:
             where_clauses.append("kks.satker_id = %s")
             params.append(target_satker_id)
+        if current_user.get("tingkat") == "eselon_1" and current_user.get("eselon_1_id") and not current_user.get("is_it"):
+            where_clauses.append("s.eselon_1_id = %s")
+            params.append(current_user["eselon_1_id"])
         if rumus_id:
             where_clauses.append("kks.rumus_id = %s")
             params.append(rumus_id)
@@ -414,7 +435,8 @@ async def get_kertas_kerja_transaksi_by_id(
     """
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
-            SELECT kks.*, s.nama as satker_nama, s.NO_Satker as satker_kode, r.nama_rumus, u.nama as pengisi_nama
+            SELECT kks.*, s.nama as satker_nama, s.NO_Satker as satker_kode, s.eselon_1_id as satker_eselon_1_id,
+                   r.nama_rumus, u.nama as pengisi_nama
             FROM kertas_kerja_satker kks
             JOIN satkers s ON s.id = kks.satker_id
             JOIN kertas_kerja_rumus r ON r.id = kks.rumus_id
@@ -424,6 +446,13 @@ async def get_kertas_kerja_transaksi_by_id(
         sub = cursor.fetchone()
         if not sub:
             raise HTTPException(status_code=404, detail="Data Kertas Kerja tidak ditemukan")
+
+        is_global = bool(current_user.get("is_it") or current_user.get("role") in ["it", "admin_it"] or current_user.get("tingkat") == "kl")
+        if not is_global:
+            if current_user.get("tingkat") == "satker" and sub.get("satker_id") != current_user.get("satker_id"):
+                raise HTTPException(status_code=403, detail="Akses ditolak: Data kertas kerja milik Satker lain")
+            if current_user.get("tingkat") == "eselon_1" and current_user.get("eselon_1_id") and sub.get("satker_eselon_1_id") != current_user.get("eselon_1_id"):
+                raise HTTPException(status_code=403, detail="Akses ditolak: Data kertas kerja di luar Eselon 1 binaan Anda")
 
         cursor.execute("""
             SELECT kn.rumus_item_id, kn.akun_id, kn.nominal, ma.kode_akun, ma.nama_akun
@@ -527,7 +556,8 @@ async def export_kertas_kerja(
 ):
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("""
-            SELECT kks.*, s.nama as satker_nama, s.NO_Satker as satker_kode, r.nama_rumus, u.nama as pengisi_nama
+            SELECT kks.*, s.nama as satker_nama, s.NO_Satker as satker_kode, s.eselon_1_id as satker_eselon_1_id,
+                   r.nama_rumus, u.nama as pengisi_nama
             FROM kertas_kerja_satker kks
             JOIN satkers s ON s.id = kks.satker_id
             JOIN kertas_kerja_rumus r ON r.id = kks.rumus_id
@@ -537,6 +567,13 @@ async def export_kertas_kerja(
         kk = cursor.fetchone()
         if not kk:
             raise HTTPException(status_code=404, detail="Data Kertas Kerja tidak ditemukan")
+
+        is_global = bool(current_user.get("is_it") or current_user.get("role") in ["it", "admin_it"] or current_user.get("tingkat") == "kl")
+        if not is_global:
+            if current_user.get("tingkat") == "satker" and kk.get("satker_id") != current_user.get("satker_id"):
+                raise HTTPException(status_code=403, detail="Akses ditolak: Data kertas kerja milik Satker lain")
+            if current_user.get("tingkat") == "eselon_1" and current_user.get("eselon_1_id") and kk.get("satker_eselon_1_id") != current_user.get("eselon_1_id"):
+                raise HTTPException(status_code=403, detail="Akses ditolak: Data kertas kerja di luar Eselon 1 binaan Anda")
 
         # Ambil rincian seksi & nilai akun beserta tipe_subtotal
         cursor.execute("""
@@ -1166,6 +1203,9 @@ async def get_koreksi_requests(
         if user_tingkat == "satker" and user_satker:
             where_clauses.append("kr.satker_id = %s")
             params.append(user_satker)
+        elif user_tingkat == "eselon_1" and current_user.get("eselon_1_id") and not current_user.get("is_it"):
+            where_clauses.append("s.eselon_1_id = %s")
+            params.append(current_user["eselon_1_id"])
         if status:
             where_clauses.append("kr.status = %s")
             params.append(status)
@@ -1195,15 +1235,26 @@ async def approve_koreksi_request(
 ):
     user_role = current_user.get("role")
     user_tingkat = current_user.get("tingkat")
-    is_authorized = (user_tingkat in ["eselon_1", "kl"] or user_role in ["it", "admin_it", "administrasi"])
-    if not is_authorized:
+    is_it = bool(current_user.get("is_it") or user_role in ["it", "admin_it"] or current_user.get("role_id") == 3)
+    is_pejabat_eselon = (
+        user_tingkat in ["eselon_1", "kl"]
+        and (user_role in ["administrasi", "manajemen"] or current_user.get("role_id") == 2)
+    )
+    if not (is_it or is_pejabat_eselon):
         raise HTTPException(status_code=403, detail="Hanya pejabat Eselon 1 / K/L yang berhak menyetujui pembukaan gembok koreksi.")
 
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT * FROM kertas_kerja_koreksi_request WHERE id = %s", (request_id,))
+        cursor.execute("""
+            SELECT kr.*, s.eselon_1_id AS satker_eselon_1_id
+            FROM kertas_kerja_koreksi_request kr
+            LEFT JOIN satkers s ON s.id = kr.satker_id
+            WHERE kr.id = %s
+        """, (request_id,))
         req_item = cursor.fetchone()
         if not req_item:
             raise HTTPException(status_code=404, detail="Permohonan koreksi tidak ditemukan.")
+        if not is_it and user_tingkat == "eselon_1" and current_user.get("eselon_1_id") and req_item.get("satker_eselon_1_id") != current_user.get("eselon_1_id"):
+            raise HTTPException(status_code=403, detail="Akses ditolak: Satker di luar binaan Eselon 1 Anda.")
 
         cursor.execute("""
             UPDATE kertas_kerja_koreksi_request
@@ -1227,15 +1278,26 @@ async def reject_koreksi_request(
 ):
     user_role = current_user.get("role")
     user_tingkat = current_user.get("tingkat")
-    is_authorized = (user_tingkat in ["eselon_1", "kl"] or user_role in ["it", "admin_it", "administrasi"])
-    if not is_authorized:
+    is_it = bool(current_user.get("is_it") or user_role in ["it", "admin_it"] or current_user.get("role_id") == 3)
+    is_pejabat_eselon = (
+        user_tingkat in ["eselon_1", "kl"]
+        and (user_role in ["administrasi", "manajemen"] or current_user.get("role_id") == 2)
+    )
+    if not (is_it or is_pejabat_eselon):
         raise HTTPException(status_code=403, detail="Hanya pejabat Eselon 1 / K/L yang berhak menolak permohonan koreksi.")
 
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT * FROM kertas_kerja_koreksi_request WHERE id = %s", (request_id,))
+        cursor.execute("""
+            SELECT kr.*, s.eselon_1_id AS satker_eselon_1_id
+            FROM kertas_kerja_koreksi_request kr
+            LEFT JOIN satkers s ON s.id = kr.satker_id
+            WHERE kr.id = %s
+        """, (request_id,))
         req_item = cursor.fetchone()
         if not req_item:
             raise HTTPException(status_code=404, detail="Permohonan koreksi tidak ditemukan.")
+        if not is_it and user_tingkat == "eselon_1" and current_user.get("eselon_1_id") and req_item.get("satker_eselon_1_id") != current_user.get("eselon_1_id"):
+            raise HTTPException(status_code=403, detail="Akses ditolak: Satker di luar binaan Eselon 1 Anda.")
 
         cursor.execute("""
             UPDATE kertas_kerja_koreksi_request

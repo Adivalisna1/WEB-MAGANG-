@@ -90,6 +90,9 @@ async def get_rekening_koran(request: Request, user: dict = Depends(get_current_
         if filter_satker and str(filter_satker).strip() not in ["", "all", "0"]:
             where += " AND k.satker_id = %s"
             params.append(filter_satker)
+            if eselon_1_id:
+                where += " AND s.eselon_1_id = %s"
+                params.append(eselon_1_id)
         elif include_satkers == "true":
             if eselon_1_id:
                 where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"

@@ -34,7 +34,9 @@ import {
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { getClientApi, getSession } from "@/lib/auth";
-import TagihanDokumenModal, { TagihanTarget } from "@/components/eselon-1/TagihanDokumenModal";
+import TagihanDokumenModal, {
+  TagihanTarget,
+} from "@/components/eselon-1/TagihanDokumenModal";
 
 import {
   SatkerGeoData,
@@ -54,7 +56,10 @@ const formatRupiah = (val: number): string => {
   }).format(val);
 };
 
-export function matchEselon1(satkerEselon?: string | null, targetEselon?: string | null): boolean {
+export function matchEselon1(
+  satkerEselon?: string | null,
+  targetEselon?: string | null,
+): boolean {
   if (!targetEselon || targetEselon === "all") return true;
   if (!satkerEselon) return false;
 
@@ -64,8 +69,14 @@ export function matchEselon1(satkerEselon?: string | null, targetEselon?: string
   if (s === t || s.includes(t) || t.includes(s)) return true;
 
   // Ditjen Dikti / Pendidikan Tinggi
-  const isDiktiS = s.includes("dikti") || s.includes("pendidikan tinggi") || s.includes("tinggi");
-  const isDiktiT = t.includes("dikti") || t.includes("pendidikan tinggi") || t.includes("tinggi");
+  const isDiktiS =
+    s.includes("dikti") ||
+    s.includes("pendidikan tinggi") ||
+    s.includes("tinggi");
+  const isDiktiT =
+    t.includes("dikti") ||
+    t.includes("pendidikan tinggi") ||
+    t.includes("tinggi");
   if (isDiktiS && isDiktiT) return true;
 
   // Ditjen Vokasi / Pendidikan Vokasi
@@ -118,12 +129,18 @@ export default function SatkerIndonesiaMap({
 
   // Mode View: default 'wilayah' (lingkaran pengawasan + penanda satker)
   const [viewMode, setViewMode] = useState<"wilayah" | "satker">("wilayah");
-  const [selectedSatker, setSelectedSatker] = useState<SatkerGeoData | null>(null);
-  const [selectedWilayah, setSelectedWilayah] = useState<WilayahPengawasanKL | null>(null);
+  const [selectedSatker, setSelectedSatker] = useState<SatkerGeoData | null>(
+    null,
+  );
+  const [selectedWilayah, setSelectedWilayah] =
+    useState<WilayahPengawasanKL | null>(null);
   const [searchWilayahSatker, setSearchWilayahSatker] = useState<string>("");
-  const [expandedSatkerId, setExpandedSatkerId] = useState<number | string | null>(null);
+  const [expandedSatkerId, setExpandedSatkerId] = useState<
+    number | string | null
+  >(null);
 
-  const [filterEselon, setFilterEselon] = useState<string>(filterEselon1Initial);
+  const [filterEselon, setFilterEselon] =
+    useState<string>(filterEselon1Initial);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchSatker, setSearchSatker] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -132,10 +149,15 @@ export default function SatkerIndonesiaMap({
   // State Pop-up Analisis Satker & Wilayah
   const [analysisModalOpen, setAnalysisModalOpen] = useState<boolean>(false);
   const [analysisLoading, setAnalysisLoading] = useState<boolean>(false);
-  const [analysisMeta, setAnalysisMeta] = useState<{ badge: string; title: string } | null>(null);
+  const [analysisMeta, setAnalysisMeta] = useState<{
+    badge: string;
+    title: string;
+  } | null>(null);
   const [analysisText, setAnalysisText] = useState<string>("");
   const [copiedAnalysis, setCopiedAnalysis] = useState<boolean>(false);
-  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(null);
+  const [tagihanTarget, setTagihanTarget] = useState<TagihanTarget | null>(
+    null,
+  );
 
   const handleOpenAnalysis = async (satker: SatkerGeoData) => {
     setAnalysisMeta({
@@ -153,8 +175,10 @@ export default function SatkerIndonesiaMap({
       const res = await fetch(
         `${api}/stats/satker-analysis?kode=${encodeURIComponent(satker.kode)}&nama=${encodeURIComponent(satker.nama)}`,
         {
-          headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
-        }
+          headers: session?.token
+            ? { Authorization: `Bearer ${session.token}` }
+            : {},
+        },
       );
       if (res.ok) {
         const json = await res.json();
@@ -167,9 +191,15 @@ export default function SatkerIndonesiaMap({
     }
 
     const useLiveSaldo = Boolean(dbInfo?.has_live_saldo);
-    const saldoBuku = useLiveSaldo ? Number(dbInfo.live_saldo_buku) : satker.saldoBuku;
-    const saldoBank = useLiveSaldo ? Number(dbInfo.live_saldo_bank) : satker.saldoBank;
-    const selisih = useLiveSaldo ? Math.abs(saldoBank - saldoBuku) : Math.abs(satker.selisih);
+    const saldoBuku = useLiveSaldo
+      ? Number(dbInfo.live_saldo_buku)
+      : satker.saldoBuku;
+    const saldoBank = useLiveSaldo
+      ? Number(dbInfo.live_saldo_bank)
+      : satker.saldoBank;
+    const selisih = useLiveSaldo
+      ? Math.abs(saldoBank - saldoBuku)
+      : Math.abs(satker.selisih);
     const isZeroBoth = saldoBuku === 0 && saldoBank === 0;
     const isSeimbang = selisih === 0 && !isZeroBoth;
 
@@ -177,8 +207,12 @@ export default function SatkerIndonesiaMap({
     let dokumenLengkap = false;
 
     if (dbInfo && dbInfo.total_dokumen_db > 0) {
-      const ada = (dbInfo.dokumen_wajib || []).filter((d: any) => d.lengkap).map((d: any) => `${d.nama} (${d.jumlah} berkas)`);
-      const kurang = (dbInfo.dokumen_wajib || []).filter((d: any) => !d.lengkap).map((d: any) => d.nama);
+      const ada = (dbInfo.dokumen_wajib || [])
+        .filter((d: any) => d.lengkap)
+        .map((d: any) => `${d.nama} (${d.jumlah} berkas)`);
+      const kurang = (dbInfo.dokumen_wajib || [])
+        .filter((d: any) => !d.lengkap)
+        .map((d: any) => d.nama);
       dokumenLengkap = kurang.length === 0;
       if (dokumenLengkap) {
         kalimatDokumen = `Dari sisi kelengkapan administrasi di database, seluruh ${dbInfo.total_wajib} dokumen wajib satker sudah lengkap seluruhnya, meliputi ${ada.join(", ")}.`;
@@ -191,7 +225,8 @@ export default function SatkerIndonesiaMap({
       const belum = dokMap.filter((d) => d.status !== "Terverifikasi");
       dokumenLengkap = dokMap.length > 0 && belum.length === 0;
       if (dokMap.length === 0) {
-        kalimatDokumen = "Dari sisi kelengkapan administrasi, belum terdapat dokumen pendukung yang diunggah di database untuk satker ini.";
+        kalimatDokumen =
+          "Dari sisi kelengkapan administrasi, belum terdapat dokumen pendukung yang diunggah di database untuk satker ini.";
       } else if (dokumenLengkap) {
         kalimatDokumen = `Dari sisi kelengkapan administrasi, seluruh ${dokMap.length} dokumen pendukung yang dibutuhkan (${dokMap.map((d) => d.nama).join(", ")}) sudah tersedia seluruhnya.`;
       } else {
@@ -202,18 +237,21 @@ export default function SatkerIndonesiaMap({
     const kalimatSelisih = isZeroBoth
       ? "Saldo Kas Buku (BKU) dan Saldo Rekening Koran Bank satker ini masih tercatat sebesar Rp 0 karena belum ada data pelaporan kas maupun rekening koran yang masuk ke sistem."
       : isSeimbang
-      ? `Saldo Kas Buku (BKU) sebesar ${formatRupiah(saldoBuku)} dan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)} berada dalam kondisi seimbang dan cocok 100%, tanpa ada selisih (Rp 0).`
-      : `Saldo Kas Buku (BKU) tercatat sebesar ${formatRupiah(saldoBuku)}, sedangkan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)}, sehingga keduanya belum seimbang dan terdapat selisih sebesar ${formatRupiah(selisih)} (${saldoBank > saldoBuku ? "saldo Rekening Koran Bank lebih besar daripada saldo Kas Buku" : "saldo Kas Buku lebih besar daripada saldo Rekening Koran Bank"}).`;
+        ? `Saldo Kas Buku (BKU) sebesar ${formatRupiah(saldoBuku)} dan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)} berada dalam kondisi seimbang dan cocok 100%, tanpa ada selisih (Rp 0).`
+        : `Saldo Kas Buku (BKU) tercatat sebesar ${formatRupiah(saldoBuku)}, sedangkan Saldo Rekening Koran Bank sebesar ${formatRupiah(saldoBank)}, sehingga keduanya belum seimbang dan terdapat selisih sebesar ${formatRupiah(selisih)} (${saldoBank > saldoBuku ? "saldo Rekening Koran Bank lebih besar daripada saldo Kas Buku" : "saldo Kas Buku lebih besar daripada saldo Rekening Koran Bank"}).`;
 
     let kalimatPenutup = "";
     if (isZeroBoth && !dokumenLengkap) {
-      kalimatPenutup = "Secara keseluruhan, satker ini belum tertib dan belum dapat dinyatakan seimbang karena belum menyampaikan laporan saldo maupun dokumen yang dipersyaratkan. Satker wajib segera mengunggah seluruh dokumen yang dibutuhkan.";
+      kalimatPenutup =
+        "Secara keseluruhan, satker ini belum tertib dan belum dapat dinyatakan seimbang karena belum menyampaikan laporan saldo maupun dokumen yang dipersyaratkan. Satker wajib segera mengunggah seluruh dokumen yang dibutuhkan.";
     } else if (!isSeimbang && !isZeroBoth) {
       kalimatPenutup = `Secara keseluruhan, satker ini belum tertib karena masih terdapat selisih kas sebesar ${formatRupiah(selisih)}${dokumenLengkap ? "" : " serta masih ada kekurangan dokumen"}. Satker wajib segera melakukan penelusuran transaksi, rekonsiliasi ulang, dan melengkapi seluruh dokumen pendukung.`;
     } else if (!dokumenLengkap) {
-      kalimatPenutup = "Meskipun saldo kas sudah seimbang, secara keseluruhan pelaporan satker ini belum sepenuhnya lengkap karena masih terdapat dokumen yang belum diunggah. Satker diminta segera melengkapi kekurangan dokumen tersebut.";
+      kalimatPenutup =
+        "Meskipun saldo kas sudah seimbang, secara keseluruhan pelaporan satker ini belum sepenuhnya lengkap karena masih terdapat dokumen yang belum diunggah. Satker diminta segera melengkapi kekurangan dokumen tersebut.";
     } else {
-      kalimatPenutup = "Secara keseluruhan, satker ini sudah tertib baik dari sisi keseimbangan saldo kas maupun kelengkapan seluruh dokumen pendukung.";
+      kalimatPenutup =
+        "Secara keseluruhan, satker ini sudah tertib baik dari sisi keseimbangan saldo kas maupun kelengkapan seluruh dokumen pendukung.";
     }
 
     const tanggalCetak = new Date().toLocaleDateString("id-ID", {
@@ -232,7 +270,10 @@ export default function SatkerIndonesiaMap({
     setAnalysisLoading(false);
   };
 
-  const handleOpenWilayahAnalysis = (wilayah: WilayahPengawasanKL, satkers: SatkerGeoData[]) => {
+  const handleOpenWilayahAnalysis = (
+    wilayah: WilayahPengawasanKL,
+    satkers: SatkerGeoData[],
+  ) => {
     setAnalysisMeta({
       badge: `ANALISIS WILAYAH ${wilayah.kodeWilayah}`,
       title: wilayah.nama,
@@ -247,16 +288,22 @@ export default function SatkerIndonesiaMap({
     const totalBuku = list.reduce((sum, s) => sum + s.saldoBuku, 0);
     const totalSelisih = list.reduce((sum, s) => sum + Math.abs(s.selisih), 0);
 
-    const satkerBelumLapor = list.filter((s) => s.saldoBank === 0 && s.saldoBuku === 0);
+    const satkerBelumLapor = list.filter(
+      (s) => s.saldoBank === 0 && s.saldoBuku === 0,
+    );
     const satkerSelisih = list.filter((s) => Math.abs(s.selisih) > 0);
     const satkerSeimbang = list.filter(
-      (s) => Math.abs(s.selisih) === 0 && !(s.saldoBank === 0 && s.saldoBuku === 0)
+      (s) =>
+        Math.abs(s.selisih) === 0 && !(s.saldoBank === 0 && s.saldoBuku === 0),
     );
     const satkerDokKurang = list.filter((s) =>
-      (s.dokumenList || []).some((d) => d.status !== "Terverifikasi")
+      (s.dokumenList || []).some((d) => d.status !== "Terverifikasi"),
     );
 
-    const pctSeimbang = totalSatker > 0 ? Math.round((satkerSeimbang.length / totalSatker) * 100) : 0;
+    const pctSeimbang =
+      totalSatker > 0
+        ? Math.round((satkerSeimbang.length / totalSatker) * 100)
+        : 0;
 
     const tanggalCetak = new Date().toLocaleDateString("id-ID", {
       day: "numeric",
@@ -282,7 +329,7 @@ export default function SatkerIndonesiaMap({
         .map((s) => `${s.nama} (${formatRupiah(Math.abs(s.selisih))})`)
         .join(", ");
       rincianPerhatian.push(
-        `satuan kerja yang memiliki selisih kas yaitu ${topSelisih}${satkerSelisih.length > 4 ? ` dan ${satkerSelisih.length - 4} satuan kerja lainnya` : ""}`
+        `satuan kerja yang memiliki selisih kas yaitu ${topSelisih}${satkerSelisih.length > 4 ? ` dan ${satkerSelisih.length - 4} satuan kerja lainnya` : ""}`,
       );
     }
     if (satkerDokKurang.length > 0) {
@@ -291,7 +338,7 @@ export default function SatkerIndonesiaMap({
         .map((s) => s.nama)
         .join(", ");
       rincianPerhatian.push(
-        `${satkerDokKurang.length} satuan kerja yang kelengkapan dokumennya masih belum lengkap antara lain ${topDok}${satkerDokKurang.length > 4 ? ` dan ${satkerDokKurang.length - 4} lainnya` : ""}`
+        `${satkerDokKurang.length} satuan kerja yang kelengkapan dokumennya masih belum lengkap antara lain ${topDok}${satkerDokKurang.length > 4 ? ` dan ${satkerDokKurang.length - 4} lainnya` : ""}`,
       );
     }
 
@@ -301,7 +348,9 @@ export default function SatkerIndonesiaMap({
         : `Dari sisi kepatuhan dan kelengkapan administrasi wilayah, seluruh satuan kerja di wilayah ini sudah melengkapi dokumen pendukung tanpa kendala.`;
 
     const p4 =
-      satkerSelisih.length === 0 && satkerBelumLapor.length === 0 && satkerDokKurang.length === 0
+      satkerSelisih.length === 0 &&
+      satkerBelumLapor.length === 0 &&
+      satkerDokKurang.length === 0
         ? `Secara keseluruhan, kondisi rekonsiliasi kas dan pelaporan dokumen pada wilayah ${wilayah.nama} sudah tertib dan seimbang.`
         : `Secara keseluruhan, unit pembina ${wilayah.eselon1} perlu menindaklanjuti satuan kerja di wilayah ${wilayah.nama} yang masih memiliki selisih kas maupun kekurangan dokumen agar segera melakukan rekonsiliasi dan melengkapi berkas pelaporan.`;
 
@@ -363,15 +412,29 @@ export default function SatkerIndonesiaMap({
   // Wilayah Pengawasan K/L Teragregasi (dengan data satker binaan & total saldo)
   const aggregatedWilayah = useMemo(() => {
     return WILAYAH_PENGAWASAN_KL_LIST.map((w) => {
-      const satkersInWilayah = SATKER_INDONESIA_LIST.filter((s) =>
-        w.satkerIds.includes(s.id) &&
-        (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon))
+      const satkersInWilayah = SATKER_INDONESIA_LIST.filter(
+        (s) =>
+          w.satkerIds.includes(s.id) &&
+          (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon)),
       );
-      const totalBuku = satkersInWilayah.reduce((acc, s) => acc + s.saldoBuku, 0);
-      const totalBank = satkersInWilayah.reduce((acc, s) => acc + s.saldoBank, 0);
-      const totalSelisih = satkersInWilayah.reduce((acc, s) => acc + s.selisih, 0);
-      const matchCount = satkersInWilayah.filter((s) => s.status === "match").length;
-      const selisihCount = satkersInWilayah.filter((s) => s.status === "selisih").length;
+      const totalBuku = satkersInWilayah.reduce(
+        (acc, s) => acc + s.saldoBuku,
+        0,
+      );
+      const totalBank = satkersInWilayah.reduce(
+        (acc, s) => acc + s.saldoBank,
+        0,
+      );
+      const totalSelisih = satkersInWilayah.reduce(
+        (acc, s) => acc + s.selisih,
+        0,
+      );
+      const matchCount = satkersInWilayah.filter(
+        (s) => s.status === "match",
+      ).length;
+      const selisihCount = satkersInWilayah.filter(
+        (s) => s.status === "selisih",
+      ).length;
       const hasSelisih = selisihCount > 0;
       return {
         ...w,
@@ -399,7 +462,7 @@ export default function SatkerIndonesiaMap({
           (s) =>
             s.nama.toLowerCase().includes(query) ||
             s.kota.toLowerCase().includes(query) ||
-            s.kode.toLowerCase().includes(query)
+            s.kode.toLowerCase().includes(query),
         );
         if (!matchName && !matchSatker) return false;
       }
@@ -411,16 +474,30 @@ export default function SatkerIndonesiaMap({
   const stats = useMemo(() => {
     if (viewMode === "wilayah") {
       const totalWilayah = filteredWilayah.length;
-      const totalSatker = filteredWilayah.reduce((acc, w) => acc + w.satkers.length, 0);
+      const totalSatker = filteredWilayah.reduce(
+        (acc, w) => acc + w.satkers.length,
+        0,
+      );
       const match = filteredWilayah.reduce((acc, w) => acc + w.matchCount, 0);
-      const selisih = filteredWilayah.reduce((acc, w) => acc + w.selisihCount, 0);
-      const totalSaldo = filteredWilayah.reduce((acc, w) => acc + w.totalBank, 0);
+      const selisih = filteredWilayah.reduce(
+        (acc, w) => acc + w.selisihCount,
+        0,
+      );
+      const totalSaldo = filteredWilayah.reduce(
+        (acc, w) => acc + w.totalBank,
+        0,
+      );
       return { totalWilayah, totalSatker, match, selisih, totalSaldo };
     } else {
       const totalSatker = filteredSatkers.length;
       const match = filteredSatkers.filter((s) => s.status === "match").length;
-      const selisih = filteredSatkers.filter((s) => s.status === "selisih").length;
-      const totalSaldo = filteredSatkers.reduce((acc, s) => acc + s.saldoBank, 0);
+      const selisih = filteredSatkers.filter(
+        (s) => s.status === "selisih",
+      ).length;
+      const totalSaldo = filteredSatkers.reduce(
+        (acc, s) => acc + s.saldoBank,
+        0,
+      );
       return { totalWilayah: 0, totalSatker, match, selisih, totalSaldo };
     }
   }, [viewMode, filteredWilayah, filteredSatkers]);
@@ -439,7 +516,7 @@ export default function SatkerIndonesiaMap({
           // Center titik tengah Indonesia (Kepulauan Nusantara) & kunci batas wilayah Indonesia
           const indonesiaBounds = L.latLngBounds(
             L.latLng(-12.5, 93.0),
-            L.latLng(7.5, 143.0)
+            L.latLng(7.5, 143.0),
           );
           const map = L.map(mapContainerRef.current, {
             center: [-2.5, 118.0],
@@ -454,16 +531,13 @@ export default function SatkerIndonesiaMap({
           });
 
           // OpenStreetMap Public Tile Layer (100% Free, No Watermark, No API Key, Optimized)
-          L.tileLayer(
-            "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-            {
-              attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
-              maxZoom: 18,
-              updateWhenIdle: true,
-              keepBuffer: 2,
-            }
-          ).addTo(map);
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+            maxZoom: 18,
+            updateWhenIdle: true,
+            keepBuffer: 2,
+          }).addTo(map);
 
           // Add Zoom control at top-right
           L.control.zoom({ position: "topright" }).addTo(map);
@@ -505,7 +579,9 @@ export default function SatkerIndonesiaMap({
         filteredWilayah.forEach((w) => {
           const isSelected = selectedWilayah?.id === w.id;
           const circleColor = w.hasSelisih ? "#ef4444" : "#10b981"; // Amber vs Emerald
-          const circleFill = w.hasSelisih ? "rgba(239, 68, 68, 0.16)" : "rgba(16, 185, 129, 0.14)";
+          const circleFill = w.hasSelisih
+            ? "rgba(239, 68, 68, 0.16)"
+            : "rgba(16, 185, 129, 0.14)";
 
           // Gambar Lingkaran Jangkauan Wilayah Pengawasan K/L
           const circle = L.circle([w.lat, w.lng], {
@@ -529,7 +605,9 @@ export default function SatkerIndonesiaMap({
           circlesRef.current.push(circle);
 
           // Simpul Utama Wilayah Pengawasan
-          const pulseColor = w.hasSelisih ? "rgba(239, 68, 68, 0.45)" : "rgba(16, 185, 129, 0.45)";
+          const pulseColor = w.hasSelisih
+            ? "rgba(239, 68, 68, 0.45)"
+            : "rgba(16, 185, 129, 0.45)";
           const shortCode = w.kodeWilayah.replace("WIL-", "W-");
 
           const customIcon = L.divIcon({
@@ -552,17 +630,17 @@ export default function SatkerIndonesiaMap({
           });
 
           const marker = L.marker([w.lat, w.lng], { icon: customIcon }).addTo(
-            mapInstanceRef.current
+            mapInstanceRef.current,
           );
 
           marker.bindTooltip(
             `<strong>${w.nama}</strong><br/>
              <span style="font-size: 11px; color: #64748b;">Pengawas: ${w.eselon1}</span><br/>
              <span style="font-size: 11px; font-weight: 600; color: #0f172a;">${w.satkers.length} Satker Diawasi &bull; Saldo: ${formatRupiah(w.totalBank)}</span><br/>
-             <span style="font-size: 10px; color: ${w.hasSelisih ? '#dc2626' : '#059669'}; font-weight: 600;">
-               ${w.hasSelisih ? '⚠️ ' + w.selisihCount + ' Satker Ada Selisih' : '✓ Semua Satker Saldo Seimbang'}
+             <span style="font-size: 10px; color: ${w.hasSelisih ? "#dc2626" : "#059669"}; font-weight: 600;">
+               ${w.hasSelisih ? "⚠️ " + w.selisihCount + " Satker Ada Selisih" : "✓ Semua Satker Saldo Seimbang"}
              </span>`,
-            { direction: "top", offset: [0, -22], opacity: 0.95 }
+            { direction: "top", offset: [0, -22], opacity: 0.95 },
           );
 
           marker.on("click", () => {
@@ -588,7 +666,7 @@ export default function SatkerIndonesiaMap({
               iconSize: [28, 28],
               iconAnchor: [14, 14],
               html: `
-                <div style="position: relative; width: 28px; height: 28px; border-radius: 50%; background-color: white; border: 2.5px solid ${childColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.22); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #1e293b; cursor: pointer; transform: ${isChildExpanded ? 'scale(1.2)' : 'scale(1)'}; transition: transform 0.2s;">
+                <div style="position: relative; width: 28px; height: 28px; border-radius: 50%; background-color: white; border: 2.5px solid ${childColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.22); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #1e293b; cursor: pointer; transform: ${isChildExpanded ? "scale(1.2)" : "scale(1)"}; transition: transform 0.2s;">
                   ${childSatker.nama.slice(0, 2).toUpperCase()}
                 </div>
               `,
@@ -600,10 +678,10 @@ export default function SatkerIndonesiaMap({
 
             childMarker.bindTooltip(
               `<strong>${childSatker.nama}</strong><br/>
-               <span style="font-size: 10px; color: ${childMatch ? '#059669' : '#dc2626'};">
-                 ${childMatch ? '✓ Saldo Kas Seimbang' : '⚠️ Selisih: ' + formatRupiah(childSatker.selisih)}
+               <span style="font-size: 10px; color: ${childMatch ? "#059669" : "#dc2626"};">
+                 ${childMatch ? "✓ Saldo Kas Seimbang" : "⚠️ Selisih: " + formatRupiah(childSatker.selisih)}
                </span>`,
-              { direction: "top", offset: [0, -14], opacity: 0.95 }
+              { direction: "top", offset: [0, -14], opacity: 0.95 },
             );
 
             childMarker.on("click", (e: any) => {
@@ -623,7 +701,9 @@ export default function SatkerIndonesiaMap({
         filteredSatkers.forEach((satker) => {
           const isMatch = satker.status === "match";
           const pinColor = isMatch ? "#10b981" : "#ef4444";
-          const pulseColor = isMatch ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)";
+          const pulseColor = isMatch
+            ? "rgba(16, 185, 129, 0.4)"
+            : "rgba(239, 68, 68, 0.4)";
 
           const customIcon = L.divIcon({
             className: "custom-satker-marker",
@@ -639,13 +719,13 @@ export default function SatkerIndonesiaMap({
             `,
           });
 
-          const marker = L.marker([satker.lat, satker.lng], { icon: customIcon }).addTo(
-            mapInstanceRef.current
-          );
+          const marker = L.marker([satker.lat, satker.lng], {
+            icon: customIcon,
+          }).addTo(mapInstanceRef.current);
 
           marker.bindTooltip(
-            `<strong>${satker.nama}</strong><br/><span style="font-size: 11px; color: ${isMatch ? '#059669' : '#dc2626'};">${isMatch ? '✓ Saldo Kas Seimbang' : '⚠️ Selisih: ' + formatRupiah(satker.selisih)}</span>`,
-            { direction: "top", offset: [0, -14], opacity: 0.95 }
+            `<strong>${satker.nama}</strong><br/><span style="font-size: 11px; color: ${isMatch ? "#059669" : "#dc2626"};">${isMatch ? "✓ Saldo Kas Seimbang" : "⚠️ Selisih: " + formatRupiah(satker.selisih)}</span>`,
+            { direction: "top", offset: [0, -14], opacity: 0.95 },
           );
 
           marker.on("click", () => {
@@ -676,9 +756,16 @@ export default function SatkerIndonesiaMap({
   };
 
   // Zoom ke Satker tertentu
-  const handleFocusSatker = (lat: number, lng: number, satkerId: number | string) => {
+  const handleFocusSatker = (
+    lat: number,
+    lng: number,
+    satkerId: number | string,
+  ) => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([lat, lng], 9, { animate: true, duration: 1 });
+      mapInstanceRef.current.flyTo([lat, lng], 9, {
+        animate: true,
+        duration: 1,
+      });
       setExpandedSatkerId(satkerId);
     }
   };
@@ -686,9 +773,10 @@ export default function SatkerIndonesiaMap({
   // Satker dalam wilayah terpilih (dengan pencarian internal menu & filter eselon)
   const activeWilayahSatkers = useMemo(() => {
     if (!selectedWilayah) return [];
-    const satkers = SATKER_INDONESIA_LIST.filter((s) =>
-      selectedWilayah.satkerIds.includes(s.id) &&
-      (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon))
+    const satkers = SATKER_INDONESIA_LIST.filter(
+      (s) =>
+        selectedWilayah.satkerIds.includes(s.id) &&
+        (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon)),
     );
     if (!searchWilayahSatker.trim()) return satkers;
     const q = searchWilayahSatker.toLowerCase();
@@ -696,16 +784,17 @@ export default function SatkerIndonesiaMap({
       (s) =>
         s.nama.toLowerCase().includes(q) ||
         s.kota.toLowerCase().includes(q) ||
-        s.kode.toLowerCase().includes(q)
+        s.kode.toLowerCase().includes(q),
     );
   }, [selectedWilayah, searchWilayahSatker, filterEselon]);
 
   // Agregasi saldo untuk wilayah terpilih
   const selectedWilayahTotals = useMemo(() => {
     if (!selectedWilayah) return null;
-    const satkers = SATKER_INDONESIA_LIST.filter((s) =>
-      selectedWilayah.satkerIds.includes(s.id) &&
-      (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon))
+    const satkers = SATKER_INDONESIA_LIST.filter(
+      (s) =>
+        selectedWilayah.satkerIds.includes(s.id) &&
+        (filterEselon === "all" || matchEselon1(s.eselon1, filterEselon)),
     );
     const totalBuku = satkers.reduce((acc, s) => acc + s.saldoBuku, 0);
     const totalBank = satkers.reduce((acc, s) => acc + s.saldoBank, 0);
@@ -730,7 +819,7 @@ export default function SatkerIndonesiaMap({
     <div
       className={clsx(
         "bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition-all duration-300",
-        isFullscreen ? "fixed inset-4 z-50 shadow-2xl" : "relative w-full"
+        isFullscreen ? "fixed inset-4 z-50 shadow-2xl" : "relative w-full",
       )}
     >
       {/* Header & Filter Controls */}
@@ -740,7 +829,9 @@ export default function SatkerIndonesiaMap({
             <div className="w-8 h-8 rounded-lg bg-[#1E90FF]/10 text-[#1E90FF] flex items-center justify-center">
               <MapPin className="w-4 h-4" />
             </div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">{title}</h2>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              {title}
+            </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
         </div>
@@ -758,7 +849,7 @@ export default function SatkerIndonesiaMap({
                 "px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
                 viewMode === "wilayah"
                   ? "bg-white text-blue-600 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900",
               )}
               title="Tampilkan Lingkaran Wilayah Pengawasan"
             >
@@ -774,7 +865,7 @@ export default function SatkerIndonesiaMap({
                 "px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5",
                 viewMode === "satker"
                   ? "bg-white text-blue-600 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900",
               )}
               title="Tampilkan Semua Penanda Satker Se-Nusantara"
             >
@@ -788,7 +879,11 @@ export default function SatkerIndonesiaMap({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder={viewMode === "wilayah" ? "Cari wilayah / satker..." : "Cari satker / kota..."}
+              placeholder={
+                viewMode === "wilayah"
+                  ? "Cari wilayah / satker..."
+                  : "Cari satker / kota..."
+              }
               value={searchSatker}
               onChange={(e) => setSearchSatker(e.target.value)}
               className="text-xs pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1E90FF] w-40 sm:w-48 shadow-2xs"
@@ -797,7 +892,10 @@ export default function SatkerIndonesiaMap({
 
           {/* Filter Eselon 1 */}
           {lockEselon1 ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-bold text-blue-700 shadow-2xs" title="Terkunci pada unit Eselon 1 akun Anda">
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-bold text-blue-700 shadow-2xs"
+              title="Terkunci pada unit Eselon 1 akun Anda"
+            >
               <Building2 className="w-3.5 h-3.5 text-blue-600" />
               <span>{filterEselon}</span>
             </div>
@@ -810,10 +908,16 @@ export default function SatkerIndonesiaMap({
                 className="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1E90FF] shadow-2xs"
               >
                 <option value="all">Semua Eselon 1</option>
-                <option value="Ditjen Dikti">Ditjen Pendidikan Tinggi (Dikti)</option>
-                <option value="Ditjen Vokasi">Ditjen Pendidikan Vokasi (Vokasi)</option>
+                <option value="Ditjen Dikti">
+                  Ditjen Pendidikan Tinggi (Dikti)
+                </option>
+                <option value="Ditjen Vokasi">
+                  Ditjen Pendidikan Vokasi (Vokasi)
+                </option>
                 <option value="Setjen">Sekretariat Jenderal (Setjen)</option>
-                <option value="Ditjen Risbang">Ditjen Riset & Pengembangan</option>
+                <option value="Ditjen Risbang">
+                  Ditjen Riset & Pengembangan
+                </option>
                 <option value="Ditjen Saintek">Ditjen Sains & Teknologi</option>
                 <option value="Itjen">Inspektorat Jenderal (Itjen)</option>
               </select>
@@ -849,7 +953,11 @@ export default function SatkerIndonesiaMap({
             className="p-1.5 text-slate-500 hover:text-slate-800 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
             title={isFullscreen ? "Kecilkan Tampilan" : "Perbesar Peta"}
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
@@ -860,11 +968,18 @@ export default function SatkerIndonesiaMap({
           {viewMode === "wilayah" ? (
             <span className="text-slate-600 font-medium flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-500" />
-              Wilayah Pengawasan: <strong className="text-slate-900 font-bold">{stats.totalWilayah} Zona</strong> ({stats.totalSatker} Satker Binaan)
+              Wilayah Pengawasan:{" "}
+              <strong className="text-slate-900 font-bold">
+                {stats.totalWilayah} Zona
+              </strong>{" "}
+              ({stats.totalSatker} Satker Binaan)
             </span>
           ) : (
             <span className="text-slate-500 font-medium">
-              Total Terpetakan: <strong className="text-slate-800 font-bold">{stats.totalSatker} Satker</strong>
+              Total Terpetakan:{" "}
+              <strong className="text-slate-800 font-bold">
+                {stats.totalSatker} Satker
+              </strong>
             </span>
           )}
           <span className="inline-flex items-center gap-1 text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
@@ -877,7 +992,10 @@ export default function SatkerIndonesiaMap({
           </span>
         </div>
         <div className="text-slate-500">
-          Akumulasi Kas Bank Terpetakan: <strong className="text-slate-900 font-bold">{formatRupiah(stats.totalSaldo)}</strong>
+          Akumulasi Kas Bank Terpetakan:{" "}
+          <strong className="text-slate-900 font-bold">
+            {formatRupiah(stats.totalSaldo)}
+          </strong>
         </div>
       </div>
 
@@ -888,18 +1006,24 @@ export default function SatkerIndonesiaMap({
         {/* Legend Peta (Floating di Kiri Bawah) */}
         <div className="absolute left-4 bottom-4 z-20 bg-white/95 backdrop-blur-xs p-3 rounded-xl border border-slate-200/80 shadow-md text-[11px] space-y-1.5 pointer-events-auto">
           <p className="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-1">
-            {viewMode === "wilayah" ? "Legenda Pengawasan K/L" : "Status Rekonsiliasi"}
+            {viewMode === "wilayah"
+              ? "Legenda Pengawasan K/L"
+              : "Status Rekonsiliasi"}
           </p>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
             <span className="text-slate-600">
-              {viewMode === "wilayah" ? "Zona Saldo Seimbang 100%" : "Saldo Seimbang (Match 100%)"}
+              {viewMode === "wilayah"
+                ? "Zona Saldo Seimbang 100%"
+                : "Saldo Seimbang (Match 100%)"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-200" />
             <span className="text-slate-600">
-              {viewMode === "wilayah" ? "Zona Ada Satker Selisih" : "Perlu Verifikasi / Selisih"}
+              {viewMode === "wilayah"
+                ? "Zona Ada Satker Selisih"
+                : "Perlu Verifikasi / Selisih"}
             </span>
           </div>
           {viewMode === "wilayah" && (
@@ -931,11 +1055,17 @@ export default function SatkerIndonesiaMap({
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  <span className="font-medium text-slate-700">Satker Koordinator:</span> {selectedWilayah.satkerUtama}
+                  <span className="font-medium text-slate-700">
+                    Satker Koordinator:
+                  </span>{" "}
+                  {selectedWilayah.satkerUtama}
                 </p>
                 <p className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span className="font-medium text-slate-700">Eselon 1 Pengawas:</span> {selectedWilayah.eselon1}
+                  <span className="font-medium text-slate-700">
+                    Eselon 1 Pengawas:
+                  </span>{" "}
+                  {selectedWilayah.eselon1}
                 </p>
               </div>
               <button
@@ -957,14 +1087,15 @@ export default function SatkerIndonesiaMap({
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                     <Coins className="w-3.5 h-3.5 text-amber-500" />
-                    Total Saldo Konsolidasi Wilayah ({selectedWilayahTotals.totalSatker} Satker)
+                    Total Saldo Konsolidasi Wilayah (
+                    {selectedWilayahTotals.totalSatker} Satker)
                   </span>
                   <span
                     className={clsx(
                       "px-2 py-0.5 rounded text-[10px] font-bold",
                       selectedWilayahTotals.totalSelisih === 0
                         ? "bg-emerald-100 text-emerald-800"
-                        : "bg-rose-100 text-rose-800"
+                        : "bg-rose-100 text-rose-800",
                     )}
                   >
                     {selectedWilayahTotals.totalSelisih === 0
@@ -979,7 +1110,10 @@ export default function SatkerIndonesiaMap({
                     <span className="text-[10px] uppercase font-semibold text-slate-400 block">
                       Kas Bank
                     </span>
-                    <p className="font-bold text-[#1E90FF] text-xs mt-0.5 truncate" title={formatRupiah(selectedWilayahTotals.totalBank)}>
+                    <p
+                      className="font-bold text-[#1E90FF] text-xs mt-0.5 truncate"
+                      title={formatRupiah(selectedWilayahTotals.totalBank)}
+                    >
                       {formatRupiah(selectedWilayahTotals.totalBank)}
                     </p>
                   </div>
@@ -987,7 +1121,10 @@ export default function SatkerIndonesiaMap({
                     <span className="text-[10px] uppercase font-semibold text-slate-400 block">
                       Kas Buku BKU
                     </span>
-                    <p className="font-bold text-slate-800 text-xs mt-0.5 truncate" title={formatRupiah(selectedWilayahTotals.totalBuku)}>
+                    <p
+                      className="font-bold text-slate-800 text-xs mt-0.5 truncate"
+                      title={formatRupiah(selectedWilayahTotals.totalBuku)}
+                    >
                       {formatRupiah(selectedWilayahTotals.totalBuku)}
                     </p>
                   </div>
@@ -998,11 +1135,15 @@ export default function SatkerIndonesiaMap({
                     <p
                       className={clsx(
                         "font-bold text-xs mt-0.5 truncate",
-                        selectedWilayahTotals.totalSelisih === 0 ? "text-emerald-600" : "text-rose-600"
+                        selectedWilayahTotals.totalSelisih === 0
+                          ? "text-emerald-600"
+                          : "text-rose-600",
                       )}
                       title={formatRupiah(selectedWilayahTotals.totalSelisih)}
                     >
-                      {selectedWilayahTotals.totalSelisih === 0 ? "Rp 0 (Seimbang)" : formatRupiah(selectedWilayahTotals.totalSelisih)}
+                      {selectedWilayahTotals.totalSelisih === 0
+                        ? "Rp 0 (Seimbang)"
+                        : formatRupiah(selectedWilayahTotals.totalSelisih)}
                     </p>
                   </div>
                 </div>
@@ -1012,17 +1153,23 @@ export default function SatkerIndonesiaMap({
                   <div className="flex justify-between text-[11px] text-slate-600">
                     <span>Tingkat Kepatuhan Rekonsiliasi</span>
                     <span className="font-bold text-slate-800">
-                      {selectedWilayahTotals.matchCount} dari {selectedWilayahTotals.totalSatker} Satker Seimbang ({selectedWilayahTotals.compliancePercent}%)
+                      {selectedWilayahTotals.matchCount} dari{" "}
+                      {selectedWilayahTotals.totalSatker} Satker Seimbang (
+                      {selectedWilayahTotals.compliancePercent}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
                     <div
                       className="bg-emerald-500 h-full transition-all duration-500"
-                      style={{ width: `${selectedWilayahTotals.compliancePercent}%` }}
+                      style={{
+                        width: `${selectedWilayahTotals.compliancePercent}%`,
+                      }}
                     />
                     <div
                       className="bg-rose-500 h-full transition-all duration-500"
-                      style={{ width: `${100 - selectedWilayahTotals.compliancePercent}%` }}
+                      style={{
+                        width: `${100 - selectedWilayahTotals.compliancePercent}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -1033,7 +1180,8 @@ export default function SatkerIndonesiaMap({
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                     <Landmark className="w-3.5 h-3.5 text-blue-600" />
-                    Daftar Satker yang Diawasi Eselon 1 ({activeWilayahSatkers.length} Satker)
+                    Daftar Satker yang Diawasi Eselon 1 (
+                    {activeWilayahSatkers.length} Satker)
                   </h4>
                 </div>
 
@@ -1060,7 +1208,9 @@ export default function SatkerIndonesiaMap({
                         key={satker.id}
                         className={clsx(
                           "bg-white rounded-xl border transition-all duration-200 p-3 shadow-2xs hover:border-blue-300",
-                          isExpanded ? "border-blue-400 ring-1 ring-blue-200" : "border-slate-200"
+                          isExpanded
+                            ? "border-blue-400 ring-1 ring-blue-200"
+                            : "border-slate-200",
                         )}
                       >
                         {/* Baris Atas: Nama Satker & Status */}
@@ -1089,7 +1239,7 @@ export default function SatkerIndonesiaMap({
                               "px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 flex items-center gap-1",
                               isMatch
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-rose-50 text-rose-700 border border-rose-200"
+                                : "bg-rose-50 text-rose-700 border border-rose-200",
                             )}
                           >
                             {isMatch ? (
@@ -1131,7 +1281,7 @@ export default function SatkerIndonesiaMap({
                             <span
                               className={clsx(
                                 "font-bold truncate block",
-                                isMatch ? "text-emerald-600" : "text-rose-600"
+                                isMatch ? "text-emerald-600" : "text-rose-600",
                               )}
                             >
                               {isMatch ? "Rp 0" : formatRupiah(satker.selisih)}
@@ -1142,11 +1292,15 @@ export default function SatkerIndonesiaMap({
                         {/* Baris Aksi: Accordion Bukti Dokumen & Tombol Fokus Peta */}
                         <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                           <button
-                            onClick={() => setExpandedSatkerId(isExpanded ? null : satker.id)}
+                            onClick={() =>
+                              setExpandedSatkerId(isExpanded ? null : satker.id)
+                            }
                             className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
                           >
                             <FileText className="w-3.5 h-3.5 text-blue-500" />
-                            <span>Bukti Dokumen ({satker.dokumenList.length})</span>
+                            <span>
+                              Bukti Dokumen ({satker.dokumenList.length})
+                            </span>
                             {isExpanded ? (
                               <ChevronUp className="w-3.5 h-3.5 ml-0.5" />
                             ) : (
@@ -1178,7 +1332,13 @@ export default function SatkerIndonesiaMap({
                               Analisis
                             </button>
                             <button
-                              onClick={() => handleFocusSatker(satker.lat, satker.lng, satker.id)}
+                              onClick={() =>
+                                handleFocusSatker(
+                                  satker.lat,
+                                  satker.lng,
+                                  satker.id,
+                                )
+                              }
                               className="px-2 py-1 text-[10px] font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1"
                               title="Arahkan Peta ke Satker Ini"
                             >
@@ -1215,7 +1375,7 @@ export default function SatkerIndonesiaMap({
                                     "px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0",
                                     dok.status === "Terverifikasi"
                                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                      : "bg-rose-50 text-rose-700 border border-rose-200"
+                                      : "bg-rose-50 text-rose-700 border border-rose-200",
                                   )}
                                 >
                                   {dok.status}
@@ -1238,7 +1398,12 @@ export default function SatkerIndonesiaMap({
               </span>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => handleOpenWilayahAnalysis(selectedWilayah, activeWilayahSatkers)}
+                  onClick={() =>
+                    handleOpenWilayahAnalysis(
+                      selectedWilayah,
+                      activeWilayahSatkers,
+                    )
+                  }
                   className="py-1.5 px-3 bg-[#1E90FF] hover:bg-blue-600 text-white font-semibold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
@@ -1291,7 +1456,9 @@ export default function SatkerIndonesiaMap({
               {/* Unit Eselon 1 Pembina */}
               <div className="flex items-center justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-500">Unit Pembina</span>
-                <span className="font-semibold text-slate-800">{selectedSatker.eselon1}</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedSatker.eselon1}
+                </span>
               </div>
 
               {/* Status Rekonsiliasi Badge */}
@@ -1300,7 +1467,7 @@ export default function SatkerIndonesiaMap({
                   "p-3 rounded-xl border flex items-center justify-between",
                   selectedSatker.status === "match"
                     ? "bg-emerald-50/70 border-emerald-200 text-emerald-800"
-                    : "bg-rose-50/70 border-rose-200 text-rose-800"
+                    : "bg-rose-50/70 border-rose-200 text-rose-800",
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -1311,7 +1478,9 @@ export default function SatkerIndonesiaMap({
                   )}
                   <div>
                     <p className="font-bold text-xs leading-none">
-                      {selectedSatker.status === "match" ? "Rekonsiliasi Seimbang" : "Ada Selisih Kas"}
+                      {selectedSatker.status === "match"
+                        ? "Rekonsiliasi Seimbang"
+                        : "Ada Selisih Kas"}
                     </p>
                     <p className="text-[10px] opacity-80 mt-0.5">
                       {selectedSatker.status === "match"
@@ -1359,7 +1528,9 @@ export default function SatkerIndonesiaMap({
                           <p className="font-semibold text-slate-800 text-[11px] truncate">
                             {dok.nama}
                           </p>
-                          <p className="text-[10px] text-slate-400">{dok.tanggal}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {dok.tanggal}
+                          </p>
                         </div>
                       </div>
                       <span
@@ -1367,7 +1538,7 @@ export default function SatkerIndonesiaMap({
                           "px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0",
                           dok.status === "Terverifikasi"
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200",
                         )}
                       >
                         {dok.status}
@@ -1445,12 +1616,17 @@ export default function SatkerIndonesiaMap({
               {analysisLoading ? (
                 <div className="py-14 flex flex-col items-center justify-center gap-2 text-slate-500">
                   <Loader2 className="w-7 h-7 animate-spin text-[#1E90FF]" />
-                  <p className="text-xs font-medium">Menghitung saldo, selisih, dan kelengkapan dokumen satker...</p>
+                  <p className="text-xs font-medium">
+                    Menghitung saldo, selisih, dan kelengkapan dokumen satker...
+                  </p>
                 </div>
               ) : (
                 <>
                   <p className="text-xs text-slate-500">
-                    Teks rangkuman di bawah otomatis menganalisis kondisi saldo, keseimbangan, selisih, dan kelengkapan dokumen satker. Anda bisa mengeditnya seperlunya lalu klik <strong>Salin Teks</strong>.
+                    Teks rangkuman di bawah otomatis menganalisis kondisi saldo,
+                    keseimbangan, selisih, dan kelengkapan dokumen satker. Anda
+                    bisa mengeditnya seperlunya lalu klik{" "}
+                    <strong>Salin Teks</strong>.
                   </p>
                   <textarea
                     value={analysisText}

@@ -177,11 +177,12 @@ async def download_and_scan_gdrive(
                 }
 
             # 5. Deteksi nama file dari Header Content-Disposition atau ekstensi biner
+            from utils import sanitize_filename
             filename = f"gdrive_{file_id}_{int(time.time())}.pdf"
             cd = res.headers.get("content-disposition", "")
             fname_match = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', cd, re.IGNORECASE)
             if fname_match:
-                filename = fname_match.group(1).strip()
+                filename = sanitize_filename(fname_match.group(1).strip())
             else:
                 # Deteksi ekstensi dari magic bytes
                 if content.startswith(b"%PDF-"):

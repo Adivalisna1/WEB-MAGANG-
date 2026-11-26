@@ -123,9 +123,35 @@ async def serve_file(
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "Invalid filename")
 
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    safe_name = os.path.basename(filename)
+    file_path = os.path.realpath(os.path.join(UPLOAD_DIR, safe_name))
+    if not file_path.startswith(os.path.realpath(UPLOAD_DIR) + os.sep):
+        raise HTTPException(400, "Invalid filename")
     if not os.path.exists(file_path):
         raise HTTPException(404, "File tidak ditemukan")
+
+    # Validasi isolasi kepemilikan berkas pencatatan
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("""
+            SELECT p.satker_id, p.created_by, u.satker_id AS user_satker_id,
+                   COALESCE(s.eselon_1_id, u.eselon_1_id) AS eselon_1_id
+            FROM pencatatan p
+            LEFT JOIN users u ON u.id = p.created_by
+            LEFT JOIN satkers s ON s.id = COALESCE(p.satker_id, u.satker_id)
+            WHERE p.bukti_file LIKE %s
+            LIMIT 1
+        """, (f"%{safe_name}",))
+        row = cursor.fetchone()
+        if row:
+            u_role = payload.get("role")
+            u_tingkat = payload.get("tingkat")
+            is_global = u_role in ["it", "admin_it"] or payload.get("role_id") == 3 or u_tingkat == "kl"
+            if not is_global and row.get("created_by") != payload.get("id"):
+                owner_satker = row.get("satker_id") or row.get("user_satker_id")
+                if u_tingkat == "satker" and payload.get("satker_id") and owner_satker != payload.get("satker_id"):
+                    raise HTTPException(403, "Akses ditolak: Berkas milik Satker lain")
+                if u_tingkat == "eselon_1" and payload.get("eselon_1_id") and row.get("eselon_1_id") != payload.get("eselon_1_id"):
+                    raise HTTPException(403, "Akses ditolak: Berkas di luar Eselon 1 binaan Anda")
 
     return FileResponse(file_path)
 
@@ -251,6 +277,8 @@ async def create_akuntansi(
     if not is_allowed:
         raise HTTPException(403, "Forbidden: Akses khusus Operator dan Manajemen Satker")
         
+    orig_filename = os.path.basename(file.filename) if (file and file.filename) else None
+    file_content_type = (file.content_type if file and file.content_type else "application/octet-stream")
     if file and orig_filename:
         ext = os.path.splitext(orig_filename or "")[1].lower()
         allowed_exts = {'.pdf', '.xlsx', '.xls', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
@@ -258,19 +286,21 @@ async def create_akuntansi(
             raise HTTPException(400, f"Format file bukti '{ext}' tidak didukung. Harap unggah PDF, Excel, Word, atau Gambar.")
 
         os.makedirs(UPLOAD_DIR, exist_ok=True)
-        filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{orig_filename}"
+        from utils import sanitize_filename
+        safe_orig = sanitize_filename(orig_filename)
+        filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{safe_orig}"
         file_path = os.path.join(UPLOAD_DIR, filename)
         
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        file_content_type = file_content_type
-        orig_filename = orig_filename
     elif temp_gdrive_filename:
-        temp_gdrive_path = os.path.join(UPLOAD_DIR, "temp_gdrive", temp_gdrive_filename)
-        if not os.path.exists(temp_gdrive_path):
+        safe_temp_name = os.path.basename(temp_gdrive_filename)
+        temp_gdrive_path = os.path.realpath(os.path.join(UPLOAD_DIR, "temp_gdrive", safe_temp_name))
+        if not temp_gdrive_path.startswith(os.path.realpath(os.path.join(UPLOAD_DIR, "temp_gdrive")) + os.sep) or not os.path.exists(temp_gdrive_path):
             raise HTTPException(400, "Berkas Google Drive sementara tidak ditemukan atau sudah kedaluwarsa. Silakan scan ulang.")
         os.makedirs(UPLOAD_DIR, exist_ok=True)
-        clean_name = temp_gdrive_filename.split("_", 1)[-1] if "_" in temp_gdrive_filename else temp_gdrive_filename
+        from utils import sanitize_filename
+        clean_name = sanitize_filename(safe_temp_name.split("_", 1)[-1] if "_" in safe_temp_name else safe_temp_name)
         filename = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{clean_name}"
         file_path = os.path.join(UPLOAD_DIR, filename)
         shutil.copy2(temp_gdrive_path, file_path)

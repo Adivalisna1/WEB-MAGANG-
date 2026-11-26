@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, File, Upl
 from fastapi.responses import FileResponse, Response
 from auth import get_current_user, require_admin_it
 from db import get_db
-from utils import catat_log, buat_notifikasi, save_file, delete_file, UPLOAD_DIR
+from utils import catat_log, buat_notifikasi, save_file, delete_file, safe_join, sanitize_filename, UPLOAD_DIR
 import jwt
 from services.reconciliation import scan_uploaded_file, reconcile_documents
 
@@ -422,25 +422,29 @@ async def upload_dokumen(
         nilai_excel = None
     
     if file and file.filename:
-        filename = file.filename
+        filename = os.path.basename(file.filename)
         ext = os.path.splitext(filename)[1].lower()
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(400, f"Format file '{ext}' tidak diizinkan. Hanya file dokumen (.pdf, .xlsx, .xls, .docx, .doc, .jpg, .png) yang didukung.")
-        base_name = os.path.splitext(filename)[0].replace(' ', '-').lower()
+        base_name = sanitize_filename(os.path.splitext(filename)[0])
         unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
         r2_key = await save_file(file.file, unique_name, tahun)
         file.file.seek(0, 2)
         file_size = file.file.tell()
         file_mime = file.content_type
     elif temp_gdrive_filename:
-        temp_gdrive_path = os.path.join(UPLOAD_DIR, "temp_gdrive", temp_gdrive_filename)
+        safe_temp_gdrive = os.path.basename(temp_gdrive_filename)
+        temp_gdrive_path = safe_join(UPLOAD_DIR, "temp_gdrive", safe_temp_gdrive)
         if not os.path.exists(temp_gdrive_path):
             raise HTTPException(400, "Berkas Google Drive sementara tidak ditemukan atau sudah kedaluwarsa. Silakan scan ulang.")
         with open(temp_gdrive_path, "rb") as gf:
             g_bytes = gf.read()
-        filename = temp_gdrive_filename.split("_", 1)[-1] if "_" in temp_gdrive_filename else temp_gdrive_filename
+        raw_fname = safe_temp_gdrive.split("_", 1)[-1] if "_" in safe_temp_gdrive else safe_temp_gdrive
+        filename = os.path.basename(raw_fname)
         ext = os.path.splitext(filename)[1].lower() or ".pdf"
-        base_name = os.path.splitext(filename)[0].replace(' ', '-').lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            ext = ".pdf"
+        base_name = sanitize_filename(os.path.splitext(filename)[0])
         unique_name = f"{base_name}-{int(time.time()*1000)}{ext}"
         g_stream = io.BytesIO(g_bytes)
         r2_key = await save_file(g_stream, unique_name, tahun)
@@ -603,22 +607,80 @@ async def upload_dokumen(
         "data": {"id": insert_id, "nomor_laporan": nomor_laporan, "status": status_awal}
     }
 
+def _check_dokumen_scope_access(dok: dict, user: dict) -> bool:
+    """Validasi isolasi akses dokumen berdasarkan tingkat, satker_id, dan eselon_1_id."""
+    if not user:
+        return False
+    role = user.get("role")
+    tingkat = user.get("tingkat")
+    if user.get("is_it") or role in ["it", "admin_it"] or user.get("role_id") == 3 or tingkat == "kl":
+        return True
+    if dok.get("uploaded_by") == user.get("id"):
+        return True
+    owner_satker_id = dok.get("owner_satker_id")
+    doc_eselon_id = dok.get("satker_eselon_1_id") or dok.get("owner_eselon_1_id")
+    if role == "staff_eselon_1":
+        return bool(owner_satker_id is None and user.get("eselon_1_id") and doc_eselon_id == user.get("eselon_1_id"))
+    if tingkat == "satker":
+        return bool(user.get("satker_id") and owner_satker_id == user.get("satker_id"))
+    if tingkat == "eselon_1":
+        return bool(user.get("eselon_1_id") and doc_eselon_id == user.get("eselon_1_id"))
+    return False
+
 @router.get("/{id}/download")
-async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_db)):
+async def download_dokumen(
+    id: int,
+    request: Request,
+    token: Optional[str] = None,
+    db=Depends(get_db)
+):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT id, judul, file_nama, file_path, file_mime, status, is_public, uploaded_by FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.id, d.judul, d.file_nama, d.file_path, d.file_mime, d.status, d.is_public, d.uploaded_by,
+                   u.satker_id AS owner_satker_id, u.eselon_1_id AS owner_eselon_1_id,
+                   s.eselon_1_id AS satker_eselon_1_id
+            FROM dokumen d
+            LEFT JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
         
     if not dok:
         raise HTTPException(404, "Dokumen tidak ditemukan")
         
-    has_access = dok["status"] == "terverifikasi" and dok["is_public"]
-    if not has_access and token:
+    has_access = dok["status"] == "terverifikasi" and bool(dok["is_public"])
+    auth_header = request.headers.get("authorization") or ""
+    raw_token = token or (auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else None)
+    if not has_access and raw_token:
         try:
             secret = os.getenv("JWT_SECRET")
-            decoded = jwt.decode(token, secret, algorithms=["HS256"])
-            if decoded.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker", "eselon_1"] or decoded.get("tingkat") in ["satker", "eselon_1", "kl"] or (dok["uploaded_by"] == decoded.get("id")):
-                has_access = True
+            decoded = jwt.decode(raw_token, secret, algorithms=["HS256"])
+            with db.cursor(dictionary=True) as cursor:
+                cursor.execute("""
+                    SELECT u.id, u.role_id, u.satker_id, u.eselon_1_id, u.is_active,
+                           COALESCE(r.nama, 'operator') AS role,
+                           COALESCE(t.kode, 'satker') AS tingkat,
+                           COALESCE(u.eselon_1_id, s.eselon_1_id) AS resolved_eselon_1_id
+                    FROM users u
+                    LEFT JOIN roles r ON r.id = u.role_id
+                    LEFT JOIN tingkats t ON t.id = u.tingkat_id
+                    LEFT JOIN satkers s ON s.id = u.satker_id
+                    WHERE u.id = %s
+                """, (decoded.get("id"),))
+                db_user = cursor.fetchone()
+                sess_ok = True
+                if decoded.get("sessionId") and db_user:
+                    cursor.execute(
+                        "SELECT is_online FROM user_sessions WHERE id = %s AND user_id = %s LIMIT 1",
+                        (decoded.get("sessionId"), db_user["id"])
+                    )
+                    s_row = cursor.fetchone()
+                    if s_row and not s_row.get("is_online"):
+                        sess_ok = False
+            if db_user and db_user.get("is_active", 1) and sess_ok:
+                db_user["eselon_1_id"] = db_user.get("resolved_eselon_1_id")
+                has_access = _check_dokumen_scope_access(dok, db_user)
         except Exception:
             pass
             
@@ -632,7 +694,7 @@ async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_
         cursor.execute("UPDATE dokumen SET download_count = download_count + 1 WHERE id = %s", (id,))
         db.commit()
         
-    file_path = os.path.join(UPLOAD_DIR, dok["file_path"])
+    file_path = safe_join(UPLOAD_DIR, dok["file_path"])
     if not os.path.exists(file_path):
         raise HTTPException(404, "File tidak ditemukan di server")
         
@@ -640,22 +702,25 @@ async def download_dokumen(id: int, token: Optional[str] = None, db=Depends(get_
 
 @router.get("/{id}/preview")
 async def preview_dokumen(id: int, user: dict = Depends(get_current_user), db=Depends(get_db)):
-    is_allowed = (
-        user.get("role") in ["administrasi", "operator", "it", "admin_it", "pimpinan_satker", "eselon_1", "staff_satker"] or
-        user.get("tingkat") in ["satker", "eselon_1", "kl"] or
-        user.get("role_id") in [1, 2, 3, 4]
-    )
-    if not is_allowed:
-        raise HTTPException(403, "Akses ditolak")
-        
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT file_nama, file_path, file_mime FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.file_nama, d.file_path, d.file_mime, d.uploaded_by, d.status, d.is_public,
+                   u.satker_id AS owner_satker_id, u.eselon_1_id AS owner_eselon_1_id,
+                   s.eselon_1_id AS satker_eselon_1_id
+            FROM dokumen d
+            LEFT JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
         
     if not dok or not dok["file_path"]:
         raise HTTPException(404, "Dokumen tidak ditemukan")
+
+    if not (dok.get("status") == "terverifikasi" and dok.get("is_public")) and not _check_dokumen_scope_access(dok, user):
+        raise HTTPException(403, "Akses ditolak: Dokumen ini di luar kewenangan unit kerja Anda")
         
-    file_path = os.path.join(UPLOAD_DIR, dok["file_path"])
+    file_path = safe_join(UPLOAD_DIR, dok["file_path"])
     if not os.path.exists(file_path):
         raise HTTPException(404, "File tidak ditemukan")
         
@@ -690,13 +755,13 @@ async def preview_dokumen(id: int, user: dict = Depends(get_current_user), db=De
     if not os.path.exists(pdf_path):
         raise HTTPException(500, "File PDF hasil konversi tidak ditemukan")
         
-    def iterfile():
-        with open(pdf_path, mode="rb") as f:
-            yield from f
-        try: os.remove(pdf_path)
-        except: pass
+    pdf_bytes = open(pdf_path, "rb").read()
+    try:
+        os.remove(pdf_path)
+    except Exception:
+        pass
             
-    return Response(content=open(pdf_path, "rb").read(), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{base_name}.pdf"'})
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{base_name}.pdf"'})
 
 @router.get("/{id}")
 async def get_dokumen_detail(id: int, db=Depends(get_db)):
@@ -723,13 +788,22 @@ async def edit_dokumen(
 ):
     body = await request.json()
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.*, u.satker_id AS owner_satker_id, u.eselon_1_id AS owner_eselon_1_id,
+                   s.eselon_1_id AS satker_eselon_1_id
+            FROM dokumen d
+            LEFT JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
         
     if not dok: raise HTTPException(404, "Dokumen tidak ditemukan")
+    if not _check_dokumen_scope_access(dok, user):
+        raise HTTPException(403, "Akses ditolak: Dokumen di luar kewenangan unit kerja Anda")
     
-    is_uploader = (user.get("role") in ["operator", "staff_satker"] or user.get("role_id") == 1)
-    is_editor = (user.get("role") in ["administrasi", "it", "admin_it", "pimpinan_satker"] or user.get("role_id") in [2, 3])
+    is_uploader = (user.get("role") in ["operator", "staff_satker", "staff_eselon_1"] or user.get("role_id") == 1)
+    is_editor = (user.get("role") in ["administrasi", "manajemen", "it", "admin_it", "pimpinan_satker"] or user.get("role_id") in [2, 3])
     
     if is_uploader:
         if dok["uploaded_by"] != user["id"]: raise HTTPException(403, "Bukan dokumen Anda")
@@ -1098,8 +1172,11 @@ async def bot_upload(
     bulan_final = None if semester else (int(bulan) if bulan else None)
     semester_final = int(semester) if semester else None
     
-    ext = os.path.splitext(file.filename)[1]
-    bname = os.path.splitext(file.filename)[0].replace(' ', '-')
+    clean_fname = os.path.basename(file.filename or "dokumen.pdf")
+    ext = os.path.splitext(clean_fname)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Format file '{ext}' tidak diizinkan.")
+    bname = sanitize_filename(os.path.splitext(clean_fname)[0])
     uname = f"{bname}-{int(time.time()*1000)}{ext}"
     
     r2_key = await save_file(file.file, uname, tahun)
@@ -1114,7 +1191,7 @@ async def bot_upload(
               nilai_rekening_koran, nilai_excel)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', 0, %s, %s)
         """, (kategori_id, usr["id"], judul, deskripsi, tahun, bulan_final, semester_final,
-              file.filename, r2_key, file_size, file.content_type, nilai_rekening_koran, nilai_excel))
+              clean_fname, r2_key, file_size, file.content_type, nilai_rekening_koran, nilai_excel))
         ins_id = cursor.lastrowid
         n_lap = buat_nomor_laporan(kat["slug"] if kat else "", tahun, ins_id)
         cursor.execute("UPDATE dokumen SET nomor_laporan = %s WHERE id = %s", (n_lap, ins_id))
@@ -1124,20 +1201,33 @@ async def bot_upload(
 @router.patch("/{id}/file")
 async def ganti_file(id: int, file: UploadFile = File(...), user: dict = Depends(get_current_user), db=Depends(get_db)):
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT * FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.*, u.satker_id AS owner_satker_id, u.eselon_1_id AS owner_eselon_1_id,
+                   s.eselon_1_id AS satker_eselon_1_id
+            FROM dokumen d
+            LEFT JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
         
         if not dok: raise HTTPException(404, "Not found")
         if dok["status"] not in ["revisi", "draft"]: raise HTTPException(400, "Only draft/revisi")
+        if not _check_dokumen_scope_access(dok, user):
+            raise HTTPException(403, "Akses ditolak. Bukan dokumen unit kerja Anda")
         is_owner = (dok["uploaded_by"] == user["id"])
         is_admin_or_it = (user.get("role") in ["it", "admin_it", "manajemen", "administrasi"] or user.get("is_manajemen") or user.get("is_it"))
         if not is_owner and not is_admin_or_it:
             raise HTTPException(403, "Akses ditolak. Bukan dokumen Anda")
         
+        clean_fname = os.path.basename(file.filename or "dokumen.pdf")
+        ext = os.path.splitext(clean_fname)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(400, f"Format file '{ext}' tidak diizinkan.")
+        
         if dok["file_path"]: delete_file(dok["file_path"])
         
-        ext = os.path.splitext(file.filename)[1]
-        bname = os.path.splitext(file.filename)[0].replace(' ', '-')
+        bname = sanitize_filename(os.path.splitext(clean_fname)[0])
         uname = f"{bname}-{int(time.time()*1000)}{ext}"
         tahun = dok["tahun"] or datetime.datetime.now().year
         
@@ -1147,9 +1237,9 @@ async def ganti_file(id: int, file: UploadFile = File(...), user: dict = Depends
         
         cursor.execute("""
             UPDATE dokumen SET file_nama=%s, file_path=%s, file_size=%s, file_mime=%s, updated_at=NOW() WHERE id=%s
-        """, (file.filename, r2_key, fsize, file.content_type, id))
+        """, (clean_fname, r2_key, fsize, file.content_type, id))
         db.commit()
-    return {"success": True, "message": "File diganti", "data": {"id": id, "file_nama": file.filename}}
+    return {"success": True, "message": "File diganti", "data": {"id": id, "file_nama": clean_fname}}
 
 @router.post("/scan-ekstrak")
 async def scan_ekstrak_dokumen(
@@ -1165,7 +1255,9 @@ async def scan_ekstrak_dokumen(
         raise HTTPException(status_code=400, detail="Berkas file wajib diunggah")
     
     content = await target_file.read()
-    filename = target_file.filename or "dokumen.pdf"
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Ukuran berkas terlalu besar untuk dipindai (maksimal 25 MB)")
+    filename = os.path.basename(target_file.filename or "dokumen.pdf")
     
     try:
         result = scan_uploaded_file(content, filename)
@@ -1211,13 +1303,23 @@ async def rescan_dokumen(
         raise HTTPException(403, "Akses ditolak")
 
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT id, judul, file_nama, file_path, nilai_rekening_koran, nilai_excel FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.id, d.judul, d.file_nama, d.file_path, d.nilai_rekening_koran, d.nilai_excel, d.uploaded_by,
+                   u.satker_id AS owner_satker_id, u.eselon_1_id AS owner_eselon_1_id,
+                   s.eselon_1_id AS satker_eselon_1_id
+            FROM dokumen d
+            LEFT JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
 
     if not dok or not dok["file_path"]:
         raise HTTPException(404, "Dokumen atau berkas fisik tidak ditemukan")
+    if not _check_dokumen_scope_access(dok, user):
+        raise HTTPException(403, "Akses ditolak: Dokumen di luar kewenangan unit kerja Anda")
 
-    file_path = os.path.join(UPLOAD_DIR, dok["file_path"])
+    file_path = safe_join(UPLOAD_DIR, dok["file_path"])
     if not os.path.exists(file_path):
         raise HTTPException(404, "File fisik berkas tidak ditemukan di server")
 
@@ -1476,7 +1578,8 @@ async def batch_save_dokumen(
     if not is_uploader:
         raise HTTPException(403, "Anda tidak memiliki hak akses untuk mengunggah dokumen masal")
 
-    batch_dir = os.path.join(UPLOAD_DIR, "temp_batch", payload.batch_id)
+    safe_batch_id = os.path.basename(payload.batch_id)
+    batch_dir = safe_join(UPLOAD_DIR, "temp_batch", safe_batch_id)
     if not os.path.exists(batch_dir):
         raise HTTPException(400, "Sesi batch upload telah kedaluwarsa atau berkas tidak ditemukan")
 
@@ -1492,7 +1595,8 @@ async def batch_save_dokumen(
         satker_code_map = {str(s["NO_Satker"]): s["id"] for s in cursor.fetchall() if s.get("NO_Satker")}
 
         for item in payload.items:
-            temp_path = os.path.join(batch_dir, item.temp_filename)
+            safe_temp_file = os.path.basename(item.temp_filename)
+            temp_path = safe_join(batch_dir, safe_temp_file)
             if not os.path.exists(temp_path):
                 continue
 
@@ -1636,10 +1740,20 @@ async def update_status_piutang(
         raise HTTPException(400, f"Status piutang tidak valid. Pilihan: {', '.join(valid_status)}")
 
     with db.cursor(dictionary=True) as cursor:
-        cursor.execute("SELECT id, judul, status_piutang, uploaded_by FROM dokumen WHERE id = %s", (id,))
+        cursor.execute("""
+            SELECT d.id, d.judul, d.status_piutang, d.uploaded_by,
+                   u.satker_id AS owner_satker_id, u.eselon_1_id AS owner_eselon_1_id,
+                   s.eselon_1_id AS satker_eselon_1_id
+            FROM dokumen d
+            LEFT JOIN users u ON u.id = d.uploaded_by
+            LEFT JOIN satkers s ON s.id = u.satker_id
+            WHERE d.id = %s
+        """, (id,))
         dok = cursor.fetchone()
         if not dok:
             raise HTTPException(404, "Dokumen tidak ditemukan")
+        if not _check_dokumen_scope_access(dok, user):
+            raise HTTPException(403, "Akses ditolak: Dokumen di luar kewenangan unit kerja Anda")
 
         cursor.execute("""
             UPDATE dokumen

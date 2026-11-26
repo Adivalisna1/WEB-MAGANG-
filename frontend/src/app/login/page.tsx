@@ -28,6 +28,59 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lockLevel, setLockLevel] = useState<0 | 1 | 2>(0);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [showItBanModal, setShowItBanModal] = useState(false);
+
+  const formatCountdown = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  // Restore active lockout timer from localStorage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedLock = localStorage.getItem("sip_login_lock");
+      if (savedLock) {
+        const parsed = JSON.parse(savedLock);
+        const rem = Math.ceil((parsed.expiresAt - Date.now()) / 1000);
+        if (rem > 0) {
+          setLockLevel(parsed.level || 1);
+          setCooldownSeconds(rem);
+          setFailedAttempts(parsed.attempts || (parsed.level === 2 ? 10 : 5));
+          if (parsed.level === 2) {
+            setShowItBanModal(true);
+          }
+        } else {
+          localStorage.removeItem("sip_login_lock");
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Live countdown ticker
+  useEffect(() => {
+    if (cooldownSeconds <= 0) {
+      if (lockLevel !== 0) {
+        setLockLevel(0);
+        setShowItBanModal(false);
+        setError("");
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("sip_login_lock");
+        }
+      }
+      return;
+    }
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds, lockLevel]);
 
   // Kalau sudah login, redirect sesuai role & tingkat (kecuali jika ada param switch / logout)
   useEffect(() => {
@@ -51,7 +104,7 @@ export default function LoginPage() {
         r === "it" ||
         (t === "kl" &&
           (user.permissions?.can_manage_users ||
-            ["it_admin", "naufal"].includes(user.username))),
+            user.username === "it_admin")),
       );
       if (isIt) router.replace("/admin-it");
       else if (t === "kl") router.replace("/kl");
@@ -80,10 +133,17 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (cooldownSeconds > 0) {
+      if (lockLevel === 2) setShowItBanModal(true);
+      return;
+    }
     setError("");
     setSubmitting(true);
     try {
       await loginFn(username, password);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("sip_login_lock");
+      }
       if (password === "123456") {
         toast(
           "Akun Anda masih menggunakan password default. Segera ganti password demi keamanan!",
@@ -100,6 +160,39 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setError(err.message || "Username atau password salah");
+      if (err.failed_attempts) {
+        setFailedAttempts(err.failed_attempts);
+      }
+      if (err.lock_level === 2 || err.contact_it) {
+        const waitSec = err.retry_after_seconds || 900;
+        setLockLevel(2);
+        setCooldownSeconds(waitSec);
+        setShowItBanModal(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "sip_login_lock",
+            JSON.stringify({
+              level: 2,
+              attempts: err.failed_attempts || 10,
+              expiresAt: Date.now() + waitSec * 1000,
+            }),
+          );
+        }
+      } else if (err.lock_level === 1) {
+        const waitSec = err.retry_after_seconds || 300;
+        setLockLevel(1);
+        setCooldownSeconds(waitSec);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "sip_login_lock",
+            JSON.stringify({
+              level: 1,
+              attempts: err.failed_attempts || 5,
+              expiresAt: Date.now() + waitSec * 1000,
+            }),
+          );
+        }
+      }
     } finally {
       setSubmitting(false);
     }
@@ -285,8 +378,51 @@ export default function LoginPage() {
             Masukkan username dan password Anda
           </p>
 
-          {/* Error Alert */}
-          {error && (
+          {/* Error Alert & Cooldown Banner */}
+          {cooldownSeconds > 0 && lockLevel === 1 && (
+            <div className="mb-6 flex items-start gap-3 bg-amber-50 border border-amber-300 text-amber-900 text-sm rounded-xl p-4 shadow-xs">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+              <div className="flex-1">
+                <p className="font-bold text-amber-900">
+                  Batas 5 Kali Gagal Login Tercapai
+                </p>
+                <p className="mt-1 text-amber-800">
+                  Silakan tunggu jeda keamanan{" "}
+                  <span className="font-mono font-extrabold px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-950">
+                    {formatCountdown(cooldownSeconds)}
+                  </span>{" "}
+                  sebelum mencoba login kembali.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {cooldownSeconds > 0 && lockLevel === 2 && (
+            <div className="mb-6 flex items-start gap-3 bg-rose-50 border border-rose-300 text-rose-900 text-sm rounded-xl p-4 shadow-xs">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
+              <div className="flex-1">
+                <p className="font-bold text-rose-900">
+                  Akses Diblokir Sementara (10x Gagal Login)
+                </p>
+                <p className="mt-1 text-rose-800">
+                  Sisa waktu blokir:{" "}
+                  <span className="font-mono font-extrabold px-1.5 py-0.5 rounded bg-rose-200/70 text-rose-950">
+                    {formatCountdown(cooldownSeconds)}
+                  </span>
+                  . Silakan hubungi pihak IT Administrator.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowItBanModal(true)}
+                  className="mt-2 text-xs font-bold text-rose-700 underline hover:text-rose-900 cursor-pointer"
+                >
+                  Lihat Informasi Kontak IT
+                </button>
+              </div>
+            </div>
+          )}
+
+          {error && cooldownSeconds === 0 && (
             <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>{error}</span>
@@ -378,11 +514,15 @@ export default function LoginPage() {
             {/* Tombol Submit Masuk */}
             <button
               type="submit"
-              disabled={submitting || !username || !password}
+              disabled={submitting || cooldownSeconds > 0 || !username || !password}
               className="w-full py-3.5 px-6 bg-[#1D64EC] hover:bg-[#1552C6] active:bg-[#0E45B0] text-white text-base font-semibold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2"
             >
               {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
-              {submitting ? "Memproses..." : "Masuk"}
+              {cooldownSeconds > 0
+                ? `Tunggu (${formatCountdown(cooldownSeconds)})`
+                : submitting
+                  ? "Memproses..."
+                  : "Masuk"}
             </button>
           </form>
 
@@ -403,6 +543,67 @@ export default function LoginPage() {
           © {new Date().getFullYear()} SIP (Sistem Informasi Pelaporan)
         </p>
       </div>
+
+      {/* ============================================================ */}
+      {/* MODAL POP-UP TENGAH: BAN 15 MENIT (10x GAGAL LOGIN)          */}
+      {/* ============================================================ */}
+      {showItBanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-rose-200 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4 ring-8 ring-rose-50">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <span className="inline-block px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-extrabold uppercase tracking-wider mb-3">
+              Akses Diblokir Sementara ({failedAttempts || 10}x Gagal Login)
+            </span>
+
+            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2">
+              Hubungi Pihak IT Administrator
+            </h3>
+
+            <p className="text-sm text-slate-600 leading-relaxed mb-5">
+              Akun atau perangkat Anda telah melakukan{" "}
+              <span className="font-bold text-slate-900">
+                10 kali percobaan login gagal
+              </span>
+              . Demi keamanan sistem, akses login dikunci selama{" "}
+              <span className="font-bold text-rose-600">15 menit</span>.
+            </p>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                Sisa Waktu Penangguhan
+              </p>
+              <p className="text-3xl font-mono font-extrabold text-rose-600 tracking-tight">
+                {formatCountdown(cooldownSeconds)}
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 text-left">
+              <p className="text-xs font-extrabold uppercase tracking-wider text-blue-700 mb-1.5">
+                Bantuan Darurat & Reset Akses
+              </p>
+              <p className="text-xs text-slate-700 leading-relaxed">
+                Jika Anda lupa kata sandi atau membutuhkan pembukaan blokir
+                segera, silakan menelpon / menghubungi{" "}
+                <span className="font-bold text-slate-900">
+                  Tim IT Administrator Biro Keuangan dan BMN
+                </span>{" "}
+                (Helpdesk IT / Call Center: <span className="font-bold">126</span>).
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowItBanModal(false)}
+              className="w-full py-3 px-5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              Saya Mengerti
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

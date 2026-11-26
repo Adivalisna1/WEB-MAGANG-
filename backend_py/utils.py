@@ -53,15 +53,19 @@ async def buat_notifikasi(db, user_id: int, aksi: str, judul: str, pesan: str, d
                 sender_email = os.getenv("EMAIL_FROM", "no-reply@laporan.go.id")
                 target_email = os.getenv("TEST_EMAIL_RECIPIENT", user_row["email"])
                 
+                import html as _html
+                safe_nama = _html.escape(str(user_row.get("nama") or ""))
+                safe_pesan = _html.escape(str(pesan or ""))
+                safe_judul = _html.escape(str(judul or "Pemberitahuan Sistem"))
                 payload = {
                     "sender": {"name": "Dashboard Laporan", "email": sender_email},
                     "to": [{"email": target_email, "name": user_row["nama"]}],
-                    "subject": f"Notifikasi: {judul or 'Pemberitahuan Sistem'}",
+                    "subject": f"Notifikasi: {safe_judul}",
                     "htmlContent": f'''<div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                                      <h3 style="color: #2563eb;">Halo {user_row["nama"]},</h3>
+                                      <h3 style="color: #2563eb;">Halo {safe_nama},</h3>
                                       <p style="font-size: 16px; color: #333;">Ada notifikasi baru untuk Anda:</p>
                                       <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid #2563eb; margin: 20px 0;">
-                                        {pesan}
+                                        {safe_pesan}
                                       </div>
                                       <p style="font-size: 14px; color: #666;">Silakan akses Dashboard Laporan untuk melihat detailnya.</p>
                                       <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
@@ -90,12 +94,31 @@ async def buat_notifikasi(db, user_id: int, aksi: str, judul: str, pesan: str, d
 
 import shutil
 import aiofiles
+import re
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads" if os.path.exists("/app") else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads"))
 
+def safe_join(base_dir: str, *paths: str) -> str:
+    """Gabungkan path secara aman dan tolak Path Traversal di luar base_dir."""
+    base_real = os.path.realpath(base_dir)
+    target_real = os.path.realpath(os.path.join(base_real, *[str(p) for p in paths]))
+    if target_real != base_real and not target_real.startswith(base_real + os.sep):
+        raise ValueError("Akses path di luar direktori penyimpanan ditolak")
+    return target_real
+
+def sanitize_filename(filename: str) -> str:
+    """Sanitasi nama file agar bebas dari karakter traversal dan karakter berbahaya."""
+    base = os.path.basename(str(filename or "dokumen"))
+    stem, ext = os.path.splitext(base)
+    clean_stem = re.sub(r'[^a-zA-Z0-9._-]+', '-', stem).strip('-.').lower()[:100] or "dokumen"
+    clean_ext = re.sub(r'[^a-zA-Z0-9.]+', '', ext).lower()[:10]
+    return f"{clean_stem}{clean_ext}"
+
 async def save_file(file_obj, filename: str, tahun: str | int) -> str:
-    key = f"{tahun}/{filename}"
-    file_path = os.path.join(UPLOAD_DIR, key)
+    safe_tahun = re.sub(r'[^0-9a-zA-Z_-]+', '', str(tahun or "2026")) or "2026"
+    safe_name = sanitize_filename(filename)
+    key = f"{safe_tahun}/{safe_name}"
+    file_path = safe_join(UPLOAD_DIR, safe_tahun, safe_name)
     
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     
@@ -108,8 +131,8 @@ async def save_file(file_obj, filename: str, tahun: str | int) -> str:
     return key
 
 def delete_file(key: str):
-    file_path = os.path.join(UPLOAD_DIR, key)
     try:
+        file_path = safe_join(UPLOAD_DIR, key)
         if os.path.exists(file_path):
             os.remove(file_path)
     except Exception as e:

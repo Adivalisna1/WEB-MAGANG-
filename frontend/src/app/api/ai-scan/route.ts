@@ -8,9 +8,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     
     // Teruskan request langsung ke Python FastAPI (/api/dokumen/scan-ekstrak)
-    // Menghilangkan ketergantungan pada webhook n8n port 5678
+    const authHeader = req.headers.get('authorization') || '';
     const pyRes = await fetch(`${BACKEND_API}/dokumen/scan-ekstrak`, {
       method: 'POST',
+      headers: authHeader ? { Authorization: authHeader } : {},
       body: formData,
     });
 

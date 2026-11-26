@@ -302,6 +302,12 @@ async def delete_tagihan_dokumen(
 
     with db.cursor(dictionary=True) as cursor:
         _ensure_tagihan_table(cursor)
-        cursor.execute("DELETE FROM tagihan_dokumen WHERE id = %s", (tagihan_id,))
+        if not is_it and tingkat == "eselon_1" and current_user.get("eselon_1_id"):
+            cursor.execute(
+                "DELETE FROM tagihan_dokumen WHERE id = %s AND (eselon_1_id = %s OR pengirim_id = %s)",
+                (tagihan_id, current_user["eselon_1_id"], current_user["id"])
+            )
+        else:
+            cursor.execute("DELETE FROM tagihan_dokumen WHERE id = %s", (tagihan_id,))
         db.commit()
         return {"success": True, "message": "Pemberitahuan dokumen dihapus"}

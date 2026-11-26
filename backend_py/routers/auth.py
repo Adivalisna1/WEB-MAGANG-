@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from db import get_db
@@ -34,8 +35,68 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     if not data.username or not data.password:
         raise HTTPException(status_code=400, detail="Username dan password wajib diisi")
     
-    ip = req.client.host
+    ip = req.client.host if req.client else "127.0.0.1"
     cursor = db.cursor(dictionary=True)
+
+    # Hitung streak percobaan gagal beruntun dalam 30 menit terakhir (sejak login sukses terakhir)
+    def _get_failed_streak() -> tuple[int, int]:
+        try:
+            cursor.execute("""
+                SELECT status, TIMESTAMPDIFF(SECOND, created_at, NOW()) AS age_sec
+                FROM login_attempts
+                WHERE (username_tried = %s OR ip_address = %s)
+                  AND created_at >= NOW() - INTERVAL 30 MINUTE
+                ORDER BY id DESC
+                LIMIT 25
+            """, (data.username, ip))
+            attempt_rows = cursor.fetchall() or []
+            streak = 0
+            latest_age = 999999
+            for idx, r in enumerate(attempt_rows):
+                if r.get("status") == "success":
+                    break
+                if r.get("status") == "failed":
+                    if idx == 0:
+                        latest_age = max(0, int(r.get("age_sec") or 0))
+                    streak += 1
+            # Jika jeda ban 15 menit (setelah >=10x gagal) sudah lewat, reset siklus streak
+            if streak >= 10 and latest_age >= 900:
+                return 0, 999999
+            return streak, latest_age
+        except Exception:
+            return 0, 999999
+
+    failed_streak, age_sec = _get_failed_streak()
+
+    # Tahap 2: >= 10 kali gagal -> Ban 15 menit (900 detik) + Pop-up hubungi IT
+    if failed_streak >= 10 and age_sec < 900:
+        rem = max(1, 900 - age_sec)
+        return JSONResponse(
+            status_code=429,
+            content={
+                "success": False,
+                "detail": "Akses login Anda diblokir selama 15 menit karena telah 10 kali gagal login. Silakan hubungi pihak IT Administrator.",
+                "lock_level": 2,
+                "failed_attempts": failed_streak,
+                "retry_after_seconds": rem,
+                "contact_it": True,
+            },
+        )
+
+    # Tahap 1: Tepat 5 kali gagal -> Jeda tunggu 5 menit (300 detik)
+    if failed_streak == 5 and age_sec < 300:
+        rem = max(1, 300 - age_sec)
+        return JSONResponse(
+            status_code=429,
+            content={
+                "success": False,
+                "detail": "Anda telah 5 kali salah memasukkan akun/password. Silakan tunggu 5 menit sebelum mencoba kembali.",
+                "lock_level": 1,
+                "failed_attempts": failed_streak,
+                "retry_after_seconds": rem,
+                "contact_it": False,
+            },
+        )
     
     cursor.execute("""
         SELECT u.id, u.role_id, u.tingkat_id, u.satker_id, u.eselon_1_id, u.nama, u.username, u.email,
@@ -55,7 +116,7 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
     
     user = cursor.fetchone()
     
-    async def log_failed_attempt():
+    async def handle_failed_attempt():
         try:
             loc = await get_location(ip)
             cursor.execute(
@@ -65,18 +126,52 @@ async def login(req: Request, data: LoginRequest, db = Depends(get_db)):
             db.commit()
         except Exception:
             pass
+        new_streak = failed_streak + 1
+        if new_streak >= 10:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "detail": "Akses login Anda diblokir selama 15 menit karena telah 10 kali gagal login. Silakan hubungi pihak IT Administrator.",
+                    "lock_level": 2,
+                    "failed_attempts": new_streak,
+                    "retry_after_seconds": 900,
+                    "contact_it": True,
+                },
+            )
+        if new_streak == 5:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "detail": "Anda telah 5 kali salah memasukkan akun/password. Silakan tunggu 5 menit sebelum mencoba kembali.",
+                    "lock_level": 1,
+                    "failed_attempts": new_streak,
+                    "retry_after_seconds": 300,
+                    "contact_it": False,
+                },
+            )
+        target_limit = 5 if new_streak < 5 else 10
+        return JSONResponse(
+            status_code=401,
+            content={
+                "success": False,
+                "detail": f"Username atau password salah (Percobaan gagal ke-{new_streak} dari {target_limit})",
+                "lock_level": 0,
+                "failed_attempts": new_streak,
+                "retry_after_seconds": 0,
+            },
+        )
 
     if not user:
-        await log_failed_attempt()
-        raise HTTPException(status_code=401, detail="Username atau password salah")
+        return await handle_failed_attempt()
 
     if not user['is_active']:
         raise HTTPException(status_code=403, detail="Akun tidak aktif, hubungi admin")
     
     # Check password
     if not bcrypt_lib.checkpw(data.password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-        await log_failed_attempt()
-        raise HTTPException(status_code=401, detail="Username atau password salah")
+        return await handle_failed_attempt()
     
     # Success
     try:
@@ -220,11 +315,15 @@ def me(db = Depends(get_db), current_user: dict = Depends(get_current_user)):
 
 @router.post("/forgot-password")
 async def forgot_password(req: Request, data: ForgotPasswordRequest, db = Depends(get_db)):
+    generic_msg = {
+        "success": True,
+        "message": "Jika email terdaftar di sistem, tautan reset password telah dikirimkan ke email Anda."
+    }
     cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT id, nama, email FROM users WHERE email = %s LIMIT 1", (data.email,))
     user = cursor.fetchone()
     if not user:
-        raise HTTPException(status_code=404, detail="Email tidak ditemukan/terdaftar di sistem kami.")
+        return generic_msg
     
     reset_token = secrets.token_hex(32)
     cursor.execute(
@@ -233,26 +332,25 @@ async def forgot_password(req: Request, data: ForgotPasswordRequest, db = Depend
     )
     db.commit()
     
-    cors_origin = os.getenv("CORS_ORIGIN", "http://localhost:3000")
-    default_origin = cors_origin.split(",")[0].strip() if cors_origin else "http://localhost:3000"
-    origin = req.headers.get("origin") or default_origin
-    reset_url = f"{origin}/reset-password?token={reset_token}"
+    cors_origin = os.getenv("FRONTEND_URL") or os.getenv("CORS_ORIGIN", "http://localhost:3000")
+    trusted_origin = (cors_origin.split(",")[0].strip() if cors_origin else "http://localhost:3000").rstrip("/")
+    reset_url = f"{trusted_origin}/reset-password?token={reset_token}"
     sender_email = os.getenv("EMAIL_FROM", "no-reply@laporan.go.id")
     brevo_api_key = os.getenv("BREVO_API_KEY")
+    is_prod = os.getenv("APP_ENV") == "production"
     
     if not brevo_api_key:
-        print(f"\n[DEV MODE] Password reset token generated for {user['email']}: {reset_url}\n")
-        return {
-            "success": True,
-            "message": "Tautan reset password berhasil dibuat (Mode Pengujian Lokal).",
-            "testUrl": reset_url
-        }
+        if not is_prod:
+            print(f"\n[DEV MODE] Password reset token generated for {user['email']}: {reset_url}\n")
+        return generic_msg
     
+    import html as _html
+    safe_nama = _html.escape(str(user['nama'] or ''))
     payload = {
       "sender": {"name": "Admin Dashboard Laporan", "email": sender_email},
       "to": [{"email": user['email'], "name": user['nama']}],
       "subject": "Permintaan Reset Password",
-      "htmlContent": f"<p>Halo <b>{user['nama']}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>"
+      "htmlContent": f"<p>Halo <b>{safe_nama}</b>,</p><p>Anda meminta reset password. Klik link berikut untuk membuat password baru:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>Abaikan email ini jika Anda tidak memintanya. Link kedaluwarsa dalam 1 jam.</p>"
     }
     
     try:
@@ -268,20 +366,12 @@ async def forgot_password(req: Request, data: ForgotPasswordRequest, db = Depend
             )
             if response.status_code >= 400:
                 print("Brevo API Error:", response.text)
-                return {
-                    "success": True,
-                    "message": "Gagal terhubung ke provider email Brevo. Tautan reset dialihkan ke mode pengujian.",
-                    "testUrl": reset_url
-                }
+                return generic_msg
     except Exception as e:
         print(f"Brevo Network Error: {e}")
-        return {
-            "success": True,
-            "message": "Gagal mengirim via SMTP/Brevo. Tautan reset dialihkan ke mode pengujian.",
-            "testUrl": reset_url
-        }
+        return generic_msg
             
-    return {"success": True, "message": "Link reset password berhasil dikirimkan ke email Anda."}
+    return generic_msg
 
 @router.post("/reset-password")
 async def reset_password(req: Request, data: ResetPasswordRequest, db = Depends(get_db)):

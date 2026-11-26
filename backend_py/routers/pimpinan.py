@@ -292,6 +292,13 @@ async def clear_logs(
     current_user: dict = Depends(verify_pimpinan),
     db=Depends(get_db)
 ):
+    is_it = (
+        current_user.get("is_it") or
+        current_user.get("role") in ["it", "admin_it"] or
+        current_user.get("role_id") == 3
+    )
+    if not is_it:
+        raise HTTPException(status_code=403, detail="Akses ditolak: Penghapusan riwayat audit log hanya dapat dilakukan oleh IT Administrator.")
     with db.cursor(dictionary=True) as cursor:
         if before_days == 0:
             cursor.execute("DELETE FROM aktivitas_log")

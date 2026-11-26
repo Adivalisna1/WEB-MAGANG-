@@ -26,7 +26,7 @@ export function useRequireAuth(role?: AuthSection | AuthSection[]) {
       user.is_it ||
       r === 'admin_it' ||
       r === 'it' ||
-      (t === 'kl' && (user.permissions?.can_manage_users || ['it_admin', 'naufal'].includes(user.username)))
+      (t === 'kl' && (user.permissions?.can_manage_users || user.username === 'it_admin'))
     );
 
     if (role) {

@@ -28,7 +28,7 @@ def _get_satker_filter(user, satker_param=None):
         if satker_param:
             where += " AND r.satker_id = %s"
             params.append(satker_param)
-        elif eselon_1_id:
+        if eselon_1_id:
             where += " AND s.eselon_1_id = %s"
             params.append(eselon_1_id)
     else:  # kl / it
@@ -165,7 +165,7 @@ async def export_pencatatan(
         if satker:
             where += " AND u.satker_id = %s"
             params.append(satker)
-        elif user_eselon_id:
+        if user_eselon_id:
             where += " AND (s.eselon_1_id = %s OR u.eselon_1_id = %s)"
             params.extend([user_eselon_id, user_eselon_id])
     else:

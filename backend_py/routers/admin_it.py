@@ -15,7 +15,7 @@ def verify_admin_it(current_user: dict = Depends(get_current_user)):
         current_user.get("is_it") or
         current_user.get("role") in ["it", "admin_it"] or
         current_user.get("role_id") in [3, 4] or
-        current_user.get("username") in ["it_admin", "naufal"]
+        current_user.get("username") == "it_admin"
     )
     if not is_admin:
         raise HTTPException(status_code=403, detail="Akses ditolak. Anda bukan Admin IT.")
@@ -328,8 +328,8 @@ async def force_reset_password(
     current_user: dict = Depends(verify_admin_it)
 ):
     new_password = body.get("new_password")
-    if not new_password:
-        raise HTTPException(status_code=400, detail="Password baru wajib diisi")
+    if not new_password or len(str(new_password)) < 6:
+        raise HTTPException(status_code=400, detail="Password baru wajib diisi minimal 6 karakter")
         
     password_hash = bcrypt.hashpw(str(new_password).encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     

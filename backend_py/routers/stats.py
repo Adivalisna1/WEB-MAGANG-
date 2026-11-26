@@ -513,6 +513,10 @@ async def get_satker_analysis(
                 "data": None,
             }
 
+        if tingkat == "eselon_1" and current_user.get("eselon_1_id") and not current_user.get("is_it"):
+            if satker_row.get("eselon_1_id") and satker_row["eselon_1_id"] != current_user["eselon_1_id"]:
+                raise HTTPException(status_code=403, detail="Akses ditolak: Satker di luar binaan Eselon 1 Anda")
+
         sid = satker_row["id"]
 
         # Cek kelengkapan dokumen di DB berdasarkan kategori
@@ -531,7 +535,7 @@ async def get_satker_analysis(
 
         # Cek saldo rekening koran & pencatatan buku di DB (jika ada)
         cursor.execute(
-            "SELECT COALESCE(SUM(saldo_akhir), 0) AS total_bank, COUNT(*) AS cnt_rk FROM rekening_koran WHERE satker_id = %s AND is_active = 1",
+            "SELECT COALESCE(SUM(saldo_akhir_bulan), 0) AS total_bank, COUNT(*) AS cnt_rk FROM rekening_koran WHERE satker_id = %s AND is_active = 1",
             (sid,),
         )
         rk_row = cursor.fetchone() or {"total_bank": 0, "cnt_rk": 0}
